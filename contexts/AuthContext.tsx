@@ -19,7 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const googleProvider = new GoogleAuthProvider();
-googleProvider.addScope('https://www.googleapis.com/auth/calendar.events.readonly');
+googleProvider.addScope('https://www.googleapis.com/auth/calendar.readonly');
 
 interface AuthProviderProps {
   children: ReactNode;

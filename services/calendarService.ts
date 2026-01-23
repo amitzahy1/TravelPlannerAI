@@ -32,7 +32,10 @@ export const fetchCalendarEvents = async (timeMin: string, timeMax: string): Pro
 
                 if (!response.ok) {
                         if (response.status === 401) {
-                                throw new Error('Token expired');
+                                throw new Error('Token expired. Please sign out and in again.');
+                        }
+                        if (response.status === 403) {
+                                throw new Error('Permission denied. Please Sign Out and Sign In again to grant Calendar access.');
                         }
                         throw new Error('Failed to fetch events');
                 }
