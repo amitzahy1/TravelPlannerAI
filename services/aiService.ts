@@ -38,6 +38,24 @@ const OPENROUTER_MODELS = [
 
 export const AI_MODEL = GOOGLE_MODELS[0]; // For display
 
+// --- HELPER: Extract JSON from text ---
+// Some models return plain text with embedded JSON instead of pure JSON
+const extractJSON = (text: string): string => {
+  // Try to find JSON between markdown code blocks
+  const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+  if (codeBlockMatch) return codeBlockMatch[1];
+
+  // Try to find raw JSON object
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) return jsonMatch[0];
+
+  // If already looks like JSON, return as-is
+  if (text.trim().startsWith('{')) return text;
+
+  // Otherwise throw - it's not JSON at all
+  throw new Error(`Response is not valid JSON: ${text.substring(0, 100)}...`);
+};
+
 // --- CLIENT CACHING ---
 let googleClient: GoogleGenAI | null = null;
 let openRouterClient: OpenAI | null = null;
@@ -110,9 +128,11 @@ export const generateWithFallback = async (
         // Normalize response - ensure .text is accessible as property
         // Google SDK response has .text as a property (or method depending on version)
         const rawText = typeof response.text === 'function' ? response.text() : response.text;
+
         return {
           ...response,
-          text: rawText // Ensure it's always a string property
+          text: rawText, // Ensure it's always a string property
+          extractedText: rawText // Store original for JSON extraction
         };
 
       } catch (error: any) {
@@ -193,6 +213,7 @@ export const generateWithFallback = async (
       const text = completion.choices[0]?.message?.content || "";
       return {
         text: () => text,
+        extractedText: text, // Store for JSON extraction
         candidates: [{ content: { parts: [{ text }] } }]
       };
 

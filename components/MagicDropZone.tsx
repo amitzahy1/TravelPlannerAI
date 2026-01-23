@@ -69,7 +69,21 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
 
       // FIX: response.text can be a function or a string depending on the provider
       const textContent = typeof response.text === 'function' ? response.text() : response.text;
-      const updatedTrip = JSON.parse(textContent);
+
+      // Try to extract JSON from the response (some models return text with embedded JSON)
+      let updatedTrip;
+      try {
+        // Try parsing directly first
+        updatedTrip = JSON.parse(textContent);
+      } catch (e) {
+        // If direct parse fails, try to extract JSON from text
+        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          updatedTrip = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('Could not extract JSON from response');
+        }
+      }
       const newDocNames = uploadedFiles.map(f => f.name);
       updatedTrip.documents = Array.from(new Set([...(updatedTrip.documents || []), ...newDocNames]));
 
@@ -98,8 +112,8 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
       className={`relative mb-8 rounded-[2rem] border-4 border-dashed transition-all duration-300 overflow-hidden ${isDragging
-          ? 'border-blue-500 bg-blue-50 scale-[1.01]'
-          : 'border-gray-200 bg-white hover:border-blue-300'
+        ? 'border-blue-500 bg-blue-50 scale-[1.01]'
+        : 'border-gray-200 bg-white hover:border-blue-300'
         }`}
     >
       <input
