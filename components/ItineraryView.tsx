@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Trip, ManualExpense } from '../types';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Trip } from '../types';
 import {
     Calendar, MapPin, Plane, Car,
-    Hotel, Utensils, Ticket, ShoppingBag, Plus, Sparkles, X,
-    ArrowLeft, Edit2, BedDouble, Moon, ExternalLink, Map as MapIcon, Navigation, Trash2, DollarSign, User, ArrowDown, ChevronDown
+    Hotel, Utensils, Ticket, Plus, Sparkles, X,
+    ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronDown, ChevronUp, Maximize2, Minimize2
 } from 'lucide-react';
 
 // --- Types ---
@@ -33,7 +33,7 @@ interface DayPlan {
     displayDayOfWeek: string; // "יום חמישי"
     locationContext: string; // "Bangkok", "Phuket", etc.
     events: TimelineEvent[];
-    stats: { food: number, attr: number, flight: number, travel: number };
+    stats: { food: number, attr: number, flight: number, travel: number, hotel: number };
     hasHotel: boolean;
 }
 
@@ -80,6 +80,7 @@ export const ItineraryView: React.FC<{
 }> = ({ trip, onUpdateTrip, onSwitchTab }) => {
 
     const [timeline, setTimeline] = useState<DayPlan[]>([]);
+    const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({}); // State for expanded/collapsed days
     const [quickAddModal, setQuickAddModal] = useState<{ isOpen: boolean, targetDate?: string }>({ isOpen: false });
     const [transferModal, setTransferModal] = useState<{ date: string, defaultTime: string } | null>(null);
     const [insights, setInsights] = useState<Insight[]>([]);
@@ -115,7 +116,7 @@ export const ItineraryView: React.FC<{
                     displayDayOfWeek: getDayOfWeek(loopDate),
                     locationContext: '',
                     events: [],
-                    stats: { food: 0, attr: 0, flight: 0, travel: 0 },
+                    stats: { food: 0, attr: 0, flight: 0, travel: 0, hotel: 0 },
                     hasHotel: false
                 });
                 loopDate.setDate(loopDate.getDate() + 1);
@@ -133,7 +134,7 @@ export const ItineraryView: React.FC<{
                         displayDayOfWeek: getDayOfWeek(d),
                         locationContext: '',
                         events: [],
-                        stats: { food: 0, attr: 0, flight: 0, travel: 0 },
+                        stats: { food: 0, attr: 0, flight: 0, travel: 0, hotel: 0 },
                         hasHotel: false
                     });
                 }
@@ -302,11 +303,21 @@ export const ItineraryView: React.FC<{
                     food: day.events.filter(e => e.type === 'food').length,
                     attr: day.events.filter(e => e.type === 'attraction').length,
                     flight: day.events.filter(e => e.type === 'flight').length,
-                    travel: day.events.filter(e => e.type === 'travel').length
+                    travel: day.events.filter(e => e.type === 'travel').length,
+                    hotel: day.events.filter(e => e.type === 'hotel_checkin' || e.type === 'hotel_stay').length
                 };
             });
 
             setTimeline(sortedTimeline);
+
+            // Initialize Expanded State (First day open, others collapsed)
+            if (Object.keys(expandedDays).length === 0 && sortedTimeline.length > 0) {
+                const initial: Record<string, boolean> = {};
+                sortedTimeline.forEach((d, i) => {
+                    initial[d.dateIso] = (i === 0); // Only first day expanded by default
+                });
+                setExpandedDays(initial);
+            }
 
             // Insights logic...
             const newInsights: Insight[] = [];
@@ -333,6 +344,16 @@ export const ItineraryView: React.FC<{
 
         generateTimeline();
     }, [trip]);
+
+    const toggleDay = (isoDate: string) => {
+        setExpandedDays(prev => ({ ...prev, [isoDate]: !prev[isoDate] }));
+    };
+
+    const toggleAll = (expand: boolean) => {
+        const newState: Record<string, boolean> = {};
+        timeline.forEach(d => { newState[d.dateIso] = expand; });
+        setExpandedDays(newState);
+    };
 
     const handleManualAdd = (text: string) => {
         const targetDateStr = quickAddModal.targetDate; // DD/MM/YYYY
@@ -486,107 +507,147 @@ export const ItineraryView: React.FC<{
             )}
 
             {/* 3. VERTICAL TIMELINE FEED */}
-            <div className="relative px-2 md:px-4 max-w-5xl mx-auto space-y-12">
+            <div className="relative px-2 md:px-4 max-w-5xl mx-auto space-y-6">
+
+                {/* Global Controls */}
+                {timeline.length > 0 && (
+                    <div className="flex justify-end gap-2 mb-4">
+                        <button onClick={() => toggleAll(true)} className="text-xs font-bold text-slate-500 hover:text-blue-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                            <Maximize2 className="w-3 h-3" /> הרחב הכל
+                        </button>
+                        <button onClick={() => toggleAll(false)} className="text-xs font-bold text-slate-500 hover:text-blue-600 bg-white border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
+                            <Minimize2 className="w-3 h-3" /> צמצם הכל
+                        </button>
+                    </div>
+                )}
+
                 {timeline.length === 0 ? (
                     <div className="text-center py-20 text-slate-400">טוען לו"ז...</div>
                 ) : (
                     timeline.map((day, index) => {
+                        const isExpanded = !!expandedDays[day.dateIso];
                         // Try to generate default date for Quick Add if none parsed
                         const [y, m, d] = day.dateIso.split('-');
                         const targetDateFormatted = `${d}/${m}/${y}`;
 
                         return (
-                            <div key={day.dateIso} className="relative group">
+                            <div key={day.dateIso} className={`relative group transition-all duration-500 ${isExpanded ? 'mb-12' : 'mb-4'}`}>
 
                                 {/* Connecting Line (except last) */}
-                                {index < timeline.length - 1 && (
+                                {index < timeline.length - 1 && isExpanded && (
                                     <div className="absolute top-[80px] bottom-[-48px] right-[28px] md:right-[32px] w-0.5 border-r-[2px] border-dashed border-slate-200 group-hover:border-blue-200 transition-colors z-0"></div>
                                 )}
 
-                                {/* Sticky Date Header */}
-                                <div className="sticky top-20 z-30 mb-4 bg-slate-50/95 backdrop-blur-sm py-2">
-                                    <div className="flex items-center gap-4">
-                                        <div className="bg-white border-2 border-slate-200 text-slate-700 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex flex-col items-center justify-center shadow-sm z-10 group-hover:border-blue-400 group-hover:text-blue-600 transition-colors">
-                                            <span className="text-xl md:text-2xl font-black leading-none">{day.displayDate.split(' ')[0]}</span>
-                                            <span className="text-[10px] md:text-xs font-bold uppercase">{day.displayDate.split(' ')[1]}</span>
+                                {/* Sticky Date Header / Day Card */}
+                                <div className={`sticky top-20 z-30 bg-slate-50/95 backdrop-blur-sm transition-all duration-300 rounded-2xl ${!isExpanded ? 'shadow-sm border border-slate-200 hover:shadow-md cursor-pointer bg-white' : ''} `}>
+                                    <div
+                                        onClick={() => toggleDay(day.dateIso)}
+                                        className={`flex items-center justify-between p-2 ${isExpanded ? 'py-2' : 'py-3 px-4'}`}
+                                    >
+                                        <div className="flex items-center gap-4 flex-grow">
+                                            <div className={`text-slate-700 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex flex-col items-center justify-center transition-all ${isExpanded ? 'bg-white border-2 border-slate-200 shadow-sm' : 'bg-slate-100'}`}>
+                                                <span className="text-xl md:text-2xl font-black leading-none">{day.displayDate.split(' ')[0]}</span>
+                                                <span className="text-[10px] md:text-xs font-bold uppercase">{day.displayDate.split(' ')[1]}</span>
+                                            </div>
+
+                                            <div className="flex-grow">
+                                                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5 flex items-center gap-2">
+                                                    {day.displayDayOfWeek}
+                                                    {!isExpanded && day.hasHotel && <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span>}
+                                                </div>
+                                                <h2 className={`font-black text-slate-800 transition-all ${isExpanded ? 'text-2xl md:text-3xl' : 'text-lg md:text-xl'}`}>
+                                                    {day.locationContext || 'יום בטיול'}
+                                                </h2>
+                                            </div>
+
+                                            {/* Minimized Stats Icons */}
+                                            {!isExpanded && (
+                                                <div className="flex items-center gap-3 mr-4">
+                                                    {day.stats.flight > 0 && <div className="flex items-center text-blue-500"><Plane className="w-4 h-4" /><span className="text-xs font-bold ml-1">{day.stats.flight}</span></div>}
+                                                    {day.stats.hotel > 0 && <div className="flex items-center text-indigo-500"><Hotel className="w-4 h-4" /></div>}
+                                                    {day.stats.food > 0 && <div className="flex items-center text-orange-500"><Utensils className="w-4 h-4" /><span className="text-xs font-bold ml-1">{day.stats.food}</span></div>}
+                                                    {day.stats.attr > 0 && <div className="flex items-center text-purple-500"><Ticket className="w-4 h-4" /><span className="text-xs font-bold ml-1">{day.stats.attr}</span></div>}
+                                                </div>
+                                            )}
                                         </div>
-                                        <div>
-                                            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">{day.displayDayOfWeek}</div>
-                                            <h2 className="text-2xl md:text-3xl font-black text-slate-800">{day.locationContext || 'יום בטיול'}</h2>
+
+                                        <div className={`p-2 rounded-full transition-colors ${isExpanded ? 'bg-slate-100 hover:bg-slate-200' : 'bg-transparent text-slate-400'}`}>
+                                            {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-600" /> : <ChevronDown className="w-5 h-5" />}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Content Card */}
-                                <div className="mr-8 md:mr-10">
-                                    {day.events.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {day.events.map((event, i) => (
-                                                <div
-                                                    key={`${event.id}-${i}`}
-                                                    className={`p-5 rounded-[1.5rem] border shadow-sm transition-all hover:shadow-md hover:scale-[1.01] flex flex-col justify-between h-full min-h-[140px] relative overflow-hidden group/card ${event.bgClass} bg-white`}
-                                                >
-                                                    {/* Delete Button */}
-                                                    {event.isManual && event.dayId && event.activityIndex !== undefined && (
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleDeleteActivity(event.dayId!, event.activityIndex!) }}
-                                                            className="absolute top-3 left-3 p-1.5 bg-white/70 hover:bg-red-100 text-slate-300 hover:text-red-500 rounded-lg transition-colors z-20 backdrop-blur-sm opacity-0 group-hover/card:opacity-100"
-                                                            title="מחק פעילות"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    )}
+                                {/* Content Card (Collapsible) */}
+                                {isExpanded && (
+                                    <div className="mr-8 md:mr-10 mt-4 animate-slide-down origin-top">
+                                        {day.events.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {day.events.map((event, i) => (
+                                                    <div
+                                                        key={`${event.id}-${i}`}
+                                                        className={`p-5 rounded-[1.5rem] border shadow-sm transition-all hover:shadow-md hover:scale-[1.01] flex flex-col justify-between h-full min-h-[140px] relative overflow-hidden group/card ${event.bgClass} bg-white`}
+                                                    >
+                                                        {event.isManual && event.dayId && event.activityIndex !== undefined && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleDeleteActivity(event.dayId!, event.activityIndex!) }}
+                                                                className="absolute top-3 left-3 p-1.5 bg-white/70 hover:bg-red-100 text-slate-300 hover:text-red-500 rounded-lg transition-colors z-20 backdrop-blur-sm opacity-0 group-hover/card:opacity-100"
+                                                                title="מחק פעילות"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
 
-                                                    <div className="relative z-10 flex flex-col h-full">
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            {event.time ? (
-                                                                <span className="font-mono text-xs font-black bg-white/80 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-black/5">
-                                                                    {event.time}
-                                                                </span>
-                                                            ) : <div />}
-                                                            <event.icon className={`w-5 h-5 ${event.colorClass}`} />
-                                                        </div>
+                                                        <div className="relative z-10 flex flex-col h-full">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                {event.time ? (
+                                                                    <span className="font-mono text-xs font-black bg-white/80 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-black/5">
+                                                                        {event.time}
+                                                                    </span>
+                                                                ) : <div />}
+                                                                <event.icon className={`w-5 h-5 ${event.colorClass}`} />
+                                                            </div>
 
-                                                        <h3 className="text-lg font-black text-slate-900 leading-tight mb-1">{event.title}</h3>
-                                                        {event.subtitle && <p className="text-xs font-bold text-slate-500 mb-2">{event.subtitle}</p>}
+                                                            <h3 className="text-lg font-black text-slate-900 leading-tight mb-1">{event.title}</h3>
+                                                            {event.subtitle && <p className="text-xs font-bold text-slate-500 mb-2">{event.subtitle}</p>}
 
-                                                        <div className="mt-auto pt-3 flex items-center gap-2">
-                                                            {event.location && (
-                                                                <div className="flex items-center text-[10px] font-bold text-slate-500 bg-white/60 px-2 py-1 rounded-lg">
-                                                                    <MapPin className="w-3 h-3 ml-1" /> {event.location}
-                                                                </div>
-                                                            )}
-                                                            {event.price && (
-                                                                <div className="flex items-center text-[10px] font-bold text-slate-500 bg-white/60 px-2 py-1 rounded-lg">
-                                                                    <Ticket className="w-3 h-3 ml-1" /> {event.price}
-                                                                </div>
-                                                            )}
+                                                            <div className="mt-auto pt-3 flex items-center gap-2">
+                                                                {event.location && (
+                                                                    <div className="flex items-center text-[10px] font-bold text-slate-500 bg-white/60 px-2 py-1 rounded-lg">
+                                                                        <MapPin className="w-3 h-3 ml-1" /> {event.location}
+                                                                    </div>
+                                                                )}
+                                                                {event.price && (
+                                                                    <div className="flex items-center text-[10px] font-bold text-slate-500 bg-white/60 px-2 py-1 rounded-lg">
+                                                                        <Ticket className="w-3 h-3 ml-1" /> {event.price}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))}
 
-                                            {/* Add Button Inside Grid */}
-                                            <button
-                                                onClick={() => setQuickAddModal({ isOpen: true, targetDate: targetDateFormatted })}
-                                                className="border-2 border-dashed border-slate-200 rounded-[1.5rem] flex flex-col items-center justify-center p-6 text-slate-400 hover:text-blue-500 hover:border-blue-300 hover:bg-blue-50/50 transition-all min-h-[140px]"
-                                            >
-                                                <Plus className="w-8 h-8 mb-2" />
-                                                <span className="font-bold text-sm">הוסף פעילות</span>
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        /* Empty State for Day */
-                                        <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm flex flex-col items-center text-center">
-                                            <div className="bg-slate-50 p-4 rounded-full mb-3"><Moon className="w-8 h-8 text-slate-300" /></div>
-                                            <h3 className="text-xl font-black text-slate-700 mb-1">יום חופשי</h3>
-                                            <div className="flex gap-3 mt-4">
-                                                <button onClick={() => setQuickAddModal({ isOpen: true, targetDate: targetDateFormatted })} className="text-xs font-bold bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-slate-700">הוסף פעילות</button>
-                                                <button onClick={() => onSwitchTab && onSwitchTab('attractions')} className="text-xs font-bold bg-purple-50 text-purple-600 px-4 py-2 rounded-xl hover:bg-purple-100">מצא אטרקציה</button>
+                                                {/* Add Button Inside Grid */}
+                                                <button
+                                                    onClick={() => setQuickAddModal({ isOpen: true, targetDate: targetDateFormatted })}
+                                                    className="border-2 border-dashed border-slate-200 rounded-[1.5rem] flex flex-col items-center justify-center p-6 text-slate-400 hover:text-blue-500 hover:border-blue-300 hover:bg-blue-50/50 transition-all min-h-[140px]"
+                                                >
+                                                    <Plus className="w-8 h-8 mb-2" />
+                                                    <span className="font-bold text-sm">הוסף פעילות</span>
+                                                </button>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
+                                        ) : (
+                                            /* Empty State for Day */
+                                            <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm flex flex-col items-center text-center">
+                                                <div className="bg-slate-50 p-4 rounded-full mb-3"><Moon className="w-8 h-8 text-slate-300" /></div>
+                                                <h3 className="text-xl font-black text-slate-700 mb-1">יום חופשי</h3>
+                                                <div className="flex gap-3 mt-4">
+                                                    <button onClick={() => setQuickAddModal({ isOpen: true, targetDate: targetDateFormatted })} className="text-xs font-bold bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-slate-700">הוסף פעילות</button>
+                                                    <button onClick={() => onSwitchTab && onSwitchTab('attractions')} className="text-xs font-bold bg-purple-50 text-purple-600 px-4 py-2 rounded-xl hover:bg-purple-100">מצא אטרקציה</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         );
                     })
@@ -629,7 +690,7 @@ export const ItineraryView: React.FC<{
                 </div>
             )}
 
-            {/* Transfer Modal - Copied Logic */}
+            {/* Transfer Modal */}
             {transferModal && (
                 <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
                     <form onSubmit={handleSaveTransfer} className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl relative">
