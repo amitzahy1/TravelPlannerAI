@@ -27,12 +27,13 @@ const GOOGLE_MODELS = [
 ];
 
 // 2. OpenRouter Models (Fallback / Specific Capabilities)
+// 2. OpenRouter Models (Fallback / Specific Capabilities)
 const OPENROUTER_MODELS = [
   // --- Verified Western Providers Only (Privacy Focused) ---
-  "google/gemini-2.0-flash-lite-preview-02-05:free", // Google (US)
   "google/gemini-2.0-flash-exp:free",                // Google (US)
   "meta-llama/llama-3.3-70b-instruct:free",          // Meta (US)
-  "meta-llama/llama-3.1-8b-instruct:free",           // Meta (US)
+  "mistralai/mistral-7b-instruct:free",              // Mistral (France - GDPR Safe)
+  "microsoft/phi-3-mini-128k-instruct:free",         // Microsoft (US)
 ];
 
 export const AI_MODEL = GOOGLE_MODELS[0]; // For display

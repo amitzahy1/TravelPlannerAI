@@ -85,52 +85,48 @@ export const Layout: React.FC<LayoutProps> = ({
 
               <div className="h-6 w-px bg-slate-200 mx-1"></div>
 
-              {/* Dropdown Trip Menu - ALWAYS VISIBLE */}
+              {/* Dropdown Trip Menu - REDESIGNED: Larger & Clearer */}
               <div className="relative group">
                 <button
                   onClick={() => setIsTripMenuOpen(!isTripMenuOpen)}
                   onBlur={() => setTimeout(() => setIsTripMenuOpen(false), 200)}
-                  className="flex items-center gap-2 text-slate-700 font-bold hover:text-blue-700 transition-all bg-white hover:bg-blue-50 px-3 md:px-4 py-2 rounded-xl border border-slate-200 hover:border-blue-200 text-sm shadow-sm"
+                  className="flex items-center justify-between gap-3 text-slate-800 font-black bg-white hover:bg-slate-50 px-5 py-2.5 rounded-xl border border-slate-200 hover:border-blue-300 shadow-sm transition-all min-w-[180px] md:min-w-[220px]"
                 >
-                  <span className="truncate max-w-[80px] md:max-w-[100px]">{activeTrip.name}</span>
-                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isTripMenuOpen ? 'rotate-180' : ''}`} />
+                  <span className="truncate max-w-[140px] text-base">{activeTrip.name}</span>
+                  <div className="bg-slate-100 p-1 rounded-md">
+                    <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${isTripMenuOpen ? 'rotate-180' : ''}`} />
+                  </div>
                 </button>
 
                 {isTripMenuOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[60] animate-fade-in origin-top-left">
+                  <div className="absolute top-full left-0 mt-2 w-full min-w-[220px] bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[60] animate-fade-in origin-top-left">
                     <div className="max-h-60 overflow-y-auto">
                       {trips.map(trip => (
                         <button
                           key={trip.id}
                           onClick={() => { onSwitchTrip(trip.id); setIsTripMenuOpen(false); }}
-                          className={`w-full text-right px-4 py-3 text-sm font-bold flex items-center justify-between hover:bg-slate-50 ${activeTrip.id === trip.id ? 'text-blue-600 bg-blue-50' : 'text-slate-600'}`}
+                          className={`w-full text-right px-4 py-3.5 text-sm font-bold flex items-center justify-between hover:bg-slate-50 border-b border-slate-50 last:border-0 ${activeTrip.id === trip.id ? 'text-blue-700 bg-blue-50/50' : 'text-slate-600'}`}
                         >
                           <span className="truncate">{trip.name}</span>
-                          {activeTrip.id === trip.id && <Check className="w-4 h-4 text-blue-500" />}
+                          {activeTrip.id === trip.id && <Check className="w-4 h-4 text-blue-600" />}
                         </button>
                       ))}
-                    </div>
-                    <div className="border-t border-slate-100 p-2">
-                      <button
-                        onClick={() => { onOpenAdmin(); setIsTripMenuOpen(false); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Plus className="w-3 h-3" /> ניהול טיולים
-                      </button>
                     </div>
                   </div>
                 )}
               </div>
 
+              {/* Settings / Admin Button - NOW PROMINENT */}
               <button
                 onClick={onOpenAdmin}
-                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                title="ניהול טיול"
+                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 px-4 py-2.5 rounded-xl transition-all font-bold text-sm"
+                title="ניהול טיול והגדרות"
               >
-                <Sparkles className="w-5 h-5" />
+                <Sparkles className="w-4 h-4 text-purple-500" />
+                <span className="hidden md:inline">ניהול</span>
               </button>
 
-              <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block"></div>
+              <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
 
               {/* Login Button */}
               <div className="hidden md:block">
