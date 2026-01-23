@@ -11,17 +11,17 @@ service cloud.firestore {
     
     // 2. Shared Trips Collection
     match /shared-trips/{tripId} {
-      // READ: Allow if user is in 'collaborators' array of the EXISTING document
+      // READ: Allow if user is in 'collaborators' array OR is owner
       allow read: if request.auth != null && 
-                  request.auth.uid in resource.data.collaborators;
+                  (request.auth.uid in resource.data.collaborators || request.auth.uid == resource.data.owner);
       
-      // CREATE: Allow if user includes themselves in 'collaborators' array of the NEW document
+      // CREATE: Allow if user is setting themselves as owner
       allow create: if request.auth != null && 
-                    request.auth.uid in request.resource.data.collaborators;
+                    request.auth.uid == request.resource.data.owner;
       
-      // UPDATE: Allow if user is in 'collaborators' array of the EXISTING document
+      // UPDATE: Allow if user is in 'collaborators' array (existing doc)
       allow update: if request.auth != null && 
-                    request.auth.uid in resource.data.collaborators;
+                    (request.auth.uid in resource.data.collaborators || request.auth.uid == resource.data.owner);
       
       // DELETE: Only the OWNER can delete the shared trip
       allow delete: if request.auth != null && 

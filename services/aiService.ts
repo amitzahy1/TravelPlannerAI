@@ -172,7 +172,9 @@ export const generateWithFallback = async (
         console.log(`✅ [GoogleDirect] Success with ${model}`);
 
         // Normalize response
-        let rawText = typeof response.text === 'function' ? response.text() : response.text;
+        // Cast to any to handle different SDK versions where text might be a function or property
+        const safeResponse = response as any;
+        let rawText = typeof safeResponse.text === 'function' ? safeResponse.text() : safeResponse.text;
 
         // AUTO-FIX: Extract JSON if format is requested
         // If the caller asked for JSON (responseMimeType), we ensure we return Clean JSON string in .text
