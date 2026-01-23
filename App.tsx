@@ -14,8 +14,25 @@ import { loadTrips, saveTrips, saveSingleTrip, deleteTrip } from './services/sto
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Trip } from './types';
 
+import { initGoogleAuth } from './services/googleAuthService';
+
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
 const AppContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (CLIENT_ID && !authLoading) {
+      const interval = setInterval(() => {
+        // @ts-ignore
+        if (window.google) {
+          initGoogleAuth(CLIENT_ID);
+          clearInterval(interval);
+        }
+      }, 500);
+    }
+  }, [authLoading]);
+
   const [trips, setTrips] = useState<Trip[]>([]);
   const [activeTripId, setActiveTripId] = useState<string>('');
   const [currentTab, setCurrentTab] = useState('itinerary');
