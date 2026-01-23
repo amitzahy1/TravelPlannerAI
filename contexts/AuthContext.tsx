@@ -20,6 +20,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+googleProvider.setCustomParameters({
+  prompt: 'select_account consent'
+});
 
 interface AuthProviderProps {
   children: ReactNode;
