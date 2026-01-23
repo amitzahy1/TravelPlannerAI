@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.37.0",
+    "@mlc-ai/web-llm": "^0.2.80",
     "autoprefixer": "^10.4.23",
     "firebase": "^12.8.0",
     "leaflet": "1.9.4",

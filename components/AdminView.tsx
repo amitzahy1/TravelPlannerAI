@@ -478,18 +478,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
                     {/* MAIN CONTENT */}
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 bg-white">
 
-                        {/* 1. Magic Drop Zone */}
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="bg-purple-100 p-1.5 rounded-lg"><Sparkles className="w-4 h-4 text-purple-600" /></div>
-                                <h3 className="font-bold text-purple-900 text-sm">הוספה חכמה (קבצים/תמונות)</h3>
-                            </div>
-                            <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} />
-                        </div>
 
-                        <div className="h-px bg-slate-100 w-full"></div>
-
-                        {/* 2. Core Details & Route Builder */}
+                        {/* 1. Core Details & Route Builder */}
                         <div className="space-y-6">
                             <h3 className="font-black text-xl text-slate-800 flex items-center gap-2">
                                 <Layout className="w-5 h-5 text-blue-500" /> פרטי הטיול
@@ -545,25 +535,24 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
                             </div>
 
                             {/* Route Builder */}
-                            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
-                                <label className="text-xs font-black text-slate-500 mb-3 block flex items-center gap-2">
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                <label className="text-xs font-black text-slate-500 mb-2 block flex items-center gap-2">
                                     <MapPin className="w-4 h-4" /> מסלול הטיול (ערים ויעדים)
                                 </label>
 
-                                <div className="flex flex-wrap gap-2 mb-3">
+                                <div className="flex flex-wrap gap-2 mb-2">
                                     {routeCities.map((city, idx) => (
-                                        <div key={idx} className="flex items-center bg-white border border-slate-200 pl-1 pr-3 py-1.5 rounded-lg shadow-sm group hover:border-red-200 transition-colors">
+                                        <div key={idx} className="flex items-center bg-white border border-slate-200 pl-1 pr-3 py-1 rounded-lg shadow-sm group hover:border-red-200 transition-colors">
                                             <span className="text-sm font-bold text-slate-700">{city}</span>
                                             <button onClick={() => removeCity(idx)} className="ml-2 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors">
                                                 <X className="w-3 h-3" />
                                             </button>
-                                            {idx < routeCities.length - 1 && <ArrowLeft className="w-3 h-3 text-slate-300 mr-2 -ml-4 opacity-0" />}
                                         </div>
                                     ))}
                                     <div className="flex items-center">
                                         <input
-                                            placeholder="הוסף עיר (אנטר)"
-                                            className="bg-transparent border-b-2 border-slate-200 px-2 py-1 text-sm font-medium focus:border-blue-500 outline-none w-32 focus:w-48 transition-all"
+                                            placeholder="הוסף עיר..."
+                                            className="bg-transparent border-b-2 border-slate-200 px-2 py-1 text-sm font-medium focus:border-blue-500 outline-none w-24 focus:w-40 transition-all"
                                             value={newCityInput}
                                             onChange={e => setNewCityInput(e.target.value)}
                                             onKeyDown={e => e.key === 'Enter' && addCity()}
@@ -571,9 +560,22 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
                                         <button onClick={addCity} className="p-1 text-blue-500 hover:bg-blue-50 rounded-full ml-1"><Plus className="w-4 h-4" /></button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-slate-400 font-mono bg-white p-2 rounded border border-slate-100 inline-block">
-                                    {activeTrip.destination || 'עדיין אין מסלול'}
+                            </div>
+                        </div>
+
+                        <div className="h-px bg-slate-100 w-full"></div>
+
+                        {/* 2. Magic Drop Zone (Moved Down & Compacted) */}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-purple-100 p-1.5 rounded-lg"><Sparkles className="w-4 h-4 text-purple-600" /></div>
+                                    <h3 className="font-bold text-purple-900 text-sm">הוספה חכמה</h3>
                                 </div>
+                                <span className="text-[10px] text-slate-400 font-bold">PDF, כרטיסים, אישורים</span>
+                            </div>
+                            <div className="scale-95 origin-top">
+                                <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={true} />
                             </div>
                         </div>
 

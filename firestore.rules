@@ -34,7 +34,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // 4. Default Deny
+    // 4. AI Cache (Publicly readable/writable for semantic caching)
+    match /ai_cache/{hash} {
+      allow read, write: if true;
+    }
+
+    // 5. Default Deny
     match /{document=**} {
       allow read, write: if false;
     }

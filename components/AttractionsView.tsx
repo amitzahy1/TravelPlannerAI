@@ -12,15 +12,32 @@ const cleanTextForMap = (text: string) => {
     return text.replace(/[^\x00-\x7F]/g, "").replace(/\s+/g, " ").trim();
 };
 
-const getCategoryColor = (type?: string) => {
-    const t = (type || '').toLowerCase();
-    if (t.includes('must') || t.includes('top')) return 'bg-purple-600 border-purple-600 text-purple-600';
-    if (t.includes('nature') || t.includes('park')) return 'bg-emerald-600 border-emerald-600 text-emerald-600';
-    if (t.includes('beach') || t.includes('island')) return 'bg-cyan-500 border-cyan-500 text-cyan-600';
-    if (t.includes('museum') || t.includes('history')) return 'bg-amber-700 border-amber-700 text-amber-700';
-    if (t.includes('shopping')) return 'bg-pink-500 border-pink-500 text-pink-600';
-    if (t.includes('night')) return 'bg-slate-800 border-slate-800 text-slate-800';
-    return 'bg-blue-600 border-blue-600 text-blue-600';
+// Enhanced Visuals with Gradients for Attractions
+const getAttractionVisuals = (type: string = '') => {
+    const t = type.toLowerCase();
+
+    if (t.includes('must') || t.includes('top'))
+        return { icon: '🌟', gradient: 'bg-gradient-to-br from-purple-600 to-indigo-800 text-white', label: 'Must See' };
+
+    if (t.includes('nature') || t.includes('park') || t.includes('garden'))
+        return { icon: '🌿', gradient: 'bg-gradient-to-br from-emerald-500 to-green-700 text-white', label: 'Nature' };
+
+    if (t.includes('beach') || t.includes('island') || t.includes('sea'))
+        return { icon: '🏖️', gradient: 'bg-gradient-to-br from-cyan-400 to-blue-600 text-white', label: 'Beach & Sea' };
+
+    if (t.includes('museum') || t.includes('culture') || t.includes('history'))
+        return { icon: '🏛️', gradient: 'bg-gradient-to-br from-amber-600 to-orange-800 text-white', label: 'Culture' };
+
+    if (t.includes('shop') || t.includes('market') || t.includes('mall'))
+        return { icon: '🛍️', gradient: 'bg-gradient-to-br from-pink-500 to-rose-700 text-white', label: 'Shopping' };
+
+    if (t.includes('night') || t.includes('club') || t.includes('bar'))
+        return { icon: '🥂', gradient: 'bg-gradient-to-br from-slate-800 to-black text-white', label: 'Nightlife' };
+
+    if (t.includes('temple') || t.includes('religion'))
+        return { icon: '🙏', gradient: 'bg-gradient-to-br from-orange-500 to-amber-600 text-white', label: 'Temple' };
+
+    return { icon: '🎫', gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white', label: 'Attraction' };
 };
 
 // Sort attractions: Favorites first, then Rating
@@ -35,7 +52,7 @@ const sortAttractions = (list: Attraction[]) => {
     });
 };
 
-// Redesigned Card - Business Style (No large image, clean layout)
+// Redesigned Card - Premium Style (Gradient Header)
 const AttractionRecommendationCard: React.FC<{
     rec: any,
     tripDestination: string,
@@ -50,68 +67,75 @@ const AttractionRecommendationCard: React.FC<{
     const mapsQuery = encodeURIComponent(`${nameForMap} ${locationForMap}`);
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
-    const accentColorClass = getCategoryColor(rec.type);
-    const textColor = accentColorClass.split(' ')[2];
+    const visuals = getAttractionVisuals(rec.type);
 
     return (
-        <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 flex overflow-hidden group relative border border-slate-200 h-full min-h-[160px]">
+        <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden group relative border border-slate-100 h-full">
 
-            {/* Color Strip Indicator */}
-            <div className={`w-2 ${accentColorClass.split(' ')[0]}`}></div>
+            {/* Colorful Header Area */}
+            <div className={`h-28 ${visuals.gradient} relative flex flex-col justify-between p-4`}>
+                <div className="flex justify-between items-start w-full">
+                    <div className="text-3xl filter drop-shadow-md transform group-hover:scale-110 transition-transform duration-300">{visuals.icon}</div>
+                    <div className="flex flex-col items-end">
+                        {rec.rating && (
+                            <div className="bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm text-white">
+                                <span className="text-xs font-black">{rec.rating}</span>
+                                <Star className="w-3 h-3 fill-white text-white" />
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Name moved to header */}
+                <h3 className="text-xl font-black text-white leading-tight font-sans tracking-tight line-clamp-2 drop-shadow-md mt-2" dir="ltr">
+                    {rec.name}
+                </h3>
+            </div>
 
             <div className="p-4 flex flex-col flex-grow relative">
 
-                {/* Header */}
-                <div className="flex justify-between items-start mb-2">
-                    <div className="flex flex-col gap-1">
-                        {rec.recommendationSource ? (
-                            <span className={`text-[10px] font-black uppercase tracking-widest ${textColor} flex items-center gap-1`}>
-                                <Trophy className="w-3 h-3" /> {rec.recommendationSource}
-                            </span>
-                        ) : (
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{rec.type || 'Attraction'}</span>
-                        )}
-                    </div>
-                    {rec.rating && (
-                        <div className="bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 flex items-center gap-1 shadow-sm">
-                            <span className="text-xs font-black text-slate-800">{rec.rating}</span>
-                            <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                        </div>
+                {/* Badges */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                    {rec.recommendationSource && (
+                        <span className="text-[9px] font-bold bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-full flex items-center gap-1 border border-yellow-100">
+                            <Trophy className="w-3 h-3" />
+                            {rec.recommendationSource}
+                        </span>
+                    )}
+                    <span className="text-[9px] font-bold bg-slate-50 text-slate-500 px-2 py-0.5 rounded-full border border-slate-100">
+                        {visuals.label}
+                    </span>
+                    {rec.price && (
+                        <span className="text-[9px] font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-100 flex items-center gap-1">
+                            <DollarSign className="w-3 h-3" /> {rec.price}
+                        </span>
                     )}
                 </div>
 
                 {/* Main Content */}
-                <div className="mb-3">
-                    <h3 className="text-lg font-black text-slate-900 leading-tight mb-1 font-sans tracking-tight" dir="ltr">
-                        {rec.name}
-                    </h3>
-                    <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed" dir="rtl">
+                <div className="mb-4">
+                    <p className="text-sm text-slate-600 line-clamp-4 leading-relaxed font-medium" dir="rtl">
                         {rec.description}
                     </p>
-                    {rec.price && (
-                        <div className="mt-2 inline-flex items-center gap-1 bg-slate-50 px-2 py-1 rounded text-[10px] font-bold text-slate-600">
-                            <DollarSign className="w-3 h-3" /> {rec.price}
-                        </div>
-                    )}
                 </div>
 
                 {/* Footer Buttons */}
-                <div className="mt-auto pt-3 border-t border-dashed border-slate-100 flex gap-2">
+                <div className="mt-auto pt-3 border-t border-slate-50 flex gap-2">
                     <a
                         href={mapsUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-blue-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-2 transition-colors text-[10px] font-bold"
+                        className="flex-1 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 border border-slate-200 rounded-xl py-2 flex items-center justify-center gap-2 transition-colors text-[10px] font-bold"
                     >
-                        <MapIcon className="w-3 h-3" /> הצג במפות
+                        <MapIcon className="w-3.5 h-3.5" /> מפה
                     </a>
                     <button
                         onClick={() => onAdd(rec, 'AI')}
                         disabled={isAdded}
-                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 transition-all ${isAdded ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-md'}`}
+                        className={`flex-1 py-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${isAdded ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
                     >
-                        {isAdded ? <CheckCircle2 className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                        {isAdded ? 'נוסף' : 'שמור'}
+                        {isAdded ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                        {isAdded ? 'נשמר' : 'שמור'}
                     </button>
                 </div>
             </div>

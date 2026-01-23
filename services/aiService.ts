@@ -1,5 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from 'openai';
+import { generateLocalContent, isEngineReady } from "./webLlmService";
+import { getCachedResponse, cacheResponse } from "./cacheService";
 
 /**
  * System prompt for AI
@@ -21,42 +23,76 @@ CRITICAL OUTPUT RULES:
 // --- CONFIGURATION ---
 
 // 1. Google Gemini Models (Direct SDK)
+// Updated based on technical report for stability and speed
+// 1. Google Gemini Models (Direct SDK)
 const GOOGLE_MODELS = [
-  "gemini-2.0-flash-exp",              // Best free experimental
-  "gemini-1.5-flash",                  // Standard Stable
+  "gemini-2.0-flash",                  // Best overall (Stable/Preview)
+  "gemini-1.5-flash-latest",           // New stable alias
+  "gemini-1.5-flash",                  // Legacy stable
 ];
 
-// 2. OpenRouter Models (Fallback / Specific Capabilities)
-// 2. OpenRouter Models (Fallback / Specific Capabilities)
+// 2. Groq Models (Fast Inference Fallback)
+const GROQ_MODELS = [
+  "llama-3.3-70b-versatile",
+  "llama3-70b-8192",
+];
+
+// 3. OpenRouter Models (Universal Fallback)
 const OPENROUTER_MODELS = [
-  // --- Verified Western Providers Only (Privacy Focused) ---
-  "google/gemini-2.0-flash-exp:free",                // Google (US)
-  "meta-llama/llama-3.3-70b-instruct:free",          // Meta (US)
-  "mistralai/mistral-7b-instruct:free",              // Mistral (France - GDPR Safe)
-  "microsoft/phi-3-mini-128k-instruct:free",         // Microsoft (US)
+  "google/gemini-2.0-flash-lite-preview-02-05:free", // New Free Source
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "mistralai/mistral-7b-instruct:free",
+  "microsoft/phi-3-mini-128k-instruct:free",
 ];
 
-export const AI_MODEL = GOOGLE_MODELS[0]; // For display
+export const AI_MODEL = GOOGLE_MODELS[0]; // For display purposes
 
-// --- HELPER: Extract JSON from text ---
-// Enhanced to handle arrays, objects, and loose markdown
+// --- HELPERS ---
+
+// Exponential Backoff Utility
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function withBackoff<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  baseDelay = 1000,
+  factor = 2
+): Promise<T> {
+  let attempt = 0;
+  while (attempt < retries) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      attempt++;
+      // Only retry on rate limits (429) or server errors (5xx)
+      const isRetryable = error?.status === 429 || error?.status === 503 || error?.status === 500 ||
+        (error?.message && error.message.includes("429"));
+
+      if (!isRetryable || attempt >= retries) {
+        throw error;
+      }
+
+      // Calculate delay with jitter: base * 2^attempt + random(0-100ms)
+      const delay = (baseDelay * Math.pow(factor, attempt)) + (Math.random() * 100);
+      console.warn(`⚠️ [AI] Retry attempt ${attempt}/${retries} after ${Math.round(delay)}ms due to error:`, error.message?.substring(0, 50));
+      await wait(delay);
+    }
+  }
+  throw new Error("Max retries reached");
+}
+
+// Enhanced JSON Extraction
 const extractJSON = (text: string): string => {
   if (!text) return "{}";
-
-  // 1. Try finding content between ```json blocks
   const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (codeBlockMatch) {
-    return codeBlockMatch[1];
-  }
+  if (codeBlockMatch) return codeBlockMatch[1];
 
-  // 2. Try finding the first '{' or '[' and the last '}' or ']'
   const firstOpenBrace = text.indexOf('{');
   const firstOpenBracket = text.indexOf('[');
-
   let startIndex = -1;
   let isArray = false;
 
-  // Determine if it starts with { or [
   if (firstOpenBrace !== -1 && (firstOpenBracket === -1 || firstOpenBrace < firstOpenBracket)) {
     startIndex = firstOpenBrace;
   } else if (firstOpenBracket !== -1) {
@@ -65,74 +101,78 @@ const extractJSON = (text: string): string => {
   }
 
   if (startIndex !== -1) {
-    // Find the matching closing character (searching from the end)
     const lastIndex = text.lastIndexOf(isArray ? ']' : '}');
     if (lastIndex !== -1 && lastIndex > startIndex) {
       return text.substring(startIndex, lastIndex + 1);
     }
   }
 
-  // 3. Fallback: If it looks like pure JSON already
   const trimmed = text.trim();
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-    return trimmed;
-  }
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return trimmed;
 
-  // 4. Last Resort: return empty object if nothing found (prevent crash)
   console.warn("Could not extract JSON from response:", text.substring(0, 100));
   return "{}";
 };
 
-// --- CLIENT CACHING ---
+// --- CLIENTS ---
+
 let googleClient: GoogleGenAI | null = null;
-let openAIClient: OpenAI | null = null;     // NEW: Direct OpenAI
-let openRouterClient: OpenAI | null = null; // Existing: OpenRouter
+let groqClient: OpenAI | null = null;
+let openRouterClient: OpenAI | null = null;
 
 const getGoogleClient = () => {
   if (googleClient) return googleClient;
   const key = import.meta.env.VITE_GEMINI_API_KEY;
   if (key) {
-    googleClient = new GoogleGenAI({ apiKey: key });
+    try {
+      googleClient = new GoogleGenAI({ apiKey: key });
+    } catch (e) { console.error("Invalid Google Client init", e); }
   }
   return googleClient;
 };
 
-// NEW: Get Direct OpenAI Client
-const getOpenAIClient = () => {
-  if (openAIClient) return openAIClient;
-  const key = import.meta.env.VITE_OPENAI_API_KEY;
-  // Only init if key exists and is not the OpenRouter one (basic check)
-  if (key && !key.startsWith('sk-or-')) {
-    openAIClient = new OpenAI({
-      apiKey: key,
-      dangerouslyAllowBrowser: true // Client-side app
-    });
+const getGroqClient = () => {
+  if (groqClient) return groqClient;
+  const key = import.meta.env.VITE_GROQ_API_KEY;
+  if (key) {
+    try {
+      groqClient = new OpenAI({
+        baseURL: "https://api.groq.com/openai/v1",
+        apiKey: key,
+        dangerouslyAllowBrowser: true
+      });
+      console.log("✅ Groq Client initialized successfully");
+    } catch (e) { console.error("Invalid Groq Client init", e); }
+  } else {
+    console.warn("⚠️ No VITE_GROQ_API_KEY found. Groq fallback will be skipped.");
   }
-  return openAIClient;
+  return groqClient;
 };
-
-// Export for backward compatibility (used by consumers)
-export const getAI = getGoogleClient;
 
 const getOpenRouterClient = () => {
   if (openRouterClient) return openRouterClient;
   const key = import.meta.env.VITE_OPENROUTER_API_KEY;
   if (key) {
-    openRouterClient = new OpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey: key,
-      dangerouslyAllowBrowser: true
-    });
+    try {
+      openRouterClient = new OpenAI({
+        baseURL: "https://openrouter.ai/api/v1",
+        apiKey: key,
+        dangerouslyAllowBrowser: true,
+        // @ts-ignore
+        defaultHeaders: {
+          "HTTP-Referer": "https://travel-planner-pro.vercel.app",
+          "X-Title": "Travel Planner Pro"
+        }
+      });
+    } catch (e) { console.error("Invalid OpenRouter Client init", e); }
+  } else {
+    console.warn("⚠️ No VITE_OPENROUTER_API_KEY found. OpenRouter fallback will be skipped.");
   }
   return openRouterClient;
 };
 
-/**
- * Main Generation Function - Hybrid Strategy
- * 1. Try Google SDK (VITE_GEMINI_API_KEY)
- * 2. Try Direct OpenAI (VITE_OPENAI_API_KEY) - NEW
- * 3. Try OpenRouter (VITE_OPENROUTER_API_KEY) - Fallback
- */
+// --- MAIN GENERATION ---
+
 export const generateWithFallback = async (
   _unused: any,
   contents: string | any[],
@@ -140,147 +180,162 @@ export const generateWithFallback = async (
 ) => {
   let lastError: any = null;
 
-  // --- PHASE 1: GOOGLE SDK ---
+  // 1. Google Gemini (Preferred)
   const googleAI = getGoogleClient();
   if (googleAI) {
     for (const model of GOOGLE_MODELS) {
       try {
-        console.log(`🤖 [GoogleDirect] Trying model: ${model}`);
+        console.log(`🤖 [Google] Trying ${model}...`);
 
-        // Ensure contents is in Google format
-        let geminiContent = contents;
-        if (typeof contents === 'string') {
-          geminiContent = contents;
-        }
+        const geminiContent = typeof contents === 'string' ? contents : contents;
 
-        const response = await googleAI.models.generateContent({
-          model,
-          contents: geminiContent,
-          config
+        const result = await withBackoff(async () => {
+          return await googleAI.models.generateContent({
+            model,
+            contents: geminiContent,
+            config
+          });
         });
 
-        console.log(`✅ [GoogleDirect] Success with ${model}`);
+        console.log(`✅ [Google] Success: ${model}`);
 
-        const safeResponse = response as any;
-        let rawText = typeof safeResponse.text === 'function' ? safeResponse.text() : safeResponse.text;
+        const safeResponse = result as any;
+        let rawText = typeof safeResponse.text === 'function' ? safeResponse.text() : safeResponse.text; // Handle different SDK versions
 
-        if (config && config.responseMimeType === 'application/json') {
-          try {
-            const cleanJson = extractJSON(rawText);
-            rawText = cleanJson;
-          } catch (e) {
-            console.warn("Failed to auto-extract JSON in centralized service", e);
-          }
+        // Normalize JSON if needed
+        if (config?.responseMimeType === 'application/json') {
+          rawText = extractJSON(rawText);
         }
 
         return {
-          ...response,
-          text: rawText
+          text: rawText,
+          candidates: [{ content: { parts: [{ text: rawText }] } }]
         };
 
       } catch (error: any) {
-        console.warn(`⚠️ [GoogleDirect] Model ${model} failed:`, error.message?.substring(0, 100));
-        const isRetryable = error.status === 404 || error.status === 429 || error.status === 503;
-        if (isRetryable) continue;
+        console.warn(`⚠️ [Google] Failed ${model}:`, error.message || error);
         lastError = error;
+        // If it's a 404/403 (Invalid model/Permission), don't retry same provider, just move to next model in list
+        // If it's 429, backoff was already attempted by withBackoff, so we really failed.
       }
     }
   }
 
-  // Common: Prepare OpenAI-format messages for Phase 2 & 3
+  // Prepare standard OpenAI messages format for Groq/OpenRouter
   let messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
   if (typeof contents === 'string') {
     messages.push({ role: "user", content: contents });
   } else if (Array.isArray(contents)) {
     contents.forEach((msg: any) => {
-      // Simple adapter for Gemini structure to OpenAI
       if (msg.role && msg.content) {
         messages.push(msg);
       } else if (msg.parts) {
+        // Convert Gemini parts to OpenAI content
         const textPart = msg.parts.find((p: any) => p.text);
-        if (textPart) messages.push({ role: "user", content: textPart.text });
+        if (textPart) messages.push({ role: msg.role === 'model' ? 'assistant' : 'user', content: textPart.text });
+
+        // Handle images? Simple text fallback for now in fallback layers
       }
     });
   }
 
-  // --- PHASE 2: DIRECT OPENAI (NEW) ---
-  const directOpenAI = getOpenAIClient();
-  if (directOpenAI) {
-    console.log("🔄 Switching to Direct OpenAI...");
-    try {
-      const model = "gpt-4o-mini"; // Verified efficient model
-      console.log(`🤖 [OpenAIDirect] Trying model: ${model}`);
+  // 2. Groq (High Speed Fallback)
+  const groqAI = getGroqClient();
+  if (groqAI) {
+    for (const model of GROQ_MODELS) {
+      try {
+        console.log(`⚡ [Groq] Trying ${model}...`);
 
-      const completion = await directOpenAI.chat.completions.create({
-        model,
-        messages,
-        temperature: config?.temperature || 0.7,
-      });
+        const completion = await withBackoff(async () => {
+          return await groqAI.chat.completions.create({
+            model,
+            messages,
+            temperature: config?.temperature || 0.7,
+            response_format: config?.responseMimeType === 'application/json' ? { type: "json_object" } : undefined
+          });
+        });
 
-      console.log(`✅ [OpenAIDirect] Success with ${model}`);
-      const text = completion.choices[0]?.message?.content || "";
+        console.log(`✅ [Groq] Success: ${model}`);
+        const text = completion.choices[0]?.message?.content || "";
+        return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
 
-      return {
-        text: () => text,
-        extractedText: text,
-        candidates: [{ content: { parts: [{ text }] } }]
-      };
-
-    } catch (error: any) {
-      console.warn(`⚠️ [OpenAIDirect] Failed:`, error.message);
-      lastError = error;
+      } catch (error: any) {
+        console.warn(`⚠️ [Groq] Failed ${model}:`, error.message || error);
+        lastError = error;
+      }
     }
   }
 
-  // --- PHASE 3: OPENROUTER ---
-  console.log("🔄 Switching to OpenRouter Fallback...");
-
+  // 3. OpenRouter (Universal Fallback)
   const routerAI = getOpenRouterClient();
-  if (!routerAI) {
-    console.error("❌ No VITE_OPENROUTER_API_KEY found. Cannot use fallback.");
-    throw lastError || new Error("All models failed and no OpenRouter key provided.");
-  }
+  if (routerAI) {
+    for (const model of OPENROUTER_MODELS) {
+      try {
+        console.log(`🌐 [OpenRouter] Trying ${model}...`);
 
-  for (const model of OPENROUTER_MODELS) {
-    try {
-      console.log(`🤖 [OpenRouter] Trying model: ${model}`);
+        const completion = await withBackoff(async () => {
+          return await routerAI.chat.completions.create({
+            model,
+            messages,
+            temperature: config?.temperature || 0.7, // Top_p handling depends on model
+          });
+        });
 
-      const completion = await routerAI.chat.completions.create({
-        model: model,
-        messages: messages,
-        temperature: config?.temperature || 0.7,
-        top_p: config?.topP,
-        // @ts-ignore
-        referer: "https://travel-planner-pro.vercel.app",
-        appName: "Travel Planner Pro",
-      });
+        console.log(`✅ [OpenRouter] Success: ${model}`);
+        let text = completion.choices[0]?.message?.content || "";
 
-      console.log(`✅ [OpenRouter] Success with ${model}`);
+        if (config?.responseMimeType === 'application/json') {
+          text = extractJSON(text);
+        }
 
-      const text = completion.choices[0]?.message?.content || "";
-      return {
-        text: () => text,
-        extractedText: text,
-        candidates: [{ content: { parts: [{ text }] } }]
-      };
+        return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
 
-    } catch (error: any) {
-      console.warn(`⚠️ [OpenRouter] Model ${model} failed:`, error);
-      lastError = error;
-      if (error.status === 401) break;
+      } catch (error: any) {
+        console.warn(`⚠️ [OpenRouter] Failed ${model}:`, error.message || error);
+        lastError = error;
+      }
     }
   }
+
+  // 4. WebLLM (Client-Side Fallback)
+  // Only tries if the engine is already initialized (user opted-in via UI) to avoid unexpected 2GB downloads
+  if (isEngineReady()) {
+    try {
+      console.log(`💻 [WebLLM] Trying local execution...`);
+      // Convert contents to simple string prompt if needed
+      let prompt = "";
+      if (typeof contents === 'string') {
+        prompt = contents;
+      } else {
+        // Naive extraction for now
+        contents.forEach((c: any) => {
+          if (c.parts) prompt += c.parts.map((p: any) => p.text).join('\n');
+          else if (c.content) prompt += c.content;
+        });
+      }
+
+      const text = await generateLocalContent(prompt, SYSTEM_PROMPT);
+      console.log(`✅ [WebLLM] Success!`);
+
+      return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
+
+    } catch (error: any) {
+      console.warn(`⚠️ [WebLLM] Failed:`, error);
+      lastError = error;
+    }
+  }
+
+
 
   throw lastError || new Error("All AI Providers failed.");
 };
 
 /**
  * Extract trip details from a document
+ * Falls back to standard generation but prepares mime data for Google if available
  */
 export const extractTripFromDoc = async (fileBase64: string, mimeType: string, promptText: string) => {
-  // We construct the "Gemini style" content object first, as Phase 1 expects that.
-  // Phase 2 (OpenRouter) logic inside generateWithFallback will convert it if needed.
-
+  // Google supports inline data directly
   const contents = [
     {
       role: "user",
@@ -291,5 +346,10 @@ export const extractTripFromDoc = async (fileBase64: string, mimeType: string, p
     }
   ];
 
+  // Note: Groq/OpenRouter might not support image/pdf inputs in this specific text-only implementation 
+  // without employing Vision models explicitly. This implementation prioritizes Google for docs.
   return generateWithFallback(null, contents, { responseMimeType: "application/json" });
 };
+
+// Export simple getter for backward compatibility
+export const getAI = getGoogleClient;

@@ -547,44 +547,46 @@ export const ItineraryView: React.FC<{
                                 <div
                                     key={day.dateIso}
                                     onClick={() => setSelectedDayIso(day.dateIso)}
-                                    className="bg-white border border-slate-200 rounded-[1.8rem] shadow-sm hover:shadow-xl hover:border-blue-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-[320px] md:h-[350px]"
+                                    className="bg-white border border-slate-200 rounded-[1.8rem] shadow-sm hover:shadow-xl hover:border-blue-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-[220px]"
                                 >
                                     {/* Header */}
-                                    <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+                                    <div className="p-3 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
                                         <div className="flex items-center gap-3">
-                                            <div className="bg-white border-2 border-slate-200 text-slate-700 w-12 h-12 rounded-xl flex flex-col items-center justify-center shadow-sm group-hover:border-blue-400 group-hover:text-blue-600 transition-colors">
-                                                <span className="text-lg font-black leading-none">{day.displayDate.split(' ')[0]}</span>
-                                                <span className="text-[9px] font-bold uppercase">{day.displayDate.split(' ')[1]}</span>
+                                            <div className="bg-white border-2 border-slate-200 text-slate-700 w-10 h-10 rounded-xl flex flex-col items-center justify-center shadow-sm group-hover:border-blue-400 group-hover:text-blue-600 transition-colors">
+                                                <span className="text-sm font-black leading-none">{day.displayDate.split(' ')[0]}</span>
+                                                <span className="text-[8px] font-bold uppercase">{day.displayDate.split(' ')[1]}</span>
                                             </div>
                                             <div>
-                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{day.displayDayOfWeek}</div>
-                                                <h3 className="font-black text-slate-800 text-lg leading-none truncate max-w-[140px]">{day.locationContext || 'יום בטיול'}</h3>
+                                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">{day.displayDayOfWeek}</div>
+                                                <h3 className="font-black text-slate-800 text-sm leading-none truncate max-w-[140px]">{day.locationContext || 'יום בטיול'}</h3>
                                             </div>
                                         </div>
                                         {day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout') && (
-                                            <div className="bg-indigo-50 text-indigo-500 p-2 rounded-full">
-                                                <Hotel className="w-4 h-4" />
+                                            <div className="bg-indigo-50 text-indigo-500 p-1.5 rounded-full">
+                                                <Hotel className="w-3.5 h-3.5" />
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Rich Preview Content */}
-                                    <div className="p-4 flex-grow overflow-hidden relative bg-white">
+                                    {/* Rich Preview Content - Google Pills */}
+                                    <div className="p-3 flex-grow overflow-hidden relative bg-white">
                                         {day.events.length > 0 ? (
-                                            <div className="space-y-3 relative z-10">
-                                                {day.events.slice(0, 4).map((event, idx) => (
-                                                    <div key={idx} className="flex items-start gap-3">
-                                                        <span className="text-[10px] font-mono font-bold text-slate-400 min-w-[32px] pt-0.5">{event.time || "--:--"}</span>
-                                                        <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${event.colorClass.replace('text-', 'bg-')}`}></div>
-                                                        <span className="text-xs font-bold text-slate-700 truncate leading-snug w-full">
+                                            <div className="space-y-1.5 relative z-10">
+                                                {day.events.slice(0, 3).map((event, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border shadow-sm transition-transform hover:scale-105 w-fit max-w-full ${event.bgClass}`}
+                                                    >
+                                                        <span className="text-[10px] font-black opacity-60 min-w-[30px]">{event.time || "--:--"}</span>
+                                                        <event.icon className={`w-3 h-3 ${event.colorClass}`} />
+                                                        <span className="text-[10px] font-black text-slate-700 truncate leading-none">
                                                             {event.title}
-                                                            {event.isExternal && <span className="ml-1 text-[9px] bg-green-100 text-green-700 px-1 rounded inline-block">יומן</span>}
                                                         </span>
                                                     </div>
                                                 ))}
-                                                {day.events.length > 4 && (
-                                                    <div className="text-[10px] font-bold text-slate-400 pl-11 pt-1 opacity-80">
-                                                        + עוד {day.events.length - 4} פעילויות...
+                                                {day.events.length > 3 && (
+                                                    <div className="text-[10px] font-bold text-slate-400 px-2 pt-1 opacity-80">
+                                                        + עוד {day.events.length - 3} פעילויות...
                                                     </div>
                                                 )}
                                             </div>
@@ -596,7 +598,7 @@ export const ItineraryView: React.FC<{
                                         )}
 
                                         {/* Gradient Fade for Long Content */}
-                                        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none"></div>
+                                        <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none"></div>
                                     </div>
 
                                     {/* Footer Indicators */}

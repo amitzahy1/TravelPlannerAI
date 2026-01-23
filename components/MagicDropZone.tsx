@@ -6,9 +6,10 @@ import { getAI, AI_MODEL, generateWithFallback } from '../services/aiService';
 interface MagicDropZoneProps {
   activeTrip: Trip;
   onUpdate: (updatedTrip: Trip) => void;
+  compact?: boolean;
 }
 
-export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpdate }) => {
+export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpdate, compact }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -63,7 +64,7 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
 
       const response = await generateWithFallback(
         ai,
-        { role: 'user', parts: contentParts },
+        [{ role: 'user', parts: contentParts }],
         { responseMimeType: 'application/json' }
       );
 
@@ -111,10 +112,10 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
-      className={`relative mb-8 rounded-[2rem] border-4 border-dashed transition-all duration-300 overflow-hidden ${isDragging
+      className={`relative rounded-[1.5rem] border-2 border-dashed transition-all duration-300 overflow-hidden ${isDragging
         ? 'border-blue-500 bg-blue-50 scale-[1.01]'
-        : 'border-gray-200 bg-white hover:border-blue-300'
-        }`}
+        : 'border-slate-200 bg-white hover:border-blue-400'
+        } ${compact ? 'mb-2' : 'mb-8 border-4 rounded-[2rem]'}`}
     >
       <input
         type="file"
@@ -125,26 +126,40 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
         accept="image/*,application/pdf,text/plain"
       />
 
-      <div className="p-10 flex flex-col items-center justify-center text-center cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+      <div
+        className={`${compact ? 'p-4 flex-row gap-4' : 'p-10 flex-col'} flex items-center justify-center text-center cursor-pointer`}
+        onClick={() => fileInputRef.current?.click()}
+      >
         {isProcessing ? (
-          <div className="flex flex-col items-center animate-pulse">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-            <p className="text-blue-700 font-black text-xl">ה-AI סורק את הקבצים שלך...</p>
+          <div className={`flex items-center ${compact ? 'gap-3' : 'flex-col'}`}>
+            <Loader2 className={`${compact ? 'w-5 h-5' : 'w-12 h-12 mb-4'} text-blue-500 animate-spin`} />
+            <p className="text-blue-700 font-black text-sm">מעבד...</p>
           </div>
         ) : status ? (
-          <div className={`flex items-center gap-4 font-black text-xl ${status.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-            {status.type === 'success' ? <CheckCircle className="w-10 h-10" /> : <AlertCircle className="w-10 h-10" />}
+          <div className={`flex items-center gap-2 font-black ${compact ? 'text-sm' : 'text-xl'} ${status.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+            {status.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
             {status.message}
           </div>
         ) : (
           <>
-            <div className="bg-blue-100 p-5 rounded-[1.5rem] text-blue-600 mb-4 group-hover:scale-110 transition-transform">
-              <Sparkles className="w-10 h-10" />
+            <div className={`${compact ? 'bg-blue-50 p-2 rounded-lg' : 'bg-blue-100 p-5 rounded-[1.5rem] mb-4'} text-blue-600 group-hover:scale-110 transition-transform`}>
+              <Sparkles className={`${compact ? 'w-5 h-5' : 'w-10 h-10'}`} />
             </div>
-            <h3 className="text-gray-800 font-black text-2xl">העלאה חכמה (Magic Upload)</h3>
-            <p className="text-gray-500 text-lg mt-2 font-bold italic">תמונות, PDF או קבצי טקסט (.txt)</p>
-            <div className="mt-6 flex items-center gap-3 text-blue-600 text-sm font-black uppercase tracking-widest bg-blue-50 px-6 py-2 rounded-full border border-blue-100 shadow-sm">
-              <UploadCloud className="w-5 h-5" /> לחץ כאן או גרור קובץ
+            {compact ? (
+              <div className="text-right flex-1">
+                <h3 className="text-slate-700 font-bold text-sm">גרירת קבצים חכמה (Magic Upload)</h3>
+                <p className="text-slate-400 text-xs mt-0.5">ניתוח אוטומטי של כרטיסי טיסה, אישורי מלון ומסמכים</p>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-gray-800 font-black text-2xl">העלאה חכמה (Magic Upload)</h3>
+                <p className="text-gray-500 text-lg mt-2 font-bold italic">תמונות, PDF או קבצי טקסט (.txt)</p>
+              </div>
+            )}
+
+            <div className={`flex items-center gap-2 text-blue-600 font-black uppercase tracking-widest bg-blue-50/50 border border-blue-100 shadow-sm ${compact ? 'text-[10px] px-3 py-1.5 rounded-lg' : 'mt-6 text-sm px-6 py-2 rounded-full'}`}>
+              <UploadCloud className={`${compact ? 'w-3.5 h-3.5' : 'w-5 h-5'}`} />
+              {compact ? 'העלה' : 'לחץ כאן או גרור קובץ'}
             </div>
           </>
         )}
