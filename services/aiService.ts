@@ -84,7 +84,8 @@ const extractJSON = (text: string): string => {
 
 // --- CLIENT CACHING ---
 let googleClient: GoogleGenAI | null = null;
-let openRouterClient: OpenAI | null = null;
+let openAIClient: OpenAI | null = null;     // NEW: Direct OpenAI
+let openRouterClient: OpenAI | null = null; // Existing: OpenRouter
 
 const getGoogleClient = () => {
   if (googleClient) return googleClient;
@@ -93,6 +94,20 @@ const getGoogleClient = () => {
     googleClient = new GoogleGenAI({ apiKey: key });
   }
   return googleClient;
+};
+
+// NEW: Get Direct OpenAI Client
+const getOpenAIClient = () => {
+  if (openAIClient) return openAIClient;
+  const key = import.meta.env.VITE_OPENAI_API_KEY;
+  // Only init if key exists and is not the OpenRouter one (basic check)
+  if (key && !key.startsWith('sk-or-')) {
+    openAIClient = new OpenAI({
+      apiKey: key,
+      dangerouslyAllowBrowser: true // Client-side app
+    });
+  }
+  return openAIClient;
 };
 
 // Export for backward compatibility (used by consumers)
@@ -114,7 +129,8 @@ const getOpenRouterClient = () => {
 /**
  * Main Generation Function - Hybrid Strategy
  * 1. Try Google SDK (VITE_GEMINI_API_KEY)
- * 2. If all fail, Try OpenRouter (VITE_OPENROUTER_API_KEY)
+ * 2. Try Direct OpenAI (VITE_OPENAI_API_KEY) - NEW
+ * 3. Try OpenRouter (VITE_OPENROUTER_API_KEY) - Fallback
  */
 export const generateWithFallback = async (
   _unused: any,
@@ -131,16 +147,9 @@ export const generateWithFallback = async (
         console.log(`🤖 [GoogleDirect] Trying model: ${model}`);
 
         // Ensure contents is in Google format
-        // Simpler for this demo: if it's OpenAI format (array of objects), we might need conversion, 
-        // but assuming pure Gemini format for now or simple string.
         let geminiContent = contents;
         if (typeof contents === 'string') {
-          geminiContent = contents; // Works directly
-        } else if (Array.isArray(contents)) {
-          // Basic check: if it looks like OpenAI messages, we might need simple conversion or pass as is if Google accepts it (it doesn't usually).
-          // However, the app sends Google format mostly. 
-          // If we receive OpenAI format, we try to extract text.
-          // For safety in this hybrid mode, we assume the inputs from the app are currently tailored for Google format (parts).
+          geminiContent = contents;
         }
 
         const response = await googleAI.models.generateContent({
@@ -151,85 +160,84 @@ export const generateWithFallback = async (
 
         console.log(`✅ [GoogleDirect] Success with ${model}`);
 
-        // Normalize response
-        // Cast to any to handle different SDK versions where text might be a function or property
         const safeResponse = response as any;
         let rawText = typeof safeResponse.text === 'function' ? safeResponse.text() : safeResponse.text;
 
-        // AUTO-FIX: Extract JSON if format is requested
-        // If the caller asked for JSON (responseMimeType), we ensure we return Clean JSON string in .text
-        // This solves the issue where models return "Here is the JSON: {...}"
         if (config && config.responseMimeType === 'application/json') {
           try {
             const cleanJson = extractJSON(rawText);
-            rawText = cleanJson; // Replace conversational text with pure JSON
+            rawText = cleanJson;
           } catch (e) {
             console.warn("Failed to auto-extract JSON in centralized service", e);
-            // We still return rawText, hoping consumer can handle it or it's actually valid
           }
         }
 
         return {
           ...response,
-          text: rawText // Now guaranteed to be extracted JSON if mimeType was set
+          text: rawText
         };
 
       } catch (error: any) {
         console.warn(`⚠️ [GoogleDirect] Model ${model} failed:`, error.message?.substring(0, 100));
-
-        // 404 = Not found, 429 = Limit, 503 = Overloaded
-        const isRetryable =
-          error.status === 404 ||
-          error.status === 429 ||
-          error.status === 503 ||
-          error.message?.includes('404') ||
-          error.message?.includes('429');
-
-        if (isRetryable) {
-          continue;
-        }
-        // If it's an API Key error (400/403), we might want to skip Google entirely? 
-        // For now, let's treat mostly as retryable or failover to OpenRouter
+        const isRetryable = error.status === 404 || error.status === 429 || error.status === 503;
+        if (isRetryable) continue;
         lastError = error;
       }
     }
-  } else {
-    console.warn("⚠️ No VITE_GEMINI_API_KEY found. Skipping Google Direct phase.");
   }
 
-  // --- PHASE 2: OPENROUTER ---
-  console.log("🔄 All Google Direct models failed. Switching to OpenRouter Fallback...");
+  // Common: Prepare OpenAI-format messages for Phase 2 & 3
+  let messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
+  if (typeof contents === 'string') {
+    messages.push({ role: "user", content: contents });
+  } else if (Array.isArray(contents)) {
+    contents.forEach((msg: any) => {
+      // Simple adapter for Gemini structure to OpenAI
+      if (msg.role && msg.content) {
+        messages.push(msg);
+      } else if (msg.parts) {
+        const textPart = msg.parts.find((p: any) => p.text);
+        if (textPart) messages.push({ role: "user", content: textPart.text });
+      }
+    });
+  }
+
+  // --- PHASE 2: DIRECT OPENAI (NEW) ---
+  const directOpenAI = getOpenAIClient();
+  if (directOpenAI) {
+    console.log("🔄 Switching to Direct OpenAI...");
+    try {
+      const model = "gpt-4o-mini"; // Verified efficient model
+      console.log(`🤖 [OpenAIDirect] Trying model: ${model}`);
+
+      const completion = await directOpenAI.chat.completions.create({
+        model,
+        messages,
+        temperature: config?.temperature || 0.7,
+      });
+
+      console.log(`✅ [OpenAIDirect] Success with ${model}`);
+      const text = completion.choices[0]?.message?.content || "";
+
+      return {
+        text: () => text,
+        extractedText: text,
+        candidates: [{ content: { parts: [{ text }] } }]
+      };
+
+    } catch (error: any) {
+      console.warn(`⚠️ [OpenAIDirect] Failed:`, error.message);
+      lastError = error;
+    }
+  }
+
+  // --- PHASE 3: OPENROUTER ---
+  console.log("🔄 Switching to OpenRouter Fallback...");
 
   const routerAI = getOpenRouterClient();
   if (!routerAI) {
     console.error("❌ No VITE_OPENROUTER_API_KEY found. Cannot use fallback.");
     throw lastError || new Error("All models failed and no OpenRouter key provided.");
-  }
-
-  // Convert Content to OpenAI Format
-  let messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
-
-  if (typeof contents === 'string') {
-    messages.push({ role: "user", content: contents });
-  } else if (Array.isArray(contents)) {
-    // Convert standard Gemini "parts" structure to OpenAI
-    contents.forEach((msg: any) => {
-      if (msg.role && msg.content) {
-        messages.push(msg); // Already OpenAI?
-      } else if (msg.parts) {
-        const content = msg.parts.map((p: any) => {
-          if (p.text) return { type: "text", text: p.text };
-          if (p.inlineData) {
-            return {
-              type: "image_url",
-              image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` }
-            };
-          }
-          return null;
-        }).filter(Boolean);
-        messages.push({ role: msg.role || "user", content });
-      }
-    });
   }
 
   for (const model of OPENROUTER_MODELS) {
@@ -248,18 +256,17 @@ export const generateWithFallback = async (
 
       console.log(`✅ [OpenRouter] Success with ${model}`);
 
-      // ADAPTER: Convert OpenAI response to look like Google Response for the App
       const text = completion.choices[0]?.message?.content || "";
       return {
         text: () => text,
-        extractedText: text, // Store for JSON extraction
+        extractedText: text,
         candidates: [{ content: { parts: [{ text }] } }]
       };
 
     } catch (error: any) {
       console.warn(`⚠️ [OpenRouter] Model ${model} failed:`, error);
       lastError = error;
-      if (error.status === 401) break; // Auth failed
+      if (error.status === 401) break;
     }
   }
 
