@@ -248,6 +248,10 @@ export interface Trip {
   // Caching for AI Recommendations
   aiRestaurants?: RestaurantCategory[];
   aiAttractions?: AttractionCategory[];
+
+  // NEW: Trip Sharing
+  isShared?: boolean;           // Whether trip is shared
+  sharing?: SharedTripMetadata; // Sharing metadata
 }
 
 export interface AppState {
