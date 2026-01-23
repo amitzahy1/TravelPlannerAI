@@ -29,8 +29,11 @@ const GOOGLE_MODELS = [
 // 2. OpenRouter Models (Fallback / Specific Capabilities)
 const OPENROUTER_MODELS = [
   // --- Verified Free Tier Only ---
-  "google/gemini-2.0-flash-lite-preview-02-05:free", // Newest free
+  "deepseek/deepseek-r1:free",           // DeepSeek R1 (Very smart)
+  "deepseek/deepseek-chat:free",         // DeepSeek V3
+  "google/gemini-2.0-flash-lite-preview-02-05:free",
   "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.3-70b-instruct:free", // Newest Llama
   "meta-llama/llama-3.1-8b-instruct:free",
   "huggingfaceh4/zephyr-7b-beta:free"
 ];
