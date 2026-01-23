@@ -621,18 +621,18 @@ export const ItineraryView: React.FC<{
 
             {/* DAY DETAIL MODAL */}
             {selectedDayIso && activeDay && (
-                <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto flex items-start justify-center p-4 pt-12 md:pt-24">
                     <div className="w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh]">
 
                         {/* Modal Header */}
                         <div className="bg-white border-b border-slate-100 p-6 flex items-center justify-between sticky top-0 z-20">
                             <div className="flex items-center gap-4">
-                                <div className="bg-slate-100 text-slate-700 w-14 h-14 rounded-2xl flex flex-col items-center justify-center border border-slate-200">
-                                    <span className="text-xl font-black leading-none">{activeDay.displayDate.split(' ')[0]}</span>
-                                    <span className="text-[10px] font-bold uppercase">{activeDay.displayDate.split(' ')[1]}</span>
+                                <div className="bg-slate-100 text-slate-700 w-20 h-20 rounded-2xl flex flex-col items-center justify-center border border-slate-200">
+                                    <span className="text-3xl font-black leading-none">{activeDay.displayDate.split(' ')[0]}</span>
+                                    <span className="text-xs font-bold uppercase">{activeDay.displayDate.split(' ')[1]}</span>
                                 </div>
                                 <div>
-                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">
+                                    <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-0.5">
                                         {activeDay.displayDayOfWeek}
                                     </div>
                                     <h2 className="text-2xl font-black text-slate-800 leading-none">{activeDay.locationContext || 'יום בטיול'}</h2>
