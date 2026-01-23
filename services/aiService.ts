@@ -7,15 +7,16 @@ import OpenAI from 'openai';
 export const SYSTEM_PROMPT = `You are a skeptical researcher and expert in culinary arts and travel.
 
 When providing recommendations:
-- Cite professional sources (Michelin Guide, James Beard Foundation, Lonely Planet, Fodor's, etc.)
-- Filter out viral trends without substance or quality backing
-- Prioritize authenticity, quality, and genuine local experiences over popularity
-- Be critical of tourist traps and overhyped locations
-- Provide context about why a place is recommended (awards, chef credentials, historical significance, etc.)
-- Consider value for money and realistic expectations
-- Warn about common tourist pitfalls
+- Cite professional sources (Michelin Guide, James Beard Foundation, Lonely Planet, etc.)
+- Prioritize authenticity and quality over popularity
+- Provide context (awards, chef credentials, history)
+- Consider value for money
 
-Your goal is to provide trustworthy, well-researched recommendations that travelers can rely on.`;
+CRITICAL OUTPUT RULES:
+1. You MUST return ONLY valid JSON.
+2. Do NOT format with markdown (no \`\`\`json blocks if possible).
+3. Do NOT include conversational text before or after the JSON.
+4. Validate your JSON before sending.`;
 
 // --- CONFIGURATION ---
 
@@ -30,13 +31,20 @@ const GOOGLE_MODELS = [
 ];
 
 // 2. OpenRouter Models (Fallback / Specific Capabilities)
+// 2. OpenRouter Models (Fallback / Specific Capabilities)
 const OPENROUTER_MODELS = [
-  "google/gemini-2.0-flash-exp:free",      // Free tier
-  "google/gemini-2.0-flash-thinking-exp:free", // Thinking model
-  "meta-llama/llama-3.2-11b-vision-instruct:free",
-  "meta-llama/llama-3.1-8b-instruct:free",
-  "mistralai/mistral-7b-instruct:free",
-  "openai/gpt-4o-mini"                     // Paid fallback
+  // --- Online / Search Models (Best for "Market Research") ---
+  "perplexity/llama-3.1-sonar-huge-128k-online", // Strongest Search
+  "perplexity/llama-3.1-sonar-large-128k-online",
+
+  // --- High Intelligence Models ---
+  "anthropic/claude-3.5-sonnet",           // Top tier reasoning
+  "openai/gpt-4o",                         // Top tier general
+
+  // --- Free / Economy Tier ---
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.1-70b-instruct:free",
+  "mistralai/mistral-7b-instruct:free"
 ];
 
 export const AI_MODEL = GOOGLE_MODELS[0]; // For display
