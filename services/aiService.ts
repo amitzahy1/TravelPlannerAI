@@ -21,38 +21,18 @@ CRITICAL OUTPUT RULES:
 // --- CONFIGURATION ---
 
 // 1. Google Gemini Models (Direct SDK)
-// Note: SDK usually adds 'models/' prefix automatically. If 404 occurs, try without.
 const GOOGLE_MODELS = [
-  "gemini-2.0-flash-exp",              // Latest experimental
-  "gemini-1.5-flash",                  // Standard Flash
-  "gemini-1.5-flash-latest",           // Latest Flash
-  "gemini-1.5-pro",                    // Standard Pro
-  "gemini-1.5-pro-latest"              // Latest Pro
+  "gemini-2.0-flash-exp",              // Best free experimental
+  "gemini-1.5-flash",                  // Standard Stable
 ];
 
 // 2. OpenRouter Models (Fallback / Specific Capabilities)
-// 2. OpenRouter Models (Fallback / Specific Capabilities)
 const OPENROUTER_MODELS = [
-  // --- Online / Search Models (Best for "Market Research") ---
-  "perplexity/llama-3.1-sonar-huge-128k-online", // Strongest Search
-  "perplexity/llama-3.1-sonar-large-128k-online",
-
-  // --- High Intelligence Models ---
-  "anthropic/claude-3.5-sonnet",           // Top tier reasoning
-  "openai/gpt-4o",                         // Top tier general
-
-  // --- Free / Economy Tier ---
+  // --- Verified Free Tier Only ---
+  "google/gemini-2.0-flash-lite-preview-02-05:free", // Newest free
   "google/gemini-2.0-flash-exp:free",
-  "google/gemini-2.0-flash-thinking-exp:free", // Thinking model
-  "meta-llama/llama-3.1-70b-instruct:free",
   "meta-llama/llama-3.1-8b-instruct:free",
-  "meta-llama/llama-3.2-11b-vision-instruct:free",
-  "microsoft/phi-3-medium-128k-instruct:free",
-  "microsoft/phi-3-mini-128k-instruct:free",
-  "mistralai/mistral-7b-instruct:free",
-  "huggingfaceh4/zephyr-7b-beta:free",
-  "openchat/openchat-7b:free",
-  "gryphe/mythomax-l2-13b:free"
+  "huggingfaceh4/zephyr-7b-beta:free"
 ];
 
 export const AI_MODEL = GOOGLE_MODELS[0]; // For display
