@@ -82,7 +82,7 @@ export interface Restaurant {
   michelin?: boolean;
   rank?: number;
   imageUrl?: string;
-  
+
   // New fields
   iconType?: RestaurantIconType;
   googleRating?: number;
@@ -94,7 +94,7 @@ export interface Restaurant {
   lat?: number;
   lng?: number;
   estimatedCost?: number; // For budget
-  
+
   // UX Improvements
   matchScore?: number; // 1-100 score of how well it fits the user
   matchReason?: string; // "Good for families", "Near your hotel"
@@ -105,7 +105,7 @@ export interface Restaurant {
 export interface RestaurantCategory {
   id: string;
   title: string;
-  region: string; 
+  region: string;
   restaurants: Restaurant[];
 }
 
@@ -125,7 +125,7 @@ export interface Attraction {
   lat?: number;
   lng?: number;
   // Added optional fields to fix TypeScript errors
-  type?: string; 
+  type?: string;
   recommendationSource?: string;
   isFavorite?: boolean; // New: Pin to top
 }
@@ -174,32 +174,49 @@ export interface ManualExpense {
 }
 
 export interface SecureNote {
-    id: string;
-    title: string; // e.g. "Passport Number"
-    value: string; // The secret value
-    category: 'passport' | 'insurance' | 'credit_card' | 'other';
+  id: string;
+  title: string; // e.g. "Passport Number"
+  value: string; // The secret value
+  category: 'passport' | 'insurance' | 'credit_card' | 'other';
 }
 
 export type VatStatus = 'NEED_FORM' | 'HAVE_FORM' | 'STAMPED_AT_CUSTOMS' | 'REFUNDED';
 
 export interface ShoppingItem {
-    id: string;
-    name: string; // Product name
-    shopName: string;
-    price: number;
-    currency: string; // 'THB', 'USD', 'ILS'
-    purchaseDate: string;
-    
-    // Media
-    receiptImageUrl?: string; // Base64 or URL
-    productImageUrl?: string; // Base64 or URL
-    
-    // VAT Refund Logic
-    isVatEligible: boolean;
-    vatStatus?: VatStatus;
-    refundAmountEstimated?: number;
-    
-    notes?: string;
+  id: string;
+  name: string; // Product name
+  shopName: string;
+  price: number;
+  currency: string; // 'THB', 'USD', 'ILS'
+  purchaseDate: string;
+
+  // Media
+  receiptImageUrl?: string; // Base64 or URL
+  productImageUrl?: string; // Base64 or URL
+
+  // VAT Refund Logic
+  isVatEligible: boolean;
+  vatStatus?: VatStatus;
+  refundAmountEstimated?: number;
+
+  notes?: string;
+}
+
+// --- NEW: Trip Sharing Types ---
+export interface SharedTripMetadata {
+  owner: string;              // userId of the owner
+  collaborators: string[];    // list of userId who can edit
+  shareId: string;            // unique share identifier
+  createdAt: Date;
+  updatedAt: Date;
+  updatedBy: string;          // userId of last editor
+}
+
+export interface UserTripRef {
+  sharedTripId: string;
+  role: 'owner' | 'collaborator';
+  joinedAt: Date;
+  tripName: string;           // cached trip name for display
 }
 
 export interface Trip {
@@ -212,24 +229,24 @@ export interface Trip {
   groupType?: 'family' | 'couple' | 'friends' | 'solo' | 'business';
   travelers?: TravelersComposition; // Detailed composition
   flights: Ticket;
-  hotels: HotelBooking[]; 
+  hotels: HotelBooking[];
   restaurants: RestaurantCategory[];
   reservations?: Reservation[];
-  attractions: AttractionCategory[]; 
+  attractions: AttractionCategory[];
   itinerary: ItineraryItem[];
   documents: string[];
   weather?: WeatherForecast[];
   news?: NewsItem[];
   currency?: string;
   budgetLimit?: number;
-  
+
   expenses?: ManualExpense[]; // Added for manual budget tracking
   shoppingItems?: ShoppingItem[]; // NEW: Detailed shopping tracker
-  
+
   secureNotes?: SecureNote[]; // LOCAL ONLY - Secure Vault
-  
+
   // Caching for AI Recommendations
-  aiRestaurants?: RestaurantCategory[]; 
+  aiRestaurants?: RestaurantCategory[];
   aiAttractions?: AttractionCategory[];
 }
 
