@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { 
-  User, 
-  signInWithPopup, 
-  signOut as firebaseSignOut, 
+import {
+  User,
+  signInWithPopup,
+  signOut as firebaseSignOut,
   GoogleAuthProvider,
-  onAuthStateChanged 
+  onAuthStateChanged
 } from 'firebase/auth';
 import { auth } from '../services/firebaseConfig';
 
@@ -19,6 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope('https://www.googleapis.com/auth/calendar.events.readonly');
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -46,7 +47,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setError(null);
       setLoading(true);
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      // Save Access Token for Calendar API
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        localStorage.setItem('google_access_token', credential.accessToken);
+      }
     } catch (error: any) {
       console.error('Sign in error:', error);
       setError(error.message || 'Failed to sign in with Google');
@@ -60,6 +66,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setError(null);
       await firebaseSignOut(auth);
+      localStorage.removeItem('google_access_token');
     } catch (error: any) {
       console.error('Sign out error:', error);
       setError(error.message || 'Failed to sign out');
