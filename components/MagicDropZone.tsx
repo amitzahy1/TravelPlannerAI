@@ -17,7 +17,7 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
   const processFiles = async (files: FileList) => {
     setIsProcessing(true);
     setStatus(null);
-    
+
     try {
       const ai = getAI();
       const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf', 'text/plain'];
@@ -25,28 +25,29 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
 
       const filePromises = Array.from(files).map(file => {
         const isTextFile = allowedMimeTypes.includes(file.type) && file.type === 'text/plain' || textExtensions.some(ext => file.name.endsWith(ext));
-        
-        return new Promise<{data: string, mimeType: string, name: string, isText: boolean}>((resolve) => {
+
+        return new Promise<{ data: string, mimeType: string, name: string, isText: boolean }>((resolve) => {
           const reader = new FileReader();
           if (isTextFile) {
-             reader.onloadend = () => {
-                resolve({ data: reader.result as string, mimeType: 'text/plain', name: file.name, isText: true });
-             };
-             reader.readAsText(file);
+            reader.onloadend = () => {
+              resolve({ data: reader.result as string, mimeType: 'text/plain', name: file.name, isText: true });
+            };
+            reader.readAsText(file);
           } else {
-             reader.onloadend = () => {
-                const base64 = (reader.result as string).split(',')[1];
-                resolve({ data: base64, mimeType: file.type, name: file.name, isText: false });
-             };
-             reader.readAsDataURL(file);
+            reader.onloadend = () => {
+              const base64 = (reader.result as string).split(',')[1];
+              resolve({ data: base64, mimeType: file.type, name: file.name, isText: false });
+            };
+            reader.readAsDataURL(file);
           }
         });
       });
 
       const uploadedFiles = await Promise.all(filePromises);
-      
+
       const contentParts: any[] = [
-        { text: `You are an AI assistant for a travel app. Analyze the provided documents and update this trip object: ${JSON.stringify(activeTrip)}. 
+        {
+          text: `You are an AI assistant for a travel app. Analyze the provided documents and update this trip object: ${JSON.stringify(activeTrip)}. 
         Extract flights, hotels, or just add the filename to the 'documents' list. 
         If you see text from a document, interpret it as travel details (itinerary, hotel name, flight).
         Return ONLY a JSON object with the full updated trip.` }
@@ -54,9 +55,9 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
 
       uploadedFiles.forEach(f => {
         if (f.isText) {
-           contentParts.push({ text: `Text Document (${f.name}):\n${f.data}` });
+          contentParts.push({ text: `Text Document (${f.name}):\n${f.data}` });
         } else if (allowedMimeTypes.includes(f.mimeType)) {
-           contentParts.push({ inlineData: { mimeType: f.mimeType, data: f.data } });
+          contentParts.push({ inlineData: { mimeType: f.mimeType, data: f.data } });
         }
       });
 
@@ -66,7 +67,9 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
         { responseMimeType: 'application/json' }
       );
 
-      const updatedTrip = JSON.parse(response.text);
+      // FIX: response.text can be a function or a string depending on the provider
+      const textContent = typeof response.text === 'function' ? response.text() : response.text;
+      const updatedTrip = JSON.parse(textContent);
       const newDocNames = uploadedFiles.map(f => f.name);
       updatedTrip.documents = Array.from(new Set([...(updatedTrip.documents || []), ...newDocNames]));
 
@@ -90,21 +93,20 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
   };
 
   return (
-    <div 
+    <div
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
-      className={`relative mb-8 rounded-[2rem] border-4 border-dashed transition-all duration-300 overflow-hidden ${
-        isDragging 
-          ? 'border-blue-500 bg-blue-50 scale-[1.01]' 
+      className={`relative mb-8 rounded-[2rem] border-4 border-dashed transition-all duration-300 overflow-hidden ${isDragging
+          ? 'border-blue-500 bg-blue-50 scale-[1.01]'
           : 'border-gray-200 bg-white hover:border-blue-300'
-      }`}
+        }`}
     >
-      <input 
-        type="file" 
-        multiple 
-        className="hidden" 
-        ref={fileInputRef} 
+      <input
+        type="file"
+        multiple
+        className="hidden"
+        ref={fileInputRef}
         onChange={(e) => e.target.files && processFiles(e.target.files)}
         accept="image/*,application/pdf,text/plain"
       />
@@ -128,7 +130,7 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
             <h3 className="text-gray-800 font-black text-2xl">העלאה חכמה (Magic Upload)</h3>
             <p className="text-gray-500 text-lg mt-2 font-bold italic">תמונות, PDF או קבצי טקסט (.txt)</p>
             <div className="mt-6 flex items-center gap-3 text-blue-600 text-sm font-black uppercase tracking-widest bg-blue-50 px-6 py-2 rounded-full border border-blue-100 shadow-sm">
-               <UploadCloud className="w-5 h-5" /> לחץ כאן או גרור קובץ
+              <UploadCloud className="w-5 h-5" /> לחץ כאן או גרור קובץ
             </div>
           </>
         )}

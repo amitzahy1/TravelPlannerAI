@@ -21,16 +21,19 @@ Your goal is to provide trustworthy, well-researched recommendations that travel
 
 // 1. Google Gemini Models (Direct SDK)
 const GOOGLE_MODELS = [
-  "gemini-2.0-flash-exp",
-  "gemini-1.5-flash",
-  "gemini-1.5-pro"
+  "gemini-2.0-flash-exp",              // Latest experimental (if quota available)
+  "models/gemini-1.5-flash-latest",    // Fixed: Added models/ prefix
+  "models/gemini-1.5-flash",           // Fixed: Added models/ prefix
+  "models/gemini-1.5-pro-latest"       // Fixed: Added models/ prefix
 ];
 
 // 2. OpenRouter Models (Fallback / Specific Capabilities)
 const OPENROUTER_MODELS = [
-  "perplexity/sonar-reasoning-70b",        // Deep Research
   "google/gemini-2.0-flash-exp:free",      // Free tier on OpenRouter
-  "openai/gpt-4o-mini"                     // Standard fallback
+  "meta-llama/llama-3.1-8b-instruct:free", // Free Llama 3.1
+  "mistralai/mistral-7b-instruct:free",    // Free Mistral
+  "huggingfaceH4/zephyr-7b-beta:free",     // Free Zephyr
+  "openai/gpt-4o-mini"                     // Paid fallback (if user has credits)
 ];
 
 export const AI_MODEL = GOOGLE_MODELS[0]; // For display

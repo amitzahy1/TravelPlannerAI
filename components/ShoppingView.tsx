@@ -4,8 +4,8 @@ import { ShoppingBag, FileText, Camera, Plus, Trash2, CheckCircle2, AlertCircle,
 import { getAI, AI_MODEL, generateWithFallback } from '../services/aiService';
 
 interface ShoppingViewProps {
-  trip: Trip;
-  onUpdateTrip: (t: Trip) => void;
+    trip: Trip;
+    onUpdateTrip: (t: Trip) => void;
 }
 
 const VAT_STATUS_LABELS: Record<VatStatus, { label: string, color: string, icon: any }> = {
@@ -19,21 +19,21 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
     const [viewMode, setViewMode] = useState<'list' | 'vat'>('list');
     const [items, setItems] = useState<ShoppingItem[]>(trip.shoppingItems || []);
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [newItem, setNewItem] = useState<Partial<ShoppingItem>>({ 
-        currency: trip.currency || 'THB', 
+    const [newItem, setNewItem] = useState<Partial<ShoppingItem>>({
+        currency: trip.currency || 'THB',
         isVatEligible: false,
         vatStatus: 'NEED_FORM'
     });
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    
+
     // Calculate Stats
     const totalSpent = items.reduce((sum, item) => sum + item.price, 0);
     const potentialRefund = items.filter(i => i.isVatEligible).reduce((sum, item) => sum + (item.refundAmountEstimated || (item.price * 0.05)), 0);
     const pendingForms = items.filter(i => i.isVatEligible && i.vatStatus === 'NEED_FORM').length;
 
     // Filter Items based on mode
-    const displayedItems = viewMode === 'vat' 
+    const displayedItems = viewMode === 'vat'
         ? items.filter(i => i.isVatEligible)
         : items;
 
@@ -52,11 +52,11 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
             productImageUrl: newItem.productImageUrl,
             refundAmountEstimated: newItem.refundAmountEstimated
         };
-        
-        const updatedItems = newItem.id 
+
+        const updatedItems = newItem.id
             ? items.map(i => i.id === newItem.id ? item : i)
             : [item, ...items];
-            
+
         setItems(updatedItems);
         onUpdateTrip({ ...trip, shoppingItems: updatedItems });
         setIsFormOpen(false);
@@ -91,14 +91,14 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
     const handleAnalyzeReceipt = async (file: File) => {
         setIsAnalyzing(true);
         setIsFormOpen(true);
-        
+
         try {
             const ai = getAI();
             const reader = new FileReader();
-            
+
             reader.onloadend = async () => {
                 const base64Data = (reader.result as string).split(',')[1];
-                
+
                 const prompt = `Analyze this shopping receipt image. 
                 Extract: 
                 1. Store Name (shopName)
@@ -123,7 +123,8 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
                     { responseMimeType: 'application/json' }
                 );
 
-                const data = JSON.parse(response.text);
+                const textContent = typeof response.text === 'function' ? response.text() : response.text;
+                const data = JSON.parse(textContent);
                 setNewItem(prev => ({
                     ...prev,
                     ...data,
@@ -143,17 +144,17 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
-            
+
             {/* Top Toggle Switcher */}
             <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 flex mb-4">
-                <button 
-                    onClick={() => setViewMode('list')} 
+                <button
+                    onClick={() => setViewMode('list')}
                     className={`flex-1 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all ${viewMode === 'list' ? 'bg-pink-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
                 >
                     <ShoppingBag className="w-4 h-4" /> מה קנינו?
                 </button>
-                <button 
-                    onClick={() => setViewMode('vat')} 
+                <button
+                    onClick={() => setViewMode('vat')}
                     className={`flex-1 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all ${viewMode === 'vat' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
                 >
                     <Receipt className="w-4 h-4" /> החזר מס (VAT)
@@ -173,13 +174,13 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
                         {viewMode === 'vat' ? 'מעקב אחר טפסים וקבלת החזר בשדה' : 'תיעוד כל הבזבוזים והקבלות'}
                     </p>
                 </div>
-                
+
                 <div className="flex gap-2 w-full md:w-auto">
                     <button onClick={() => fileInputRef.current?.click()} className="flex-1 md:flex-none bg-gradient-to-r from-pink-600 to-rose-600 text-white px-5 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-pink-200 hover:scale-105 transition-transform">
                         <Camera className="w-5 h-5" /> סריקה חכמה (AI)
                     </button>
                     <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => e.target.files && handleAnalyzeReceipt(e.target.files[0])} />
-                    
+
                     <button onClick={() => setIsFormOpen(true)} className="flex-1 md:flex-none bg-white border border-slate-200 text-slate-700 px-5 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50">
                         <Plus className="w-5 h-5" /> ידני
                     </button>
@@ -200,7 +201,7 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
                         </div>
                     </div>
                 )}
-                
+
                 {viewMode === 'vat' && (
                     <>
                         <div className="bg-gradient-to-br from-indigo-500 to-blue-600 text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden">
@@ -214,7 +215,7 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
                             </div>
                         </div>
                         <div className={`p-6 rounded-[2rem] shadow-lg border relative overflow-hidden ${pendingForms > 0 ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}>
-                             <div className="relative z-10 flex justify-between items-center h-full">
+                            <div className="relative z-10 flex justify-between items-center h-full">
                                 <div>
                                     <span className={`text-xs font-bold uppercase tracking-widest ${pendingForms > 0 ? 'text-orange-600' : 'text-green-600'}`}>סטטוס טפסים</span>
                                     <div className={`text-2xl font-black mt-2 ${pendingForms > 0 ? 'text-orange-800' : 'text-green-800'}`}>
@@ -238,8 +239,8 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
                     <div>
                         <h4 className="font-bold text-indigo-900 text-sm">איך מקבלים החזר מס?</h4>
                         <p className="text-xs text-indigo-800 mt-1 leading-relaxed">
-                            1. בקשו טופס "VAT Refund" בחנות (הדרכון נדרש). <br/>
-                            2. בשדה התעופה, <b>לפני</b> שליחת המזוודות, גשו לעמדת המכס להחתמת הטפסים (הראו את המוצרים). <br/>
+                            1. בקשו טופס "VAT Refund" בחנות (הדרכון נדרש). <br />
+                            2. בשדה התעופה, <b>לפני</b> שליחת המזוודות, גשו לעמדת המכס להחתמת הטפסים (הראו את המוצרים). <br />
                             3. אחרי הבידוק הביטחוני, גשו לעמדת ההחזר לקבלת הכסף.
                         </p>
                     </div>
@@ -287,7 +288,7 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
                                     <span>•</span>
                                     <span>{item.purchaseDate}</span>
                                 </div>
-                                
+
                                 {/* VAT Status Bar */}
                                 {item.isVatEligible ? (
                                     <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -295,8 +296,8 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
                                             const flow: VatStatus[] = ['NEED_FORM', 'HAVE_FORM', 'STAMPED_AT_CUSTOMS', 'REFUNDED'];
                                             const next = flow[(flow.indexOf(item.vatStatus || 'NEED_FORM') + 1) % flow.length];
                                             updateStatus(item.id, next);
-                                        }} 
-                                        className={`cursor-pointer px-3 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all ${VAT_STATUS_LABELS[item.vatStatus || 'NEED_FORM'].color} hover:opacity-80`}>
+                                        }}
+                                            className={`cursor-pointer px-3 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all ${VAT_STATUS_LABELS[item.vatStatus || 'NEED_FORM'].color} hover:opacity-80`}>
                                             {React.createElement(VAT_STATUS_LABELS[item.vatStatus || 'NEED_FORM'].icon, { className: 'w-3.5 h-3.5' })}
                                             {VAT_STATUS_LABELS[item.vatStatus || 'NEED_FORM'].label}
                                         </div>
@@ -336,17 +337,17 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
                         <div className="space-y-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-400 block mb-1">שם המוצר / תיאור</label>
-                                <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-pink-500" value={newItem.name || ''} onChange={e => setNewItem({...newItem, name: e.target.value})} placeholder="למשל: בגדים ב-Zara" />
+                                <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-pink-500" value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} placeholder="למשל: בגדים ב-Zara" />
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 block mb-1">מחיר</label>
-                                    <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-pink-500" value={newItem.price || ''} onChange={e => setNewItem({...newItem, price: Number(e.target.value)})} />
+                                    <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-pink-500" value={newItem.price || ''} onChange={e => setNewItem({ ...newItem, price: Number(e.target.value) })} />
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 block mb-1">מטבע</label>
-                                    <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none" value={newItem.currency} onChange={e => setNewItem({...newItem, currency: e.target.value})}>
+                                    <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none" value={newItem.currency} onChange={e => setNewItem({ ...newItem, currency: e.target.value })}>
                                         <option value="THB">THB (฿)</option>
                                         <option value="USD">USD ($)</option>
                                         <option value="EUR">EUR (€)</option>
@@ -357,12 +358,12 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
 
                             <div>
                                 <label className="text-xs font-bold text-slate-400 block mb-1">חנות</label>
-                                <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 outline-none" value={newItem.shopName || ''} onChange={e => setNewItem({...newItem, shopName: e.target.value})} />
+                                <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 outline-none" value={newItem.shopName || ''} onChange={e => setNewItem({ ...newItem, shopName: e.target.value })} />
                             </div>
 
                             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                                 <label className="flex items-center gap-3 cursor-pointer">
-                                    <input type="checkbox" className="w-5 h-5 accent-blue-600" checked={newItem.isVatEligible} onChange={e => setNewItem({...newItem, isVatEligible: e.target.checked})} />
+                                    <input type="checkbox" className="w-5 h-5 accent-blue-600" checked={newItem.isVatEligible} onChange={e => setNewItem({ ...newItem, isVatEligible: e.target.checked })} />
                                     <span className="font-bold text-blue-900 text-sm">זכאי להחזר מס (Tax Free)?</span>
                                 </label>
                             </div>

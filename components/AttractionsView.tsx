@@ -15,7 +15,7 @@ const cleanTextForMap = (text: string) => {
 const getCategoryColor = (type?: string) => {
     const t = (type || '').toLowerCase();
     if (t.includes('must') || t.includes('top')) return 'bg-purple-600 border-purple-600 text-purple-600';
-    if (t.includes('nature') || t.includes('park')) return 'bg-emerald-600 border-emerald-600 text-emerald-600'; 
+    if (t.includes('nature') || t.includes('park')) return 'bg-emerald-600 border-emerald-600 text-emerald-600';
     if (t.includes('beach') || t.includes('island')) return 'bg-cyan-500 border-cyan-500 text-cyan-600';
     if (t.includes('museum') || t.includes('history')) return 'bg-amber-700 border-amber-700 text-amber-700';
     if (t.includes('shopping')) return 'bg-pink-500 border-pink-500 text-pink-600';
@@ -29,21 +29,21 @@ const sortAttractions = (list: Attraction[]) => {
         // 1. Favorites First
         if (a.isFavorite && !b.isFavorite) return -1;
         if (!a.isFavorite && b.isFavorite) return 1;
-        
+
         // 2. Rating Second
         return (b.rating || 0) - (a.rating || 0);
     });
 };
 
 // Redesigned Card - Business Style (No large image, clean layout)
-const AttractionRecommendationCard: React.FC<{ 
-    rec: any, 
-    tripDestination: string, 
+const AttractionRecommendationCard: React.FC<{
+    rec: any,
+    tripDestination: string,
     tripDestinationEnglish?: string,
     isAdded: boolean,
     onAdd: (rec: any, source: string) => void
 }> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd }) => {
-    
+
     // Strict English-Only Maps Query
     const nameForMap = cleanTextForMap(rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
@@ -51,184 +51,185 @@ const AttractionRecommendationCard: React.FC<{
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
     const accentColorClass = getCategoryColor(rec.type);
-    const textColor = accentColorClass.split(' ')[2]; 
+    const textColor = accentColorClass.split(' ')[2];
 
     return (
-      <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 flex overflow-hidden group relative border border-slate-200 h-full min-h-[160px]">
-          
-          {/* Color Strip Indicator */}
-          <div className={`w-2 ${accentColorClass.split(' ')[0]}`}></div>
+        <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 flex overflow-hidden group relative border border-slate-200 h-full min-h-[160px]">
 
-          <div className="p-4 flex flex-col flex-grow relative">
-              
-              {/* Header */}
-              <div className="flex justify-between items-start mb-2">
-                  <div className="flex flex-col gap-1">
-                      {rec.recommendationSource ? (
-                          <span className={`text-[10px] font-black uppercase tracking-widest ${textColor} flex items-center gap-1`}>
-                              <Trophy className="w-3 h-3" /> {rec.recommendationSource}
-                          </span>
-                      ) : (
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{rec.type || 'Attraction'}</span>
-                      )}
-                  </div>
-                  {rec.rating && (
-                      <div className="bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 flex items-center gap-1 shadow-sm">
-                          <span className="text-xs font-black text-slate-800">{rec.rating}</span>
-                          <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                      </div>
-                  )}
-              </div>
+            {/* Color Strip Indicator */}
+            <div className={`w-2 ${accentColorClass.split(' ')[0]}`}></div>
 
-              {/* Main Content */}
-              <div className="mb-3">
-                  <h3 className="text-lg font-black text-slate-900 leading-tight mb-1 font-sans tracking-tight" dir="ltr">
-                      {rec.name}
-                  </h3>
-                  <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed" dir="rtl">
-                      {rec.description}
-                  </p>
-                  {rec.price && (
-                      <div className="mt-2 inline-flex items-center gap-1 bg-slate-50 px-2 py-1 rounded text-[10px] font-bold text-slate-600">
-                          <DollarSign className="w-3 h-3" /> {rec.price}
-                      </div>
-                  )}
-              </div>
+            <div className="p-4 flex flex-col flex-grow relative">
 
-              {/* Footer Buttons */}
-              <div className="mt-auto pt-3 border-t border-dashed border-slate-100 flex gap-2">
-                  <a 
-                      href={mapsUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-blue-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-2 transition-colors text-[10px] font-bold"
-                  >
-                      <MapIcon className="w-3 h-3" /> הצג במפות
-                  </a>
-                  <button 
-                      onClick={() => onAdd(rec, 'AI')} 
-                      disabled={isAdded} 
-                      className={`flex-1 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 transition-all ${isAdded ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-md'}`}
-                  >
-                      {isAdded ? <CheckCircle2 className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                      {isAdded ? 'נוסף' : 'שמור'}
-                  </button>
-              </div>
-          </div>
-      </div>
+                {/* Header */}
+                <div className="flex justify-between items-start mb-2">
+                    <div className="flex flex-col gap-1">
+                        {rec.recommendationSource ? (
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${textColor} flex items-center gap-1`}>
+                                <Trophy className="w-3 h-3" /> {rec.recommendationSource}
+                            </span>
+                        ) : (
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{rec.type || 'Attraction'}</span>
+                        )}
+                    </div>
+                    {rec.rating && (
+                        <div className="bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 flex items-center gap-1 shadow-sm">
+                            <span className="text-xs font-black text-slate-800">{rec.rating}</span>
+                            <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                        </div>
+                    )}
+                </div>
+
+                {/* Main Content */}
+                <div className="mb-3">
+                    <h3 className="text-lg font-black text-slate-900 leading-tight mb-1 font-sans tracking-tight" dir="ltr">
+                        {rec.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed" dir="rtl">
+                        {rec.description}
+                    </p>
+                    {rec.price && (
+                        <div className="mt-2 inline-flex items-center gap-1 bg-slate-50 px-2 py-1 rounded text-[10px] font-bold text-slate-600">
+                            <DollarSign className="w-3 h-3" /> {rec.price}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="mt-auto pt-3 border-t border-dashed border-slate-100 flex gap-2">
+                    <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-blue-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-2 transition-colors text-[10px] font-bold"
+                    >
+                        <MapIcon className="w-3 h-3" /> הצג במפות
+                    </a>
+                    <button
+                        onClick={() => onAdd(rec, 'AI')}
+                        disabled={isAdded}
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-2 transition-all ${isAdded ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-md'}`}
+                    >
+                        {isAdded ? <CheckCircle2 className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        {isAdded ? 'נוסף' : 'שמור'}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 };
 
 export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
-  const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>('my_list');
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+    const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>('my_list');
+    const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
-  // AI & Data State
-  const [aiCategories, setAiCategories] = useState<AttractionCategory[]>(trip.aiAttractions || []);
-  const [loadingRecs, setLoadingRecs] = useState(false);
-  const [recError, setRecError] = useState('');
-  const [showCitySelector, setShowCitySelector] = useState(false);
-  
-  // UX State
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedRater, setSelectedRater] = useState<string>('all');
+    // AI & Data State
+    const [aiCategories, setAiCategories] = useState<AttractionCategory[]>(trip.aiAttractions || []);
+    const [loadingRecs, setLoadingRecs] = useState(false);
+    const [recError, setRecError] = useState('');
+    const [showCitySelector, setShowCitySelector] = useState(false);
 
-  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
-  const [textQuery, setTextQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<Attraction[] | null>(null);
+    // UX State
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [selectedRater, setSelectedRater] = useState<string>('all');
 
-  const attractionsData = trip.attractions || [];
+    const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+    const [textQuery, setTextQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState<Attraction[] | null>(null);
 
-  // Persistence Sync
-  useEffect(() => {
-     if (trip.aiAttractions && trip.aiAttractions.length > 0) {
-         setAiCategories(trip.aiAttractions);
-     }
-  }, [trip.aiAttractions]);
+    const attractionsData = trip.attractions || [];
 
-  const tripCities = useMemo(() => {
-      if (!trip.destination) return [];
-      return trip.destination.split('-').map(s => s.trim());
-  }, [trip.destination]);
+    // Persistence Sync
+    useEffect(() => {
+        if (trip.aiAttractions && trip.aiAttractions.length > 0) {
+            setAiCategories(trip.aiAttractions);
+        }
+    }, [trip.aiAttractions]);
 
-  // --- Search Logic (gemini-3-flash-preview) ---
-  const handleTextSearch = async () => {
-      if (!textQuery.trim()) return;
-      setIsSearching(true);
-      setSearchResults(null);
-      
-      try {
-          const ai = getAI();
-          const prompt = `${SYSTEM_PROMPT}
+    const tripCities = useMemo(() => {
+        if (!trip.destination) return [];
+        return trip.destination.split('-').map(s => s.trim());
+    }, [trip.destination]);
+
+    // --- Search Logic (gemini-3-flash-preview) ---
+    const handleTextSearch = async () => {
+        if (!textQuery.trim()) return;
+        setIsSearching(true);
+        setSearchResults(null);
+
+        try {
+            const ai = getAI();
+            const prompt = `${SYSTEM_PROMPT}
 
 Search for attractions in ${trip.destination} matching: "${textQuery}".
 Prioritize results from Google Maps Top Rated, TripAdvisor "Travelers' Choice" or UNESCO lists.
 Try to include a price estimate if possible.
 CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
 
-          const schema: Schema = {
-            type: Type.OBJECT,
-            properties: {
-              results: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    location: { type: Type.STRING },
-                    rating: { type: Type.NUMBER },
-                    reviewCount: { type: Type.NUMBER },
-                    type: { type: Type.STRING },
-                    price: { type: Type.STRING },
-                    recommendationSource: { type: Type.STRING },
-                    googleMapsUrl: { type: Type.STRING }
-                  },
-                  required: ["name", "description", "location"]
+            const schema: Schema = {
+                type: Type.OBJECT,
+                properties: {
+                    results: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                name: { type: Type.STRING },
+                                description: { type: Type.STRING },
+                                location: { type: Type.STRING },
+                                rating: { type: Type.NUMBER },
+                                reviewCount: { type: Type.NUMBER },
+                                type: { type: Type.STRING },
+                                price: { type: Type.STRING },
+                                recommendationSource: { type: Type.STRING },
+                                googleMapsUrl: { type: Type.STRING }
+                            },
+                            required: ["name", "description", "location"]
+                        }
+                    }
                 }
-              }
+            };
+
+            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema });
+
+            const textContent = typeof response.text === 'function' ? response.text() : response.text;
+            const data = JSON.parse(textContent || '{}');
+            if (data.results) {
+                setSearchResults(data.results.map((r: any, i: number) => ({ ...r, id: `search-attr-${i}` })));
             }
-          };
+        } catch (e) {
+            console.error(e);
+            alert('חיפוש נכשל.');
+        } finally {
+            setIsSearching(false);
+        }
+    };
 
-        const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema });
+    const clearSearch = () => { setTextQuery(''); setSearchResults(null); };
 
-          const data = JSON.parse(response.text || '{}');
-          if (data.results) {
-              setSearchResults(data.results.map((r: any, i: number) => ({ ...r, id: `search-attr-${i}` })));
-          }
-      } catch (e) {
-          console.error(e);
-          alert('חיפוש נכשל.');
-      } finally {
-          setIsSearching(false);
-      }
-  };
+    // --- Market Research Logic (gemini-3-flash-preview) ---
+    const initiateResearch = () => {
+        if (tripCities.length > 1) {
+            setShowCitySelector(true);
+        } else {
+            fetchRecommendations(true, trip.destinationEnglish || tripCities[0]);
+        }
+    };
 
-  const clearSearch = () => { setTextQuery(''); setSearchResults(null); };
+    const fetchRecommendations = async (forceRefresh = false, specificCity?: string) => {
+        setShowCitySelector(false);
+        if (!forceRefresh && !specificCity && trip.aiAttractions && trip.aiAttractions.length > 0) {
+            setAiCategories(trip.aiAttractions);
+            return;
+        }
+        setLoadingRecs(true);
+        setRecError('');
+        try {
+            const ai = getAI();
+            const targetLocation = specificCity || trip.destinationEnglish || trip.destination;
 
-  // --- Market Research Logic (gemini-3-flash-preview) ---
-  const initiateResearch = () => {
-      if (tripCities.length > 1) {
-          setShowCitySelector(true);
-      } else {
-          fetchRecommendations(true, trip.destinationEnglish || tripCities[0]);
-      }
-  };
-
-  const fetchRecommendations = async (forceRefresh = false, specificCity?: string) => {
-     setShowCitySelector(false);
-     if (!forceRefresh && !specificCity && trip.aiAttractions && trip.aiAttractions.length > 0) {
-         setAiCategories(trip.aiAttractions);
-         return;
-     }
-     setLoadingRecs(true);
-     setRecError('');
-     try {
-        const ai = getAI();
-        const targetLocation = specificCity || trip.destinationEnglish || trip.destination;
-        
-        const prompt = `
+            const prompt = `
         Act as a Luxury Travel Concierge for ${targetLocation}.
         Provide a structured guide with 6 categories.
         For each category, provide 10 items (Total ~60).
@@ -248,342 +249,343 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
         4. **PRICE:** include estimate (e.g. "Free", "500 THB").
         `;
 
-        const schema: Schema = {
-            type: Type.OBJECT,
-            properties: {
-              categories: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    title: { type: Type.STRING },
-                    attractions: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          name: { type: Type.STRING },
-                          description: { type: Type.STRING },
-                          location: { type: Type.STRING },
-                          rating: { type: Type.NUMBER },
-                          type: { type: Type.STRING },
-                          price: { type: Type.STRING },
-                          recommendationSource: { type: Type.STRING },
-                          googleMapsUrl: { type: Type.STRING }
-                        },
-                        required: ["name", "description", "location", "recommendationSource"]
-                      }
+            const schema: Schema = {
+                type: Type.OBJECT,
+                properties: {
+                    categories: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                id: { type: Type.STRING },
+                                title: { type: Type.STRING },
+                                attractions: {
+                                    type: Type.ARRAY,
+                                    items: {
+                                        type: Type.OBJECT,
+                                        properties: {
+                                            name: { type: Type.STRING },
+                                            description: { type: Type.STRING },
+                                            location: { type: Type.STRING },
+                                            rating: { type: Type.NUMBER },
+                                            type: { type: Type.STRING },
+                                            price: { type: Type.STRING },
+                                            recommendationSource: { type: Type.STRING },
+                                            googleMapsUrl: { type: Type.STRING }
+                                        },
+                                        required: ["name", "description", "location", "recommendationSource"]
+                                    }
+                                }
+                            },
+                            required: ["id", "title", "attractions"]
+                        }
                     }
-                  },
-                  required: ["id", "title", "attractions"]
                 }
-              }
+            };
+
+            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema });
+
+            const textContent = typeof response.text === 'function' ? response.text() : response.text;
+            const data = JSON.parse(textContent || '{}');
+            if (data.categories) {
+                const processed = data.categories.map((c: any) => ({ ...c, attractions: c.attractions.map((a: any, i: number) => ({ ...a, id: `ai-attr-${c.id}-${i}` })) }));
+                setAiCategories(processed);
+                setSelectedCategory('all');
+                onUpdateTrip({ ...trip, aiAttractions: processed });
             }
-          };
+        } catch (e: any) {
+            console.error(e);
+            const errMsg = e.message.includes("500") || e.message.includes("xhr")
+                ? "שגיאת תקשורת זמנית. אנא נסה שוב."
+                : `שגיאה בטעינה: ${e.message}`;
+            setRecError(errMsg);
+        } finally { setLoadingRecs(false); }
+    };
 
-          const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema });
+    // Helper to map AI type to Hebrew Category
+    const mapTypeToCategoryTitle = (type?: string, defaultTitle?: string) => {
+        const t = (type || '').toLowerCase();
+        if (t.includes('nature') || t.includes('park') || t.includes('beach')) return "טבע ונופים";
+        if (t.includes('museum') || t.includes('culture') || t.includes('history')) return "מוזיאונים ותרבות";
+        if (t.includes('shop') || t.includes('market') || t.includes('mall')) return "קניות ושווקים";
+        if (t.includes('night') || t.includes('bar') || t.includes('club')) return "חיי לילה";
+        if (t.includes('gem') || t.includes('hidden')) return "פנינים נסתרות";
+        return defaultTitle || "כללי";
+    };
 
-        const data = JSON.parse(response.text || '{}');
-        if (data.categories) {
-           const processed = data.categories.map((c: any) => ({ ...c, attractions: c.attractions.map((a: any, i: number) => ({ ...a, id: `ai-attr-${c.id}-${i}` })) }));
-           setAiCategories(processed);
-           setSelectedCategory('all');
-           onUpdateTrip({ ...trip, aiAttractions: processed });
+    const handleAddRec = (attraction: Attraction, catTitle: string) => {
+        let newAttractions = [...attractionsData];
+
+        // Determine smart category name based on attraction type, fallback to the AI category title if generic
+        const smartCategory = mapTypeToCategoryTitle(attraction.type, catTitle);
+
+        let targetCatIndex = newAttractions.findIndex(c => c.title === smartCategory);
+        if (targetCatIndex === -1) {
+            newAttractions.push({ id: `cat-attr-${Date.now()}`, title: smartCategory, attractions: [] });
+            targetCatIndex = newAttractions.length - 1;
         }
-     } catch (e: any) { 
-         console.error(e);
-         const errMsg = e.message.includes("500") || e.message.includes("xhr") 
-            ? "שגיאת תקשורת זמנית. אנא נסה שוב." 
-            : `שגיאה בטעינה: ${e.message}`;
-         setRecError(errMsg); 
-    } finally { setLoadingRecs(false); }
-  };
 
-  // Helper to map AI type to Hebrew Category
-  const mapTypeToCategoryTitle = (type?: string, defaultTitle?: string) => {
-      const t = (type || '').toLowerCase();
-      if (t.includes('nature') || t.includes('park') || t.includes('beach')) return "טבע ונופים";
-      if (t.includes('museum') || t.includes('culture') || t.includes('history')) return "מוזיאונים ותרבות";
-      if (t.includes('shop') || t.includes('market') || t.includes('mall')) return "קניות ושווקים";
-      if (t.includes('night') || t.includes('bar') || t.includes('club')) return "חיי לילה";
-      if (t.includes('gem') || t.includes('hidden')) return "פנינים נסתרות";
-      return defaultTitle || "כללי";
-  };
+        const exists = newAttractions[targetCatIndex].attractions.some(a => a.name === attraction.name);
+        if (!exists) {
+            newAttractions[targetCatIndex].attractions.push({ ...attraction, id: `added-${Date.now()}` });
+            onUpdateTrip({ ...trip, attractions: newAttractions });
+            setAddedIds(prev => new Set(prev).add(attraction.id));
+            setTimeout(() => { setAddedIds(prev => { const next = new Set(prev); next.delete(attraction.id); return next; }); }, 2000);
+        }
+    };
 
-  const handleAddRec = (attraction: Attraction, catTitle: string) => {
-     let newAttractions = [...attractionsData];
-     
-     // Determine smart category name based on attraction type, fallback to the AI category title if generic
-     const smartCategory = mapTypeToCategoryTitle(attraction.type, catTitle);
+    const currentCategoryAttractions = useMemo(() => {
+        let list = [];
+        if (selectedCategory === 'all') {
+            aiCategories.forEach(c => list.push(...c.attractions));
+        } else {
+            const cat = aiCategories.find(c => c.id === selectedCategory);
+            list = cat ? cat.attractions : [];
+        }
 
-     let targetCatIndex = newAttractions.findIndex(c => c.title === smartCategory);
-     if (targetCatIndex === -1) {
-        newAttractions.push({ id: `cat-attr-${Date.now()}`, title: smartCategory, attractions: [] });
-        targetCatIndex = newAttractions.length - 1;
-     }
-     
-     const exists = newAttractions[targetCatIndex].attractions.some(a => a.name === attraction.name);
-     if (!exists) {
-         newAttractions[targetCatIndex].attractions.push({ ...attraction, id: `added-${Date.now()}` });
-         onUpdateTrip({ ...trip, attractions: newAttractions });
-         setAddedIds(prev => new Set(prev).add(attraction.id));
-         setTimeout(() => { setAddedIds(prev => { const next = new Set(prev); next.delete(attraction.id); return next; }); }, 2000);
-     }
-  };
+        if (selectedRater !== 'all') {
+            list = list.filter(a => a.recommendationSource === selectedRater);
+        }
+        return list;
+    }, [aiCategories, selectedCategory, selectedRater]);
 
-  const currentCategoryAttractions = useMemo(() => {
-      let list = [];
-      if (selectedCategory === 'all') {
-          aiCategories.forEach(c => list.push(...c.attractions));
-      } else {
-          const cat = aiCategories.find(c => c.id === selectedCategory);
-          list = cat ? cat.attractions : [];
-      }
-      
-      if (selectedRater !== 'all') {
-          list = list.filter(a => a.recommendationSource === selectedRater);
-      }
-      return list;
-  }, [aiCategories, selectedCategory, selectedRater]);
-  
-  const availableRaters = useMemo(() => {
-      const sources = new Set<string>();
-      aiCategories.forEach(c => c.attractions.forEach(a => {
-          if (a.recommendationSource) sources.add(a.recommendationSource);
-      }));
-      return Array.from(sources).sort();
-  }, [aiCategories]);
-
-  // My List Filtering & Sorting (Favorites First)
-  const [mySelectedCategory, setMySelectedCategory] = useState<string>('all');
-  const filteredMyList = useMemo(() => {
-      if (mySelectedCategory === 'all') {
-          // Sort all categories content
-          return attractionsData.map(cat => ({
-              ...cat,
-              attractions: sortAttractions([...cat.attractions])
-          })).filter(c => c.attractions.length > 0);
-      }
-      // Sort specific category content
-      return attractionsData
-        .filter(c => c.title === mySelectedCategory)
-        .map(cat => ({
-            ...cat,
-            attractions: sortAttractions([...cat.attractions])
+    const availableRaters = useMemo(() => {
+        const sources = new Set<string>();
+        aiCategories.forEach(c => c.attractions.forEach(a => {
+            if (a.recommendationSource) sources.add(a.recommendationSource);
         }));
-  }, [attractionsData, mySelectedCategory]);
+        return Array.from(sources).sort();
+    }, [aiCategories]);
 
-  const handleUpdateAttraction = (attractionId: string, updates: Partial<Attraction>) => {
-    const updatedAttractions = attractionsData.map(cat => ({ ...cat, attractions: cat.attractions.map(attr => attr.id === attractionId ? { ...attr, ...updates } : attr) }));
-    onUpdateTrip({ ...trip, attractions: updatedAttractions });
- };
+    // My List Filtering & Sorting (Favorites First)
+    const [mySelectedCategory, setMySelectedCategory] = useState<string>('all');
+    const filteredMyList = useMemo(() => {
+        if (mySelectedCategory === 'all') {
+            // Sort all categories content
+            return attractionsData.map(cat => ({
+                ...cat,
+                attractions: sortAttractions([...cat.attractions])
+            })).filter(c => c.attractions.length > 0);
+        }
+        // Sort specific category content
+        return attractionsData
+            .filter(c => c.title === mySelectedCategory)
+            .map(cat => ({
+                ...cat,
+                attractions: sortAttractions([...cat.attractions])
+            }));
+    }, [attractionsData, mySelectedCategory]);
 
- const handleDeleteAttraction = (attractionId: string) => {
-    if (window.confirm("להסיר?")) {
-        const updatedAttractions = attractionsData.map(cat => ({ ...cat, attractions: cat.attractions.filter(a => a.id !== attractionId) })).filter(cat => cat.attractions.length > 0);
+    const handleUpdateAttraction = (attractionId: string, updates: Partial<Attraction>) => {
+        const updatedAttractions = attractionsData.map(cat => ({ ...cat, attractions: cat.attractions.map(attr => attr.id === attractionId ? { ...attr, ...updates } : attr) }));
         onUpdateTrip({ ...trip, attractions: updatedAttractions });
-    }
- };
+    };
 
-  const getMapItems = () => {
-      const items: any[] = [];
-      if (activeTab === 'my_list') {
-          attractionsData.forEach(cat => cat.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: a.description })));
-      } else {
-          aiCategories.forEach(cat => cat.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: `${a.rating}⭐` })));
-      }
-      return items;
-  };
+    const handleDeleteAttraction = (attractionId: string) => {
+        if (window.confirm("להסיר?")) {
+            const updatedAttractions = attractionsData.map(cat => ({ ...cat, attractions: cat.attractions.filter(a => a.id !== attractionId) })).filter(cat => cat.attractions.length > 0);
+            onUpdateTrip({ ...trip, attractions: updatedAttractions });
+        }
+    };
 
-  return (
-    <div className="space-y-4 animate-fade-in pb-10">
-       
-       {/* Search Bar */}
-       <div className="relative z-20">
-           <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-200 flex items-center gap-2 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
-                <Search className="w-5 h-5 text-gray-400 mr-2" />
-                <input className="flex-grow outline-none text-gray-700 font-medium text-sm" placeholder='חפש אטרקציה (כולל גוגל מפות ודירוגים)...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
-                {textQuery && (<button onClick={clearSearch} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400"><X className="w-4 h-4" /></button>)}
-                <button onClick={handleTextSearch} disabled={isSearching || !textQuery.trim()} className="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50">{isSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{isSearching ? '...' : 'חיפוש'}</button>
-           </div>
-       </div>
+    const getMapItems = () => {
+        const items: any[] = [];
+        if (activeTab === 'my_list') {
+            attractionsData.forEach(cat => cat.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: a.description })));
+        } else {
+            aiCategories.forEach(cat => cat.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: `${a.rating}⭐` })));
+        }
+        return items;
+    };
 
-       {/* Search Results */}
-       {searchResults && (
-           <div className="space-y-3 animate-fade-in">
-               <div className="flex justify-between items-center"><h3 className="text-lg font-black text-gray-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-xs text-gray-500 hover:text-red-500 underline">נקה</button></div>
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                   {searchResults.map(res => (
-                       <AttractionRecommendationCard 
-                           key={res.id} 
-                           rec={res} 
-                           tripDestination={trip.destination}
-                           tripDestinationEnglish={trip.destinationEnglish}
-                           isAdded={addedIds.has(res.id)} 
-                           onAdd={handleAddRec} 
-                       />
-                   ))}
-               </div>
-               <div className="border-b border-gray-200 my-4"></div>
-           </div>
-       )}
+    return (
+        <div className="space-y-4 animate-fade-in pb-10">
 
-       {/* Tabs */}
-       <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-200 p-1.5 flex mb-2">
-          <button onClick={() => setActiveTab('my_list')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'my_list' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-50'}`}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
-          <button onClick={() => setActiveTab('recommended')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'recommended' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-purple-50 hover:text-purple-600'}`}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
-       </div>
+            {/* Search Bar */}
+            <div className="relative z-20">
+                <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-200 flex items-center gap-2 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
+                    <Search className="w-5 h-5 text-gray-400 mr-2" />
+                    <input className="flex-grow outline-none text-gray-700 font-medium text-sm" placeholder='חפש אטרקציה (כולל גוגל מפות ודירוגים)...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
+                    {textQuery && (<button onClick={clearSearch} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400"><X className="w-4 h-4" /></button>)}
+                    <button onClick={handleTextSearch} disabled={isSearching || !textQuery.trim()} className="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50">{isSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{isSearching ? '...' : 'חיפוש'}</button>
+                </div>
+            </div>
 
-       {viewMode === 'map' ? (
-           <div className="space-y-3">
-               <div className="flex justify-end"><button onClick={() => setViewMode('list')} className="px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold text-xs bg-gray-100 text-gray-900 transition-all hover:bg-gray-200"><List className="w-3 h-3" /> חזרה לרשימה</button></div>
-               <UnifiedMapView items={getMapItems()} title={activeTab === 'my_list' ? `מפת האטרקציות שלי` : 'מפת המלצות'} />
-           </div>
-       ) : (
-          <>
-            {activeTab === 'my_list' ? (
-                <>
-                    <div className="flex justify-between items-center mb-1"><button onClick={() => setViewMode('map')} className="px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold text-xs bg-white border border-gray-200 text-blue-600 hover:bg-blue-50 transition-all shadow-sm"><MapIcon className="w-3 h-3" /> מפה</button></div>
-                    
-                    {/* My List Filters */}
-                    <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
-                        <div className="flex gap-2">
-                            <button onClick={() => setMySelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === 'all' ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
-                            {attractionsData.map(cat => (
-                                <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === cat.title ? 'bg-gray-800 text-white border-gray-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>{cat.title}</button>
-                            ))}
-                        </div>
+            {/* Search Results */}
+            {searchResults && (
+                <div className="space-y-3 animate-fade-in">
+                    <div className="flex justify-between items-center"><h3 className="text-lg font-black text-gray-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-xs text-gray-500 hover:text-red-500 underline">נקה</button></div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {searchResults.map(res => (
+                            <AttractionRecommendationCard
+                                key={res.id}
+                                rec={res}
+                                tripDestination={trip.destination}
+                                tripDestinationEnglish={trip.destinationEnglish}
+                                isAdded={addedIds.has(res.id)}
+                                onAdd={handleAddRec}
+                            />
+                        ))}
                     </div>
+                    <div className="border-b border-gray-200 my-4"></div>
+                </div>
+            )}
 
-                    {/* Results */}
-                    {filteredMyList.length > 0 ? (
-                        <div className="space-y-4 mt-2">
-                            {filteredMyList.map((category) => (
-                                <div key={category.id} className="animate-fade-in">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center justify-between">{category.title}<span className="text-[10px] font-normal bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">{category.attractions.length}</span></h3>
-                                    <div className="flex flex-col gap-2">
-                                    {[...category.attractions].map((attr) => (
-                                        <AttractionRow key={attr.id} data={attr} onSaveNote={(note) => handleUpdateAttraction(attr.id, { notes: note })} onUpdate={(updates) => handleUpdateAttraction(attr.id, updates)} onDelete={() => handleDeleteAttraction(attr.id)} />
-                                    ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-300 mt-4 flex flex-col items-center justify-center">
-                            <Ticket className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                            <p className="text-gray-500 text-sm font-bold mb-4">לא נמצאו אטרקציות ברשימה שלך.</p>
-                            <button onClick={() => { setActiveTab('recommended'); initiateResearch(); }} className="bg-purple-600 text-white px-6 py-2 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors shadow-lg flex items-center gap-2">
-                                <Sparkles className="w-4 h-4" /> קבל המלצות AI עכשיו
-                            </button>
-                        </div>
-                    )}
-                </>
+            {/* Tabs */}
+            <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-200 p-1.5 flex mb-2">
+                <button onClick={() => setActiveTab('my_list')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'my_list' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-50'}`}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
+                <button onClick={() => setActiveTab('recommended')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'recommended' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-purple-50 hover:text-purple-600'}`}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
+            </div>
+
+            {viewMode === 'map' ? (
+                <div className="space-y-3">
+                    <div className="flex justify-end"><button onClick={() => setViewMode('list')} className="px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold text-xs bg-gray-100 text-gray-900 transition-all hover:bg-gray-200"><List className="w-3 h-3" /> חזרה לרשימה</button></div>
+                    <UnifiedMapView items={getMapItems()} title={activeTab === 'my_list' ? `מפת האטרקציות שלי` : 'מפת המלצות'} />
+                </div>
             ) : (
-                /* Recommended Tab */
-                <div className="animate-fade-in">
-                    {!loadingRecs && aiCategories.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                            <div className="bg-purple-100 p-4 rounded-full"><Navigation className="w-8 h-8 text-purple-600" /></div>
-                            <h3 className="text-xl font-black text-gray-800">בחר עיר לחיפוש</h3>
-                            <button onClick={initiateResearch} className="bg-white border-2 border-purple-500 text-purple-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-purple-50 transition-all">
-                                {trip.destination} - בצע מחקר שוק
-                            </button>
-                        </div>
-                    ) : (
+                <>
+                    {activeTab === 'my_list' ? (
                         <>
-                            <div className="bg-purple-50 p-3 rounded-xl mb-3 border border-purple-100 flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2"><div className="bg-white p-1.5 rounded-full shadow-sm"><BrainCircuit className="w-4 h-4 text-purple-600" /></div><div><h3 className="text-xs font-black text-purple-900">המלצות AI: Travelers' Choice</h3></div></div>
-                                {!loadingRecs && (<button onClick={initiateResearch} className="text-[10px] font-bold text-purple-600 bg-white px-2 py-1 rounded shadow-sm flex items-center gap-1"><RotateCw className="w-3 h-3" /> מחקר חדש</button>)}
+                            <div className="flex justify-between items-center mb-1"><button onClick={() => setViewMode('map')} className="px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold text-xs bg-white border border-gray-200 text-blue-600 hover:bg-blue-50 transition-all shadow-sm"><MapIcon className="w-3 h-3" /> מפה</button></div>
+
+                            {/* My List Filters */}
+                            <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
+                                <div className="flex gap-2">
+                                    <button onClick={() => setMySelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === 'all' ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
+                                    {attractionsData.map(cat => (
+                                        <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === cat.title ? 'bg-gray-800 text-white border-gray-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>{cat.title}</button>
+                                    ))}
+                                </div>
                             </div>
-                            
-                            {loadingRecs ? (<div className="flex flex-col items-center justify-center py-10"><Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-2" /><p className="text-sm font-bold text-gray-400">סורק אתרי תיירות, גוגל מפות ובלוגים מקומיים...</p></div>) : recError ? (<div className="text-center text-red-500 text-sm font-bold py-4">{recError}</div>) : (
+
+                            {/* Results */}
+                            {filteredMyList.length > 0 ? (
+                                <div className="space-y-4 mt-2">
+                                    {filteredMyList.map((category) => (
+                                        <div key={category.id} className="animate-fade-in">
+                                            <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center justify-between">{category.title}<span className="text-[10px] font-normal bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">{category.attractions.length}</span></h3>
+                                            <div className="flex flex-col gap-2">
+                                                {[...category.attractions].map((attr) => (
+                                                    <AttractionRow key={attr.id} data={attr} onSaveNote={(note) => handleUpdateAttraction(attr.id, { notes: note })} onUpdate={(updates) => handleUpdateAttraction(attr.id, updates)} onDelete={() => handleDeleteAttraction(attr.id)} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-300 mt-4 flex flex-col items-center justify-center">
+                                    <Ticket className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-gray-500 text-sm font-bold mb-4">לא נמצאו אטרקציות ברשימה שלך.</p>
+                                    <button onClick={() => { setActiveTab('recommended'); initiateResearch(); }} className="bg-purple-600 text-white px-6 py-2 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors shadow-lg flex items-center gap-2">
+                                        <Sparkles className="w-4 h-4" /> קבל המלצות AI עכשיו
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        /* Recommended Tab */
+                        <div className="animate-fade-in">
+                            {!loadingRecs && aiCategories.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                                    <div className="bg-purple-100 p-4 rounded-full"><Navigation className="w-8 h-8 text-purple-600" /></div>
+                                    <h3 className="text-xl font-black text-gray-800">בחר עיר לחיפוש</h3>
+                                    <button onClick={initiateResearch} className="bg-white border-2 border-purple-500 text-purple-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-purple-50 transition-all">
+                                        {trip.destination} - בצע מחקר שוק
+                                    </button>
+                                </div>
+                            ) : (
                                 <>
-                                     {/* 1. Category Filter */}
-                                     <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
-                                        <div className="flex gap-2">
-                                            <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1 ${selectedCategory === 'all' ? 'bg-purple-800 text-white border-purple-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}><LayoutGrid className="w-3 h-3" /> הכל</button>
-                                            {aiCategories.map(cat => (
-                                                <button 
-                                                    key={cat.id} 
-                                                    onClick={() => setSelectedCategory(cat.id)}
-                                                    className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${selectedCategory === cat.id ? 'bg-purple-800 text-white border-purple-800 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
-                                                >
-                                                    {cat.title}
-                                                </button>
-                                            ))}
-                                        </div>
+                                    <div className="bg-purple-50 p-3 rounded-xl mb-3 border border-purple-100 flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2"><div className="bg-white p-1.5 rounded-full shadow-sm"><BrainCircuit className="w-4 h-4 text-purple-600" /></div><div><h3 className="text-xs font-black text-purple-900">המלצות AI: Travelers' Choice</h3></div></div>
+                                        {!loadingRecs && (<button onClick={initiateResearch} className="text-[10px] font-bold text-purple-600 bg-white px-2 py-1 rounded shadow-sm flex items-center gap-1"><RotateCw className="w-3 h-3" /> מחקר חדש</button>)}
                                     </div>
 
-                                    {/* 2. Rater Filter */}
-                                    <div className="mb-4 overflow-x-auto pb-2 scrollbar-hide">
-                                        <div className="flex gap-2 items-center">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">הומלץ ע"י:</span>
-                                            <button onClick={() => setSelectedRater('all')} className={`flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${selectedRater === 'all' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-white text-slate-500 border-slate-200'}`}>הכל</button>
-                                            {availableRaters.map(rater => (
-                                                <button 
-                                                    key={rater}
-                                                    onClick={() => setSelectedRater(rater)}
-                                                    className={`flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${selectedRater === rater ? 'bg-purple-100 text-purple-700 border-purple-200 ring-2 ring-purple-100' : 'bg-white text-slate-500 border-slate-200'}`}
-                                                >
-                                                    {rater}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
+                                    {loadingRecs ? (<div className="flex flex-col items-center justify-center py-10"><Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-2" /><p className="text-sm font-bold text-gray-400">סורק אתרי תיירות, גוגל מפות ובלוגים מקומיים...</p></div>) : recError ? (<div className="text-center text-red-500 text-sm font-bold py-4">{recError}</div>) : (
+                                        <>
+                                            {/* 1. Category Filter */}
+                                            <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1 ${selectedCategory === 'all' ? 'bg-purple-800 text-white border-purple-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}><LayoutGrid className="w-3 h-3" /> הכל</button>
+                                                    {aiCategories.map(cat => (
+                                                        <button
+                                                            key={cat.id}
+                                                            onClick={() => setSelectedCategory(cat.id)}
+                                                            className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${selectedCategory === cat.id ? 'bg-purple-800 text-white border-purple-800 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
+                                                        >
+                                                            {cat.title}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                        {currentCategoryAttractions.map(rec => (
-                                            <AttractionRecommendationCard 
-                                                key={rec.id} 
-                                                rec={rec} 
-                                                tripDestination={trip.destination} 
-                                                tripDestinationEnglish={trip.destinationEnglish}
-                                                isAdded={addedIds.has(rec.id)} 
-                                                onAdd={handleAddRec} 
-                                            />
-                                        ))}
-                                    </div>
-                                    
-                                    {currentCategoryAttractions.length === 0 && (
-                                        <div className="text-center py-10">
-                                            <p className="text-slate-400 font-bold">אין תוצאות בקטגוריה זו.</p>
-                                        </div>
+                                            {/* 2. Rater Filter */}
+                                            <div className="mb-4 overflow-x-auto pb-2 scrollbar-hide">
+                                                <div className="flex gap-2 items-center">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">הומלץ ע"י:</span>
+                                                    <button onClick={() => setSelectedRater('all')} className={`flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${selectedRater === 'all' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-white text-slate-500 border-slate-200'}`}>הכל</button>
+                                                    {availableRaters.map(rater => (
+                                                        <button
+                                                            key={rater}
+                                                            onClick={() => setSelectedRater(rater)}
+                                                            className={`flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${selectedRater === rater ? 'bg-purple-100 text-purple-700 border-purple-200 ring-2 ring-purple-100' : 'bg-white text-slate-500 border-slate-200'}`}
+                                                        >
+                                                            {rater}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                {currentCategoryAttractions.map(rec => (
+                                                    <AttractionRecommendationCard
+                                                        key={rec.id}
+                                                        rec={rec}
+                                                        tripDestination={trip.destination}
+                                                        tripDestinationEnglish={trip.destinationEnglish}
+                                                        isAdded={addedIds.has(rec.id)}
+                                                        onAdd={handleAddRec}
+                                                    />
+                                                ))}
+                                            </div>
+
+                                            {currentCategoryAttractions.length === 0 && (
+                                                <div className="text-center py-10">
+                                                    <p className="text-slate-400 font-bold">אין תוצאות בקטגוריה זו.</p>
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </>
                             )}
-                        </>
+                        </div>
                     )}
+                </>
+            )}
+
+            {showCitySelector && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
+                        <div className="p-6 text-center">
+                            <h3 className="text-xl font-black text-slate-800 mb-2">בחר עיר למחקר</h3>
+                            <p className="text-sm text-slate-500 mb-6">ה-AI יבצע מחקר מעמיק על העיר שתבחר</p>
+                            <div className="space-y-3">
+                                {tripCities.map(city => (
+                                    <button
+                                        key={city}
+                                        onClick={() => fetchRecommendations(true, city)}
+                                        className="w-full py-4 rounded-xl border-2 border-slate-100 font-bold text-slate-700 hover:border-purple-500 hover:bg-purple-50 hover:text-purple-700 transition-all"
+                                    >
+                                        {city}
+                                    </button>
+                                ))}
+                            </div>
+                            <button onClick={() => setShowCitySelector(false)} className="mt-6 text-xs font-bold text-slate-400 hover:text-slate-600">ביטול</button>
+                        </div>
+                    </div>
                 </div>
             )}
-          </>
-       )}
-
-       {showCitySelector && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-               <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
-                   <div className="p-6 text-center">
-                       <h3 className="text-xl font-black text-slate-800 mb-2">בחר עיר למחקר</h3>
-                       <p className="text-sm text-slate-500 mb-6">ה-AI יבצע מחקר מעמיק על העיר שתבחר</p>
-                       <div className="space-y-3">
-                           {tripCities.map(city => (
-                               <button 
-                                   key={city}
-                                   onClick={() => fetchRecommendations(true, city)}
-                                   className="w-full py-4 rounded-xl border-2 border-slate-100 font-bold text-slate-700 hover:border-purple-500 hover:bg-purple-50 hover:text-purple-700 transition-all"
-                               >
-                                   {city}
-                               </button>
-                           ))}
-                       </div>
-                       <button onClick={() => setShowCitySelector(false)} className="mt-6 text-xs font-bold text-slate-400 hover:text-slate-600">ביטול</button>
-                   </div>
-               </div>
-           </div>
-       )}
-    </div>
-  );
+        </div>
+    );
 };
 
 const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Attraction>) => void, onDelete: () => void }> = ({ data, onSaveNote, onUpdate, onDelete }) => {
@@ -599,7 +601,7 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
     const handleSaveSchedule = () => { onUpdate({ scheduledDate: fromInputDate(scheduleDate), scheduledTime: scheduleTime }); setIsScheduling(false); };
     const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
     const toggleFavorite = () => { onUpdate({ isFavorite: !data.isFavorite }); };
-    
+
     // Clean maps link
     const nameForMap = cleanTextForMap(data.name);
     const locationForMap = cleanTextForMap(data.location);
@@ -615,51 +617,51 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
         if (text.includes('shop') || text.includes('mall') || text.includes('market')) return <ShoppingBag className="w-5 h-5 text-pink-600" />;
         return <Ticket className="w-5 h-5 text-purple-600" />;
     };
-  
-    return (
-      <div className={`bg-white rounded-xl border p-3 hover:shadow-md transition-all group flex flex-col md:flex-row gap-3 relative overflow-hidden ${data.isFavorite ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-gray-100'}`}>
-        <div className="flex-shrink-0 flex items-center gap-3 md:block">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm bg-gray-50 text-gray-500 ring-1 ring-gray-100">{getTypeIcon()}</div>
-            <div className="md:hidden font-bold text-gray-900" dir="ltr">{data.name}</div>
-        </div>
-        <div className="flex-grow min-w-0">
-           <div className="flex justify-between items-start">
-              <div className="hidden md:flex flex-col">
-                 <div className="flex items-center gap-2">
-                    <button onClick={toggleFavorite} className="focus:outline-none">
-                        <Star className={`w-4 h-4 transition-all ${data.isFavorite ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-slate-300 hover:text-yellow-400'}`} />
-                    </button>
-                    <h4 className="text-sm font-bold text-gray-900 leading-tight" dir="ltr">{data.name}</h4>
-                    {data.rating && (<div className="flex items-center bg-yellow-50 px-1 py-0.5 rounded border border-yellow-100"><span className="text-[9px] font-bold text-yellow-700">{data.rating}</span><Star className="w-2 h-2 text-yellow-600 fill-current mr-0.5" /></div>)}
-                 </div>
-                 <p className="text-gray-500 text-[10px] mt-0.5 leading-snug line-clamp-1">{data.description}</p>
-                 <div className="flex gap-2 mt-1">
-                    {data.recommendationSource && (
-                        <div className="inline-flex items-center text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 w-fit">
-                            <Trophy className="w-2 h-2 mr-1" /> {data.recommendationSource}
-                        </div>
-                    )}
-                    {data.price && (
-                        <div className="inline-flex items-center text-[9px] font-bold text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 w-fit">
-                            <DollarSign className="w-2 h-2 mr-1" /> {data.price}
-                        </div>
-                    )}
-                 </div>
-                 <div className="mt-0.5 flex items-center gap-2 text-[9px] text-gray-400"><MapPin className="w-2 h-2" /> {data.location}</div>
-              </div>
-              <div className="flex items-center gap-1 pl-1 ml-auto md:ml-0">
-                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-lg text-[10px] flex items-center gap-1 font-bold"><MapIcon className="w-3 h-3" /> הצג במפות</a>
-                  <button onClick={() => setIsScheduling(!isScheduling)} className={`p-1.5 rounded-lg border ${data.scheduledDate ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-gray-50 text-gray-400 border-transparent'}`}><Calendar className="w-3.5 h-3.5" /></button>
-                  <button onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
-              </div>
-           </div>
-           
-           <div className="md:hidden mt-2 text-xs text-gray-500">{data.description}</div>
 
-           {isScheduling && (<div className="mt-2 bg-purple-50 p-2 rounded-lg border border-purple-100 flex items-center gap-2"><input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="w-full p-1 rounded border border-purple-200 text-xs" /><input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full p-1 rounded border border-purple-200 text-xs" /><button onClick={handleSaveSchedule} className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap">שמור</button></div>)}
-           {!isScheduling && data.scheduledDate && (<div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-purple-700 bg-purple-50 w-fit px-2 py-0.5 rounded border border-purple-100"><Clock className="w-2.5 h-2.5" /> {data.scheduledDate} {data.scheduledTime}</div>)}
-           <div className="mt-1">{isEditingNote ? (<div className="bg-yellow-50 p-1.5 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-gray-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[9px] text-gray-500">ביטול</button><button onClick={saveNote} className="text-[9px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-gray-50 border-dashed border-gray-200 text-gray-400'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
+    return (
+        <div className={`bg-white rounded-xl border p-3 hover:shadow-md transition-all group flex flex-col md:flex-row gap-3 relative overflow-hidden ${data.isFavorite ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-gray-100'}`}>
+            <div className="flex-shrink-0 flex items-center gap-3 md:block">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm bg-gray-50 text-gray-500 ring-1 ring-gray-100">{getTypeIcon()}</div>
+                <div className="md:hidden font-bold text-gray-900" dir="ltr">{data.name}</div>
+            </div>
+            <div className="flex-grow min-w-0">
+                <div className="flex justify-between items-start">
+                    <div className="hidden md:flex flex-col">
+                        <div className="flex items-center gap-2">
+                            <button onClick={toggleFavorite} className="focus:outline-none">
+                                <Star className={`w-4 h-4 transition-all ${data.isFavorite ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-slate-300 hover:text-yellow-400'}`} />
+                            </button>
+                            <h4 className="text-sm font-bold text-gray-900 leading-tight" dir="ltr">{data.name}</h4>
+                            {data.rating && (<div className="flex items-center bg-yellow-50 px-1 py-0.5 rounded border border-yellow-100"><span className="text-[9px] font-bold text-yellow-700">{data.rating}</span><Star className="w-2 h-2 text-yellow-600 fill-current mr-0.5" /></div>)}
+                        </div>
+                        <p className="text-gray-500 text-[10px] mt-0.5 leading-snug line-clamp-1">{data.description}</p>
+                        <div className="flex gap-2 mt-1">
+                            {data.recommendationSource && (
+                                <div className="inline-flex items-center text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 w-fit">
+                                    <Trophy className="w-2 h-2 mr-1" /> {data.recommendationSource}
+                                </div>
+                            )}
+                            {data.price && (
+                                <div className="inline-flex items-center text-[9px] font-bold text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 w-fit">
+                                    <DollarSign className="w-2 h-2 mr-1" /> {data.price}
+                                </div>
+                            )}
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-2 text-[9px] text-gray-400"><MapPin className="w-2 h-2" /> {data.location}</div>
+                    </div>
+                    <div className="flex items-center gap-1 pl-1 ml-auto md:ml-0">
+                        <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-lg text-[10px] flex items-center gap-1 font-bold"><MapIcon className="w-3 h-3" /> הצג במפות</a>
+                        <button onClick={() => setIsScheduling(!isScheduling)} className={`p-1.5 rounded-lg border ${data.scheduledDate ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-gray-50 text-gray-400 border-transparent'}`}><Calendar className="w-3.5 h-3.5" /></button>
+                        <button onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                </div>
+
+                <div className="md:hidden mt-2 text-xs text-gray-500">{data.description}</div>
+
+                {isScheduling && (<div className="mt-2 bg-purple-50 p-2 rounded-lg border border-purple-100 flex items-center gap-2"><input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="w-full p-1 rounded border border-purple-200 text-xs" /><input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full p-1 rounded border border-purple-200 text-xs" /><button onClick={handleSaveSchedule} className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap">שמור</button></div>)}
+                {!isScheduling && data.scheduledDate && (<div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-purple-700 bg-purple-50 w-fit px-2 py-0.5 rounded border border-purple-100"><Clock className="w-2.5 h-2.5" /> {data.scheduledDate} {data.scheduledTime}</div>)}
+                <div className="mt-1">{isEditingNote ? (<div className="bg-yellow-50 p-1.5 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-gray-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[9px] text-gray-500">ביטול</button><button onClick={saveNote} className="text-[9px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-gray-50 border-dashed border-gray-200 text-gray-400'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
+            </div>
         </div>
-      </div>
     );
 };
