@@ -201,7 +201,18 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
             );
 
             const textContent = typeof response.text === 'function' ? response.text() : response.text;
-            const result = JSON.parse(textContent || '{}');
+
+            let result;
+            try {
+                result = JSON.parse(textContent || '{}');
+            } catch (e) {
+                const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    result = JSON.parse(jsonMatch[0]);
+                } else {
+                    result = {};
+                }
+            }
             if (result.hotels && Array.isArray(result.hotels)) {
                 const enrichedHotels = currentTrip.hotels.map(h => {
                     const enriched = result.hotels.find((e: any) => e.id === h.id);

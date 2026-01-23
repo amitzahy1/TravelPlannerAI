@@ -284,7 +284,18 @@ const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBo
             );
 
             const textContent = typeof response.text === 'function' ? response.text() : response.text;
-            const hotelData = JSON.parse(textContent);
+
+            let hotelData;
+            try {
+                hotelData = JSON.parse(textContent);
+            } catch (e) {
+                const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    hotelData = JSON.parse(jsonMatch[0]);
+                } else {
+                    throw new Error('Could not extract JSON from response');
+                }
+            }
             onSave(hotelData);
         } catch (e) {
             console.error(e);

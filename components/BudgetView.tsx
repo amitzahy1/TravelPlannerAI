@@ -275,7 +275,18 @@ const CategoryDetailModal: React.FC<{
                     { responseMimeType: 'application/json' }
                 );
                 const textContent = typeof response.text === 'function' ? response.text() : response.text;
-                const data = JSON.parse(textContent);
+
+                let data;
+                try {
+                    data = JSON.parse(textContent);
+                } catch (e) {
+                    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        data = JSON.parse(jsonMatch[0]);
+                    } else {
+                        throw new Error('Could not extract JSON from response');
+                    }
+                }
                 if (data.price) {
                     handlePriceUpdate(itemId, data.price);
                 }
