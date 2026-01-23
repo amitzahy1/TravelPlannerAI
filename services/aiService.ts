@@ -20,40 +20,70 @@ Your goal is to provide trustworthy, well-researched recommendations that travel
 // --- CONFIGURATION ---
 
 // 1. Google Gemini Models (Direct SDK)
+// Note: SDK usually adds 'models/' prefix automatically. If 404 occurs, try without.
 const GOOGLE_MODELS = [
-  "gemini-2.0-flash-exp",              // Latest experimental (if quota available)
-  "models/gemini-1.5-flash-latest",    // Fixed: Added models/ prefix
-  "models/gemini-1.5-flash",           // Fixed: Added models/ prefix
-  "models/gemini-1.5-pro-latest"       // Fixed: Added models/ prefix
+  "gemini-2.0-flash-exp",              // Latest experimental
+  "gemini-1.5-flash",                  // Standard Flash
+  "gemini-1.5-flash-latest",           // Latest Flash
+  "gemini-1.5-pro",                    // Standard Pro
+  "gemini-1.5-pro-latest"              // Latest Pro
 ];
 
 // 2. OpenRouter Models (Fallback / Specific Capabilities)
 const OPENROUTER_MODELS = [
-  "google/gemini-2.0-flash-exp:free",      // Free tier on OpenRouter
-  "meta-llama/llama-3.1-8b-instruct:free", // Free Llama 3.1
-  "mistralai/mistral-7b-instruct:free",    // Free Mistral
-  "huggingfaceH4/zephyr-7b-beta:free",     // Free Zephyr
-  "openai/gpt-4o-mini"                     // Paid fallback (if user has credits)
+  "google/gemini-2.0-flash-exp:free",      // Free tier
+  "google/gemini-2.0-flash-thinking-exp:free", // Thinking model
+  "meta-llama/llama-3.2-11b-vision-instruct:free",
+  "meta-llama/llama-3.1-8b-instruct:free",
+  "mistralai/mistral-7b-instruct:free",
+  "openai/gpt-4o-mini"                     // Paid fallback
 ];
 
 export const AI_MODEL = GOOGLE_MODELS[0]; // For display
 
 // --- HELPER: Extract JSON from text ---
-// Some models return plain text with embedded JSON instead of pure JSON
+// Enhanced to handle arrays, objects, and loose markdown
 const extractJSON = (text: string): string => {
-  // Try to find JSON between markdown code blocks
-  const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-  if (codeBlockMatch) return codeBlockMatch[1];
+  if (!text) return "{}";
 
-  // Try to find raw JSON object
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) return jsonMatch[0];
+  // 1. Try finding content between ```json blocks
+  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (codeBlockMatch) {
+    return codeBlockMatch[1];
+  }
 
-  // If already looks like JSON, return as-is
-  if (text.trim().startsWith('{')) return text;
+  // 2. Try finding the first '{' or '[' and the last '}' or ']'
+  const firstOpenBrace = text.indexOf('{');
+  const firstOpenBracket = text.indexOf('[');
 
-  // Otherwise throw - it's not JSON at all
-  throw new Error(`Response is not valid JSON: ${text.substring(0, 100)}...`);
+  let startIndex = -1;
+  let isArray = false;
+
+  // Determine if it starts with { or [
+  if (firstOpenBrace !== -1 && (firstOpenBracket === -1 || firstOpenBrace < firstOpenBracket)) {
+    startIndex = firstOpenBrace;
+  } else if (firstOpenBracket !== -1) {
+    startIndex = firstOpenBracket;
+    isArray = true;
+  }
+
+  if (startIndex !== -1) {
+    // Find the matching closing character (searching from the end)
+    const lastIndex = text.lastIndexOf(isArray ? ']' : '}');
+    if (lastIndex !== -1 && lastIndex > startIndex) {
+      return text.substring(startIndex, lastIndex + 1);
+    }
+  }
+
+  // 3. Fallback: If it looks like pure JSON already
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    return trimmed;
+  }
+
+  // 4. Last Resort: return empty object if nothing found (prevent crash)
+  console.warn("Could not extract JSON from response:", text.substring(0, 100));
+  return "{}";
 };
 
 // --- CLIENT CACHING ---
@@ -125,14 +155,25 @@ export const generateWithFallback = async (
 
         console.log(`✅ [GoogleDirect] Success with ${model}`);
 
-        // Normalize response - ensure .text is accessible as property
-        // Google SDK response has .text as a property (or method depending on version)
-        const rawText = typeof response.text === 'function' ? response.text() : response.text;
+        // Normalize response
+        let rawText = typeof response.text === 'function' ? response.text() : response.text;
+
+        // AUTO-FIX: Extract JSON if format is requested
+        // If the caller asked for JSON (responseMimeType), we ensure we return Clean JSON string in .text
+        // This solves the issue where models return "Here is the JSON: {...}"
+        if (config && config.responseMimeType === 'application/json') {
+          try {
+            const cleanJson = extractJSON(rawText);
+            rawText = cleanJson; // Replace conversational text with pure JSON
+          } catch (e) {
+            console.warn("Failed to auto-extract JSON in centralized service", e);
+            // We still return rawText, hoping consumer can handle it or it's actually valid
+          }
+        }
 
         return {
           ...response,
-          text: rawText, // Ensure it's always a string property
-          extractedText: rawText // Store original for JSON extraction
+          text: rawText // Now guaranteed to be extracted JSON if mimeType was set
         };
 
       } catch (error: any) {

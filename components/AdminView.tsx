@@ -3,6 +3,7 @@ import { Trip, HotelBooking, FlightSegment } from '../types';
 import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon } from 'lucide-react';
 import { getAI, AI_MODEL, generateWithFallback, extractTripFromDoc } from '../services/aiService';
 import { MagicDropZone } from './MagicDropZone';
+import { ShareModal } from './ShareModal';
 
 interface TripSettingsModalProps {
     data: Trip[];
@@ -42,6 +43,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
     const [trips, setTrips] = useState<Trip[]>(data);
     const [activeTripId, setActiveTripId] = useState(data[0]?.id || '');
     const [isWizardOpen, setIsWizardOpen] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const importFileRef = useRef<HTMLInputElement>(null);
 
@@ -451,6 +453,10 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
                             <button onClick={() => setIsWizardOpen(true)} className="w-full py-3 rounded-xl border-2 border-dashed border-slate-300 text-slate-400 font-bold text-sm hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 flex items-center justify-center gap-2 mt-2">
                                 <Plus className="w-4 h-4" /> טיול חדש
                             </button>
+
+                            <button onClick={() => setIsShareModalOpen(true)} className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2 mt-4">
+                                <Share2 className="w-4 h-4" /> שתף טיול
+                            </button>
                         </div>
 
                         <div className="mt-auto p-4 border-t border-slate-200 space-y-2">
@@ -711,6 +717,18 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
                     <div className="absolute inset-0 z-50 bg-white">
                         <TripWizard onFinish={handleCreateTrip} onCancel={() => setIsWizardOpen(false)} />
                     </div>
+                )}
+
+                {isShareModalOpen && (
+                    <ShareModal
+                        trip={activeTrip}
+                        onClose={() => setIsShareModalOpen(false)}
+                        onUpdateTrip={(updatedTrip) => {
+                            const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t);
+                            setTrips(newTrips);
+                            onSave(newTrips);
+                        }}
+                    />
                 )}
             </div>
         </div>
