@@ -262,6 +262,26 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
         document.body.removeChild(link);
     };
 
+    const handleImportTrip = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const json = JSON.parse(event.target?.result as string);
+                if (!json.id || !json.itinerary) { alert("קובץ לא תקין"); return; }
+                const newTrip = { ...json, id: `imported-${Date.now()}`, name: `${json.name} (מיובא)` };
+                const updatedTrips = [...trips, newTrip];
+                setTrips(updatedTrips);
+                setActiveTripId(newTrip.id);
+                onSave(updatedTrips);
+                alert("הטיול יובא בהצלחה!");
+            } catch (err) { console.error(err); alert("שגיאה בקריאת הקובץ"); }
+        };
+        reader.readAsText(file);
+        if (importFileRef.current) importFileRef.current.value = '';
+    };
+
     const handleImportFromGoogle = async () => {
         try {
             // Calculate date range: Trip Start or Today -> +30 days
@@ -347,139 +367,44 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
         }
 
 
-        const handleImportFromGoogle = async () => {
-            try {
-                // Calculate date range: Trip Start or Today -> +30 days
-                let start = new Date().toISOString();
-                if (activeTrip.dates && activeTrip.dates.includes('-')) {
-                    const p = activeTrip.dates.split('-')[0].trim();
-                    const d = toInputDate(p);
-                    if (d) start = new Date(d).toISOString();
-                }
 
-                const end = new Date(start);
-                end.setDate(end.getDate() + 30);
 
-                // 1. Try with existing token (if any)
-                let token = localStorage.getItem('google_access_token');
-                let events = [];
 
-                try {
-                    events = await fetchCalendarEvents(start, end.toISOString(), token || undefined);
-                } catch (err: any) {
-                    // 2. If failed, request new token
-                    if (err.message.includes('Permission') || err.message.includes('expired') || err.message.includes('token')) {
-                        token = await requestAccessToken();
-                        localStorage.setItem('google_access_token', token);
-                        events = await fetchCalendarEvents(start, end.toISOString(), token);
-                    } else {
-                        throw err;
-                    }
-                }
+    };
 
-                // 3. Process Events
-                const mapped = mapEventsToTimeline(events);
-                if (mapped.length === 0) {
-                    alert("לא נמצאו אירועים בטווח התאריכים הנבחר.");
-                    return;
-                }
+    const handleSyncCalendar = () => {
+        const icsContent: string[] = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Travel Planner Pro//EN',
+            'CALSCALE:GREGORIAN',
+            'METHOD:PUBLISH'
+        ];
 
-                // Merge into itinerary (simple append for now)
-                const newItinerary = [...activeTrip.itinerary];
+        // Format Date to YYYYMMDDTHHMMSS
+        const formatICSDate = (date: Date) => {
+            return date.toISOString().replace(/[-:]/g, '').split('.')[0];
+        };
 
-                // Group by date
-                const byDate: Record<string, any[]> = {};
-                mapped.forEach(ev => {
-                    if (!byDate[ev.date]) byDate[ev.date] = [];
-                    byDate[ev.date].push(ev);
-                });
-
-                // Update itinerary items
-                Object.keys(byDate).forEach(date => {
-                    const dayEvents = byDate[date];
-                    const dayIndex = newItinerary.findIndex(item => item.date === date);
-
-                    const activitiesToAdd = dayEvents.map(e => `${e.time ? e.time + ' ' : ''}${e.title}`);
-
-                    if (dayIndex >= 0) {
-                        newItinerary[dayIndex] = {
-                            ...newItinerary[dayIndex],
-                            activities: [...newItinerary[dayIndex].activities, ...activitiesToAdd]
-                        };
-                    } else {
-                        newItinerary.push({
-                            id: `day-${date}`,
-                            day: newItinerary.length + 1,
-                            date: date,
-                            title: `יום ${newItinerary.length + 1}`,
-                            activities: activitiesToAdd
-                        });
-                    }
-                });
-
-                // Sort by date
-                newItinerary.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-                const updatedTrip = { ...activeTrip, itinerary: newItinerary };
-                handleUpdateTrip(updatedTrip);
-                onSave(trips.map(t => t.id === activeTripId ? updatedTrip : t)); // fix: use updatedTrip directly here
-
-                alert(`יובאו בהצלחה ${mapped.length} אירועים מהיומן!`);
-
-            } catch (e: any) {
-                console.error(e);
-                alert("שגיאה ביבוא: " + e.message);
+        const addEvent = (summary: string, description: string, location: string, startDate: Date, endDate: Date, allDay = false) => {
+            icsContent.push('BEGIN:VEVENT');
+            icsContent.push(`UID:${Date.now()}-${Math.random().toString(36).substr(2, 9)}@travelplanner.app`);
+            icsContent.push(`DTSTAMP:${formatICSDate(new Date())}Z`);
+            if (allDay) {
+                // For all day, value is DATE (YYYYMMDD)
+                icsContent.push(`DTSTART;VALUE=DATE:${formatICSDate(startDate).substring(0, 8)}`);
+                const nextDay = new Date(endDate);
+                nextDay.setDate(nextDay.getDate() + 1);
+                icsContent.push(`DTEND;VALUE=DATE:${formatICSDate(nextDay).substring(0, 8)}`);
+            } else {
+                icsContent.push(`DTSTART:${formatICSDate(startDate)}`);
+                icsContent.push(`DTEND:${formatICSDate(endDate)}`);
             }
+            icsContent.push(`SUMMARY:${summary}`);
+            icsContent.push(`DESCRIPTION:${description}`);
+            icsContent.push(`LOCATION:${location}`);
+            icsContent.push('END:VEVENT');
         };
-
-        const handleSyncCalendar = async () => {
-            let token = localStorage.getItem('google_access_token');
-
-            // 1. Try to fetch with existing token
-            try {
-                await tryFetch(token);
-            } catch (e: any) {
-                // 2. If 401/403, request NEW token via GIS Popup
-                if (e.message.includes('Permission denied') || e.message.includes('expired')) {
-                    try {
-                        token = await requestAccessToken();
-                        localStorage.setItem('google_access_token', token); // Save for session
-                        // 3. Retry with new token
-                        await tryFetch(token);
-                    } catch (authErr: any) {
-                        alert("User denied permission or popup closed.");
-                    }
-                } else {
-                    alert("Error: " + e.message);
-                }
-            }
-        };
-
-        const tryFetch = async (token: string | null) => {
-            const icsContent: string[] = [
-                // ... existing ICS header code ...
-                // (OMITTED FOR BREVITY - KEEP EXISTING LOGIC)
-            ];
-
-            // Actually, the USER requested IMPORT from Google Calendar, not Export to ICS.
-            // My previous code was doing Export (ICS generation) in handleSyncCalendar!
-            // The user wants to READ from Google Calendar ("import").
-
-            // Correct Logic for IMPORT:
-            const startDate = trips[0]?.itinerary?.[0]?.date ? new Date(trips[0].itinerary[0].date).toISOString() : new Date().toISOString();
-            const endDate = new Date();
-            endDate.setMonth(endDate.getMonth() + 1);
-
-            const events = await fetchCalendarEvents(startDate, endDate.toISOString(), token || undefined);
-            const mapped = mapEventsToTimeline(events);
-
-            // Update state with new events... 
-            // For now, let's just alert success or similar since the UI needs to display them.
-            alert(`Successfully imported ${events.length} events from Google Calendar!`);
-            console.log("Imported Events:", mapped);
-            // In a real app we would merge these into the trip state
-        };
-
 
         const parseEventDate = (dateStr: string, timeStr: string = '00:00'): Date | null => {
             try {
@@ -505,8 +430,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
         // 1. Flights
         activeTrip.flights?.segments?.forEach(seg => {
             const start = parseEventDate(seg.date, seg.departureTime);
-            const end = parseEventDate(seg.date, seg.arrivalTime); // Simplistic, assumes same day for now or handles correctly if ISO
-            // If arrival time is earlier than departure, assume next day
+            const end = parseEventDate(seg.date, seg.arrivalTime);
             if (start && end && end < start) {
                 end.setDate(end.getDate() + 1);
             }
