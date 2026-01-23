@@ -575,11 +575,11 @@ export const ItineraryView: React.FC<{
                                                 {day.events.slice(0, 3).map((event, idx) => (
                                                     <div
                                                         key={idx}
-                                                        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-full border shadow-sm transition-transform hover:scale-105 w-fit max-w-full ${event.bgClass}`}
+                                                        className={`flex items-center gap-2 px-3 py-2 rounded-full border shadow-sm transition-transform hover:scale-105 w-fit max-w-full ${event.bgClass}`}
                                                     >
-                                                        <span className="text-[10px] font-black opacity-60 min-w-[30px]">{event.time || "--:--"}</span>
-                                                        <event.icon className={`w-3 h-3 ${event.colorClass}`} />
-                                                        <span className="text-[10px] font-black text-slate-700 truncate leading-none">
+                                                        <span className="text-xs font-black opacity-60 min-w-[35px]">{event.time || "--:--"}</span>
+                                                        <event.icon className={`w-3.5 h-3.5 ${event.colorClass}`} />
+                                                        <span className="text-xs font-black text-slate-700 truncate leading-none">
                                                             {event.title}
                                                         </span>
                                                     </div>
@@ -621,116 +621,124 @@ export const ItineraryView: React.FC<{
 
             {/* DAY DETAIL MODAL */}
             {selectedDayIso && activeDay && (
-                <div className="fixed inset-0 z-[100] z-[1000] bg-slate-900/95 backdrop-blur-md animate-fade-in overflow-y-auto">
-                    <div className="min-h-screen p-4 md:p-10 flex justify-center">
-                        <div className="w-full max-w-4xl bg-white/95 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col">
+                <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto flex items-center justify-center p-4">
+                    <div className="w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh]">
 
-                            {/* Modal Header */}
-                            <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-100 p-6 md:p-8 flex items-center justify-between">
-                                <div className="flex items-center gap-6">
-                                    <div className="bg-slate-900 text-white w-20 h-20 rounded-2xl flex flex-col items-center justify-center shadow-lg">
-                                        <span className="text-3xl font-black leading-none">{activeDay.displayDate.split(' ')[0]}</span>
-                                        <span className="text-xs font-bold uppercase">{activeDay.displayDate.split(' ')[1]}</span>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                            {activeDay.displayDayOfWeek} • {activeDay.events.length} פעילויות
-                                        </div>
-                                        <h2 className="text-4xl font-black text-slate-800">{activeDay.locationContext || 'יום בטיול'}</h2>
-                                    </div>
+                        {/* Modal Header */}
+                        <div className="bg-white border-b border-slate-100 p-6 flex items-center justify-between sticky top-0 z-20">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-slate-100 text-slate-700 w-14 h-14 rounded-2xl flex flex-col items-center justify-center border border-slate-200">
+                                    <span className="text-xl font-black leading-none">{activeDay.displayDate.split(' ')[0]}</span>
+                                    <span className="text-[10px] font-bold uppercase">{activeDay.displayDate.split(' ')[1]}</span>
                                 </div>
-                                <div className="flex items-center gap-4">
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">
+                                        {activeDay.displayDayOfWeek}
+                                    </div>
+                                    <h2 className="text-2xl font-black text-slate-800 leading-none">{activeDay.locationContext || 'יום בטיול'}</h2>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        const [y, m, d] = activeDay.dateIso.split('-');
+                                        setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` })
+                                    }}
+                                    className="p-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-colors"
+                                    title="הוסף פעילות"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                </button>
+                                <button onClick={() => setSelectedDayIso(null)} className="p-2.5 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-xl transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Content - Vertical List */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-slate-50/50">
+                            {activeDay.events.length > 0 ? (
+                                <div className="space-y-3">
+                                    {activeDay.events.map((event, i) => (
+                                        <div
+                                            key={`${event.id}-${i}`}
+                                            className="group flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all"
+                                        >
+                                            {/* Time Pill */}
+                                            <div className="w-16 flex-shrink-0 flex flex-col items-center justify-center">
+                                                {event.time ? (
+                                                    <span className="font-mono text-sm font-black text-slate-700 bg-slate-100 px-2 py-1 rounded-lg">
+                                                        {event.time}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs font-bold text-slate-300">--:--</span>
+                                                )}
+                                            </div>
+
+                                            {/* Icon */}
+                                            <div className={`p-3 rounded-xl flex-shrink-0 ${event.bgClass}`}>
+                                                <event.icon className={`w-5 h-5 ${event.colorClass}`} />
+                                            </div>
+
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-bold text-slate-800 text-base truncate">{event.title}</h3>
+                                                    {event.isExternal && <span className="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded font-bold">יומן</span>}
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-3 mt-1">
+                                                    {event.subtitle && <span className="text-xs text-slate-500 font-medium truncate">{event.subtitle}</span>}
+                                                    {event.location && (
+                                                        <span className="flex items-center text-[10px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                                                            <MapPin className="w-3 h-3 ml-0.5" /> {event.location}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {event.isManual && event.dayId && event.activityIndex !== undefined && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteActivity(event.dayId!, event.activityIndex!) }}
+                                                        className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-colors"
+                                                        title="מחק"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+
                                     <button
                                         onClick={() => {
                                             const [y, m, d] = activeDay.dateIso.split('-');
                                             setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` })
                                         }}
-                                        className="hidden md:flex bg-blue-600 text-white px-5 py-3 rounded-xl font-bold text-sm shadow-md hover:bg-blue-700 items-center gap-2"
+                                        className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/50 transition-all flex items-center justify-center gap-2"
                                     >
-                                        <Plus className="w-4 h-4" /> הוסף פעילות
-                                    </button>
-                                    <button onClick={() => setSelectedDayIso(null)} className="p-3 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
-                                        <X className="w-6 h-6 text-slate-600" />
+                                        <Plus className="w-4 h-4" /> הוסף פעילות נוספת
                                     </button>
                                 </div>
-                            </div>
-
-                            {/* Modal Content - List */}
-                            <div className="p-6 md:p-8 space-y-4 pb-20">
-                                {activeDay.events.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {activeDay.events.map((event, i) => (
-                                            <div
-                                                key={`${event.id}-${i}`}
-                                                className={`p-5 rounded-[1.5rem] border shadow-sm transition-all hover:shadow-md hover:scale-[1.01] flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden group/card ${event.bgClass} bg-white`}
-                                            >
-                                                {event.isManual && event.dayId && event.activityIndex !== undefined && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleDeleteActivity(event.dayId!, event.activityIndex!) }}
-                                                        className="absolute top-3 left-3 p-1.5 bg-white/70 hover:bg-red-100 text-slate-300 hover:text-red-500 rounded-lg transition-colors z-20 backdrop-blur-sm opacity-0 group-hover/card:opacity-100"
-                                                        title="מחק פעילות"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                )}
-
-                                                <div className="relative z-10 flex flex-col h-full">
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        {event.time ? (
-                                                            <span className="font-mono text-xs font-black bg-white/80 px-2 py-1 rounded-lg backdrop-blur-sm shadow-sm border border-black/5 flex items-center gap-1">
-                                                                <Clock className="w-3 h-3 text-slate-400" /> {event.time}
-                                                            </span>
-                                                        ) : <div />}
-                                                        <event.icon className={`w-6 h-6 ${event.colorClass}`} />
-                                                    </div>
-
-                                                    <div className="flex items-start gap-1">
-                                                        <h3 className="text-xl font-black text-slate-900 leading-tight mb-2">{event.title}</h3>
-                                                        {event.isExternal && <span className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap">יומן</span>}
-                                                    </div>
-                                                    {event.subtitle && <p className="text-sm font-bold text-slate-500 mb-4">{event.subtitle}</p>}
-
-                                                    <div className="mt-auto pt-2 flex items-center gap-2 flex-wrap">
-                                                        {event.location && (
-                                                            <div className="flex items-center text-[10px] font-bold text-slate-500 bg-white/60 px-2 py-1 rounded-lg border border-white/50">
-                                                                <MapPin className="w-3 h-3 ml-1" /> {event.location}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-
-                                        {/* Add Card inside Modal Grid */}
-                                        {/* ... (Same Add Button Logic) ... */}
-                                        <button
-                                            onClick={() => {
-                                                const [y, m, d] = activeDay.dateIso.split('-');
-                                                setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` })
-                                            }}
-                                            className="border-2 border-dashed border-slate-200 rounded-[1.5rem] flex flex-col items-center justify-center p-6 text-slate-300 hover:text-blue-500 hover:border-blue-300 hover:bg-blue-50/50 transition-all min-h-[160px]"
-                                        >
-                                            <Plus className="w-8 h-8 mb-2" />
-                                            <span className="font-bold text-sm">הוסף פעילות</span>
-                                        </button>
+                            ) : (
+                                <div className="py-12 flex flex-col items-center text-center text-slate-400">
+                                    <div className="bg-slate-100 p-4 rounded-full mb-4">
+                                        <Moon className="w-8 h-8 text-slate-300" />
                                     </div>
-                                ) : (
-                                    <div className="py-20 flex flex-col items-center text-center text-slate-400">
-                                        <Moon className="w-16 h-16 mb-4 opacity-20" />
-                                        <h3 className="text-2xl font-black text-slate-300">יום חופשי</h3>
-                                        <p className="font-medium">אין פעילויות מתוכננות ליום זה</p>
-                                        <button
-                                            onClick={() => {
-                                                const [y, m, d] = activeDay.dateIso.split('-');
-                                                setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` })
-                                            }}
-                                            className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 hover:scale-105 transition-all"
-                                        >
-                                            הוסף פעילות ראשונה
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                                    <h3 className="text-lg font-black text-slate-700">יום חופשי</h3>
+                                    <p className="text-sm">אין פעילויות מתוכננות ליום זה</p>
+                                    <button
+                                        onClick={() => {
+                                            const [y, m, d] = activeDay.dateIso.split('-');
+                                            setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` })
+                                        }}
+                                        className="mt-4 bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-sm shadow-md hover:bg-blue-700 transition-all"
+                                    >
+                                        הוסף פעילות
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
