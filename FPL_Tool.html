@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPL Ultimate Draft Tool v8</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh; padding: 15px; line-height: 1.4; max-width: 100%; margin: 0 auto;
+        }
+        .header { text-align: center; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; font-size: 1.8em; margin-bottom: 8px; font-weight: 700; }
+        .subtitle { color: #7f8c8d; font-size: 1em; font-weight: 500; }
+        .legend { background: #fff; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 20px; font-size: 0.9em; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .legend-item { display: inline-block; margin: 0 10px; }
+        .legend-title { font-weight: 600; cursor: help; border-bottom: 1px dotted #2c3e50; }
+        .filters { background: white; padding: 15px; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: end; }
+        .filter-group { display: flex; flex-direction: column; }
+        label { font-weight: 600; margin-bottom: 4px; color: #2c3e50; font-size: 0.85em; }
+        select, input { padding: 8px; border: 2px solid #ecf0f1; border-radius: 6px; font-size: 12px; transition: all 0.3s ease; }
+        select:focus, input:focus { outline: none; border-color: #a1c4fd; box-shadow: 0 0 0 3px rgba(161, 196, 253, 0.2); }
+        .controls { display: flex; gap: 10px; margin-bottom: 15px; justify-content: center; flex-wrap: wrap; }
+        .control-button { background: linear-gradient(135deg, #e2e8f0 0%, #f1f5f9 100%); color: #475569; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; font-size: 0.85em; }
+        .control-button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); }
+        .control-button.active { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); color: #333; border-color: #a1c4fd; }
+        .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.1); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8em; table-layout: fixed; }
+        th { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); color: #333; padding: 6px 3px; text-align: center; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none; transition: all 0.3s ease; position: sticky; top: 0; z-index: 10; }
+        th:hover { background: linear-gradient(135deg, #8ab2f2 0%, #a1c4fd 100%); }
+        th.sorted { background: linear-gradient(135deg, #8ab2f2 0%, #a1c4fd 100%); }
+        td { padding: 5px 3px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; border-bottom: 1px solid #f8f9fa; text-align: center; }
+        tr:hover { background: #f1f5f9; }
+        .name-cell { color: #2c3e50; min-width: 110px; text-align:right; overflow: visible; white-space: normal; }
+        .player-name-icon { margin-right: 5px; font-size: 0.9em; }
+        .verbal-insights-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
+        .transfers-cell { font-size: 0.9em; }
+        .xdiff-positive, .net-transfers-positive { color: #27ae60; font-weight: 600; }
+        .xdiff-negative, .net-transfers-negative { color: #e74c3c; font-weight: 600; }
+        .sort-indicator { display: inline-block; margin-left: 3px; } .bold-cell { font-weight: 700; }
+        .set-piece-yes { color: #2c3e50; font-weight: 600; } .set-piece-no { color: #95a5a6; font-weight: 400; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .modal-content { background-color: #f8f9fa; margin: 5% auto; padding: 25px; border: none; width: 75%; max-width: 1200px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; transition: color 0.2s; } .close:hover { color: #333; }
+        
+        .comparison-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .comparison-table th, .comparison-table td { padding: 8px 12px; text-align: center; border: 1px solid #dee2e6; }
+        .comparison-table th { background-color: #e9ecef; }
+        .comparison-table .metric-name { text-align: right; font-weight: 600; }
+        .comparison-table .fixtures-cell { white-space: normal; }
+        .metric-value-best { background-color: #d4edda; color: #155724; font-weight: bold; }
+        .metric-value-worst { background-color: #f8d7da; color: #721c24; font-weight: bold; }
+        .metric-value-mid { background-color: #fff3cd; color: #856404; }
+
+        .fixture { padding: 2px 4px; border-radius: 4px; margin-right: 3px; font-weight: bold; display: inline-block; min-width: 50px; text-align: center; font-size: 0.8em;}
+        .fdr-1 { background-color: #E8F8F5; color: #16A085; border: 1px solid #A3E4D7;}
+        .fdr-2 { background-color: #E8F8F5; color: #16A085; border: 1px solid #A3E4D7;}
+        .fdr-3 { background-color: #FEF9E7; color: #F39C12; border: 1px solid #FAD7A0;}
+        .fdr-4 { background-color: #F9EBEA; color: #C0392B; border: 1px solid #F5B7B1;}
+        .fdr-5 { background-color: #E8E8E8; color: #646464; border: 1px solid #C8C8C8;}
+        .controls-section { width: 100%; border-top: 1px solid #dee2e6; padding-top: 15px; margin-top: 15px; }
+        .controls-section h3 { text-align: center; color: #495057; margin-bottom: 10px; font-size: 1.1em; }
+        .button-group { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.2.1/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+</head>
+<body>
+    <div class="container">
+    <div class="header">
+        <h1>🏆 FPL Ultimate Draft Tool v8</h1>
+        <p class="subtitle">ניתוח חכם | ציון דראפט ייעודי | סינון מתקדם</p>
+        <p id="lastUpdated" class="subtitle" style="font-size: 0.8em; margin-top: 5px;"></p>
+    </div>
+    <div class="legend">
+        <p>
+            <span class="legend-item"><strong class="legend-title" title="ציון ייעודי המחושב לפי עמדה להערכת שווי בדראפט.">ציון דראפט</strong></span>
+            <span class="legend-item"><strong class="legend-title" title="ההפרש בין G+A ל-xG+xA. חיובי = ביצועי יתר. שלילי = ביצועי חסר.">xDiff</strong></span>
+            <span class="legend-item"><strong class="legend-title" title="מדד השפעה, יצירתיות ואיום">ICT</strong></span>
+        </p>
+    </div>
+    <div class="filters">
+        <div class="filter-group"><label>🔍 חיפוש שחקן:</label><input type="text" id="searchName" onkeyup="processChange()" placeholder="שם שחקן..."></div>
+        <div class="filter-group"><label>⚽ עמדה:</label><select id="positionFilter" onchange="processChange()"><option value="">כל העמדות</option><option value="GKP">🥅 שוערים</option><option value="DEF">🛡️ מגנים</option><option value="MID">⚽ קשרים</option><option value="FWD">🎯 חלוצים</option></select></div>
+        <div class="filter-group"><label>🏟️ קבוצה:</label><select id="teamFilter" onchange="processChange()"><option value="">כל הקבוצות</option></select></div>
+        <div class="filter-group"><label>💰 מחיר טווח:</label><input type="text" id="priceRange" onkeyup="processChange()" placeholder="4.0-15.0"></div>
+        <div class="filter-group"><label>🏆 נקודות מינימום:</label><input type="number" id="minPoints" onkeyup="processChange()" placeholder="0"></div>
+        <div class="filter-group"><label>⏳ דקות מינימום:</label><input type="number" id="minMinutes" onkeyup="processChange()" value="30" placeholder="0"></div>
+        <div class="filter-group"><label>🎯 טווח xDiff:</label><select id="xDiffFilter" onchange="processChange()"><option value="">כל הטווח</option><option value="positive">חיובי (ביצועי יתר)</option><option value="negative">שלילי (ביצועי חסר)</option></select></div>
+        <div class="filter-group"><label>הצג:</label><select id="showEntries" onchange="processChange()"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="all" selected>הכל</option></select></div>
+    </div>
+    <div class="controls">
+        <div class="button-group">
+            <button class="control-button active" onclick="showAllPlayers(this)">כל השחקנים</button>
+            <button class="control-button" id="compareBtn" onclick="compareSelectedPlayers()">השווה שחקנים נבחרים</button>
+            <button class="control-button" onclick="exportToCsv()">📁 יצוא CSV</button>
+        </div>
+        <div class="controls-section">
+            <h3>פילטור חכם</h3>
+            <div class="button-group">
+                <button class="control-button" data-filter-name="set_pieces" onclick="quickFilter(this, 'set_pieces')">🎯 בועטי מצבים נייחים</button>
+                <button class="control-button" data-filter-name="attacking_defenders" onclick="quickFilter(this, 'attacking_defenders')">🛡️ מגנים תוקפים</button>
+                <button class="control-button" data-filter-name="differentials" onclick="quickFilter(this, 'differentials')">💎 מציאות (עד 5%)</button>
+            </div>
+        </div>
+        <div class="controls-section">
+            <h3>גרפים</h3>
+            <div class="button-group">
+                <button class="control-button" onclick="showVisualization('midfielders')">📊 מטריצת קשרים</button>
+                <button class="control-button" onclick="showVisualization('forwards')">📊 מטריצת חלוצים</button>
+                <button class="control-button" onclick="showVisualization('defenders')">📊 מטריצת מגנים</button>
+                <button class="control-button" onclick="showVisualization('goalkeepers')">📊 מטריצת שוערים</button>
+                <button class="control-button" onclick="showTeamDefenseChart()">🛡️ הגנת קבוצות</button>
+                <button class="control-button" onclick="showTeamAttackChart()">⚔️ התקפת קבוצות</button>
+                <button class="control-button" onclick="showPriceVsScoreChart()">💰 תמורה למחיר</button>
+                <button class="control-button" onclick="showIctBreakdownChart()">🧬 פרופיל שחקן (ICT)</button>
+            </div>
+        </div>
+        <div class="season-controls" style="margin-top: 10px; display: flex; justify-content: center; width: 100%;">
+            <button class="control-button" id="historicalDataBtn" onclick="switchDataSource('historical')">נתוני עבר (2024/25)</button>
+            <button class="control-button active" id="liveDataBtn" onclick="switchDataSource('live')">נתונים חיים (2025/26)</button>
+        </div>
+    </div>
+    <div class="table-container">
+        <table id="playersTable">
+            <thead>
+                <tr>
+                    <th>בחר</th>
+                    <th onclick="sortTable(0)" style="width: 4%;">דירוג<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(1)" style="width: 12%;">שחקן<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(2)" title="ציון ייעודי המחושב לפי עמדה להערכת שווי בדראפט.">ציון דראפט<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(3)">קבוצה<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(4)">עמדה<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(5)" style="width: 4%;">מחיר<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(6)" style="width: 4%;">נק'<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(7)">נק'/90<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(8)">% בחירה<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(9)">דרימטים<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(10)">העברות<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(11)">DC/90<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(12)">G+A<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(13)">xGI<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(14)">דקות<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(15)" title="ההפרש בין G+A ל-xG+xA. חיובי = ביצועי יתר. שלילי = ביצועי חסר.">xDiff<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(16)" title="מדד השפעה, יצירתיות ואיום">ICT<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(17)">בונוס<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(18)">CS<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(19)" style="width: 3.5%;">פנדל<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(20)" style="width: 3.5%;">קרן<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(21)" style="width: 3.5%;">חופשית<span class="sort-indicator"></span></th>
+                    <th onclick="sortTable(22)" style="width: 15%;">תובנות<span class="sort-indicator"></span></th>
+                </tr>
+            </thead>
+            <tbody id="playersTableBody"></tbody>
+        </table>
+    </div>
+    <div id="compareModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="compareContent"></div>
+        </div>
+    </div>
+    <div id="visualizationModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="visualizationTitle"></h2>
+            <div style="width: 100%; max-height: 70vh;">
+                 <canvas id="visualizationChart"></canvas>
+            </div>
+        </div>
+    </div>
+    </div>
+    <script>
+        let allPlayersData = {
+            historical: { raw: null, processed: null, fixtures: null },
+            live: { raw: null, processed: null, fixtures: null }
+        };
+        let currentDataSource = 'live';
+        let teamsData = {};
+        let displayedData = [];
+        let sortColumn = 2;
+        let sortDirection = 'desc';
+        let activeQuickFilterName = null;
+        let selectedForComparison = new Set();
+        let visualizationChartInstance = null;
+        let comparisonRadarChart = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            Chart.register(ChartDataLabels);
+            fetchAndProcessData();
+            setupEventListeners();
+        });
+
+        async function fetchAndProcessData() {
+            try {
+                const needsData = !allPlayersData[currentDataSource].raw;
+                const needsFixtures = !allPlayersData.live.fixtures; 
+
+                if (needsData || needsFixtures) {
+                    const dataUrl = currentDataSource === 'live'
+                        ? 'https://corsproxy.io/?' + encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/')
+                        : 'FPL_Bootstrap_static.json';
+                    const fixturesUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://fantasy.premierleague.com/api/fixtures/');
+
+                    const [dataResponse, fixturesResponse] = await Promise.all([
+                        needsData ? fetch(dataUrl) : Promise.resolve(null),
+                        needsFixtures ? fetch(fixturesUrl) : Promise.resolve(null)
+                    ]);
+
+                    if (needsData) {
+                        if (!dataResponse.ok) {
+                            if (currentDataSource === 'live') {
+                                console.error('Live data fetch failed, falling back to historical.');
+                                switchDataSource('historical'); 
+                                return;
+                            } else {
+                                throw new Error(`Failed to fetch historical data: ${dataResponse.statusText}`);
+                            }
+                        }
+                        allPlayersData[currentDataSource].raw = await dataResponse.json();
+                    }
+
+                    if (needsFixtures && fixturesResponse.ok) {
+                        const fixturesData = await fixturesResponse.json();
+                        allPlayersData.live.fixtures = fixturesData;
+                        allPlayersData.historical.fixtures = fixturesData; 
+                    }
+                }
+                
+                const data = allPlayersData[currentDataSource].raw;
+                if (!data) throw new Error(`No data available for ${currentDataSource}.`);
+
+                if (!allPlayersData[currentDataSource].processed) {
+                    teamsData = data.teams.reduce((acc, team) => {
+                        acc[team.id] = { name: team.name, short_name: team.short_name };
+                        return acc;
+                    }, {});
+                    const setPieceTakers = getHardcodedSetPieceTakers();
+                    allPlayersData[currentDataSource].processed = preprocessPlayerData(data.elements.filter(p => p.status !== 'u'), setPieceTakers);
+                }
+                
+                document.getElementById('lastUpdated').textContent = `עדכון אחרון: ${new Date().toLocaleString('he-IL')}`;
+                populateTeamFilter();
+                processChange();
+
+            } catch (error) {
+                console.error('Error in fetchAndProcessData:', error);
+                document.getElementById('playersTableBody').innerHTML = `<tr><td colspan="24">שגיאה בטעינת נתונים: ${error.message}</td></tr>`;
+            }
+        }
+        
+        function switchDataSource(source) {
+            if (source === currentDataSource) return;
+            currentDataSource = source;
+            document.getElementById('historicalDataBtn').classList.toggle('active', source === 'historical');
+            document.getElementById('liveDataBtn').classList.toggle('active', source === 'live');
+            fetchAndProcessData();
+        }
+        
+        function getHardcodedSetPieceTakers() {
+            return {"Arsenal":{"penalties":["Saka","Havertz"],"freekicks":["Ødegaard","Rice","Martinelli"],"corners":["Martinelli","Saka","Ødegaard"]},"Aston Villa":{"penalties":["Watkins","Tielemans"],"freekicks":["Digne","Douglas Luiz","Bailey"],"corners":["Douglas Luiz","McGinn"]},"Bournemouth":{"penalties":["Solanke","Kluivert"],"freekicks":["Tavernier","Scott"],"corners":["Tavernier","Scott"]},"Brentford":{"penalties":["Toney","Mbeumo"],"freekicks":["Jensen","Mbeumo","Damsgaard"],"corners":["Jensen","Mbeumo"]},"Brighton":{"penalties":["João Pedro","Gross"],"freekicks":["Gross","Estupiñán"],"corners":["Gross","March"]},"Chelsea":{"penalties":["Palmer","Nkunku"],"freekicks":["Palmer","James","Enzo"],"corners":["Gallagher","Chilwell","Palmer"]},"Crystal Palace":{"penalties":["Eze","Olise"],"freekicks":["Eze","Olise"],"corners":["Eze","Olise"]},"Everton":{"penalties":["Calvert-Lewin","McNeil"],"freekicks":["McNeil","Garner"],"corners":["McNeil","Garner"]},"Fulham":{"penalties":["Andreas","Jiménez"],"freekicks":["Andreas","Willian","Wilson"],"corners":["Andreas","Willian"]},"Ipswich":{"penalties":["Chaplin","Hirst"],"freekicks":["Davis","Morsy"],"corners":["Davis","Chaplin"]},"Leicester":{"penalties":["Vardy","Dewsbury-Hall"],"freekicks":["Dewsbury-Hall","Fatawu"],"corners":["Dewsbury-Hall","Fatawu"]},"Liverpool":{"penalties":["M.Salah","Szoboszlai"],"freekicks":["Alexander-Arnold","Szoboszlai","Robertson"],"corners":["Alexander-Arnold","Robertson"]},"Man City":{"penalties":["Haaland","Alvarez"],"freekicks":["De Bruyne","Foden","Alvarez"],"corners":["Foden","De Bruyne"]},"Man Utd":{"penalties":["B.Fernandes","Rashford"],"freekicks":["B.Fernandes","Eriksen","Rashford"],"corners":["B.Fernandes","Shaw"]},"Newcastle":{"penalties":["Isak","Wilson"],"freekicks":["Trippier","Gordon"],"corners":["Trippier","Gordon"]},"Nott'm Forest":{"penalties":["Gibbs-White","Wood"],"freekicks":["Gibbs-White","Elanga"],"corners":["Gibbs-White","Elanga"]},"Southampton":{"penalties":["A. Armstrong","Ward-Prowse"],"freekicks":["Ward-Prowse","Smallbone"],"corners":["Ward-Prowse","Aribo"]},"Spurs":{"penalties":["Son","Maddison"],"freekicks":["Maddison","Pedro Porro"],"corners":["Maddison","Pedro Porro","Son"]},"West Ham":{"penalties":["Ward-Prowse","Bowen"],"freekicks":["Ward-Prowse","Emerson"],"corners":["Ward-Prowse","Bowen"]},"Wolves":{"penalties":["Cunha","Hwang"],"freekicks":["Sarabia","Bellegarde"],"corners":["Sarabia","Aït-Nouri"]}};
+        }
+
+        function getPositionName(elementTypeId) {
+            switch (elementTypeId) { case 1: return 'GKP'; case 2: return 'DEF'; case 3: return 'MID'; case 4: return 'FWD'; default: return 'Unknown'; }
+        }
+        
+        function preprocessPlayerData(players, setPieceTakers) {
+            const positions = { 1: [], 2: [], 3: [], 4: [] };
+            players.forEach(p => { if (p.element_type in positions) positions[p.element_type].push(p.now_cost / 10); });
+            const priceTiers = {};
+            for (const posId in positions) {
+                const prices = positions[posId].sort((a, b) => a - b);
+                priceTiers[posId] = { p95: getPercentile(prices, 95), p80: getPercentile(prices, 80), p50: getPercentile(prices, 50) };
+            }
+
+            return players.map(p => {
+                const minutes = parseInt(p.minutes || 0, 10);
+                p.def_contrib_per90 = p.defensive_contribution_per_90 || 0;
+                p.net_transfers_event = (p.transfers_in_event || 0) - (p.transfers_out_event || 0);
+                p.xDiff = ((p.goals_scored || 0) + (p.assists || 0)) - (parseFloat(p.expected_goal_involvements) || 0);
+                p.now_cost = p.now_cost / 10;
+                p.team_name = teamsData[p.team] ? teamsData[p.team].name : 'Unknown';
+                p.position_name = getPositionName(p.element_type);
+                
+                const normalizedPlayerName = p.web_name.toLowerCase();
+                p.set_piece_priority = { penalty: 0, corner: 0, free_kick: 0 };
+                const playerTeamData = Object.values(setPieceTakers).find(teamData => [...teamData.penalties, ...teamData.corners, ...teamData.freekicks].some(name => name.toLowerCase() === normalizedPlayerName));
+                if (playerTeamData) {
+                    const penIndex = playerTeamData.penalties.findIndex(name => name.toLowerCase() === normalizedPlayerName); if (penIndex !== -1) p.set_piece_priority.penalty = penIndex + 1;
+                    const corIndex = playerTeamData.corners.findIndex(name => name.toLowerCase() === normalizedPlayerName); if (corIndex !== -1) p.set_piece_priority.corner = corIndex + 1;
+                    const fkIndex = playerTeamData.freekicks.findIndex(name => name.toLowerCase() === normalizedPlayerName); if (fkIndex !== -1) p.set_piece_priority.free_kick = fkIndex + 1;
+                }
+                
+                const tiers = priceTiers[p.element_type];
+                if (p.now_cost >= tiers.p95) p.price_tier = 'Elite'; else if (p.now_cost >= tiers.p80) p.price_tier = 'Premium'; else if (p.now_cost >= tiers.p50) p.price_tier = 'Mid-range'; else p.price_tier = 'Budget';
+                p.points_per_game_90 = p.minutes > 0 ? ((p.total_points / p.minutes) * 90).toFixed(2) : '0.00';
+                p.xGI_per90 = p.expected_goal_involvements_per_90 || 0;
+                p.xGC_per90 = p.expected_goals_conceded_per_90 || 0;
+                p.saves_per90 = p.saves_per_90 || 0;
+                p.clean_sheets_per90 = p.clean_sheets_per_90 || 0;
+                p.ict_per_90 = p.minutes > 0 ? (parseFloat(p.ict_index) / p.minutes) * 90 : 0;
+                p.bonus_per90 = p.minutes > 0 ? (p.bonus / p.minutes) * 90 : 0;
+                
+                let draft_score = 0;
+                if (minutes === 0) { draft_score = (p.now_cost * 4) + (parseFloat(p.selected_by_percent) * 1.5);
+                } else if (minutes > 0 && minutes < 900) { draft_score = p.total_points * 1.5;
+                } else {
+                    let position_score = 0;
+                    switch(p.position_name) {
+                        case 'FWD': position_score = (parseFloat(p.points_per_game_90) * 10) + (p.xGI_per90 * 18) + (p.ict_per_90 * 3); if (p.set_piece_priority.penalty === 1) position_score += 10; break;
+                        case 'MID': position_score = (parseFloat(p.points_per_game_90) * 8) + (p.xGI_per90 * 15) + (p.def_contrib_per90 * 35) + (p.ict_per_90 * 2); if (p.set_piece_priority.penalty === 1) position_score += 12; else if (p.set_piece_priority.penalty === 2) position_score += 6; if (p.set_piece_priority.corner > 0) position_score += 4; if (p.set_piece_priority.free_kick > 0) position_score += 2; break;
+                        case 'DEF': position_score = (parseFloat(p.points_per_game_90) * 12) + (p.clean_sheets_per90 * 5) + (p.xGI_per90 * 8) + (p.def_contrib_per90 * 20) - (p.xGC_per90 * 4); break;
+                        case 'GKP': position_score = (parseFloat(p.points_per_game_90) * 10) + (p.clean_sheets_per90 * 12) + (p.saves_per90 * 6) + (p.bonus_per90 * 8) - (p.xGC_per90 * 4); break;
+                    }
+                    draft_score = position_score + (p.total_points / 15) + (p.now_cost * 3.5) + (parseFloat(p.selected_by_percent) / 2);
+                }
+                p.draft_score = Math.max(0, draft_score);
+                return p;
+            });
+        }
+
+        function getPercentile(arr, p) { if (!arr.length) return 0; const sorted = [...arr].sort((a,b) => a-b); const i = (p/100) * (sorted.length - 1); const f = Math.floor(i); const c = Math.ceil(i); if (f === c) return sorted[f]; return sorted[f] * (c - i) + sorted[c] * (i - f); }
+        function setupEventListeners() { ['searchName', 'priceRange', 'minPoints'].forEach(id => document.getElementById(id).addEventListener('keyup', processChange)); ['positionFilter', 'teamFilter', 'xDiffFilter', 'showEntries', 'minMinutes'].forEach(id => document.getElementById(id).addEventListener('change', processChange)); }
+        function populateTeamFilter() { const teamFilter = document.getElementById('teamFilter'); teamFilter.innerHTML = '<option value="">כל הקבוצות</option>'; if (!allPlayersData[currentDataSource].processed) return; const uniqueTeams = [...new Set(allPlayersData[currentDataSource].processed.map(p => p.team_name))].sort(); uniqueTeams.forEach(team => { const option = document.createElement('option'); option.value = team; option.textContent = team; teamFilter.appendChild(option); }); }
+
+        function renderTable() {
+            const columnMapping = [ 'rank', 'web_name', 'draft_score', 'team_name', 'position_name', 'now_cost', 'total_points', 'points_per_game_90', 'selected_by_percent', 'dreamteam_count', 'net_transfers_event', 'def_contrib_per90', 'goals_scored_assists', 'expected_goals_assists', 'minutes', 'xDiff', 'ict_index', 'bonus', 'clean_sheets', 'set_piece_priority.penalty', 'set_piece_priority.corner', 'set_piece_priority.free_kick', 'verbal_insights' ];
+            displayedData.sort((a, b) => {
+                let aValue, bValue;
+                if (sortColumn === 12) { aValue = (a.goals_scored || 0) + (a.assists || 0); bValue = (b.goals_scored || 0) + (b.assists || 0); } 
+                else if (sortColumn === 13) { aValue = parseFloat(a.expected_goal_involvements || 0); bValue = parseFloat(b.expected_goal_involvements || 0); } 
+                else { const field = columnMapping[sortColumn]; aValue = getNestedValue(a, field); bValue = getNestedValue(b, field); if (typeof aValue === 'string' && !isNaN(aValue)) aValue = parseFloat(aValue); if (typeof bValue === 'string' && !isNaN(bValue)) bValue = parseFloat(bValue); }
+                if (aValue === null || aValue === undefined) aValue = -1; if (bValue === null || bValue === undefined) bValue = -1;
+                if (typeof aValue === 'number' && typeof bValue === 'number') { return sortDirection === 'asc' ? aValue - bValue : bValue - aValue; } 
+                else { return sortDirection === 'asc' ? String(aValue).localeCompare(String(bValue)) : String(bValue).localeCompare(String(aValue)); }
+            });
+            const tbody = document.getElementById('playersTableBody'); tbody.innerHTML = '';
+            displayedData.forEach((player, index) => {
+                const row = document.createElement('tr');
+                const icons = generatePlayerIcons(player);
+                const insights = generateVerbalInsights(player);
+                row.innerHTML = `<td><input type="checkbox" class="player-select" data-player-id="${player.id}" ${selectedForComparison.has(player.id) ? 'checked' : ''}></td>
+                    <td>${index + 1}</td>
+                    <td class="name-cell"><span class="player-name-icon">${icons.icons}</span>${player.web_name}</td>
+                    <td class="bold-cell">${player.draft_score.toFixed(1)}</td>
+                    <td>${player.team_name}</td>
+                    <td>${player.position_name}</td>
+                    <td>${player.now_cost.toFixed(1)}</td>
+                    <td class="bold-cell">${player.total_points}</td>
+                    <td>${player.points_per_game_90}</td>
+                    <td>${player.selected_by_percent}%</td>
+                    <td>${player.dreamteam_count}</td>
+                    <td class="transfers-cell ${player.net_transfers_event > 0 ? 'net-transfers-positive' : player.net_transfers_event < 0 ? 'net-transfers-negative' : ''}">${player.net_transfers_event.toLocaleString()}</td>
+                    <td>${player.def_contrib_per90.toFixed(1)}</td>
+                    <td>${(player.goals_scored || 0) + (player.assists || 0)}</td>
+                    <td>${(parseFloat(player.expected_goal_involvements) || 0).toFixed(1)}</td>
+                    <td>${player.minutes}</td>
+                    <td class="${player.xDiff > 0 ? 'xdiff-positive' : player.xDiff < 0 ? 'xdiff-negative' : ''}">${player.xDiff.toFixed(1)}</td>
+                    <td>${player.ict_index}</td>
+                    <td>${player.bonus}</td>
+                    <td>${player.clean_sheets}</td>
+                    <td class="${player.set_piece_priority.penalty > 0 ? 'set-piece-yes' : 'set-piece-no'}">${player.set_piece_priority.penalty > 0 ? `(${player.set_piece_priority.penalty})` : '–'}</td>
+                    <td class="${player.set_piece_priority.corner > 0 ? 'set-piece-yes' : 'set-piece-no'}">${player.set_piece_priority.corner > 0 ? `(${player.set_piece_priority.corner})` : '–'}</td>
+                    <td class="${player.set_piece_priority.free_kick > 0 ? 'set-piece-yes' : 'set-piece-no'}">${player.set_piece_priority.free_kick > 0 ? `(${player.set_piece_priority.free_kick})` : '–'}</td>
+                    <td class="verbal-insights-cell" title="${insights.tooltip}">${insights.icons}</td>`;
+                tbody.appendChild(row);
+            });
+            document.querySelectorAll('.player-select').forEach(checkbox => { checkbox.addEventListener('change', function() { const playerId = parseInt(this.dataset.playerId); if (this.checked) { selectedForComparison.add(playerId); } else { selectedForComparison.delete(playerId); } }); });
+        }
+
+        function generatePlayerIcons(p) { const i=[];if(p.set_piece_priority.penalty===1)i.push(`🎯`);if(p.set_piece_priority.corner>0)i.push(`⚽`);if(p.set_piece_priority.free_kick>0)i.push(`👟`);if(parseFloat(p.selected_by_percent)<5)i.push(`💎`);if(p.price_tier==='Budget'&&p.points_per_game_90>3.5)i.push(`💰`);if(p.minutes===0)i.push(`🌟`);if(p.dreamteam_count>0)i.push(`🏆`);return { icons: i.map(e=>`<span class='player-name-icon'>${e}</span>`).join(""), tooltip: i.join(' ') }; }
+        function generateVerbalInsights(p) { const i=[];if(p.set_piece_priority.penalty===1)i.push("בועט פנדלים ראשי");else if(p.set_piece_priority.penalty>1)i.push(`בועט פנדלים (${p.set_piece_priority.penalty})`);if(p.set_piece_priority.corner>0)i.push("לוקח קרנות");if(p.set_piece_priority.free_kick>0)i.push("בועט חופשיות");if(parseFloat(p.selected_by_percent)<5&&p.minutes>0)i.push(`דיפרנציאל (${p.selected_by_percent}%)`);if(p.price_tier==='Budget'&&p.points_per_game_90>3.5)i.push("תמורה למחיר");if(p.minutes===0)i.push("שחקן חדש/ללא דקות");if(p.xDiff<-0.5)i.push(`ביצועי חסר (xDiff: ${p.xDiff.toFixed(1)})`);if(p.xDiff>0.5)i.push(`ביצועי יתר (xDiff: ${p.xDiff.toFixed(1)})`);if(p.net_transfers_event > 100000)i.push("פופולרי השבוע");if(p.net_transfers_event < -100000)i.push("נמכר השבוע");if(p.dreamteam_count > 0)i.push(`${p.dreamteam_count} הופעות בנבחרת החלומות`); const icons = generatePlayerIcons(p); return { icons: icons.icons, tooltip: i.join(', ') }; }
+        
+        function processChange() {
+            if (!allPlayersData[currentDataSource].processed) return;
+            const nameFilter = document.getElementById('searchName').value.toLowerCase(); const posFilter = document.getElementById('positionFilter').value; const teamFilter = document.getElementById('teamFilter').value; const priceInput = document.getElementById('priceRange').value; const pointsInput = document.getElementById('minPoints').value; const minutesInput = document.getElementById('minMinutes').value; const xDiffFilter = document.getElementById('xDiffFilter').value; const showEntries = document.getElementById('showEntries').value;
+            let minPrice=0, maxPrice=20; if(priceInput){const p=priceInput.split('-');if(p.length===2){minPrice=parseFloat(p[0])||0;maxPrice=parseFloat(p[1])||20}else{const s=parseFloat(priceInput);if(!isNaN(s))minPrice=maxPrice=s}}
+            const minPoints = parseInt(pointsInput) || 0;
+            const minMinutes = parseInt(minutesInput) || 0;
+            displayedData = allPlayersData[currentDataSource].processed.filter(p => (!nameFilter || p.web_name.toLowerCase().includes(nameFilter)) && (!posFilter || p.position_name === posFilter) && (!teamFilter || p.team_name === teamFilter) && (p.now_cost >= minPrice && p.now_cost <= maxPrice) && p.total_points >= minPoints && p.minutes >= minMinutes && (xDiffFilter === '' || (xDiffFilter === 'positive' && p.xDiff > 0) || (xDiffFilter === 'negative' && p.xDiff < 0)));
+            if (activeQuickFilterName) applyQuickFilter(activeQuickFilterName);
+            if (showEntries !== 'all') displayedData = displayedData.slice(0, parseInt(showEntries));
+            renderTable();
+        }
+        
+        function applyQuickFilter(filterName) {
+            const data = allPlayersData[currentDataSource].processed;
+            switch(filterName) {
+                case 'set_pieces': displayedData = displayedData.filter(p => p.set_piece_priority.penalty > 0 || p.set_piece_priority.corner > 0 || p.set_piece_priority.free_kick > 0); break;
+                case 'attacking_defenders': displayedData = displayedData.filter(p => p.position_name === 'DEF' && p.minutes > 300); break;
+                case 'differentials': displayedData = displayedData.filter(p => parseFloat(p.selected_by_percent) < 5); break;
+            }
+        }
+
+        function sortTable(columnIndex) { if (sortColumn === columnIndex) { sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'; } else { sortColumn = columnIndex; sortDirection = 'desc'; } document.querySelectorAll('th').forEach((th, i) => { const indicator = th.querySelector('.sort-indicator'); if (indicator) { indicator.textContent = ''; if (i-1 === columnIndex) { th.classList.add('sorted'); indicator.textContent = sortDirection === 'desc' ? '▼' : '▲'; } else { th.classList.remove('sorted'); } } }); renderTable(); }
+        function setActiveButton(button) { document.querySelectorAll('.control-button').forEach(btn => btn.classList.remove('active')); if (button) button.classList.add('active'); }
+        function showAllPlayers(button) { setActiveButton(button); activeQuickFilterName = null; ['searchName','positionFilter','teamFilter','priceRange','minPoints','xDiffFilter'].forEach(id=>document.getElementById(id).value='');document.getElementById('minMinutes').value='0';document.getElementById('showEntries').value='all'; processChange(); sortTable(2); }
+        function quickFilter(button, filterName) { setActiveButton(button); activeQuickFilterName = filterName; ['searchName','positionFilter','teamFilter','priceRange','minPoints','xDiffFilter'].forEach(id=>document.getElementById(id).value=''); document.getElementById('minMinutes').value='0'; processChange(); sortTable(2); }
+        function exportToCsv() { const h=['Rank','Player','Draft Score','Team','Pos','Price','Pts','PPG','Sel %','DreamTeam','Net TF (GW)','DC/90','G+A','xGI','Mins','xDiff','ICT','Bonus','CS','Pen','Cor','FK','Insights'];let c=h.join(',')+'\n';displayedData.forEach((p,i)=>{const t=generateVerbalInsights(p).tooltip;const r=[i+1,p.web_name.replace(/,/g,''),p.draft_score.toFixed(1),p.team_name,p.position_name,p.now_cost,p.total_points,p.points_per_game_90,p.selected_by_percent,p.dreamteam_count,p.net_transfers_event,p.def_contrib_per90.toFixed(1),(p.goals_scored||0)+(p.assists||0),p.expected_goal_involvements,p.minutes,p.xDiff.toFixed(1),p.ict_index,p.bonus,p.clean_sheets,p.set_piece_priority.penalty||'-',p.set_piece_priority.corner||'-',p.set_piece_priority.free_kick||'-',`"${t}"`];c+=r.join(',')+'\n'});const b=new Blob([`\uFEFF${c}`],{type:'text/csv;charset=utf-8;'});const l=document.createElement("a");l.setAttribute("href",URL.createObjectURL(b));l.setAttribute("download","fpl_draft_data.csv");l.click()}
+        
+        function compareSelectedPlayers() {
+            if (selectedForComparison.size < 2) { alert('יש לבחור לפחות שני שחקנים להשוואה.'); return; }
+            const players = allPlayersData[currentDataSource].processed.filter(p => selectedForComparison.has(p.id));
+            const contentDiv = document.getElementById('compareContent');
+
+            const metrics = {
+                'ציון דראפט': { key: 'draft_score', format: v => v.toFixed(1), reversed: false },
+                'מחיר': { key: 'now_cost', format: v => v.toFixed(1), reversed: true },
+                'נק\'/90': { key: 'points_per_game_90', format: v => parseFloat(v).toFixed(1), reversed: false },
+                'שערים': { key: 'goals_scored', format: v => v, reversed: false },
+                'בישולים': { key: 'assists', format: v => v, reversed: false },
+                'xGI/90': { key: 'xGI_per90', format: v => (v || 0).toFixed(2), reversed: false },
+                'DC/90': { key: 'def_contrib_per90', format: v => (v || 0).toFixed(2), reversed: false },
+                'xGC/90': { key: 'xGC_per90', format: v => (v || 0).toFixed(2), reversed: true },
+                'הצלות/90': { key: 'saves_per90', format: v => (v || 0).toFixed(2), reversed: false },
+                'ICT/90': { key: 'ict_per_90', format: v => v.toFixed(2), reversed: false },
+                'בונוס/90': { key: 'bonus_per90', format: v => v.toFixed(2), reversed: false },
+            };
+
+            let tableHTML = '<table class="comparison-table"><thead><tr><th>מדד</th>';
+            players.forEach(p => { tableHTML += `<th>${p.web_name}</th>`; });
+            tableHTML += '</tr></thead><tbody>';
+
+            for (const [name, metric] of Object.entries(metrics)) {
+                const values = players.map(p => parseFloat(getNestedValue(p, metric.key)) || 0);
+                tableHTML += `<tr><td class="metric-name">${name}</td>`;
+                players.forEach((p, index) => {
+                    const value = parseFloat(getNestedValue(p, metric.key)) || 0;
+                    const className = getMetricValueClass(value, values, metric.reversed);
+                    tableHTML += `<td class="${className}">${metric.format(value)}</td>`;
+                });
+                tableHTML += '</tr>';
+            }
+
+            const teamFixtures = players.map(p => getTeamFixtures(p.team).slice(0, 5));
+            tableHTML += `<tr><td class="metric-name">משחקים קרובים</td>`;
+            players.forEach((p, index) => {
+                const fixturesHTML = teamFixtures[index].map(fix => `<span class="fixture fdr-${fix.difficulty}">${teamsData[fix.opponent].short_name}(${fix.is_home ? 'H' : 'A'})</span>`).join(' ');
+                tableHTML += `<td class="fixtures-cell">${fixturesHTML || 'N/A'}</td>`;
+            });
+            tableHTML += '</tr>';
+            tableHTML += '</tbody></table>';
+
+            contentDiv.innerHTML = tableHTML + '<div style="width:100%; max-width:600px; margin: 20px auto 0 auto;"><canvas id="comparisonRadarChart"></canvas></div>';
+            document.getElementById('compareModal').style.display = 'block';
+            createComparisonRadarChart(players);
+        }
+
+        function getMetricValueClass(value, values, reversed) {
+            if (values.length < 2) return '';
+            const sorted = [...new Set(values)].sort((a, b) => a - b);
+            if (sorted.length === 1) return '';
+
+            const best = reversed ? sorted[0] : sorted[sorted.length - 1];
+            const worst = reversed ? sorted[sorted.length - 1] : sorted[0];
+
+            if (value === best) return 'metric-value-best';
+            if (value === worst) return 'metric-value-worst';
+            
+            if (sorted.length > 2) {
+                const midIndex = Math.floor(sorted.length / 2);
+                const median = sorted.length % 2 === 0 ? (sorted[midIndex-1] + sorted[midIndex]) / 2 : sorted[midIndex];
+                if (!reversed) {
+                    if (value > median) return 'metric-value-best';
+                    if (value < median) return 'metric-value-worst';
+                } else {
+                    if (value < median) return 'metric-value-best';
+                    if (value > median) return 'metric-value-worst';
+                }
+            }
+            return 'metric-value-mid';
+        }
+
+        function getMetricColor(value, min, max, isReversed = false) {
+            value = parseFloat(value);
+            if (isNaN(value) || min === max) return '#34495e';
+            const percentage = (value - min) / (max - min);
+            const hue = isReversed ? (1 - percentage) * 120 : percentage * 120;
+            return `hsl(${hue}, 80%, 45%)`;
+        }
+        
+        function getPlayerColor(player, players) {
+            const colors = ['#003f5c', '#58508d', '#bc5090', '#ff6361', '#ffa600'];
+            const index = players.findIndex(p => p.id === player.id);
+            return colors[index % colors.length];
+        }
+
+        function createMetricHTML(label, value, color) {
+            const colorStyle = color ? `style="color: ${color}; font-weight: 700;"` : '';
+            return `<div class="compare-metric"><span class="compare-metric-label">${label}</span><span ${colorStyle}>${value}</span></div>`;
+        }
+
+        function getTeamFixtures(teamId) {
+            const fixtures = allPlayersData.live.fixtures || allPlayersData.historical.fixtures;
+            if (!fixtures) return [];
+            return fixtures.filter(fix => (fix.team_a === teamId || fix.team_h === teamId) && !fix.finished)
+                           .map(fix => ({ opponent: fix.team_h === teamId ? fix.team_a : fix.team_h, difficulty: fix.team_h === teamId ? fix.team_h_difficulty : fix.team_a_difficulty, is_home: fix.team_h === teamId }))
+                           .slice(0, 5);
+        }
+
+        function createComparisonRadarChart(players) {
+            const ctx = document.getElementById('comparisonRadarChart').getContext('2d');
+            const labels = ['התקפה (xGI)', 'הגנה (DC)', 'יצירתיות (xA)', 'תמורה (נק\'/מחיר)'];
+            
+            const datasets = players.map(player => {
+                const color = getPlayerColor(player, players);
+                const data = [
+                    Math.min(10, ((player.xGI_per90 || 0) / 0.7) * 10),
+                    Math.min(10, ((player.def_contrib_per90 || 0) / 1.5) * 10),
+                    Math.min(10, ((player.expected_assists_per_90 || 0) / 0.3) * 10),
+                    Math.min(10, (parseFloat(player.points_per_game_90) / player.now_cost) * 3.5)
+                ].map(v => parseFloat(v.toFixed(1)));
+
+                return {
+                    label: player.web_name,
+                    data: data,
+                    fill: true,
+                    backgroundColor: 'transparent',
+                    borderColor: color,
+                    borderWidth: 2,
+                    pointBackgroundColor: color,
+                };
+            });
+
+            if(comparisonRadarChart) comparisonRadarChart.destroy();
+            comparisonRadarChart = new Chart(ctx, { type: 'radar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: true, scales: { r: { suggestedMin: 0, suggestedMax: 10, pointLabels: { font: { size: 12 } }, ticks: { backdropPadding: 10 } } }, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 } } } } } });
+        }
+
+        function closeModal() { document.getElementById('compareModal').style.display = 'none'; document.getElementById('visualizationModal').style.display = 'none'; if(visualizationChartInstance){visualizationChartInstance.destroy();visualizationChartInstance=null;} }
+        function getNestedValue(obj, path) { if (!path) return obj; return path.split('.').reduce((acc, part) => acc && acc[part], obj); }
+
+        function showVisualization(type) {
+            if (!allPlayersData[currentDataSource].processed) { alert('יש להמתין לטעינת הנתונים.'); return; }
+            const specMap={midfielders:{title:'מטריצת קשרים',pos:['MID'],x:'def_contrib_per90',y:'xGI_per90',xLabel:'תרומה הגנתית/90',yLabel:'איום התקפי (xGI/90)', quadLabels: {topRight: 'קשר All-Round', topLeft: 'קשר התקפי', bottomRight: 'קשר הגנתי', bottomLeft: 'פחות תורם'}},forwards:{title:'מטריצת חלוצים',pos:['FWD'],x:'points_per_game_90',y:'xGI_per90',xLabel:'נקודות/90',yLabel:'איום התקפי (xGI/90)', quadLabels: {topRight: 'חלוץ עלית', topLeft: 'מאיים, לא יעיל', bottomRight: 'יעיל, איום נמוך', bottomLeft: 'להימנע'}},defenders:{title:'מטריצת מגנים',pos:['DEF'],x:'xGI_per90',y:'def_contrib_per90',xLabel:'איום התקפי (xGI/90)',yLabel:'תרומה הגנתית/90', quadLabels: {topRight: 'מגן עלית', topLeft: 'מגן הגנתי', bottomRight: 'מגן תוקף', bottomLeft: 'פחות תורם'}},goalkeepers:{title:'מטריצת שוערים',pos:['GKP'],x:'saves_per_90',y:'points_per_game_90',xLabel:'הצלות/90',yLabel:'נקודות/90', quadLabels: {topRight: 'שוער עלית', topLeft: 'שוער לקבוצה חזקה', bottomRight: 'שוער הצלות', bottomLeft: 'להימנע'}}};
+            const spec = specMap[type]; if (!spec) return;
+            document.getElementById('visualizationTitle').textContent = spec.title;
+            const players = displayedData.filter(p => spec.pos.includes(p.position_name) && p.minutes > 450);
+            if(players.length < 2) { alert(`לא נמצאו מספיק שחקנים (${spec.pos.join('/')}) להשוואה.`); return; }
+            const config = getChartConfig(players, spec.x, spec.y, spec.xLabel, spec.yLabel, spec.quadLabels);
+            const ctx = document.getElementById('visualizationChart').getContext('2d');
+            if (visualizationChartInstance) visualizationChartInstance.destroy();
+            visualizationChartInstance = new Chart(ctx, config);
+            document.getElementById('visualizationModal').style.display = 'block';
+        }
+
+        function showTeamDefenseChart() {
+            if (!allPlayersData[currentDataSource].processed) { alert('יש להמתין לטעינת הנתונים.'); return; }
+            document.getElementById('visualizationTitle').textContent = 'הגנת קבוצות (צפוי ספיגות מול ספיגות בפועל)';
+            
+            const teamStats = {};
+            allPlayersData[currentDataSource].processed.forEach(p => {
+                if (!teamStats[p.team_name]) teamStats[p.team_name] = { xGC: 0, GC: 0, minutes: 0 };
+                teamStats[p.team_name].xGC += parseFloat(p.expected_goals_conceded) || 0;
+                teamStats[p.team_name].GC += p.goals_conceded || 0;
+                teamStats[p.team_name].minutes += p.minutes || 0;
+            });
+
+            const dataPoints = Object.entries(teamStats).filter(([name, data]) => data.minutes > 2700).map(([name, data]) => ({
+                x: (data.xGC / data.minutes) * 90,
+                y: (data.GC / data.minutes) * 90,
+                team: name
+            }));
+            const avgX = dataPoints.reduce((s, p) => s + p.x, 0) / dataPoints.length;
+            const avgY = dataPoints.reduce((s, p) => s + p.y, 0) / dataPoints.length;
+
+            const getPointColor = (d) => {
+                if (d.x < avgX && d.y < avgY) return '#27ae60'; // Good xGC, Good GC
+                if (d.x > avgX && d.y > avgY) return '#e74c3c'; // Bad xGC, Bad GC
+                if (d.x < avgX && d.y > avgY) return '#f39c12'; // Good xGC, Bad GC (Unlucky)
+                return '#3498db'; // Bad xGC, Good GC (Lucky)
+            };
+            
+            const quadLabels = { topRight: 'הגנה חלשה', topLeft: 'הגנה לא יציבה (טובה בבסיס)', bottomRight: 'הגנה לא יציבה (חלשה בבסיס)', bottomLeft: 'הגנה חזקה' };
+            const config = getChartConfig(dataPoints, 'x', 'y', 'צפי ספיגות / 90 (xGC) - שמאלה זה טוב', 'ספיגות בפועל / 90 - למטה זה טוב', quadLabels, getPointColor, (v) => v.team);
+
+            const ctx = document.getElementById('visualizationChart').getContext('2d');
+            if (visualizationChartInstance) visualizationChartInstance.destroy();
+            visualizationChartInstance = new Chart(ctx, config);
+            document.getElementById('visualizationModal').style.display = 'block';
+        }
+
+        function showTeamAttackChart() {
+            if (!allPlayersData[currentDataSource].processed) { alert('יש להמתין לטעינת הנתונים.'); return; }
+            document.getElementById('visualizationTitle').textContent = 'התקפת קבוצות (צפי מעורבות בשערים מול מעורבות בפועל)';
+            
+            const teamStats = {};
+             allPlayersData[currentDataSource].processed.forEach(p => {
+                if (!teamStats[p.team_name]) teamStats[p.team_name] = { xGI: 0, GI: 0, minutes: 0 };
+                teamStats[p.team_name].xGI += parseFloat(p.expected_goal_involvements) || 0;
+                teamStats[p.team_name].GI += (p.goals_scored || 0) + (p.assists || 0);
+                teamStats[p.team_name].minutes += p.minutes || 0;
+            });
+
+            const dataPoints = Object.entries(teamStats).filter(([name, data]) => data.minutes > 2700).map(([name, data]) => ({
+                x: (data.xGI / data.minutes) * 90,
+                y: (data.GI / data.minutes) * 90,
+                team: name
+            }));
+            
+            const avgX = dataPoints.reduce((s, p) => s + p.x, 0) / dataPoints.length;
+            const avgY = dataPoints.reduce((s, p) => s + p.y, 0) / dataPoints.length;
+
+            const getPointColor = (d) => {
+                if (d.x > avgX && d.y > avgY) return '#27ae60'; // Good xGI, Good GI
+                if (d.x < avgX && d.y < avgY) return '#e74c3c'; // Bad xGI, Bad GI
+                if (d.x > avgX && d.y < avgY) return '#f39c12'; // Good xGI, Bad GI (Unlucky)
+                return '#3498db'; // Bad xGI, Good GI (Lucky)
+            };
+
+            const quadLabels = { topRight: 'התקפה חזקה', topLeft: 'התקפה לא יציבה (חלשה בבסיס)', bottomRight: 'התקפה לא יציבה (טובה בבסיס)', bottomLeft: 'התקפה חלשה' };
+            const config = getChartConfig(dataPoints, 'x', 'y', 'צפי מעורבות בשערים / 90 (xGI) - ימינה זה טוב', 'שערים+בישולים / 90 - למעלה זה טוב', quadLabels, getPointColor, (v) => v.team);
+
+            const ctx = document.getElementById('visualizationChart').getContext('2d');
+            if (visualizationChartInstance) visualizationChartInstance.destroy();
+            visualizationChartInstance = new Chart(ctx, config);
+            document.getElementById('visualizationModal').style.display = 'block';
+        }
+
+        function showPriceVsScoreChart() {
+            if (!allPlayersData[currentDataSource].processed) { alert('יש להמתין לטעינת הנתונים.'); return; }
+            document.getElementById('visualizationTitle').textContent = 'תמורה למחיר (ציון דראפט מול מחיר)';
+            const players = displayedData.filter(p => p.minutes > 900);
+            if(players.length < 2) { alert(`לא נמצאו מספיק שחקנים להשוואה.`); return; }
+            
+            const dataPoints=players.map(p=>({x:p.now_cost,y:p.draft_score,player:p.web_name,team:p.team_name,pos:p.position_name}));
+            const colorMap={DEF:'rgba(100,149,237,0.7)',MID:'rgba(60,179,113,0.7)',FWD:'rgba(255,99,132,0.7)',GKP:'rgba(255,159,64,0.7)'};
+
+            const ctx = document.getElementById('visualizationChart').getContext('2d');
+            if (visualizationChartInstance) visualizationChartInstance.destroy();
+            visualizationChartInstance = new Chart(ctx, { type: 'scatter', data: { datasets: [{ label: 'Players', data: dataPoints, backgroundColor: dataPoints.map(p => colorMap[p.pos]) }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: false }, tooltip:{callbacks:{label: c => {const p = c.raw; return `${p.player} (${p.team}): ציון ${p.y.toFixed(1)} ב-${p.x.toFixed(1)}M`} }} }, scales: { x: { title: { display: true, text: 'מחיר' } }, y: { title: { display: true, text: 'ציון דראפט' } } } } });
+            document.getElementById('visualizationModal').style.display = 'block';
+        }
+
+        function showIctBreakdownChart() {
+            if (!allPlayersData[currentDataSource].processed) { alert('יש להמתין לטעינת הנתונים.'); return; }
+            const topPlayers = displayedData.filter(p => p.minutes > 900).sort((a,b) => b.ict_index - a.ict_index).slice(0, 15);
+            if(topPlayers.length < 2) { alert(`לא נמצאו מספיק שחקנים להשוואה.`); return; }
+            document.getElementById('visualizationTitle').textContent = 'פרופיל שחקן (פירוק ICT)';
+
+            const chartData = {
+                labels: topPlayers.map(p => p.web_name),
+                datasets: [
+                    { label: 'השפעה (Influence)', data: topPlayers.map(p => parseFloat(p.influence)), backgroundColor: 'rgba(54, 162, 235, 0.7)' },
+                    { label: 'יצירתיות (Creativity)', data: topPlayers.map(p => parseFloat(p.creativity)), backgroundColor: 'rgba(75, 192, 192, 0.7)' },
+                    { label: 'איום (Threat)', data: topPlayers.map(p => parseFloat(p.threat)), backgroundColor: 'rgba(255, 99, 132, 0.7)' }
+                ]
+            };
+            
+            const ctx = document.getElementById('visualizationChart').getContext('2d');
+            if (visualizationChartInstance) visualizationChartInstance.destroy();
+            visualizationChartInstance = new Chart(ctx, { type: 'bar', data: chartData, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { legend: { position: 'bottom' } } } });
+            document.getElementById('visualizationModal').style.display = 'block';
+        }
+
+        function getChartConfig(data, xKey, yKey, xLabel, yLabel, quadLabels = {}, colorFunc = null, dataLabelFunc = null) {
+            const dataPoints = data.map(p => ({ ...p, x: parseFloat(getNestedValue(p, xKey)) || 0, y: parseFloat(getNestedValue(p, yKey)) || 0 }));
+            const avgX = dataPoints.reduce((s, p) => s + p.x, 0) / dataPoints.length;
+            const avgY = dataPoints.reduce((s, p) => s + p.y, 0) / dataPoints.length;
+
+            let pointColoring = 'rgba(54, 162, 235, 0.7)';
+            if (colorFunc) {
+                pointColoring = (context) => colorFunc(context.raw);
+            } else {
+                const scores = dataPoints.map(p => (p.x / avgX) + (p.y / avgY));
+                const minScore = Math.min(...scores); const maxScore = Math.max(...scores);
+                const getPointColor = (score) => {
+                    if (maxScore === minScore) return '#808080';
+                    const normalized = (score - minScore) / (maxScore - minScore);
+                    if (normalized > 0.8) return '#27ae60'; if (normalized > 0.6) return '#2ecc71';
+                    if (normalized < 0.2) return '#e74c3c'; if (normalized < 0.4) return '#f1948a';
+                    return '#95a5a6';
+                };
+                pointColoring = (context) => getPointColor( (context.raw.x / avgX) + (context.raw.y / avgY) );
+            }
+
+            const annotations = {
+                lineX: { type: 'line', xMin: avgX, xMax: avgX, borderColor: 'rgba(0,0,0,0.6)', borderWidth: 1.5, borderDash: [6, 6] },
+                lineY: { type: 'line', yMin: avgY, yMax: avgY, borderColor: 'rgba(0,0,0,0.6)', borderWidth: 1.5, borderDash: [6, 6] },
+            };
+            
+            const xValues = dataPoints.map(p => p.x);
+            const yValues = dataPoints.map(p => p.y);
+            const minX = Math.min(...xValues);
+            const maxX = Math.max(...xValues);
+            const minY = Math.min(...yValues);
+            const maxY = Math.max(...yValues);
+
+            if (quadLabels.topRight) annotations.topRight = { type: 'label', xValue: (avgX + maxX) / 2, yValue: (avgY + maxY) / 2, content: quadLabels.topRight, color: 'rgba(0,0,0,0.3)', font: { size: 12, weight: 'bold'} };
+            if (quadLabels.topLeft) annotations.topLeft = { type: 'label', xValue: (avgX + minX) / 2, yValue: (avgY + maxY) / 2, content: quadLabels.topLeft, color: 'rgba(0,0,0,0.3)', font: { size: 12, weight: 'bold'} };
+            if (quadLabels.bottomRight) annotations.bottomRight = { type: 'label', xValue: (avgX + maxX) / 2, yValue: (avgY + minY) / 2, content: quadLabels.bottomRight, color: 'rgba(0,0,0,0.3)', font: { size: 12, weight: 'bold'} };
+            if (quadLabels.bottomLeft) annotations.bottomLeft = { type: 'label', xValue: (avgX + minX) / 2, yValue: (avgY + minY) / 2, content: quadLabels.bottomLeft, color: 'rgba(0,0,0,0.3)', font: { size: 12, weight: 'bold'} };
+
+            return {
+                type: 'scatter',
+                data: { datasets: [{ label: 'Data', data: dataPoints, backgroundColor: pointColoring, pointRadius: 6 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: { anchor: 'end', align: 'top', formatter: dataLabelFunc || ((v) => v.player), font: { weight: 'bold', size: 9 }, color: '#333' },
+                        tooltip: { callbacks: { label: c => { const p = c.raw; return [`${p.player || p.team}`, `${xLabel}: ${p.x.toFixed(2)}`, `${yLabel}: ${p.y.toFixed(2)}`]; } } },
+                        annotation: { annotations: annotations }
+                    },
+                    scales: { x: { title: { display: true, text: xLabel } }, y: { title: { display: true, text: yLabel } } }
+                }
+            };
+        }
+    </script>
+</body>
+</html>
