@@ -31,11 +31,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        working-directory: ./travel-planner-pro
 
       - name: Build
         run: npm run build
-        working-directory: ./travel-planner-pro
         env:
           # These secrets are injected from GitHub Repository Secrets
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
@@ -53,7 +51,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './travel-planner-pro/dist'
+          path: './dist'
 
   deploy:
     environment:
