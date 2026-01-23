@@ -3,8 +3,9 @@ import { Trip } from '../types';
 import {
     Calendar, MapPin, Plane, Car,
     Hotel, Utensils, Ticket, Plus, Sparkles, X,
-    ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronRight, Clock, MoreHorizontal
+    ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronRight, Clock, MoreHorizontal, RefreshCw
 } from 'lucide-react';
+import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '../services/calendarService';
 
 // --- Types ---
 type TimelineEventType = 'flight' | 'hotel_stay' | 'hotel_checkin' | 'hotel_checkout' | 'food' | 'attraction' | 'activity' | 'shopping' | 'travel';
@@ -24,6 +25,8 @@ interface TimelineEvent {
     isManual?: boolean;
     dayId?: string;
     activityIndex?: number;
+    // New
+    isExternal?: boolean;
 }
 
 interface DayPlan {
@@ -79,10 +82,12 @@ export const ItineraryView: React.FC<{
 }> = ({ trip, onUpdateTrip, onSwitchTab }) => {
 
     const [timeline, setTimeline] = useState<DayPlan[]>([]);
-    const [selectedDayIso, setSelectedDayIso] = useState<string | null>(null); // For Modal View
+    const [selectedDayIso, setSelectedDayIso] = useState<string | null>(null);
     const [quickAddModal, setQuickAddModal] = useState<{ isOpen: boolean, targetDate?: string }>({ isOpen: false });
     const [transferModal, setTransferModal] = useState<{ date: string, defaultTime: string } | null>(null);
     const [insights, setInsights] = useState<Insight[]>([]);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [externalEvents, setExternalEvents] = useState<TimelineEvent[]>([]);
 
     useEffect(() => {
         const generateTimeline = () => {
@@ -127,20 +132,13 @@ export const ItineraryView: React.FC<{
                 const isoKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
 
                 if (!dayMap.has(isoKey)) {
-                    dayMap.set(isoKey, {
-                        dateIso: isoKey,
-                        displayDate: formatDateDisplay(d),
-                        displayDayOfWeek: getDayOfWeek(d),
-                        locationContext: '',
-                        events: [],
-                        stats: { food: 0, attr: 0, flight: 0, travel: 0, hotel: 0 },
-                        hasHotel: false
-                    });
+                    // Graceful fallback for out of bounds dates if needed, or ignore
+                    return;
                 }
                 dayMap.get(isoKey)?.events.push(event);
             };
 
-            // --- Ingest Data ---
+            // --- Ingest Trip Structure ---
             trip.flights?.segments?.forEach(seg => {
                 addToDay(seg.date, {
                     id: `flight-dep-${seg.flightNumber}`,
@@ -282,6 +280,12 @@ export const ItineraryView: React.FC<{
                 });
             });
 
+            // --- Ingest External Calendar Events ---
+            externalEvents.forEach(ev => {
+                // @ts-ignore
+                if (ev.date) addToDay(ev.date, ev);
+            });
+
             const sortedTimeline = Array.from(dayMap.values()).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
             const mainDest = trip.destinationEnglish || trip.destination.split('-')[0].trim();
@@ -333,7 +337,34 @@ export const ItineraryView: React.FC<{
         };
 
         generateTimeline();
-    }, [trip]);
+    }, [trip, externalEvents]);
+
+    const handleSyncCalendar = async () => {
+        setIsSyncing(true);
+        try {
+            const startDate = timeline.length > 0 ? timeline[0].dateIso : new Date().toISOString();
+            const endDate = timeline.length > 0 ? timeline[timeline.length - 1].dateIso : new Date().toISOString();
+
+            // Add buffer dates to catch adjacent events
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59);
+
+            const events = await fetchCalendarEvents(start.toISOString(), end.toISOString());
+            const mapped = mapEventsToTimeline(events);
+            setExternalEvents(mapped);
+            alert(`סונכרנו בהצלחה ${events.length} אירועים מהיומן!`);
+        } catch (error) {
+            console.error("Sync failed", error);
+            if ((error as Error).message.includes('token')) {
+                alert("נדרשת התחברות מחדש כדי לקרוא מהיומן. אנא התנתק והתחבר שוב.");
+            } else {
+                alert("שגיאה בסנכרון יומן. נסה שנית.");
+            }
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     const handleManualAdd = (text: string) => {
         const targetDateStr = quickAddModal.targetDate; // DD/MM/YYYY
@@ -463,30 +494,44 @@ export const ItineraryView: React.FC<{
                 <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 className="w-4 h-4" /></button>
             </div>
 
-            {/* 2. INSIGHTS */}
-            {insights.length > 0 && (
-                <div className="px-2">
-                    <div className="flex items-center gap-2 mb-3 px-2">
-                        <Sparkles className="w-5 h-5 text-purple-600 animate-pulse" />
-                        <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">ההמלצות של העוזר האישי</h3>
-                    </div>
-                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide py-1">
-                        {insights.map(insight => (
-                            <div key={insight.id} className="min-w-[280px] bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-                                <div className={`absolute top-0 right-0 w-1.5 h-full ${insight.type === 'warning' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-                                <div className="flex items-start gap-3">
-                                    <div className={`p-2.5 rounded-xl ${insight.type === 'warning' ? 'bg-red-50 text-red-600' : 'bg-purple-50 text-purple-600'}`}><insight.icon className="w-5 h-5" /></div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 text-sm mb-1">{insight.title}</h4>
-                                        <p className="text-xs text-slate-500 leading-snug mb-3">{insight.description}</p>
-                                        <button onClick={insight.action} className="text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1">{insight.actionLabel} <ArrowLeft className="w-3 h-3" /></button>
+            {/* 2. INSIGHTS & ACTIONS */}
+            <div className="px-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {insights.length > 0 && (
+                    <div className="">
+                        <div className="flex items-center gap-2 mb-3 px-2">
+                            <Sparkles className="w-5 h-5 text-purple-600 animate-pulse" />
+                            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">ההמלצות של העוזר האישי</h3>
+                        </div>
+                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide py-1">
+                            {insights.map(insight => (
+                                <div key={insight.id} className="min-w-[280px] bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+                                    <div className={`absolute top-0 right-0 w-1.5 h-full ${insight.type === 'warning' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                                    <div className="flex items-start gap-3">
+                                        <div className={`p-2.5 rounded-xl ${insight.type === 'warning' ? 'bg-red-50 text-red-600' : 'bg-purple-50 text-purple-600'}`}><insight.icon className="w-5 h-5" /></div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 text-sm mb-1">{insight.title}</h4>
+                                            <p className="text-xs text-slate-500 leading-snug mb-3">{insight.description}</p>
+                                            <button onClick={insight.action} className="text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1">{insight.actionLabel} <ArrowLeft className="w-3 h-3" /></button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
+                )}
+
+                {/* Sync Button - Added Here */}
+                <div className="flex justify-end px-2">
+                    <button
+                        onClick={handleSyncCalendar}
+                        disabled={isSyncing}
+                        className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm border border-emerald-100 disabled:opacity-50"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                        {isSyncing ? 'מסנכרן...' : 'יבא יומן Google'}
+                    </button>
                 </div>
-            )}
+            </div>
 
             {/* 3. GRID DASHBOARD VIEW */}
             <div className="px-2 md:px-4">
@@ -531,7 +576,10 @@ export const ItineraryView: React.FC<{
                                                     <div key={idx} className="flex items-start gap-3">
                                                         <span className="text-[10px] font-mono font-bold text-slate-400 min-w-[32px] pt-0.5">{event.time || "--:--"}</span>
                                                         <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${event.colorClass.replace('text-', 'bg-')}`}></div>
-                                                        <span className="text-xs font-bold text-slate-700 truncate leading-snug">{event.title}</span>
+                                                        <span className="text-xs font-bold text-slate-700 truncate leading-snug w-full">
+                                                            {event.title}
+                                                            {event.isExternal && <span className="ml-1 text-[9px] bg-green-100 text-green-700 px-1 rounded inline-block">יומן</span>}
+                                                        </span>
                                                     </div>
                                                 ))}
                                                 {day.events.length > 4 && (
@@ -634,7 +682,10 @@ export const ItineraryView: React.FC<{
                                                         <event.icon className={`w-6 h-6 ${event.colorClass}`} />
                                                     </div>
 
-                                                    <h3 className="text-xl font-black text-slate-900 leading-tight mb-2">{event.title}</h3>
+                                                    <div className="flex items-start gap-1">
+                                                        <h3 className="text-xl font-black text-slate-900 leading-tight mb-2">{event.title}</h3>
+                                                        {event.isExternal && <span className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap">יומן</span>}
+                                                    </div>
                                                     {event.subtitle && <p className="text-sm font-bold text-slate-500 mb-4">{event.subtitle}</p>}
 
                                                     <div className="mt-auto pt-2 flex items-center gap-2 flex-wrap">
@@ -649,6 +700,7 @@ export const ItineraryView: React.FC<{
                                         ))}
 
                                         {/* Add Card inside Modal Grid */}
+                                        {/* ... (Same Add Button Logic) ... */}
                                         <button
                                             onClick={() => {
                                                 const [y, m, d] = activeDay.dateIso.split('-');
