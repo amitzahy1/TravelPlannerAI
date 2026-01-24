@@ -830,6 +830,21 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
                                 )}
                             </button>
                         </div>
+
+                        {/* 4. Danger Zone (Mobile Support) */}
+                        <div className="mt-8 p-4 bg-red-50 border border-red-100 rounded-2xl space-y-4">
+                            <div className="flex items-center gap-2 text-red-700 font-bold">
+                                <AlertTriangle className="w-5 h-5" />
+                                <h3>אזור מסוכן</h3>
+                            </div>
+                            <p className="text-xs text-red-600">פעולות אלו הן בלתי הפיכות. מחיקת הטיול תמחק את כל המידע המקושר אליו.</p>
+                            <button
+                                onClick={(e) => handleDeleteTrip(e, activeTrip.id)}
+                                className="w-full py-3 bg-white border border-red-200 text-red-600 font-bold rounded-xl hover:bg-red-50 flex items-center justify-center gap-2 transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" /> מחק את הטיול הנוכחי
+                            </button>
+                        </div>
                     </div>
                 </div>
 

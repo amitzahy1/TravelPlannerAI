@@ -47,7 +47,12 @@ const AppContent: React.FC = () => {
     try {
       const loadedTrips = await loadTrips(user?.uid);
       setTrips(loadedTrips);
-      if (loadedTrips.length > 0) {
+
+      // Persistence Logic: Load last used trip
+      const lastTripId = localStorage.getItem('lastTripId');
+      if (lastTripId && loadedTrips.find(t => t.id === lastTripId)) {
+        setActiveTripId(lastTripId);
+      } else if (loadedTrips.length > 0) {
         setActiveTripId(loadedTrips[0].id);
       }
     } catch (err) {
@@ -67,8 +72,19 @@ const AppContent: React.FC = () => {
   const activeTrip = trips.find(t => t.id === activeTripId) || trips[0];
 
   useEffect(() => {
+    if (activeTripId) {
+      localStorage.setItem('lastTripId', activeTripId);
+    }
+  }, [activeTripId]);
+
+  useEffect(() => {
     if (trips.length > 0 && !trips.find(t => t.id === activeTripId)) {
-      setActiveTripId(trips[0].id);
+      const lastTripId = localStorage.getItem('lastTripId');
+      if (lastTripId && trips.find(t => t.id === lastTripId)) {
+        setActiveTripId(lastTripId);
+      } else {
+        setActiveTripId(trips[0].id);
+      }
     }
   }, [trips, activeTripId]);
 
