@@ -13,7 +13,7 @@ import { ShoppingView } from './components/ShoppingView';
 import { loadTrips, saveTrips, saveSingleTrip, deleteTrip } from './services/storageService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Trip } from './types';
-import { LandingView } from './components/LandingView';
+import { LandingPage } from './components/LandingPage';
 
 import { initGoogleAuth } from './services/googleAuthService';
 
@@ -97,7 +97,6 @@ const AppContent: React.FC = () => {
       await saveSingleTrip(updatedTrip, user?.uid);
     } catch (err) {
       console.error('Error saving trip:', err);
-      // Optionally show error to user
     }
   };
 
@@ -138,24 +137,24 @@ const AppContent: React.FC = () => {
   // 1. Loading State
   if (authLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4">
-        {/* Using inline spinner as ThinkingLoader might not be fully compatible or imported yet */}
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <span className="text-gray-500 font-medium animate-pulse">טוען משתמש...</span>
+      <div className="flex flex-col items-center justify-center h-screen gap-4 bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <span className="text-slate-500 font-medium animate-pulse">Loading Profile...</span>
       </div>
     );
   }
 
-  // 2. Not Logged In (Landing View)
+  // 2. Not Logged In (Landing Page)
   if (!user) {
-    return <LandingView onLogin={signIn} />;
+    // Premium Landing Page
+    return <LandingPage onLogin={signIn} />;
   }
 
   // 3. Logged In (Loading Data)
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
         <span className="text-gray-500 font-medium">טוען את הטיולים שלך...</span>
       </div>
     );
