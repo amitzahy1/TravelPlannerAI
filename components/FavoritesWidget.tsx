@@ -116,44 +116,67 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
 
                                 {/* Column 1: Food (Right) */}
                                 <div className="flex flex-col h-full min-h-0 overflow-y-auto scrollbar-thin p-0">
-                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 px-3 py-1.5 bg-slate-50/50 sticky top-0 z-10 backdrop-blur-sm border-b border-slate-50">
-                                                <Utensils className="w-3 h-3" /> מסעדות ({favorites.filter(f => f.type === 'food').length})
-                                        </div>
-                                        <div className="flex-1 p-1 space-y-0.5">
-                                                {favorites.filter(f => f.type === 'food').slice(0, 4).map(fav => (
-                                                        <div
-                                                                key={fav.data.id}
-                                                                className="flex items-center justify-between py-1.5 px-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-100 group transition-all"
-                                                        >
-                                                                {/* Info */}
-                                                                <div className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedItem({ item: fav.data, type: 'food' })}>
-                                                                        <div className="w-4 h-4 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
-                                                                                <Utensils className="w-2.5 h-2.5 text-orange-500" />
-                                                                        </div>
-                                                                        <span className="text-[11px] font-bold text-slate-700 truncate leading-tight">{fav.data.name}</span>
-                                                                </div>
+                                        <div className="flex-1 p-0 pb-2">
+                                                {Object.entries(
+                                                        favorites.filter(f => f.type === 'food').reduce((groups, item) => {
+                                                                // Heuristic: Extract City from Location
+                                                                const tripCities = trip.destination ? trip.destination.split('-').map(s => s.trim()) : [];
+                                                                let city = 'כללי';
+                                                                const loc = item.data.location || '';
 
-                                                                {/* Actions */}
-                                                                <div className="flex items-center gap-1 shrink-0">
-                                                                        <div className="flex items-center gap-0.5 px-1 bg-slate-50 rounded text-[9px] font-bold text-slate-400">
-                                                                                <span>{((fav.data as any).rating || '5.0')}</span>
-                                                                                <Star className="w-2 h-2 text-yellow-400 fill-yellow-400" />
+                                                                // 1. Try to match known trip cities
+                                                                const match = tripCities.find(c => loc.toLowerCase().includes(c.toLowerCase()));
+                                                                if (match) city = match;
+                                                                else {
+                                                                        // 2. Fallback: Parse address (Take second to last part or first part)
+                                                                        const parts = loc.split(',').map(s => s.trim());
+                                                                        if (parts.length >= 2) city = parts[parts.length - 2];
+                                                                        else if (parts.length === 1) city = parts[0];
+                                                                }
+
+                                                                if (!groups[city]) groups[city] = [];
+                                                                groups[city].push(item);
+                                                                return groups;
+                                                        }, {} as Record<string, typeof favorites>)
+                                                ).sort((a, b) => a[0].localeCompare(b[0])) // Sort by City Name
+                                                        .map(([city, items]) => (
+                                                                <div key={city} className="relative">
+                                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1 bg-slate-50/95 sticky top-0 backdrop-blur-sm z-10 border-y border-slate-100 shadow-sm">
+                                                                                {city}
                                                                         </div>
-                                                                        <button
-                                                                                onClick={() => setSelectedItem({ item: fav.data, type: 'food' })}
-                                                                                className="p-1 text-green-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                                                                title="הוסף ללוח"
-                                                                        >
-                                                                                <Plus className="w-3 h-3" />
-                                                                        </button>
+                                                                        <div className="space-y-0.5 p-1">
+                                                                                {items.map(fav => (
+                                                                                        <div
+                                                                                                key={fav.data.id}
+                                                                                                className="flex items-center justify-between py-1.5 px-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-100 group transition-all"
+                                                                                        >
+                                                                                                {/* Info */}
+                                                                                                <div className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedItem({ item: fav.data, type: 'food' })}>
+                                                                                                        <div className="w-4 h-4 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
+                                                                                                                <Utensils className="w-2.5 h-2.5 text-orange-500" />
+                                                                                                        </div>
+                                                                                                        <span className="text-[11px] font-bold text-slate-700 truncate leading-tight">{fav.data.name}</span>
+                                                                                                </div>
+
+                                                                                                {/* Actions */}
+                                                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                                                        <div className="flex items-center gap-0.5 px-1 bg-slate-50 rounded text-[9px] font-bold text-slate-400">
+                                                                                                                <span>{((fav.data as any).rating || '5.0')}</span>
+                                                                                                                <Star className="w-2 h-2 text-yellow-400 fill-yellow-400" />
+                                                                                                        </div>
+                                                                                                        <button
+                                                                                                                onClick={() => setSelectedItem({ item: fav.data, type: 'food' })}
+                                                                                                                className="p-1 text-green-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                                                                                                title="הוסף ללוח"
+                                                                                                        >
+                                                                                                                <Plus className="w-3 h-3" />
+                                                                                                        </button>
+                                                                                                </div>
+                                                                                        </div>
+                                                                                ))}
+                                                                        </div>
                                                                 </div>
-                                                        </div>
-                                                ))}
-                                                {favorites.filter(f => f.type === 'food').length > 4 && (
-                                                        <button onClick={() => setShowAllModal(true)} className="w-full text-center py-1.5 text-[9px] font-bold text-blue-500 hover:bg-blue-50 rounded-lg transition-colors mt-1">
-                                                                עוד {favorites.filter(f => f.type === 'food').length - 4} מסעדות...
-                                                        </button>
-                                                )}
+                                                        ))}
                                                 {favorites.filter(f => f.type === 'food').length === 0 && (
                                                         <div className="text-center py-6 text-slate-300 text-[10px]">אין מסעדות שמורות</div>
                                                 )}
@@ -162,44 +185,67 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
 
                                 {/* Column 2: Attractions (Left) */}
                                 <div className="flex flex-col h-full min-h-0 overflow-y-auto scrollbar-thin p-0">
-                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 px-3 py-1.5 bg-slate-50/50 sticky top-0 z-10 backdrop-blur-sm border-b border-slate-50">
-                                                <Ticket className="w-3 h-3" /> אטרקציות ({favorites.filter(f => f.type === 'attraction').length})
-                                        </div>
-                                        <div className="flex-1 p-1 space-y-0.5">
-                                                {favorites.filter(f => f.type === 'attraction').slice(0, 4).map(fav => (
-                                                        <div
-                                                                key={fav.data.id}
-                                                                className="flex items-center justify-between py-1.5 px-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-100 group transition-all"
-                                                        >
-                                                                {/* Info */}
-                                                                <div className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedItem({ item: fav.data, type: 'attraction' })}>
-                                                                        <div className="w-4 h-4 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
-                                                                                <Ticket className="w-2.5 h-2.5 text-purple-500" />
-                                                                        </div>
-                                                                        <span className="text-[11px] font-bold text-slate-700 truncate leading-tight">{fav.data.name}</span>
-                                                                </div>
+                                        <div className="flex-1 p-0 pb-2">
+                                                {Object.entries(
+                                                        favorites.filter(f => f.type === 'attraction').reduce((groups, item) => {
+                                                                // Heuristic: Extract City from Location
+                                                                const tripCities = trip.destination ? trip.destination.split('-').map(s => s.trim()) : [];
+                                                                let city = 'כללי';
+                                                                const loc = item.data.location || '';
 
-                                                                {/* Actions */}
-                                                                <div className="flex items-center gap-1 shrink-0">
-                                                                        <div className="flex items-center gap-0.5 px-1 bg-slate-50 rounded text-[9px] font-bold text-slate-400">
-                                                                                <span>{((fav.data as any).rating || '5.0')}</span>
-                                                                                <Star className="w-2 h-2 text-yellow-400 fill-yellow-400" />
+                                                                // 1. Try to match known trip cities
+                                                                const match = tripCities.find(c => loc.toLowerCase().includes(c.toLowerCase()));
+                                                                if (match) city = match;
+                                                                else {
+                                                                        // 2. Fallback: Parse address
+                                                                        const parts = loc.split(',').map(s => s.trim());
+                                                                        if (parts.length >= 2) city = parts[parts.length - 2];
+                                                                        else if (parts.length === 1) city = parts[0];
+                                                                }
+
+                                                                if (!groups[city]) groups[city] = [];
+                                                                groups[city].push(item);
+                                                                return groups;
+                                                        }, {} as Record<string, typeof favorites>)
+                                                ).sort((a, b) => a[0].localeCompare(b[0])) // Sort by City Name
+                                                        .map(([city, items]) => (
+                                                                <div key={city} className="relative">
+                                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1 bg-slate-50/95 sticky top-0 backdrop-blur-sm z-10 border-y border-slate-100 shadow-sm">
+                                                                                {city}
                                                                         </div>
-                                                                        <button
-                                                                                onClick={() => setSelectedItem({ item: fav.data, type: 'attraction' })}
-                                                                                className="p-1 text-green-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                                                                title="הוסף ללוח"
-                                                                        >
-                                                                                <Plus className="w-3 h-3" />
-                                                                        </button>
+                                                                        <div className="space-y-0.5 p-1">
+                                                                                {items.map(fav => (
+                                                                                        <div
+                                                                                                key={fav.data.id}
+                                                                                                className="flex items-center justify-between py-1.5 px-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-100 group transition-all"
+                                                                                        >
+                                                                                                {/* Info */}
+                                                                                                <div className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedItem({ item: fav.data, type: 'attraction' })}>
+                                                                                                        <div className="w-4 h-4 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
+                                                                                                                <Ticket className="w-2.5 h-2.5 text-purple-500" />
+                                                                                                        </div>
+                                                                                                        <span className="text-[11px] font-bold text-slate-700 truncate leading-tight">{fav.data.name}</span>
+                                                                                                </div>
+
+                                                                                                {/* Actions */}
+                                                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                                                        <div className="flex items-center gap-0.5 px-1 bg-slate-50 rounded text-[9px] font-bold text-slate-400">
+                                                                                                                <span>{((fav.data as any).rating || '5.0')}</span>
+                                                                                                                <Star className="w-2 h-2 text-yellow-400 fill-yellow-400" />
+                                                                                                        </div>
+                                                                                                        <button
+                                                                                                                onClick={() => setSelectedItem({ item: fav.data, type: 'attraction' })}
+                                                                                                                className="p-1 text-green-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                                                                                                title="הוסף ללוח"
+                                                                                                        >
+                                                                                                                <Plus className="w-3 h-3" />
+                                                                                                        </button>
+                                                                                                </div>
+                                                                                        </div>
+                                                                                ))}
+                                                                        </div>
                                                                 </div>
-                                                        </div>
-                                                ))}
-                                                {favorites.filter(f => f.type === 'attraction').length > 4 && (
-                                                        <button onClick={() => setShowAllModal(true)} className="w-full text-center py-1.5 text-[9px] font-bold text-blue-500 hover:bg-blue-50 rounded-lg transition-colors mt-1">
-                                                                עוד {favorites.filter(f => f.type === 'attraction').length - 4} אטרקציות...
-                                                        </button>
-                                                )}
+                                                        ))}
                                                 {favorites.filter(f => f.type === 'attraction').length === 0 && (
                                                         <div className="text-center py-6 text-slate-300 text-[10px]">אין אטרקציות שמורות</div>
                                                 )}
