@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { TripDateSelector } from './TripDateSelector';
+import { PlaceIllustration } from './PlaceIllustration'; // Moved to top level
 import { Trip, Restaurant, Attraction, DayPlan } from '../types';
 import { Star, Utensils, Ticket, Calendar, Plus, X, ChevronRight } from 'lucide-react';
 
@@ -57,9 +58,16 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                         onClick={() => setSelectedItem({ item: fav.data, type: fav.type })}
                         className={`bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden flex flex-col ${isSmall ? 'h-[140px]' : 'h-full'}`}
                 >
+
                         {/* Header Image/Icon */}
-                        <div className={`h-16 flex-shrink-0 flex items-center justify-center relative ${fav.type === 'food' ? 'bg-orange-50 group-hover:bg-orange-100' : 'bg-purple-50 group-hover:bg-purple-100'} transition-colors`}>
-                                {fav.type === 'food' ? <Utensils className="w-6 h-6 text-orange-400" /> : <Ticket className="w-6 h-6 text-purple-400" />}
+                        <div className={`h-16 flex-shrink-0 flex items-center justify-center relative bg-slate-50 group-hover:bg-slate-100 transition-colors`}>
+                                <div className="transform scale-75 group-hover:scale-90 transition-transform">
+                                        <PlaceIllustration
+                                                type={fav.type}
+                                                subType={(fav.data as any).cuisine || (fav.data as any).type}
+                                                className="w-10 h-10"
+                                        />
+                                </div>
 
                                 <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded-lg border border-slate-100 shadow-sm flex items-center gap-0.5">
                                         <span className="text-[10px] font-bold">{(fav.data as any).rating || (fav.data as any).googleRating || '5.0'}</span>
@@ -109,17 +117,19 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                 {/* Column 1: Food (Right) */}
                                 <div className="flex flex-col h-full min-h-0 overflow-y-auto scrollbar-thin p-0">
                                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 px-3 py-1.5 bg-slate-50/50 sticky top-0 z-10 backdrop-blur-sm border-b border-slate-50">
-                                                <Utensils className="w-3 h-3" /> מסעדות
+                                                <Utensils className="w-3 h-3" /> מסעדות ({favorites.filter(f => f.type === 'food').length})
                                         </div>
                                         <div className="flex-1 p-1 space-y-0.5">
-                                                {favorites.filter(f => f.type === 'food').map(fav => (
+                                                {favorites.filter(f => f.type === 'food').slice(0, 4).map(fav => (
                                                         <div
                                                                 key={fav.data.id}
                                                                 className="flex items-center justify-between py-1.5 px-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-100 group transition-all"
                                                         >
                                                                 {/* Info */}
                                                                 <div className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedItem({ item: fav.data, type: 'food' })}>
-                                                                        <Utensils className="w-3 h-3 text-orange-400 shrink-0" />
+                                                                        <div className="w-4 h-4 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
+                                                                                <Utensils className="w-2.5 h-2.5 text-orange-500" />
+                                                                        </div>
                                                                         <span className="text-[11px] font-bold text-slate-700 truncate leading-tight">{fav.data.name}</span>
                                                                 </div>
 
@@ -139,6 +149,11 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                                                 </div>
                                                         </div>
                                                 ))}
+                                                {favorites.filter(f => f.type === 'food').length > 4 && (
+                                                        <button onClick={() => setShowAllModal(true)} className="w-full text-center py-1.5 text-[9px] font-bold text-blue-500 hover:bg-blue-50 rounded-lg transition-colors mt-1">
+                                                                עוד {favorites.filter(f => f.type === 'food').length - 4} מסעדות...
+                                                        </button>
+                                                )}
                                                 {favorites.filter(f => f.type === 'food').length === 0 && (
                                                         <div className="text-center py-6 text-slate-300 text-[10px]">אין מסעדות שמורות</div>
                                                 )}
@@ -148,17 +163,19 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                 {/* Column 2: Attractions (Left) */}
                                 <div className="flex flex-col h-full min-h-0 overflow-y-auto scrollbar-thin p-0">
                                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 px-3 py-1.5 bg-slate-50/50 sticky top-0 z-10 backdrop-blur-sm border-b border-slate-50">
-                                                <Ticket className="w-3 h-3" /> אטרקציות
+                                                <Ticket className="w-3 h-3" /> אטרקציות ({favorites.filter(f => f.type === 'attraction').length})
                                         </div>
                                         <div className="flex-1 p-1 space-y-0.5">
-                                                {favorites.filter(f => f.type === 'attraction').map(fav => (
+                                                {favorites.filter(f => f.type === 'attraction').slice(0, 4).map(fav => (
                                                         <div
                                                                 key={fav.data.id}
                                                                 className="flex items-center justify-between py-1.5 px-2 rounded-lg border border-transparent hover:bg-slate-50 hover:border-slate-100 group transition-all"
                                                         >
                                                                 {/* Info */}
                                                                 <div className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer" onClick={() => setSelectedItem({ item: fav.data, type: 'attraction' })}>
-                                                                        <Ticket className="w-3 h-3 text-purple-400 shrink-0" />
+                                                                        <div className="w-4 h-4 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
+                                                                                <Ticket className="w-2.5 h-2.5 text-purple-500" />
+                                                                        </div>
                                                                         <span className="text-[11px] font-bold text-slate-700 truncate leading-tight">{fav.data.name}</span>
                                                                 </div>
 
@@ -178,6 +195,11 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                                                 </div>
                                                         </div>
                                                 ))}
+                                                {favorites.filter(f => f.type === 'attraction').length > 4 && (
+                                                        <button onClick={() => setShowAllModal(true)} className="w-full text-center py-1.5 text-[9px] font-bold text-blue-500 hover:bg-blue-50 rounded-lg transition-colors mt-1">
+                                                                עוד {favorites.filter(f => f.type === 'attraction').length - 4} אטרקציות...
+                                                        </button>
+                                                )}
                                                 {favorites.filter(f => f.type === 'attraction').length === 0 && (
                                                         <div className="text-center py-6 text-slate-300 text-[10px]">אין אטרקציות שמורות</div>
                                                 )}

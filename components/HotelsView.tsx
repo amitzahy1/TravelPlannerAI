@@ -155,54 +155,87 @@ const HotelCard: React.FC<{
     const displayImage = data.imageUrl || getPlaceImage(data.address || data.name);
 
     return (
-        <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col md:flex-row group relative">
-            <div className="absolute top-4 left-4 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={onEdit} className="bg-white/90 p-2 rounded-xl text-slate-600 hover:text-blue-600 shadow-md backdrop-blur-sm"><Edit className="w-4 h-4" /></button>
-                <button onClick={onDelete} className="bg-white/90 p-2 rounded-xl text-slate-600 hover:text-red-600 shadow-md backdrop-blur-sm"><Trash2 className="w-4 h-4" /></button>
+        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col md:flex-row group relative h-[220px]">
+            <div className="absolute top-2 left-2 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={onEdit} className="bg-white/90 p-1.5 rounded-lg text-slate-600 hover:text-blue-600 shadow-md backdrop-blur-sm"><Edit className="w-3.5 h-3.5" /></button>
+                <button onClick={onDelete} className="bg-white/90 p-1.5 rounded-lg text-slate-600 hover:text-red-600 shadow-md backdrop-blur-sm"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
-            <div className="md:w-1/3 h-56 md:h-auto relative bg-slate-100">
+
+            {/* Image Section - Compact */}
+            <div className="md:w-48 h-full relative bg-slate-100 flex-shrink-0">
                 <img src={displayImage} alt={data.name} className="w-full h-full object-cover" />
 
                 {/* Badges Overlay */}
-                <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-                    <div className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-800 shadow-sm flex items-center"><CheckCircle className="w-3 h-3 ml-1 text-green-500" />{data.bookingSource}</div>
+                <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                    <div className="bg-white/90 backdrop-blur px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-800 shadow-sm flex items-center"><CheckCircle className="w-2.5 h-2.5 ml-1 text-green-500" />{data.bookingSource}</div>
                     {data.breakfastIncluded && (
-                        <div className="bg-orange-100/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-orange-700 shadow-sm flex items-center"><Coffee className="w-3 h-3 ml-1" />ארוחת בוקר</div>
+                        <div className="bg-orange-100/90 backdrop-blur px-2 py-0.5 rounded-full text-[10px] font-bold text-orange-700 shadow-sm flex items-center"><Coffee className="w-2.5 h-2.5 ml-1" />ארוחת בוקר</div>
                     )}
                 </div>
             </div>
-            <div className="p-6 md:w-2/3 flex flex-col justify-between">
+
+            {/* Content - Dense */}
+            <div className="p-4 flex-grow flex flex-col justify-between min-w-0">
                 <div>
-                    <div className="flex justify-between items-start pl-10">
-                        <div><h3 className="text-2xl font-black text-slate-900 mb-1">{data.name}</h3><div className="flex items-start text-sm text-slate-500 mb-4 font-medium"><MapPin className="w-4 h-4 ml-1 flex-shrink-0 mt-0.5 text-slate-400" />{data.address}</div></div>
-                        {data.confirmationCode && <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-500 border border-slate-200">#{data.confirmationCode}</span>}
+                    <div className="flex justify-between items-start">
+                        <div className="flex-grow min-w-0">
+                            <h3 className="text-lg font-black text-slate-900 mb-0.5 truncate leading-tight">{data.name}</h3>
+                            <div className="flex items-center text-xs text-slate-500 mb-2 font-medium truncate">
+                                <MapPin className="w-3 h-3 ml-1 flex-shrink-0 text-slate-400" />
+                                <span className="truncate">{data.address}</span>
+                            </div>
+                        </div>
+                        {data.confirmationCode && <span className="flex-shrink-0 text-[10px] font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200 ml-2">#{data.confirmationCode}</span>}
                     </div>
 
                     {data.cancellationPolicy && (
-                        <div className="mb-3 text-xs text-red-500 bg-red-50 px-3 py-2 rounded-xl border border-red-100 flex items-start gap-2">
-                            <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+                        <div className="mb-2 text-[10px] text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100 flex items-start gap-1.5 w-fit">
+                            <ShieldCheck className="w-3 h-3 flex-shrink-0" />
                             <span className="font-bold">{data.cancellationPolicy}</span>
                         </div>
                     )}
 
-                    <div className="mb-4">
+                    <div className="mb-3">
                         {data.locationVibe ? (
-                            <div className="bg-purple-50 border border-purple-100 p-3 rounded-2xl flex items-start gap-3">
-                                <div className="bg-white p-1.5 rounded-full shadow-sm"><Sparkles className="w-4 h-4 text-purple-600" /></div>
-                                <div><div className="text-[10px] font-bold text-purple-700 uppercase mb-0.5">ניתוח מיקום (AI)</div><p className="text-sm text-purple-900 leading-snug font-medium">{data.locationVibe}</p></div>
+                            <div className="bg-purple-50 border border-purple-100 p-2 rounded-xl flex items-start gap-2">
+                                <div className="bg-white p-1 rounded-full shadow-sm flex-shrink-0"><Sparkles className="w-3 h-3 text-purple-600" /></div>
+                                <div className="min-w-0"><div className="text-[9px] font-bold text-purple-700 uppercase mb-0 leading-none">Vibe Check</div><p className="text-xs text-purple-900 leading-tight font-medium line-clamp-2">{data.locationVibe}</p></div>
                             </div>
                         ) : (
-                            <button onClick={analyzeLocation} disabled={analyzing} className="flex items-center gap-2 text-xs font-bold text-purple-600 hover:bg-purple-50 px-3 py-2 rounded-xl transition-colors border border-dashed border-purple-200 w-full justify-center">{analyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{analyzing ? 'מנתח...' : 'מה ה-Vibe של האזור?'}</button>
+                            <button onClick={analyzeLocation} disabled={analyzing} className="flex items-center gap-1.5 text-[10px] font-bold text-purple-600 hover:bg-purple-50 px-2 py-1.5 rounded-lg transition-colors border border-dashed border-purple-200 w-full justify-center">{analyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{analyzing ? 'מנתח...' : 'מה ה-Vibe של האזור?'}</button>
                         )}
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="bg-indigo-50 p-3 rounded-2xl border border-indigo-100"><div className="text-[10px] text-indigo-600 font-bold uppercase mb-1">צ'ק אין</div><div className="font-bold text-slate-900 flex items-center text-lg"><Calendar className="w-4 h-4 ml-2 text-indigo-400" />{data.checkInDate}</div></div>
-                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200"><div className="text-[10px] text-slate-500 font-bold uppercase mb-1">צ'ק אאוט</div><div className="font-bold text-slate-900 flex items-center text-lg"><Calendar className="w-4 h-4 ml-2 text-slate-400" />{data.checkOutDate}</div></div>
-                    </div>
                 </div>
-                <div className="mt-4 pt-4 border-t border-dashed border-slate-200 flex items-center justify-between">
-                    {isEditingNote ? (<div className="flex-grow bg-yellow-50 p-2 rounded-xl border border-yellow-200 mr-4"><textarea className="w-full bg-transparent border-none outline-none text-sm text-slate-800 resize-none" rows={1} placeholder="הוסף הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2 mt-1"><button onClick={() => setIsEditingNote(false)} className="text-xs text-slate-500">ביטול</button><button onClick={saveNote} className="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`flex-grow p-2 rounded-xl border text-xs flex items-center gap-2 cursor-pointer transition-colors mr-4 ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900 hover:bg-yellow-100' : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100 border-dashed border-slate-200'}`}><StickyNote className={`w-3.5 h-3.5 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-slate-400'}`} /><span className="truncate font-medium">{data.notes || 'הערות אישיות'}</span></div>)}
-                    {data.googleMapsUrl && (<a href={data.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"><ExternalLink className="w-4 h-4" /> ניווט</a>)}
+
+                <div className="flex items-end justify-between border-t border-dashed border-slate-200 pt-3">
+                    <div className="flex gap-2">
+                        <div className="bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100 flex items-center gap-2">
+                            <div className="text-[9px] text-indigo-600 font-bold uppercase">צ'ק אין</div>
+                            <div className="font-bold text-slate-900 text-sm flex items-center"><Calendar className="w-3 h-3 ml-1 text-indigo-400" />{data.checkInDate}</div>
+                        </div>
+                        <div className="bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 flex items-center gap-2">
+                            <div className="text-[9px] text-slate-500 font-bold uppercase">צ'ק אאוט</div>
+                            <div className="font-bold text-slate-900 text-sm flex items-center"><Calendar className="w-3 h-3 ml-1 text-slate-400" />{data.checkOutDate}</div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {isEditingNote ? (
+                            <div className="flex bg-yellow-50 p-1 rounded-lg border border-yellow-200 w-48">
+                                <input className="w-full bg-transparent border-none outline-none text-xs text-slate-800" placeholder="הוסף הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} />
+                                <button onClick={saveNote} className="text-[10px] bg-yellow-400 text-yellow-900 px-1.5 rounded font-bold whitespace-nowrap ml-1">שמור</button>
+                            </div>
+                        ) : (
+                            <div onClick={() => setIsEditingNote(true)} className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center gap-1.5 cursor-pointer max-w-[150px] ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900 hover:bg-yellow-100' : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100 border-dashed border-slate-200'}`}>
+                                <StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-slate-400'}`} />
+                                <span className="truncate font-medium">{data.notes || 'הערה'}</span>
+                            </div>
+                        )}
+
+                        {data.googleMapsUrl && (
+                            <a href={data.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"><ExternalLink className="w-4 h-4" /></a>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Star, MapIcon, Plus, CheckCircle2, Trophy, Hotel, AlertTriangle } from 'lucide-react';
 
+import { PlaceIllustration } from './PlaceIllustration';
+
 export interface PlaceCardProps {
         type: 'restaurant' | 'attraction';
         name: string;
@@ -12,8 +14,8 @@ export interface PlaceCardProps {
         attractionType?: string;
         price?: string;
         badges?: Array<{ label: string; icon?: any; color: string; bgColor: string; borderColor: string }>;
-        visualIcon: string;
-        visualBgColor: string;
+        visualIcon?: string; // Optional now
+        visualBgColor?: string; // Optional now
         mapsUrl: string;
         isAdded: boolean;
         onAdd: () => void;
@@ -38,8 +40,6 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         attractionType,
         price,
         badges,
-        visualIcon,
-        visualBgColor,
         mapsUrl,
         isAdded,
         onAdd,
@@ -60,11 +60,15 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
 
                         {/* Icon Header */}
                         <div
-                                className={`h-28 ${visualBgColor} relative flex items-center justify-center rounded-t-2xl overflow-hidden group-hover:opacity-90 transition-all`}
+                                className={`h-28 bg-slate-50 relative flex items-center justify-center rounded-t-2xl overflow-hidden group-hover:bg-slate-100 transition-colors`}
                         >
-                                <span className="text-4xl filter drop-shadow-sm transform group-hover:scale-110 transition-transform duration-300">
-                                        {visualIcon}
-                                </span>
+                                <div className="transform group-hover:scale-110 transition-transform duration-300">
+                                        <PlaceIllustration
+                                                type={type as any}
+                                                subType={type === 'restaurant' ? cuisine : attractionType}
+                                                className="w-16 h-16"
+                                        />
+                                </div>
 
                                 {/* Rating Badge */}
                                 {rating && (
@@ -145,8 +149,8 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                                 onClick={onAdd}
                                                 disabled={isAdded}
                                                 className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm ${isAdded
-                                                                ? 'bg-green-50 text-green-700 border border-green-200'
-                                                                : `${buttonColor} text-white`
+                                                        ? 'bg-green-50 text-green-700 border border-green-200'
+                                                        : `${buttonColor} text-white`
                                                         }`}
                                         >
                                                 {isAdded ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}

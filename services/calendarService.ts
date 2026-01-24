@@ -56,7 +56,10 @@ export const fetchCalendarEvents = async (timeMin: string, timeMax: string, acce
 
                 if (!response.ok) {
                         if (response.status === 401) throw new Error('Token expired');
-                        if (response.status === 403) throw new Error('Permission denied. Please Re-Authorize Google Calendar.');
+                        if (response.status === 403) {
+                                // CRITICAL: This specific error string is caught by the UI/AuthContext
+                                throw new Error('NeedsReAuth');
+                        }
                         throw new Error(`Calendar API Error: ${response.statusText}`);
                 }
 
