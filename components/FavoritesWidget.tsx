@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { TripDateSelector } from './TripDateSelector';
-import { PlaceIllustration } from './PlaceIllustration'; // Moved to top level
+import { GlobalPlaceModal } from './GlobalPlaceModal'; // Global Modal System
+import { PlaceIllustration } from './PlaceIllustration';
 import { Trip, Restaurant, Attraction, DayPlan } from '../types';
 import { Star, Utensils, Ticket, Calendar, Plus, X, ChevronRight } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
@@ -12,7 +13,8 @@ interface FavoritesWidgetProps {
 }
 
 export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedule, timeline }) => {
-        const [selectedItem, setSelectedItem] = useState<{ item: Restaurant | Attraction, type: 'food' | 'attraction' } | null>(null);
+        const [detailItem, setDetailItem] = useState<{ item: Restaurant | Attraction, type: 'food' | 'attraction' } | null>(null);
+        const [isScheduling, setIsScheduling] = useState(false); // To toggle between Detail -> Schedule modes
         const [showAllModal, setShowAllModal] = useState(false);
 
         // Collect Data
@@ -56,7 +58,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
         const renderCard = (fav: typeof favorites[0], isSmall = false) => (
                 <div
                         key={`${fav.type}-${fav.data.id}`}
-                        onClick={() => setSelectedItem({ item: fav.data, type: fav.type })}
+                        onClick={() => setDetailItem({ item: fav.data, type: fav.type })}
                         className={`bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden flex flex-col ${isSmall ? 'h-[140px]' : 'h-full'}`}
                 >
 
@@ -123,7 +125,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                         iconBg="bg-orange-50"
                                         iconColor="text-orange-600"
                                         trip={trip}
-                                        onSelect={(item: any, type: any) => setSelectedItem({ item, type })}
+                                        onSelect={(item: any, type: any) => setDetailItem({ item, type })}
                                 />
 
                                 {/* Column 2: Attractions (Left) */}
@@ -135,7 +137,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                         iconBg="bg-purple-50"
                                         iconColor="text-purple-600"
                                         trip={trip}
-                                        onSelect={(item: any, type: any) => setSelectedItem({ item, type })}
+                                        onSelect={(item: any, type: any) => setDetailItem({ item, type })}
                                 />
                         </div>
 
@@ -159,18 +161,30 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                 </div>
                         )}
 
-                        {/* Global Date Selection Modal */}
+                        {/* Global Place Details Modal (NEW) */}
+                        <GlobalPlaceModal
+                                item={detailItem?.item}
+                                type={detailItem?.type}
+                                onClose={() => setDetailItem(null)}
+                                onAddToPlan={() => {
+                                        setIsScheduling(true);
+                                        // Don't close detailItem yet, wait for schedule success
+                                }}
+                        />
+
+                        {/* Global Date Selection Modal (Chained) */}
                         <TripDateSelector
-                                isOpen={!!selectedItem}
-                                onClose={() => setSelectedItem(null)}
+                                isOpen={isScheduling}
+                                onClose={() => setIsScheduling(false)}
                                 onSelect={(dateIso) => {
-                                        if (selectedItem) {
-                                                onSchedule(selectedItem.item, dateIso, selectedItem.type);
-                                                setSelectedItem(null);
+                                        if (detailItem) {
+                                                onSchedule(detailItem.item, dateIso, detailItem.type);
+                                                setIsScheduling(false);
+                                                setDetailItem(null); // Close everything
                                         }
                                 }}
                                 title="תזמון פעילות"
-                                description={`עבור: ${selectedItem?.item.name || ''}`}
+                                description={`עבור: ${detailItem?.item.name || ''}`}
                                 trip={trip}
                                 timeline={timeline}
                         />

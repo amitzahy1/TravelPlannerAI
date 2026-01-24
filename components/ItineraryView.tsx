@@ -640,11 +640,8 @@ export const ItineraryView: React.FC<{
                 <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 className="w-4 h-4" /></button>
             </div>
 
-            {/* 2. DASHBOARD GRID: Insights & Favorites (Task 7.1) */}
-            {/* 2. DASHBOARD GRID: Insights & Favorites (Unified Twin Layout h-80) */}
-            {/* 2. DASHBOARD GRID: Insights & Favorites (Split-Grid Layout h-[350px]) */}
-            {/* 2. DASHBOARD GRID: Insights & Favorites (Ultra-Compact Ticker h-[220px]) */}
-            <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-4 h-auto lg:h-[220px] mb-12 relative z-20">
+            {/* 2. DASHBOARD GRID: Insights & Favorites (Fixed Height to prevent overlap) */}
+            <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-4 h-[280px] mb-12 shrink-0 relative z-30">
 
                 {/* Left: Assistant Widget (4 Columns) */}
                 <div className="lg:col-span-4 h-full flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in relative z-20">
