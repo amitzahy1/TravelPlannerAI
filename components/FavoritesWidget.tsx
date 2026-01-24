@@ -87,63 +87,75 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
         );
 
         return (
-                <div className="h-full px-1 animate-fade-in relative z-30 flex flex-col bg-white/50 rounded-3xl">
-                        {/* Twin Header: Favorites */}
-                        <div className="flex items-center gap-3 p-2 border-b border-slate-100/50 bg-white/50 backdrop-blur-sm sticky top-0 z-10 rounded-t-3xl">
-                                <div className="p-2 rounded-xl bg-yellow-50 text-yellow-600">
-                                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+        return (
+                <div className="h-full px-1 animate-fade-in relative z-30 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                        {/* Clone Header: Favorites */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white/50 backdrop-blur-md sticky top-0 z-20">
+                                <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-xl shadow-sm bg-amber-50 text-amber-600">
+                                                <Star className="w-4 h-4" />
+                                        </div>
+                                        <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
+                                                המועדפים שלי
+                                        </h3>
                                 </div>
-                                <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
-                                        המועדפים שלי
-                                </h3>
-                                {/* Right Side Actions */}
-                                <div className="mr-auto flex items-center gap-2">
+                                <div className="flex items-center gap-2">
                                         <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{favorites.length}</span>
                                 </div>
                         </div>
 
-                        {/* Vertical List View */}
-                        <div className="flex flex-col gap-2 flex-grow min-h-0 overflow-y-auto scrollbar-hide p-2">
-                                {displayedFavorites.map((fav) => (
-                                        <div
-                                                key={`${fav.type}-${fav.data.id}`}
-                                                onClick={() => setSelectedItem({ item: fav.data, type: fav.type })}
-                                                className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl hover:border-blue-300 hover:shadow-sm transition-all group flex-shrink-0 cursor-pointer"
-                                        >
-                                                {/* Left: Icon + Name */}
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                        <div className={`p-1.5 rounded-full flex-shrink-0 ${fav.type === 'food' ? 'bg-orange-50 text-orange-500' : 'bg-purple-50 text-purple-500'}`}>
-                                                                {fav.type === 'food' ? <Utensils className="w-3.5 h-3.5" /> : <Ticket className="w-3.5 h-3.5" />}
-                                                        </div>
-                                                        <div className="flex flex-col min-w-0">
-                                                                <span className="text-xs font-bold text-slate-700 truncate">{fav.data.name}</span>
-                                                                <span className="text-[9px] text-slate-400 truncate hidden group-hover:block">
-                                                                        {(fav.data as any).cuisine || (fav.data as any).type || (fav.type === 'food' ? 'מסעדה' : 'אטרקציה')}
-                                                                </span>
-                                                        </div>
-                                                </div>
+                        {/* Split Logic: 2 Columns */}
+                        <div className="flex-1 grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 overflow-hidden bg-slate-50/30">
 
-                                                {/* Right: Rating + Add */}
-                                                <div className="flex items-center gap-3 flex-shrink-0">
-                                                        <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-600">
-                                                                <Star className="w-2.5 h-2.5 text-yellow-500 fill-yellow-500" />
-                                                                <span>{(fav.data as any).rating || (fav.data as any).googleRating || '5.0'}</span>
+                                {/* Column 1: Food (Right) */}
+                                <div className="flex flex-col h-full min-h-0 overflow-y-auto scrollbar-thin p-3 gap-2">
+                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-400 mb-1 sticky top-0 bg-slate-50/95 backdrop-blur-sm p-1 z-10 rounded-lg">
+                                                <Utensils className="w-3 h-3" /> מסעדות
+                                        </div>
+                                        {favorites.filter(f => f.type === 'food').map(fav => (
+                                                <div
+                                                        key={fav.data.id}
+                                                        onClick={() => setSelectedItem({ item: fav.data, type: 'food' })}
+                                                        className="p-3 bg-white border border-slate-100 rounded-xl hover:border-orange-200 hover:shadow-sm cursor-pointer transition-all group"
+                                                >
+                                                        <div className="flex justify-between items-start mb-1">
+                                                                <span className="text-xs font-bold text-slate-800 line-clamp-1">{fav.data.name}</span>
+                                                                <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-1.5 rounded">{((fav.data as any).rating || '5.0')} ★</span>
                                                         </div>
-                                                        <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors opacity-0 group-hover:opacity-100">
-                                                                <Plus className="w-4 h-4" />
+                                                        <button className="w-full mt-2 py-1 text-[10px] font-bold bg-slate-50 text-slate-400 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                                                                <Plus className="w-3 h-3" /> הוסף ללו"ז
                                                         </button>
                                                 </div>
-                                        </div>
-                                ))}
+                                        ))}
+                                        {favorites.filter(f => f.type === 'food').length === 0 && (
+                                                <div className="text-center py-8 text-slate-300 text-[10px]">אין מסעדות שמורות</div>
+                                        )}
+                                </div>
 
-                                {favorites.length > 4 && (
-                                        <button
-                                                onClick={() => setShowAllModal(true)}
-                                                className="w-full py-2 text-[10px] font-bold text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-xl border border-dashed border-slate-200 transition-colors"
-                                        >
-                                                + הצג עוד {favorites.length - 4}
-                                        </button>
-                                )}
+                                {/* Column 2: Attractions (Left) */}
+                                <div className="flex flex-col h-full min-h-0 overflow-y-auto scrollbar-thin p-3 gap-2">
+                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-400 mb-1 sticky top-0 bg-slate-50/95 backdrop-blur-sm p-1 z-10 rounded-lg">
+                                                <Ticket className="w-3 h-3" /> אטרקציות
+                                        </div>
+                                        {favorites.filter(f => f.type === 'attraction').map(fav => (
+                                                <div
+                                                        key={fav.data.id}
+                                                        onClick={() => setSelectedItem({ item: fav.data, type: 'attraction' })}
+                                                        className="p-3 bg-white border border-slate-100 rounded-xl hover:border-purple-200 hover:shadow-sm cursor-pointer transition-all group"
+                                                >
+                                                        <div className="flex justify-between items-start mb-1">
+                                                                <span className="text-xs font-bold text-slate-800 line-clamp-1">{fav.data.name}</span>
+                                                                <span className="text-[10px] font-bold text-purple-500 bg-purple-50 px-1.5 rounded">{((fav.data as any).rating || '5.0')} ★</span>
+                                                        </div>
+                                                        <button className="w-full mt-2 py-1 text-[10px] font-bold bg-slate-50 text-slate-400 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                                                                <Plus className="w-3 h-3" /> הוסף ללו"ז
+                                                        </button>
+                                                </div>
+                                        ))}
+                                        {favorites.filter(f => f.type === 'attraction').length === 0 && (
+                                                <div className="text-center py-8 text-slate-300 text-[10px]">אין אטרקציות שמורות</div>
+                                        )}
+                                </div>
                         </div>
 
                         {/* View All Modal */}

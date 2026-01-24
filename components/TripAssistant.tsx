@@ -64,17 +64,18 @@ Instructions:
 
   return (
     <div className="flex flex-col h-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200">
-      {/* Header (Unified Twin Design) */}
-      <div className="flex items-center gap-3 p-2 border-b border-slate-100/50 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
-          <Bot className="w-4 h-4" />
+      {/* Clone Header: Assistant */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white/50 backdrop-blur-md sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl shadow-sm bg-indigo-50 text-indigo-600">
+            <Bot className="w-4 h-4" />
+          </div>
+          <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
+            TRAVEL BOT
+          </h3>
         </div>
-        <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
-          TRAVEL BOT
-        </h3>
-
-        {/* Right Side Actions */}
-        <div className="mr-auto flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {/* Right Side Actions */}
           <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1">
             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span> מחובר
           </span>

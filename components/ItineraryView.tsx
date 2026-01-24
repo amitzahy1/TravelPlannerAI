@@ -603,21 +603,23 @@ return (
 
         {/* 2. DASHBOARD GRID: Insights & Favorites (Task 7.1) */}
         {/* 2. DASHBOARD GRID: Insights & Favorites (Unified Twin Layout h-80) */}
-        <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-80 mb-8">
+        {/* 2. DASHBOARD GRID: Insights & Favorites (Split-Grid Layout h-[350px]) */}
+        <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[350px] mb-12 relative z-20">
 
             {/* Left: Assistant Widget (4 Columns) */}
             <div className="lg:col-span-4 h-full flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in relative z-20">
-                {/* Assistant Header (Twin Header Standard) */}
-                <div className="flex items-center gap-3 p-2 border-b border-slate-100/50 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
-                    <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
-                        <Sparkles className="w-4 h-4" />
+                {/* Clone Header: Assistant */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white/50 backdrop-blur-md sticky top-0 z-20">
+                    <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-xl shadow-sm bg-indigo-50 text-indigo-600`}>
+                            <Sparkles className="w-4 h-4" />
+                        </div>
+                        <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
+                            העוזר האישי
+                        </h3>
                     </div>
-                    <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
-                        העוזר האישי
-                    </h3>
-
-                    {/* Right Side Actions */}
-                    <div className="mr-auto flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                        {/* Actions: Import Button */}
                         <button
                             onClick={handleSyncCalendar}
                             disabled={isSyncing}
@@ -634,14 +636,14 @@ return (
                     {insights.length > 0 ? (
                         <div className="space-y-2">
                             {insights.map(insight => (
-                                <div key={insight.id} className="w-full bg-white rounded-xl border border-slate-100 p-2 shadow-sm hover:shadow-md transition-all relative overflow-hidden group flex items-center gap-2">
+                                <div key={insight.id} className="w-full bg-white rounded-xl border border-slate-100 p-3 shadow-sm hover:shadow-md transition-all relative overflow-hidden group flex items-center gap-3">
                                     <div className={`w-1 h-full absolute right-0 top-0 ${insight.type === 'warning' ? 'bg-red-400' : 'bg-blue-400'}`}></div>
-                                    <div className={`p-1.5 rounded-lg flex-shrink-0 ${insight.type === 'warning' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}><insight.icon className="w-3 h-3" /></div>
+                                    <div className={`p-2 rounded-lg flex-shrink-0 ${insight.type === 'warning' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}><insight.icon className="w-4 h-4" /></div>
                                     <div className="min-w-0 flex-1">
-                                        <h4 className="font-bold text-slate-800 text-[10px] truncate">{insight.title}</h4>
-                                        <p className="text-[9px] text-slate-400 leading-snug line-clamp-1">{insight.description}</p>
+                                        <h4 className="font-bold text-slate-800 text-xs truncate mb-0.5">{insight.title}</h4>
+                                        <p className="text-[10px] text-slate-400 leading-snug line-clamp-1">{insight.description}</p>
                                     </div>
-                                    <button onClick={insight.action} className="text-[9px] font-bold bg-slate-50 hover:bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded flex items-center gap-1 group-hover:text-blue-600 border border-slate-100"><ArrowLeft className="w-2.5 h-2.5" /></button>
+                                    <button onClick={insight.action} className="text-[10px] font-bold bg-slate-50 hover:bg-slate-100 text-slate-600 px-2 py-1 rounded-lg flex items-center gap-1 group-hover:text-blue-600 border border-slate-100"><ArrowLeft className="w-3 h-3" /></button>
                                 </div>
                             ))}
                         </div>
@@ -656,10 +658,10 @@ return (
             </div>
 
             {/* Right: Favorites Widget (8 Columns) */}
-            < div className="lg:col-span-8 h-full min-w-0" >
+            <div className="lg:col-span-8 h-full min-w-0">
                 <FavoritesWidget trip={trip} onSchedule={handleScheduleFavorite} />
-            </div >
-        </div >
+            </div>
+        </div>
 
         {/* Date Picker Modal (Refactored) */}
         < TripDateSelector
@@ -673,7 +675,7 @@ return (
         />
 
         {/* 3. GRID DASHBOARD VIEW (COMPACT) */}
-        < div className="px-2 md:px-4" >
+        <div className="px-2 md:px-4 relative z-10">
             {
                 timeline.length === 0 ? (
                     <div className="text-center py-20 text-slate-400">טוען לו"ז...</div>
