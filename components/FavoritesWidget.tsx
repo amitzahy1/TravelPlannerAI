@@ -29,8 +29,8 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
         }, [trip]);
 
         const displayedFavorites = useMemo(() => {
-                if (favorites.length <= 3) return favorites;
-                return favorites.slice(0, 2);
+                // Show up to 4 items in the list view
+                return favorites.slice(0, 4);
         }, [favorites]);
 
         if (favorites.length === 0) {
@@ -97,21 +97,42 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                 <span className="ml-auto text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{favorites.length}</span>
                         </div>
 
-                        {/* Smart Grid */}
-                        <div className="grid grid-cols-3 gap-3 flex-grow min-h-0">
-                                {displayedFavorites.map((fav) => renderCard(fav))}
-
-                                {favorites.length > 3 && (
+                        {/* Compact List View */}
+                        <div className="flex flex-col gap-2 flex-grow min-h-0 overflow-y-auto scrollbar-hide">
+                                {displayedFavorites.map((fav) => (
                                         <div
-                                                onClick={() => setShowAllModal(true)}
-                                                className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-all group h-full"
+                                                key={`${fav.type}-${fav.data.id}`}
+                                                onClick={() => setSelectedItem({ item: fav.data, type: fav.type })}
+                                                className="flex items-center justify-between p-2 bg-white border border-slate-100 rounded-lg hover:border-blue-300 transition-all cursor-pointer group flex-shrink-0"
                                         >
-                                                <div className="p-3 bg-white rounded-full shadow-sm mb-2 group-hover:scale-110 transition-transform">
-                                                        <ChevronRight className="w-5 h-5 text-slate-400" />
+                                                {/* Left: Icon + Name */}
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                        <div className={`p-1.5 rounded-full ${fav.type === 'food' ? 'bg-orange-50 text-orange-500' : 'bg-purple-50 text-purple-500'}`}>
+                                                                {fav.type === 'food' ? <Utensils className="w-3.5 h-3.5" /> : <Ticket className="w-3.5 h-3.5" />}
+                                                        </div>
+                                                        <span className="text-xs font-bold text-slate-700 truncate">{fav.data.name}</span>
                                                 </div>
-                                                <span className="text-xs font-black text-slate-600">הצג הכל</span>
-                                                <span className="text-[10px] font-bold text-slate-400 mt-0.5">+ עוד {favorites.length - 2}</span>
+
+                                                {/* Right: Rating + Add */}
+                                                <div className="flex items-center gap-3 flex-shrink-0">
+                                                        <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-600">
+                                                                <Star className="w-2.5 h-2.5 text-yellow-500 fill-yellow-500" />
+                                                                <span>{(fav.data as any).rating || (fav.data as any).googleRating || '5.0'}</span>
+                                                        </div>
+                                                        <button className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors">
+                                                                <Plus className="w-4 h-4" />
+                                                        </button>
+                                                </div>
                                         </div>
+                                ))}
+
+                                {favorites.length > 4 && (
+                                        <button
+                                                onClick={() => setShowAllModal(true)}
+                                                className="w-full py-1 text-[10px] font-bold text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded border border-dashed border-slate-200"
+                                        >
+                                                + הצג עוד {favorites.length - 4}
+                                        </button>
                                 )}
                         </div>
 

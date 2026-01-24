@@ -85,8 +85,8 @@ Instructions:
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === 'user'
-                ? 'bg-blue-600 text-white rounded-br-none'
-                : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
+              ? 'bg-blue-600 text-white rounded-br-none'
+              : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
               }`}>
               {msg.text}
             </div>
@@ -107,7 +107,7 @@ Instructions:
       <div className="p-4 bg-white border-t border-gray-100">
         <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-2xl border border-gray-200 focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
           <input
-            className="flex-grow bg-transparent outline-none px-2 text-sm font-medium"
+            className="flex-grow bg-transparent outline-none px-2 text-xs font-medium py-1.5"
             placeholder="שאל אותי משהו על הטיול..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
