@@ -542,32 +542,31 @@ export const ItineraryView: React.FC<{
     const handleScheduleFavorite = (item: Restaurant | Attraction, dateIso: string, type: 'food' | 'attraction') => {
         const [y, m, d] = dateIso.split('-');
         const dateFormatted = `${d}/${m}/${y}`;
-
         const time = type === 'food' ? '20:00' : '10:00';
-        const icon = type === 'food' ? '🍽️' : '🎟️';
-        // @ts-ignore
-        const sub = type === 'food' ? item.cuisine : item.type;
-        const activityText = `${time} ${icon} ${item.name} (${sub || ''})`;
 
-        let newItinerary = [...trip.itinerary];
-        let dayIndex = newItinerary.findIndex(d => d.date === dateFormatted);
-
-        if (dayIndex === -1) {
-            newItinerary.push({
-                id: `day-${Date.now()}`,
-                day: 0,
-                date: dateFormatted,
-                title: 'יום חדש',
-                activities: [activityText]
-            });
+        if (type === 'food') {
+            // Update the actual restaurant object
+            const updatedRestaurants = trip.restaurants?.map(cat => ({
+                ...cat,
+                restaurants: cat.restaurants.map(r =>
+                    r.id === item.id
+                        ? { ...r, reservationDate: dateFormatted, reservationTime: time }
+                        : r
+                )
+            }));
+            onUpdateTrip({ ...trip, restaurants: updatedRestaurants });
         } else {
-            newItinerary[dayIndex] = {
-                ...newItinerary[dayIndex],
-                activities: [...newItinerary[dayIndex].activities, activityText]
-            };
+            // Update the actual attraction object
+            const updatedAttractions = trip.attractions?.map(cat => ({
+                ...cat,
+                attractions: cat.attractions.map(a =>
+                    a.id === item.id
+                        ? { ...a, scheduledDate: dateFormatted, scheduledTime: time }
+                        : a
+                )
+            }));
+            onUpdateTrip({ ...trip, attractions: updatedAttractions });
         }
-
-        onUpdateTrip({ ...trip, itinerary: newItinerary });
     };
 
     const totalStats = useMemo(() => {
