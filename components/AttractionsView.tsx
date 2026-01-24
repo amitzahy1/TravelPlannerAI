@@ -4,6 +4,8 @@ import { MapPin, Ticket, Star, ExternalLink, Palmtree, ShoppingBag, Music, Landm
 import { Type, Schema } from "@google/genai";
 import { getAI, AI_MODEL, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { UnifiedMapView } from './UnifiedMapView';
+import { ThinkingLoader } from './ThinkingLoader';
+import { PlaceCard } from './PlaceCard';
 
 // Helper to remove Hebrew and special chars for Maps URL
 const cleanTextForMap = (text: string) => {
@@ -52,7 +54,7 @@ const sortAttractions = (list: Attraction[]) => {
     });
 };
 
-// Redesigned Card - Premium Style (Gradient Header)
+// Redesigned Card - Clean Google Style
 const AttractionRecommendationCard: React.FC<{
     rec: any,
     tripDestination: string,
@@ -70,76 +72,22 @@ const AttractionRecommendationCard: React.FC<{
     const visuals = getAttractionVisuals(rec.type);
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden group relative border border-slate-100 h-full">
-
-            {/* Colorful Header Area */}
-            <div className={`h-28 ${visuals.gradient} relative flex flex-col justify-between p-4`}>
-                <div className="flex justify-between items-start w-full">
-                    <div className="text-3xl filter drop-shadow-md transform group-hover:scale-110 transition-transform duration-300">{visuals.icon}</div>
-                    <div className="flex flex-col items-end">
-                        {rec.rating && (
-                            <div className="bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm text-white">
-                                <span className="text-xs font-black">{rec.rating}</span>
-                                <Star className="w-3 h-3 fill-white text-white" />
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Name moved to header */}
-                <h3 className="text-xl font-black text-white leading-tight font-sans tracking-tight line-clamp-2 drop-shadow-md mt-2" dir="ltr">
-                    {rec.name}
-                </h3>
-            </div>
-
-            <div className="p-4 flex flex-col flex-grow relative">
-
-                {/* Badges */}
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                    {rec.recommendationSource && (
-                        <span className="text-[9px] font-bold bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-full flex items-center gap-1 border border-yellow-100">
-                            <Trophy className="w-3 h-3" />
-                            {rec.recommendationSource}
-                        </span>
-                    )}
-                    <span className="text-[9px] font-bold bg-slate-50 text-slate-500 px-2 py-0.5 rounded-full border border-slate-100">
-                        {visuals.label}
-                    </span>
-                    {rec.price && (
-                        <span className="text-[9px] font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-100 flex items-center gap-1">
-                            <DollarSign className="w-3 h-3" /> {rec.price}
-                        </span>
-                    )}
-                </div>
-
-                {/* Main Content */}
-                <div className="mb-4">
-                    <p className="text-sm text-slate-600 line-clamp-4 leading-relaxed font-medium" dir="rtl">
-                        {rec.description}
-                    </p>
-                </div>
-
-                {/* Footer Buttons */}
-                <div className="mt-auto pt-3 border-t border-slate-50 flex gap-2">
-                    <a
-                        href={mapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-600 border border-slate-200 rounded-xl py-2 flex items-center justify-center gap-2 transition-colors text-[10px] font-bold"
-                    >
-                        <MapIcon className="w-3.5 h-3.5" /> מפה
-                    </a>
-                    <button
-                        onClick={() => onAdd(rec, 'AI')}
-                        disabled={isAdded}
-                        className={`flex-1 py-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${isAdded ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-                    >
-                        {isAdded ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                        {isAdded ? 'נשמר' : 'שמור'}
-                    </button>
-                </div>
-            </div>
-        </div>
+        <PlaceCard
+            type="attraction"
+            name={rec.name}
+            description={rec.description}
+            location={rec.location}
+            rating={rec.rating}
+            attractionType={visuals.label}
+            price={rec.price}
+            visualIcon={visuals.icon}
+            visualBgColor="bg-slate-50 group-hover:bg-slate-100"
+            mapsUrl={mapsUrl}
+            isAdded={isAdded}
+            onAdd={() => onAdd(rec, 'AI')}
+            recommendationSource={rec.recommendationSource}
+            verification_needed={rec.verification_needed}
+        />
     );
 };
 
@@ -207,7 +155,9 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                 type: { type: Type.STRING },
                                 price: { type: Type.STRING },
                                 recommendationSource: { type: Type.STRING },
-                                googleMapsUrl: { type: Type.STRING }
+                                googleMapsUrl: { type: Type.STRING },
+                                business_status: { type: Type.STRING },
+                                verification_needed: { type: Type.BOOLEAN }
                             },
                             required: ["name", "description", "location"]
                         }
@@ -215,12 +165,38 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                 }
             };
 
-            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema });
+            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SMART');
 
             const textContent = typeof response.text === 'function' ? response.text() : response.text;
-            const data = JSON.parse(textContent || '{}');
-            if (data.results) {
-                setSearchResults(data.results.map((r: any, i: number) => ({ ...r, id: `search-attr-${i}` })));
+            try {
+                const data = JSON.parse(textContent || '{}');
+                if (data.results) {
+                    // Filter out closed businesses
+                    const validResults = data.results
+                        .filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL')
+                        .map((r: any, i: number) => ({ ...r, id: `search-attr-${i}` }));
+                    setSearchResults(validResults);
+
+                    // Log filtered count
+                    const filtered = data.results.length - validResults.length;
+                    if (filtered > 0) {
+                        console.log(`✅ Filtered ${filtered} closed attraction(s) from search results`);
+                    }
+
+                    // Save custom category (Task 3)
+                    if (textQuery.trim() && validResults.length > 0) {
+                        const currentCategories = trip.customAttractionCategories || [];
+                        if (!currentCategories.includes(textQuery.trim())) {
+                            onUpdateTrip({
+                                ...trip,
+                                customAttractionCategories: [...currentCategories, textQuery.trim()]
+                            });
+                        }
+                    }
+                }
+            } catch (parseError: any) {
+                console.error('❌ AI Error: JSON Parse failed in handleTextSearch. Raw response:', textContent?.substring(0, 500));
+                alert('שגיאה בפרסור התוצאות. אנא נסה שנית.');
             }
         } catch (e) {
             console.error(e);
@@ -307,15 +283,20 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                 }
             };
 
-            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema });
+            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SMART');
 
             const textContent = typeof response.text === 'function' ? response.text() : response.text;
-            const data = JSON.parse(textContent || '{}');
-            if (data.categories) {
-                const processed = data.categories.map((c: any) => ({ ...c, attractions: c.attractions.map((a: any, i: number) => ({ ...a, id: `ai-attr-${c.id}-${i}` })) }));
-                setAiCategories(processed);
-                setSelectedCategory('all');
-                onUpdateTrip({ ...trip, aiAttractions: processed });
+            try {
+                const data = JSON.parse(textContent || '{}');
+                if (data.categories) {
+                    const processed = data.categories.map((c: any) => ({ ...c, attractions: c.attractions.map((a: any, i: number) => ({ ...a, id: `ai-attr-${c.id}-${i}` })) }));
+                    setAiCategories(processed);
+                    setSelectedCategory('all');
+                    onUpdateTrip({ ...trip, aiAttractions: processed });
+                }
+            } catch (parseError: any) {
+                console.error('❌ AI Error: JSON Parse failed in fetchRecommendations. Raw response:', textContent?.substring(0, 500));
+                setRecError('שגיאה בפרסור התוצאות. אנא נסה שנית.');
             }
         } catch (e: any) {
             console.error(e);
@@ -433,6 +414,36 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                     {textQuery && (<button onClick={clearSearch} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400"><X className="w-4 h-4" /></button>)}
                     <button onClick={handleTextSearch} disabled={isSearching || !textQuery.trim()} className="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50">{isSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{isSearching ? '...' : 'חיפוש'}</button>
                 </div>
+
+                {/* Custom Category Chips (Task 3) */}
+                {trip.customAttractionCategories && trip.customAttractionCategories.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="text-xs font-bold text-slate-400 self-center">חיפושים שמורים:</span>
+                        {trip.customAttractionCategories.map((category, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => {
+                                    setTextQuery(category);
+                                    handleTextSearch();
+                                }}
+                                className="group flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-xs font-medium border border-purple-200 transition-all hover:shadow-sm"
+                            >
+                                <Sparkles className="w-3 h-3" />
+                                {category}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const updated = trip.customAttractionCategories?.filter((_, i) => i !== idx);
+                                        onUpdateTrip({ ...trip, customAttractionCategories: updated });
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-purple-200 rounded-full transition-all"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Search Results */}
@@ -524,7 +535,15 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                         {!loadingRecs && (<button onClick={initiateResearch} className="text-[10px] font-bold text-purple-600 bg-white px-2 py-1 rounded shadow-sm flex items-center gap-1"><RotateCw className="w-3 h-3" /> מחקר חדש</button>)}
                                     </div>
 
-                                    {loadingRecs ? (<div className="flex flex-col items-center justify-center py-10"><Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-2" /><p className="text-sm font-bold text-gray-400">סורק אתרי תיירות, גוגל מפות ובלוגים מקומיים...</p></div>) : recError ? (<div className="text-center text-red-500 text-sm font-bold py-4">{recError}</div>) : (
+                                    {loadingRecs ? (
+                                        <ThinkingLoader texts={[
+                                            "סורק אתרי תיירות...",
+                                            "בודק בגוגל מפות...",
+                                            "קורא בלוגים מקומיים...",
+                                            "מחפש המלצות אותנטיות...",
+                                            "ממיין לפי דירוג..."
+                                        ]} />
+                                    ) : recError ? (<div className="text-center text-red-500 text-sm font-bold py-4">{recError}</div>) : (
                                         <>
                                             {/* 1. Category Filter */}
                                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -559,7 +578,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                                 {currentCategoryAttractions.map(rec => (
                                                     <AttractionRecommendationCard
                                                         key={rec.id}
@@ -573,7 +592,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                             </div>
 
                                             {currentCategoryAttractions.length === 0 && (
-                                                <div className="text-center py-10">
+                                                <div className="text-center py-10 col-span-full">
                                                     <p className="text-slate-400 font-bold">אין תוצאות בקטגוריה זו.</p>
                                                 </div>
                                             )}

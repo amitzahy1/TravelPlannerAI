@@ -1,11 +1,13 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
-import { Trip } from '../types';
+import { Trip, Restaurant, Attraction } from '../types';
 import {
     Calendar, MapPin, Plane, Car,
     Hotel, Utensils, Ticket, Plus, Sparkles, X,
     ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronRight, Clock, MoreHorizontal, RefreshCw
 } from 'lucide-react';
 import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '../services/calendarService';
+import { FavoritesWidget } from './FavoritesWidget';
 
 // --- Types ---
 type TimelineEventType = 'flight' | 'hotel_stay' | 'hotel_checkin' | 'hotel_checkout' | 'food' | 'attraction' | 'activity' | 'shopping' | 'travel';
@@ -132,7 +134,6 @@ export const ItineraryView: React.FC<{
                 const isoKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
 
                 if (!dayMap.has(isoKey)) {
-                    // Graceful fallback for out of bounds dates if needed, or ignore
                     return;
                 }
                 dayMap.get(isoKey)?.events.push(event);
@@ -280,7 +281,6 @@ export const ItineraryView: React.FC<{
                 });
             });
 
-            // --- Ingest External Calendar Events ---
             externalEvents.forEach(ev => {
                 // @ts-ignore
                 if (ev.date) addToDay(ev.date, ev);
@@ -313,7 +313,6 @@ export const ItineraryView: React.FC<{
 
             setTimeline(sortedTimeline);
 
-            // Insights logic...
             const newInsights: Insight[] = [];
             trip.flights?.segments?.forEach(seg => {
                 const d = parseDateString(seg.date);
@@ -345,7 +344,6 @@ export const ItineraryView: React.FC<{
             const startDate = timeline.length > 0 ? timeline[0].dateIso : new Date().toISOString();
             const endDate = timeline.length > 0 ? timeline[timeline.length - 1].dateIso : new Date().toISOString();
 
-            // Add buffer dates to catch adjacent events
             const start = new Date(startDate);
             const end = new Date(endDate);
             end.setHours(23, 59, 59);
@@ -437,6 +435,37 @@ export const ItineraryView: React.FC<{
         if (url) onUpdateTrip({ ...trip, coverImage: url });
     };
 
+    const handleScheduleFavorite = (item: Restaurant | Attraction, dateIso: string, type: 'food' | 'attraction') => {
+        const [y, m, d] = dateIso.split('-');
+        const dateFormatted = `${d}/${m}/${y}`;
+
+        const time = type === 'food' ? '20:00' : '10:00';
+        const icon = type === 'food' ? '🍽️' : '🎟️';
+        // @ts-ignore
+        const sub = type === 'food' ? item.cuisine : item.type;
+        const activityText = `${time} ${icon} ${item.name} (${sub || ''})`;
+
+        let newItinerary = [...trip.itinerary];
+        let dayIndex = newItinerary.findIndex(d => d.date === dateFormatted);
+
+        if (dayIndex === -1) {
+            newItinerary.push({
+                id: `day-${Date.now()}`,
+                day: 0,
+                date: dateFormatted,
+                title: 'יום חדש',
+                activities: [activityText]
+            });
+        } else {
+            newItinerary[dayIndex] = {
+                ...newItinerary[dayIndex],
+                activities: [...newItinerary[dayIndex].activities, activityText]
+            };
+        }
+
+        onUpdateTrip({ ...trip, itinerary: newItinerary });
+    };
+
     const totalStats = useMemo(() => {
         return {
             flights: trip.flights?.segments?.length || 0,
@@ -520,7 +549,7 @@ export const ItineraryView: React.FC<{
                     </div>
                 )}
 
-                {/* Sync Button - Added Here */}
+                {/* Sync Button */}
                 <div className="flex justify-end px-2">
                     <button
                         onClick={handleSyncCalendar}
@@ -532,6 +561,9 @@ export const ItineraryView: React.FC<{
                     </button>
                 </div>
             </div>
+
+            {/* 2.5 FAVORITES WIDGET - NEW */}
+            <FavoritesWidget trip={trip} onSchedule={handleScheduleFavorite} />
 
             {/* 3. GRID DASHBOARD VIEW (COMPACT) */}
             <div className="px-2 md:px-4">
@@ -551,12 +583,12 @@ export const ItineraryView: React.FC<{
                                     {/* Header Compact */}
                                     <div className="p-2 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                                         <div className="flex items-center gap-2">
-                                            <div className="bg-white border border-slate-200 text-slate-700 w-8 h-8 rounded-lg flex flex-col items-center justify-center shadow-sm">
-                                                <span className="text-xs font-black leading-none">{d}</span>
+                                            <div className="bg-white border border-slate-200 text-slate-700 w-10 h-10 rounded-lg flex flex-col items-center justify-center shadow-sm">
+                                                <span className="text-sm font-black leading-none">{d}</span>
                                             </div>
                                             <div className="min-w-0">
-                                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5 truncate">{day.displayDayOfWeek}</div>
-                                                <h3 className="font-black text-slate-800 text-xs leading-none truncate max-w-[80px]">{day.locationContext || 'יום בטיול'}</h3>
+                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{day.displayDayOfWeek}</div>
+                                                <h3 className="font-black text-slate-800 text-sm leading-none truncate max-w-[100px]">{day.locationContext || 'יום בטיול'}</h3>
                                             </div>
                                         </div>
                                         {day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout') && (
@@ -569,10 +601,10 @@ export const ItineraryView: React.FC<{
                                         {day.events.length > 0 ? (
                                             <div className="space-y-1 relative z-10">
                                                 {day.events.slice(0, 3).map((event, idx) => (
-                                                    <div key={idx} className="flex items-center gap-1.5 w-full">
-                                                        <span className="text-[9px] font-mono font-bold opacity-40 min-w-[28px]">{event.time || "--:--"}</span>
-                                                        <div className={`p-0.5 rounded-full ${event.bgClass} flex-shrink-0`}><event.icon className={`w-2.5 h-2.5 ${event.colorClass}`} /></div>
-                                                        <span className="text-[10px] font-bold text-slate-600 truncate leading-none flex-1 opacity-90">{event.title}</span>
+                                                    <div key={idx} className="flex items-center gap-2 w-full">
+                                                        <span className="text-[10px] font-mono font-bold opacity-50 min-w-[32px]">{event.time || "--:--"}</span>
+                                                        <div className={`p-1 rounded-full ${event.bgClass} flex-shrink-0`}><event.icon className={`w-3 h-3 ${event.colorClass}`} /></div>
+                                                        <span className="text-xs font-bold text-slate-700 truncate leading-none flex-1 opacity-90">{event.title}</span>
                                                     </div>
                                                 ))}
                                                 {day.events.length > 3 && (

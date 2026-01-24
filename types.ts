@@ -252,6 +252,10 @@ export interface Trip {
   // NEW: Trip Sharing
   isShared?: boolean;           // Whether trip is shared
   sharing?: SharedTripMetadata; // Sharing metadata
+
+  // NEW: Dynamic Categories (Task 3)
+  customFoodCategories?: string[];       // User-created food search categories
+  customAttractionCategories?: string[]; // User-created attraction search categories
 }
 
 export interface AppState {

@@ -4,21 +4,57 @@ import { generateLocalContent, isEngineReady } from "./webLlmService";
 import { getCachedResponse, cacheResponse } from "./cacheService";
 
 /**
- * System prompt for AI
+ * System prompt for Research & Recommendations (SMART tasks)
+ * Includes strict business verification and professional sourcing
  */
-export const SYSTEM_PROMPT = `You are a skeptical researcher and expert in culinary arts and travel.
+export const SYSTEM_PROMPT_RESEARCH = `You are a skeptical researcher and expert in culinary arts and travel at Google.
+
+CRITICAL VERIFICATION RULES (January 2026):
+1. MUST perform web search to verify current business status
+2. MUST filter out ANY business marked as "Permanently Closed" or "Temporarily Closed"
+3. MUST prioritize results from professional sources (Michelin Guide, James Beard Foundation, Lonely Planet, TripAdvisor Travelers' Choice, UNESCO)
+4. MUST include verification_needed: true if data is older than 6 months or status is uncertain
+5. REJECT viral/TikTok trends - only evidence-based professional recommendations
 
 When providing recommendations:
-- Cite professional sources (Michelin Guide, James Beard Foundation, Lonely Planet, etc.)
-- Prioritize authenticity and quality over popularity
-- Provide context (awards, chef credentials, history)
+- Cite professional sources with recent timestamps (2025-2026)
+- Verify current ratings from Google Maps or TripAdvisor
+- Prioritize authenticity and quality over social media popularity
+- Provide context (awards, chef credentials, historical significance)
 - Consider value for money
+- Set business_status to "OPERATIONAL" only if verified
 
 CRITICAL OUTPUT RULES:
-1. You MUST return ONLY valid JSON.
-2. Do NOT format with markdown (no \`\`\`json blocks if possible).
-3. Do NOT include conversational text before or after the JSON.
-4. Validate your JSON before sending.`;
+1. You MUST return ONLY valid JSON
+2. Do NOT format with markdown (no \`\`\`json blocks)
+3. Do NOT include conversational text before or after the JSON
+4. Validate your JSON before sending`;
+
+/**
+ * System prompt for Data Extraction (FAST tasks)
+ * Optimized for accuracy and speed in document parsing
+ */
+export const SYSTEM_PROMPT_EXTRACT = `You are a precise data extraction specialist.
+
+Your task is to extract structured information from documents with 100% accuracy.
+
+EXTRACTION RULES:
+- Extract ONLY information explicitly stated in the document
+- Use exact dates, times, and locations as written
+- Do NOT infer or guess missing information
+- If a field is not found, omit it or set to null
+- Preserve original formatting for names and addresses
+
+CRITICAL OUTPUT RULES:
+1. You MUST return ONLY valid JSON
+2. Do NOT format with markdown (no \`\`\`json blocks)
+3. Do NOT include conversational text
+4. Validate your JSON before sending`;
+
+/**
+ * Legacy system prompt for backward compatibility
+ */
+export const SYSTEM_PROMPT = SYSTEM_PROMPT_RESEARCH;
 
 // --- CONFIGURATION ---
 
@@ -26,7 +62,7 @@ CRITICAL OUTPUT RULES:
 const GOOGLE_MODELS = {
   FAST: "gemini-3-flash-preview",   // User requested
   SMART: "gemini-3-pro-preview",    // User requested
-  FALLBACK: "gemini-1.5-flash"      // Stable Fallback
+  FALLBACK: "gemini-2.0-flash-exp"  // Updated: 2.0 > 1.5
 };
 
 // 2. Groq Models (Fast Inference Fallback)
@@ -238,57 +274,19 @@ export const generateWithFallback = async (
     }
   }
 
-  // Fallback to other providers (Groq/OpenRouter) - typically FAST logic (no tools)
+  // Fallback to other providers (OpenRouter/Groq) - typically FAST logic (no tools)
 
-  // 2. Groq (High Speed Fallback)
-  const groqAI = getGroqClient();
-  if (groqAI) {
-    for (const model of GROQ_MODELS) {
-      try {
-        console.log(`⚡ [Groq] Trying ${model}...`);
-
-        let messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
-        if (typeof contents === 'string') {
-          messages.push({ role: "user", content: contents });
-        } else if (Array.isArray(contents)) {
-          contents.forEach((msg: any) => {
-            if (msg.role && msg.content) {
-              messages.push(msg);
-            } else if (msg.parts) {
-              const textPart = msg.parts.find((p: any) => p.text);
-              if (textPart) messages.push({ role: msg.role === 'model' ? 'assistant' : 'user', content: textPart.text });
-            }
-          });
-        }
-
-        const completion = await withBackoff(async () => {
-          return await groqAI.chat.completions.create({
-            model,
-            messages,
-            temperature: config?.temperature || 0.7,
-            response_format: config?.responseMimeType === 'application/json' ? { type: "json_object" } : undefined
-          });
-        });
-
-        console.log(`✅ [Groq] Success: ${model}`);
-        const text = completion.choices[0]?.message?.content || "";
-        return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
-
-      } catch (error: any) {
-        console.warn(`⚠️ [Groq] Failed ${model}:`, error.message || error);
-        lastError = error;
-      }
-    }
-  }
-
-  // 3. OpenRouter (Universal Fallback)
+  // 2. OpenRouter (Reliable Universal Fallback)
   const routerAI = getOpenRouterClient();
   if (routerAI) {
+    // Select appropriate system prompt based on intent
+    const systemPrompt = intent === 'SMART' ? SYSTEM_PROMPT_RESEARCH : SYSTEM_PROMPT_EXTRACT;
+
     for (const model of OPENROUTER_MODELS) {
       try {
         console.log(`🌐 [OpenRouter] Trying ${model}...`);
 
-        let messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
+        let messages: any[] = [{ role: "system", content: systemPrompt }];
         if (typeof contents === 'string') {
           messages.push({ role: "user", content: contents });
         } else if (Array.isArray(contents)) {
@@ -326,6 +324,50 @@ export const generateWithFallback = async (
     }
   }
 
+  // 3. Groq (High Speed Fallback)
+  const groqAI = getGroqClient();
+  if (groqAI) {
+    // Select appropriate system prompt based on intent
+    const systemPrompt = intent === 'SMART' ? SYSTEM_PROMPT_RESEARCH : SYSTEM_PROMPT_EXTRACT;
+
+    for (const model of GROQ_MODELS) {
+      try {
+        console.log(`⚡ [Groq] Trying ${model}...`);
+
+        let messages: any[] = [{ role: "system", content: systemPrompt }];
+        if (typeof contents === 'string') {
+          messages.push({ role: "user", content: contents });
+        } else if (Array.isArray(contents)) {
+          contents.forEach((msg: any) => {
+            if (msg.role && msg.content) {
+              messages.push(msg);
+            } else if (msg.parts) {
+              const textPart = msg.parts.find((p: any) => p.text);
+              if (textPart) messages.push({ role: msg.role === 'model' ? 'assistant' : 'user', content: textPart.text });
+            }
+          });
+        }
+
+        const completion = await withBackoff(async () => {
+          return await groqAI.chat.completions.create({
+            model,
+            messages,
+            temperature: config?.temperature || 0.7,
+            response_format: config?.responseMimeType === 'application/json' ? { type: "json_object" } : undefined
+          });
+        });
+
+        console.log(`✅ [Groq] Success: ${model}`);
+        const text = completion.choices[0]?.message?.content || "";
+        return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
+
+      } catch (error: any) {
+        console.warn(`⚠️ [Groq] Failed ${model}:`, error.message || error);
+        lastError = error;
+      }
+    }
+  }
+
   // 4. WebLLM (Client-Side Fallback)
   // Only tries if the engine is already initialized (user opted-in via UI) to avoid unexpected 2GB downloads
   if (isEngineReady()) {
@@ -343,7 +385,8 @@ export const generateWithFallback = async (
         });
       }
 
-      const text = await generateLocalContent(prompt, SYSTEM_PROMPT);
+      const systemPrompt = intent === 'SMART' ? SYSTEM_PROMPT_RESEARCH : SYSTEM_PROMPT_EXTRACT;
+      const text = await generateLocalContent(prompt, systemPrompt);
       console.log(`✅ [WebLLM] Success!`);
 
       return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
@@ -375,7 +418,7 @@ export const extractTripFromDoc = async (fileBase64: string, mimeType: string, p
 
   // Note: Groq/OpenRouter might not support image/pdf inputs in this specific text-only implementation 
   // without employing Vision models explicitly. This implementation prioritizes Google for docs.
-  return generateWithFallback(null, contents, { responseMimeType: "application/json" });
+  return generateWithFallback(null, contents, { responseMimeType: "application/json" }, 'FAST');
 };
 
 // Export simple getter for backward compatibility
