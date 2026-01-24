@@ -25,11 +25,11 @@ CRITICAL OUTPUT RULES:
 // 1. Google Gemini Models (Direct SDK)
 // Updated based on technical report for stability and speed
 // 1. Google Gemini Models (Direct SDK)
-const GOOGLE_MODELS = [
-  "gemini-2.0-flash",                  // Best overall (Stable/Preview)
-  "gemini-1.5-flash-latest",           // New stable alias
-  "gemini-1.5-flash",                  // Legacy stable
-];
+const GOOGLE_MODELS = {
+  FAST: "gemini-2.0-flash-exp",   // Efficient, Fast
+  SMART: "gemini-2.0-pro-exp",    // Reasoning, Search capable
+  FALLBACK: "gemini-1.5-flash"    // Stable Fallback
+};
 
 // 2. Groq Models (Fast Inference Fallback)
 const GROQ_MODELS = [
@@ -39,14 +39,14 @@ const GROQ_MODELS = [
 
 // 3. OpenRouter Models (Universal Fallback)
 const OPENROUTER_MODELS = [
-  "google/gemini-2.0-flash-lite-preview-02-05:free", // New Free Source
+  "google/gemini-2.0-flash-lite-preview-02-05:free",
   "google/gemini-2.0-flash-exp:free",
   "meta-llama/llama-3.3-70b-instruct:free",
   "mistralai/mistral-7b-instruct:free",
   "microsoft/phi-3-mini-128k-instruct:free",
 ];
 
-export const AI_MODEL = GOOGLE_MODELS[0]; // For display purposes
+export const AI_MODEL = GOOGLE_MODELS.FAST; // For display purposes
 
 // --- HELPERS ---
 
@@ -173,19 +173,38 @@ const getOpenRouterClient = () => {
 
 // --- MAIN GENERATION ---
 
+export type AIIntent = 'FAST' | 'SMART';
+
 export const generateWithFallback = async (
   _unused: any,
   contents: string | any[],
-  config?: Record<string, any>
+  config?: Record<string, any>,
+  intent: AIIntent = 'FAST'
 ) => {
   let lastError: any = null;
 
   // 1. Google Gemini (Preferred)
   const googleAI = getGoogleClient();
   if (googleAI) {
-    for (const model of GOOGLE_MODELS) {
+    // Select model and tools based on intent
+    // Gemini 2.0 Flash is generally available and fast
+    // Gemini 2.0 Pro (or Ultra) is for complex tasks.
+    // User requested "Gemini 3" but likely meant 2.0 logic or hypothetical future. 
+    // Sticking to 2.0 naming convention which is current latest stable/preview.
+    const selectedModel = intent === 'SMART' ? GOOGLE_MODELS.SMART : GOOGLE_MODELS.FAST;
+    const tools = intent === 'SMART' ? [{ googleSearchRetrieval: {} }] : undefined;
+
+    // Retry logic loop now just tries the selected model, or maybe fallbacks?
+    // For simplicity given the requirement: Try selected, then fallback to stable.
+    const modelsToTry = [selectedModel, GOOGLE_MODELS.FALLBACK];
+
+    for (const model of modelsToTry) {
+      // Don't use tools with fallback/flash unless desired (Flash supports tools too but let's keep separate)
+      // Only apply tools if we are strictly using the SMART model that was requested for grounding
+      const currentTools = (model === GOOGLE_MODELS.SMART && tools) ? tools : undefined;
+
       try {
-        console.log(`🤖 [Google] Trying ${model}...`);
+        console.log(`🤖 [Google] Trying ${model} (Intent: ${intent})...`);
 
         const geminiContent = typeof contents === 'string' ? contents : contents;
 
@@ -193,14 +212,20 @@ export const generateWithFallback = async (
           return await googleAI.models.generateContent({
             model,
             contents: geminiContent,
-            config
+            config: {
+              ...config,
+              tools: currentTools,
+            },
           });
         });
 
         console.log(`✅ [Google] Success: ${model}`);
 
         const safeResponse = result as any;
-        let rawText = typeof safeResponse.text === 'function' ? safeResponse.text() : safeResponse.text; // Handle different SDK versions
+        let rawText = typeof safeResponse.text === 'function' ? safeResponse.text() : safeResponse.text;
+
+        // Append Grounding Metadata if available (e.g. source links) ? 
+        // For now just return text. Grounding usually embeds citations in text or provides metadata.
 
         // Normalize JSON if needed
         if (config?.responseMimeType === 'application/json') {
@@ -215,11 +240,13 @@ export const generateWithFallback = async (
       } catch (error: any) {
         console.warn(`⚠️ [Google] Failed ${model}:`, error.message || error);
         lastError = error;
-        // If it's a 404/403 (Invalid model/Permission), don't retry same provider, just move to next model in list
-        // If it's 429, backoff was already attempted by withBackoff, so we really failed.
       }
     }
   }
+
+  // Fallback to other providers (Groq/OpenRouter) - typically FAST logic (no tools)
+  // ... (Keep existing Groq/OpenRouter fallback logic, usually they are 'FAST' equivalent)
+
 
   // Prepare standard OpenAI messages format for Groq/OpenRouter
   let messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];

@@ -204,7 +204,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
             const response = await generateWithFallback(
                 ai,
                 prompt,
-                { responseMimeType: 'application/json' }
+                { responseMimeType: 'application/json' },
+                'SMART'
             );
 
             const textContent = typeof response.text === 'function' ? response.text() : response.text;
