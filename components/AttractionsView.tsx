@@ -99,7 +99,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [aiCategories, setAiCategories] = useState<AttractionCategory[]>(trip.aiAttractions || []);
     const [loadingRecs, setLoadingRecs] = useState(false);
     const [recError, setRecError] = useState('');
-    const [showCitySelector, setShowCitySelector] = useState(false);
+    // showCitySelector removed
 
     // UX State
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -209,16 +209,11 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
     const clearSearch = () => { setTextQuery(''); setSearchResults(null); };
 
     // --- Market Research Logic (gemini-3-flash-preview) ---
-    const initiateResearch = () => {
-        if (tripCities.length > 1) {
-            setShowCitySelector(true);
-        } else {
-            fetchRecommendations(true, trip.destinationEnglish || tripCities[0]);
-        }
+    const initiateResearch = (city?: string) => {
+        fetchRecommendations(true, city || trip.destinationEnglish || tripCities[0]);
     };
 
     const fetchRecommendations = async (forceRefresh = false, specificCity?: string) => {
-        setShowCitySelector(false);
         if (!forceRefresh && !specificCity && trip.aiAttractions && trip.aiAttractions.length > 0) {
             setAiCategories(trip.aiAttractions);
             return;
@@ -531,16 +526,51 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                             {!loadingRecs && aiCategories.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-8 space-y-4">
                                     <div className="bg-purple-100 p-4 rounded-full"><Navigation className="w-8 h-8 text-purple-600" /></div>
-                                    <h3 className="text-xl font-black text-slate-800">בחר עיר לחיפוש</h3>
-                                    <button onClick={initiateResearch} className="bg-white border-2 border-purple-500 text-purple-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-purple-50 transition-all">
-                                        {trip.destination} - בצע מחקר שוק
-                                    </button>
+                                    <h3 className="text-xl font-black text-slate-800">
+                                        {tripCities.length > 1 ? 'באיזו עיר נתמקד?' : 'בחר עיר לחיפוש'}
+                                    </h3>
+
+                                    {tripCities.length > 1 ? (
+                                        <div className="flex flex-wrap justify-center gap-3 max-w-md">
+                                            {tripCities.map(city => (
+                                                <button
+                                                    key={city}
+                                                    onClick={() => initiateResearch(city)}
+                                                    className="bg-white border-2 border-slate-100 text-slate-700 px-6 py-2 rounded-xl text-sm font-bold shadow-sm hover:border-purple-500 hover:text-purple-600 hover:bg-purple-50 transition-all"
+                                                >
+                                                    {city}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <button onClick={() => initiateResearch()} className="bg-white border-2 border-purple-500 text-purple-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-purple-50 transition-all">
+                                            {trip.destination} - בצע מחקר שוק
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <>
-                                    <div className="bg-purple-50 p-3 rounded-xl mb-3 border border-purple-100 flex items-center justify-between gap-3">
+                                    <div className="bg-purple-50 p-3 rounded-xl mb-3 border border-purple-100 flex flex-col sm:flex-row items-center justify-between gap-3">
                                         <div className="flex items-center gap-2"><div className="bg-white p-1.5 rounded-full shadow-sm"><BrainCircuit className="w-4 h-4 text-purple-600" /></div><div><h3 className="text-xs font-black text-purple-900">המלצות AI: Travelers' Choice</h3></div></div>
-                                        {!loadingRecs && (<button onClick={initiateResearch} className="text-[10px] font-bold text-purple-600 bg-white px-2 py-1 rounded shadow-sm flex items-center gap-1"><RotateCw className="w-3 h-3" /> מחקר חדש</button>)}
+
+                                        {!loadingRecs && (
+                                            <div className="flex items-center gap-2">
+                                                {tripCities.length > 1 && (
+                                                    <div className="flex gap-1 bg-white/50 p-1 rounded-lg">
+                                                        {tripCities.map(city => (
+                                                            <button
+                                                                key={city}
+                                                                onClick={() => initiateResearch(city)}
+                                                                className="text-[10px] font-bold px-2 py-1 rounded hover:bg-white hover:shadow-sm text-purple-800 transition-all opacity-70 hover:opacity-100"
+                                                            >
+                                                                {city}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <button onClick={() => initiateResearch()} className="text-[10px] font-bold text-purple-600 bg-white px-2 py-1 rounded shadow-sm flex items-center gap-1"><RotateCw className="w-3 h-3" /> רענן</button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {loadingRecs ? (
@@ -613,28 +643,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                 </>
             )}
 
-            {showCitySelector && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-                    <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
-                        <div className="p-6 text-center">
-                            <h3 className="text-xl font-black text-slate-800 mb-2">בחר עיר למחקר</h3>
-                            <p className="text-sm text-slate-500 mb-6">ה-AI יבצע מחקר מעמיק על העיר שתבחר</p>
-                            <div className="space-y-3">
-                                {tripCities.map(city => (
-                                    <button
-                                        key={city}
-                                        onClick={() => fetchRecommendations(true, city)}
-                                        className="w-full py-4 rounded-xl border-2 border-slate-100 font-bold text-slate-700 hover:border-purple-500 hover:bg-purple-50 hover:text-purple-700 transition-all"
-                                    >
-                                        {city}
-                                    </button>
-                                ))}
-                            </div>
-                            <button onClick={() => setShowCitySelector(false)} className="mt-6 text-xs font-bold text-slate-400 hover:text-slate-600">ביטול</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* City Selector Modal Removed */}
         </div>
     );
 };
