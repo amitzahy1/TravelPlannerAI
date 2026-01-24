@@ -242,29 +242,33 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
 
     // 3. City Grouping Logic
     const cities = useMemo(() => {
-        const validItems = mapItems.filter(i => isValidCoordinate(i.lat, i.lng));
-        const cityGroups: Record<string, { count: number, latSum: number, lngSum: number }> = {};
+        if (!trip?.destination) return [];
 
-        validItems.forEach(item => {
-            // Rough city extraction logic - in real app, use geocoded components
-            // Here we assume 'city' prop populated roughly or use destination
-            let cityName = item.city || 'כללי';
-            // Normalize
-            cityName = cityName.trim();
-            if (cityName.length < 2) cityName = 'כללי';
+        const extractCities = (destination: string) => {
+            if (!destination) return [];
+            // Split by hyphen (-), en-dash (–), or comma (,)
+            return destination.split(/[-–,]/)
+                .map(city => city.trim()) // Remove extra spaces
+                .filter(city => city.length > 0); // Remove empty strings
+        };
 
-            if (!cityGroups[cityName]) cityGroups[cityName] = { count: 0, latSum: 0, lngSum: 0 };
-            cityGroups[cityName].count++;
-            cityGroups[cityName].latSum += item.lat!;
-            cityGroups[cityName].lngSum += item.lng!;
+        const rawCities = extractCities(trip.destination);
+
+        return rawCities.map(city => {
+            // Find items belonging to this city
+            const matchItems = mapItems.filter(item => {
+                const searchStr = (item.address || item.city || '').toLowerCase();
+                return searchStr.includes(city.toLowerCase());
+            });
+
+            return {
+                name: city,
+                count: matchItems.length,
+                // Center calculation remains useful for quick focusing, though bounds handles it mostly
+                center: null
+            };
         });
-
-        return Object.entries(cityGroups).map(([name, data]) => ({
-            name,
-            count: data.count,
-            center: { lat: data.latSum / data.count, lng: data.lngSum / data.count }
-        })).sort((a, b) => b.count - a.count); // Most popular first
-    }, [mapItems]);
+    }, [mapItems, trip]);
 
     // 4. Render Map (Initialize)
     useEffect(() => {
@@ -305,9 +309,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         const visibleItems = activeCity === 'ALL'
             ? validItems
             : validItems.filter(i => {
-                // Fuzzy match city
-                const itemCity = i.city || 'כללי';
-                return itemCity.includes(activeCity) || activeCity.includes(itemCity);
+                // Case-insensitive check against address or location
+                const searchStr = (i.address || i.city || '').toLowerCase();
+                return searchStr.includes(activeCity.toLowerCase());
             });
 
         const bounds = L.latLngBounds([]);

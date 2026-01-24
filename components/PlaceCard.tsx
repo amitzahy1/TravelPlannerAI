@@ -1,7 +1,6 @@
 import React from 'react';
-import { Star, MapIcon, Plus, CheckCircle2, Trophy, Hotel, AlertTriangle } from 'lucide-react';
-
-import { PlaceIllustration } from './PlaceIllustration';
+import { Star, MapIcon, Trash2, CheckCircle2, Trophy, Hotel, AlertTriangle, Plus } from 'lucide-react';
+import { getPlaceImage } from '../services/imageMapper';
 
 export interface PlaceCardProps {
         type: 'restaurant' | 'attraction';
@@ -14,8 +13,8 @@ export interface PlaceCardProps {
         attractionType?: string;
         price?: string;
         badges?: Array<{ label: string; icon?: any; color: string; bgColor: string; borderColor: string }>;
-        visualIcon?: string; // Optional now
-        visualBgColor?: string; // Optional now
+        visualIcon?: string;
+        visualBgColor?: string;
         mapsUrl: string;
         isAdded: boolean;
         onAdd: () => void;
@@ -25,9 +24,8 @@ export interface PlaceCardProps {
 }
 
 /**
- * Unified PlaceCard Component
- * Used for both Restaurant and Attraction search results
- * Ensures consistent "Smart Edition" premium look across all searches
+ * Visual PlaceCard Component
+ * High-Impact visual design with deterministic cover images.
  */
 export const PlaceCard: React.FC<PlaceCardProps> = ({
         type,
@@ -47,115 +45,96 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         isHotelRestaurant,
         verification_needed
 }) => {
-        // Display Name (Prefer English for maps compatibility)
+        // 1. Get Smart Visual
+        const tags = [
+                cuisine || '',
+                attractionType || '',
+                recommendationSource || '',
+                isHotelRestaurant ? 'Hotel' : '',
+                location
+        ].filter(Boolean);
+
+        // Prefer English name for better matching if available, otherwise name
+        const searchName = nameEnglish || name;
+        const coverImage = getPlaceImage(searchName, type, tags);
         const displayName = nameEnglish || name;
 
-        // Determine button colors based on type
-        const buttonColor = type === 'restaurant'
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-blue-600 hover:bg-blue-700';
+        const mainCategory = type === 'restaurant' ? (cuisine || 'Restaurant') : (attractionType || 'Attraction');
 
         return (
-                <div className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col border border-slate-100 h-full group">
+                <div className="group relative w-full h-48 rounded-xl overflow-hidden shadow-md bg-slate-900 transition-all duration-300 hover:shadow-xl hover:scale-[1.01]">
 
-                        {/* Icon Header */}
-                        <div
-                                className={`h-28 bg-slate-50 relative flex items-center justify-center rounded-t-2xl overflow-hidden group-hover:bg-slate-100 transition-colors`}
-                        >
-                                <div className="transform group-hover:scale-110 transition-transform duration-300">
-                                        <PlaceIllustration
-                                                type={type as any}
-                                                subType={type === 'restaurant' ? cuisine : attractionType}
-                                                className="w-16 h-16"
-                                        />
-                                </div>
+                        {/* Background Image (Zoom Effect) */}
+                        <img
+                                src={coverImage}
+                                alt={displayName}
+                                className="absolute inset-0 w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-110"
+                        />
 
-                                {/* Rating Badge */}
-                                {rating && (
-                                        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 shadow-sm border border-slate-100">
-                                                <span className="text-xs font-bold text-slate-800">{rating}</span>
-                                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                        </div>
-                                )}
+                        {/* Gradient Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 transition-opacity duration-300 group-hover:via-black/50" />
 
-                                {/* Verification Warning */}
-                                {verification_needed && (
-                                        <div className="absolute top-2 left-2 bg-amber-50 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 shadow-sm border border-amber-200">
-                                                <AlertTriangle className="w-3 h-3 text-amber-600" />
-                                                <span className="text-[9px] font-medium text-amber-700">נדרש אימות</span>
-                                        </div>
-                                )}
-                        </div>
+                        {/* Content Container */}
+                        <div className="absolute inset-0 p-4 flex flex-col justify-end z-10">
 
-                        {/* Content */}
-                        <div className="p-3 flex flex-col flex-grow relative">
-
-                                {/* Title */}
-                                <h3 className="text-base font-bold text-slate-900 leading-tight mb-1 line-clamp-2" dir="ltr">
-                                        {displayName}
-                                </h3>
-
-                                {/* Badges */}
-                                <div className="flex flex-wrap gap-1 mb-2">
-                                        {recommendationSource && (
-                                                <span className={`text-[9px] font-medium ${type === 'restaurant' ? 'bg-yellow-50 text-yellow-700 border-yellow-100' : 'bg-purple-50 text-purple-700 border-purple-100'} px-2 py-0.5 rounded-full flex items-center gap-1 border`}>
-                                                        <Trophy className="w-2.5 h-2.5" />
-                                                        {recommendationSource.replace('Bib', 'Michelin')}
-                                                </span>
-                                        )}
-                                        {isHotelRestaurant && (
-                                                <span className="text-[9px] font-medium bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full flex items-center gap-1 border border-indigo-100">
-                                                        <Hotel className="w-2.5 h-2.5" /> במלון
-                                                </span>
-                                        )}
-                                        {(cuisine || attractionType) && (
-                                                <span className="text-[9px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                                                        {cuisine || attractionType}
-                                                </span>
-                                        )}
-                                        {price && (
-                                                <span className="text-[9px] font-medium bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-100">
-                                                        {price}
-                                                </span>
-                                        )}
-                                        {/* Custom badges */}
-                                        {badges?.map((badge, idx) => (
-                                                <span
-                                                        key={idx}
-                                                        className={`text-[9px] font-medium ${badge.bgColor} ${badge.color} px-2 py-0.5 rounded-full flex items-center gap-1 border ${badge.borderColor}`}
-                                                >
-                                                        {badge.icon && <badge.icon className="w-2.5 h-2.5" />}
-                                                        {badge.label}
-                                                </span>
-                                        ))}
-                                </div>
-
-                                {/* Description */}
-                                <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed mb-3 flex-grow" dir="rtl">
-                                        {description}
-                                </p>
-
-                                {/* Footer Buttons */}
-                                <div className="flex gap-2 mt-auto">
+                                {/* Top Actions (Floating) */}
+                                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-[-10px] group-hover:translate-y-0">
                                         <a
                                                 href={mapsUrl}
                                                 target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex-1 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-lg py-1.5 flex items-center justify-center gap-1.5 transition-colors text-[10px] font-bold"
+                                                rel="noreferrer"
+                                                className="p-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-white hover:bg-white hover:text-slate-900 transition-colors shadow-lg"
+                                                title="View on Map"
                                         >
-                                                <MapIcon className="w-3.5 h-3.5" /> מפה
+                                                <MapIcon className="w-4 h-4" />
                                         </a>
                                         <button
-                                                onClick={onAdd}
-                                                disabled={isAdded}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm ${isAdded
-                                                        ? 'bg-green-50 text-green-700 border border-green-200'
-                                                        : `${buttonColor} text-white`
-                                                        }`}
+                                                onClick={(e) => { e.stopPropagation(); onAdd(); }}
+                                                className={`p-2 backdrop-blur-md border rounded-full transition-colors shadow-lg ${isAdded ? 'bg-green-500/80 border-green-400 text-white' : 'bg-white/20 border-white/30 text-white hover:bg-white hover:text-slate-900'}`}
+                                                title={isAdded ? "Remove" : "Save"}
                                         >
-                                                {isAdded ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                                                {isAdded ? 'נשמר' : 'שמור'}
+                                                {isAdded ? <CheckCircle2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                                         </button>
+                                </div>
+
+                                {/* Rating Badge (Top Left) */}
+                                {rating && (
+                                        <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10 shadow-sm">
+                                                <span className="text-sm font-bold text-white">{rating}</span>
+                                                <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                                        </div>
+                                )}
+
+                                {/* Main Info */}
+                                <div className="transform transition-transform duration-300 group-hover:translate-y-[-4px]">
+                                        {/* Tags / Subtitle */}
+                                        <div className="flex items-center gap-2 mb-1 text-slate-300 text-[10px] font-medium tracking-wide uppercase">
+                                                {recommendationSource && (
+                                                        <span className="flex items-center gap-1 text-yellow-400">
+                                                                <Trophy className="w-3 h-3" />
+                                                                {recommendationSource.replace('Bib', 'Michelin')}
+                                                        </span>
+                                                )}
+                                                <span>•</span>
+                                                <span>{mainCategory}</span>
+                                                {price && (
+                                                        <>
+                                                                <span>•</span>
+                                                                <span className="text-green-400">{price}</span>
+                                                        </>
+                                                )}
+                                        </div>
+
+                                        {/* Title */}
+                                        <h3 className="text-lg font-black text-white leading-tight line-clamp-2 drop-shadow-sm mb-1" dir="ltr">
+                                                {displayName}
+                                        </h3>
+
+                                        {/* Location Badge (Brief) */}
+                                        <div className="flex items-center gap-1 text-slate-400 text-xs truncate max-w-[85%]">
+                                                <MapIcon className="w-3 h-3 flex-shrink-0" />
+                                                <span className="truncate">{location}</span>
+                                        </div>
                                 </div>
                         </div>
                 </div>
