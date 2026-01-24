@@ -713,7 +713,7 @@ export const ItineraryView: React.FC<{
                                                 </div>
                                                 <div className="min-w-0">
                                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{day.displayDayOfWeek}</div>
-                                                    <h3 className="font-black text-slate-800 text-sm leading-none truncate max-w-[100px]">{day.locationContext || 'יום בטיול'}</h3>
+                                                    <h3 className="font-black text-slate-800 text-sm leading-tight line-clamp-2">{day.locationContext || 'יום בטיול'}</h3>
                                                 </div>
                                             </div>
                                             {day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout') && (
