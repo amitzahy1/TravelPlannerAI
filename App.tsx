@@ -148,56 +148,7 @@ const AppContent: React.FC = () => {
 
   // 2. Not Logged In (Landing View)
   if (!user) {
-    return (
-      <div className="h-screen w-full bg-slate-50 flex flex-col items-center justify-center relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-slate-100/50"></div>
-
-        <div className="relative z-10 bg-white/80 backdrop-blur-xl p-10 rounded-[3rem] shadow-2xl border border-white/50 text-center max-w-md mx-4 animate-fade-in-up">
-          <div className="mb-6 flex justify-center">
-            <div className="p-4 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200 rotate-3 transform hover:rotate-6 transition-transform">
-              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-
-          <h1 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">Travel Planner Pro</h1>
-          <p className="text-slate-500 mb-8 px-4 leading-relaxed">
-            התכנון החכם לטיול הבא שלך. נהל את כל הפרטים במקום אחד, בקלות ובנוחות.
-          </p>
-
-          <div className="flex justify-center">
-            {/* Implicitly using LoginButton via a wrapper or direct if imported. 
-                    Since LoginButton component exists, we should use it. 
-                    However, wrapping imports requires top-level changes. 
-                    To be safe and "Simple", I'll put a direct Login Button or message here 
-                    IF I can't easily import LoginButton without breaking the file structure (imports are at top).
-                    
-                    Wait, I can add imports at the top! 
-                    But I am replacing a chunk. I need to make sure I added the import.
-                    My current ReplacementContent is mostly the RETURN block.
-                    I didn't add the import to the top of the file in THIS chunk.
-                    
-                    I will assume for this chunk that I need to provide the UI manually 
-                    OR I will do a multi-replace to add the import.
-                    
-                    Let's do a multi-replace to be safe and clean.
-                */}
-            <button
-              onClick={signIn}
-              className="px-8 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
-            >
-              <span>התחבר למערכת</span>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-            </button>
-          </div>
-
-          <p className="mt-6 text-xs text-slate-400">
-            שימוש במערכת מחייב התחברות
-          </p>
-        </div>
-      </div>
-    );
+    return <LandingView onLogin={signIn} />;
   }
 
   // 3. Logged In (Loading Data)
