@@ -23,12 +23,10 @@ CRITICAL OUTPUT RULES:
 // --- CONFIGURATION ---
 
 // 1. Google Gemini Models (Direct SDK)
-// Updated based on technical report for stability and speed
-// 1. Google Gemini Models (Direct SDK)
 const GOOGLE_MODELS = {
-  FAST: "gemini-2.0-flash-exp",   // Efficient, Fast
-  SMART: "gemini-2.0-pro-exp",    // Reasoning, Search capable
-  FALLBACK: "gemini-1.5-flash"    // Stable Fallback
+  FAST: "gemini-3-flash-preview",   // User requested
+  SMART: "gemini-3-pro-preview",    // User requested
+  FALLBACK: "gemini-1.5-flash"      // Stable Fallback
 };
 
 // 2. Groq Models (Fast Inference Fallback)
@@ -187,10 +185,6 @@ export const generateWithFallback = async (
   const googleAI = getGoogleClient();
   if (googleAI) {
     // Select model and tools based on intent
-    // Gemini 2.0 Flash is generally available and fast
-    // Gemini 2.0 Pro (or Ultra) is for complex tasks.
-    // User requested "Gemini 3" but likely meant 2.0 logic or hypothetical future. 
-    // Sticking to 2.0 naming convention which is current latest stable/preview.
     const selectedModel = intent === 'SMART' ? GOOGLE_MODELS.SMART : GOOGLE_MODELS.FAST;
     const tools = intent === 'SMART' ? [{ googleSearchRetrieval: {} }] : undefined;
 
@@ -245,26 +239,6 @@ export const generateWithFallback = async (
   }
 
   // Fallback to other providers (Groq/OpenRouter) - typically FAST logic (no tools)
-  // ... (Keep existing Groq/OpenRouter fallback logic, usually they are 'FAST' equivalent)
-
-
-  // Prepare standard OpenAI messages format for Groq/OpenRouter
-  let messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
-  if (typeof contents === 'string') {
-    messages.push({ role: "user", content: contents });
-  } else if (Array.isArray(contents)) {
-    contents.forEach((msg: any) => {
-      if (msg.role && msg.content) {
-        messages.push(msg);
-      } else if (msg.parts) {
-        // Convert Gemini parts to OpenAI content
-        const textPart = msg.parts.find((p: any) => p.text);
-        if (textPart) messages.push({ role: msg.role === 'model' ? 'assistant' : 'user', content: textPart.text });
-
-        // Handle images? Simple text fallback for now in fallback layers
-      }
-    });
-  }
 
   // 2. Groq (High Speed Fallback)
   const groqAI = getGroqClient();
@@ -272,6 +246,20 @@ export const generateWithFallback = async (
     for (const model of GROQ_MODELS) {
       try {
         console.log(`⚡ [Groq] Trying ${model}...`);
+
+        let messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
+        if (typeof contents === 'string') {
+          messages.push({ role: "user", content: contents });
+        } else if (Array.isArray(contents)) {
+          contents.forEach((msg: any) => {
+            if (msg.role && msg.content) {
+              messages.push(msg);
+            } else if (msg.parts) {
+              const textPart = msg.parts.find((p: any) => p.text);
+              if (textPart) messages.push({ role: msg.role === 'model' ? 'assistant' : 'user', content: textPart.text });
+            }
+          });
+        }
 
         const completion = await withBackoff(async () => {
           return await groqAI.chat.completions.create({
@@ -299,6 +287,20 @@ export const generateWithFallback = async (
     for (const model of OPENROUTER_MODELS) {
       try {
         console.log(`🌐 [OpenRouter] Trying ${model}...`);
+
+        let messages: any[] = [{ role: "system", content: SYSTEM_PROMPT }];
+        if (typeof contents === 'string') {
+          messages.push({ role: "user", content: contents });
+        } else if (Array.isArray(contents)) {
+          contents.forEach((msg: any) => {
+            if (msg.role && msg.content) {
+              messages.push(msg);
+            } else if (msg.parts) {
+              const textPart = msg.parts.find((p: any) => p.text);
+              if (textPart) messages.push({ role: msg.role === 'model' ? 'assistant' : 'user', content: textPart.text });
+            }
+          });
+        }
 
         const completion = await withBackoff(async () => {
           return await routerAI.chat.completions.create({
@@ -351,8 +353,6 @@ export const generateWithFallback = async (
       lastError = error;
     }
   }
-
-
 
   throw lastError || new Error("All AI Providers failed.");
 };
