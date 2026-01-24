@@ -620,54 +620,53 @@ export const ItineraryView: React.FC<{
             {/* 2. DASHBOARD GRID: Insights & Favorites (Task 7.1) */}
             {/* 2. DASHBOARD GRID: Insights & Favorites (Unified Twin Layout h-80) */}
             {/* 2. DASHBOARD GRID: Insights & Favorites (Split-Grid Layout h-[350px]) */}
-            <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[350px] mb-12 relative z-20">
+            {/* 2. DASHBOARD GRID: Insights & Favorites (Ultra-Compact Ticker h-[220px]) */}
+            <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-4 h-auto lg:h-[220px] mb-12 relative z-20">
 
                 {/* Left: Assistant Widget (4 Columns) */}
                 <div className="lg:col-span-4 h-full flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in relative z-20">
                     {/* Clone Header: Assistant */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white/50 backdrop-blur-md sticky top-0 z-20">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-xl shadow-sm bg-indigo-50 text-indigo-600`}>
-                                <Sparkles className="w-4 h-4" />
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-20 h-[40px]">
+                        <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                                <Sparkles className="w-3.5 h-3.5" />
                             </div>
-                            <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
+                            <h3 className="text-[11px] font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
                                 העוזר האישי
                             </h3>
                         </div>
                         <div className="flex items-center gap-2">
-                            {/* Actions: Import Button */}
                             <button
                                 onClick={handleSyncCalendar}
                                 disabled={isSyncing}
-                                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors group flex items-center gap-1.5"
+                                className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-blue-600 transition-colors group flex items-center gap-1.5"
                                 title="יבא מיומן Google"
                             >
-                                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
+                                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
                             </button>
                         </div>
                     </div>
 
-                    {/* Assistant Body - List View */}
+                    {/* Assistant Body - Micro List View */}
                     <div className="flex-1 overflow-y-auto p-2 custom-scrollbar bg-slate-50/30">
                         {insights.length > 0 ? (
-                            <div className="space-y-2">
+                            <div className="space-y-1.5">
                                 {insights.map(insight => (
-                                    <div key={insight.id} className="w-full bg-white rounded-xl border border-slate-100 p-3 shadow-sm hover:shadow-md transition-all relative overflow-hidden group flex items-center gap-3">
-                                        <div className={`w-1 h-full absolute right-0 top-0 ${insight.type === 'warning' ? 'bg-red-400' : 'bg-blue-400'}`}></div>
-                                        <div className={`p-2 rounded-lg flex-shrink-0 ${insight.type === 'warning' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}><insight.icon className="w-4 h-4" /></div>
+                                    <div key={insight.id} className="w-full bg-white rounded-lg border border-slate-100 p-2 shadow-sm hover:shadow-md transition-all relative overflow-hidden group flex items-center gap-2">
+                                        <div className={`w-0.5 h-full absolute right-0 top-0 ${insight.type === 'warning' ? 'bg-red-400' : 'bg-blue-400'}`}></div>
+                                        <div className={`p-1 rounded-md flex-shrink-0 ${insight.type === 'warning' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}><insight.icon className="w-3 h-3" /></div>
                                         <div className="min-w-0 flex-1">
-                                            <h4 className="font-bold text-slate-800 text-xs truncate mb-0.5">{insight.title}</h4>
-                                            <p className="text-[10px] text-slate-400 leading-snug line-clamp-1">{insight.description}</p>
+                                            <h4 className="font-bold text-slate-800 text-[11px] truncate">{insight.title}</h4>
+                                            <p className="text-[10px] text-slate-400 leading-none truncate">{insight.description}</p>
                                         </div>
-                                        <button onClick={insight.action} className="text-[10px] font-bold bg-slate-50 hover:bg-slate-100 text-slate-600 px-2 py-1 rounded-lg flex items-center gap-1 group-hover:text-blue-600 border border-slate-100"><ArrowLeft className="w-3 h-3" /></button>
+                                        <button onClick={insight.action} className="text-[10px] font-bold bg-slate-50 hover:bg-slate-100 text-slate-600 px-2 py-0.5 rounded flex items-center gap-1 group-hover:text-blue-600 border border-slate-100"><ArrowLeft className="w-3 h-3" /></button>
                                     </div>
                                 ))}
                             </div>
                         ) : (
                             <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                                <Sparkles className="w-8 h-8 text-slate-200 mb-2" />
-                                <p className="text-sm font-bold text-slate-400">הכל נראה מצוין!</p>
-                                <p className="text-xs text-slate-300 mt-1">אין התראות או הצעות כרגע.</p>
+                                <Sparkles className="w-6 h-6 text-slate-200 mb-1" />
+                                <p className="text-xs font-bold text-slate-400">הכל נראה מצוין!</p>
                             </div>
                         )}
                     </div>
