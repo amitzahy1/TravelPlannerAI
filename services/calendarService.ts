@@ -57,8 +57,8 @@ export const fetchCalendarEvents = async (timeMin: string, timeMax: string, acce
                 if (!response.ok) {
                         if (response.status === 401) throw new Error('Token expired');
                         if (response.status === 403) {
-                                // CRITICAL: This specific error string is caught by the UI/AuthContext
-                                throw new Error('NeedsReAuth');
+                                console.error("403 Forbidden - Insufficient Permissions");
+                                throw new Error('NEEDS_AUTH');
                         }
                         throw new Error(`Calendar API Error: ${response.statusText}`);
                 }

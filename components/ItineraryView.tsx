@@ -7,6 +7,7 @@ import {
     ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronRight, Clock, MoreHorizontal, RefreshCw
 } from 'lucide-react';
 import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '../services/calendarService';
+import { requestAccessToken } from '../services/googleAuthService';
 import { FavoritesWidget } from './FavoritesWidget';
 import { TripDateSelector } from './TripDateSelector';
 
@@ -411,9 +412,31 @@ export const ItineraryView: React.FC<{
 
             setExternalEvents(mapped);
             alert(`סונכרנו בהצלחה ${events.length} אירועים מהיומן!`);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Sync failed", error);
-            if ((error as Error).message.includes('token')) {
+            if (error.message === 'NEEDS_AUTH' || error.message.includes('Permission denied')) {
+                // FORCE RE-AUTH
+                try {
+                    await requestAccessToken('consent');
+
+                    // Retry fetch immediately after success
+                    const startDate = trip.startDate ? parseDateString(trip.startDate) : new Date();
+                    const endDate = trip.endDate ? parseDateString(trip.endDate) : new Date(new Date().setDate(new Date().getDate() + 30));
+
+                    if (startDate && endDate) {
+                        startDate.setHours(0, 0, 0, 0);
+                        endDate.setHours(23, 59, 59, 999);
+
+                        const retryEvents = await fetchCalendarEvents(startDate.toISOString(), endDate.toISOString());
+                        const mapped = mapEventsToTimeline(retryEvents);
+                        setExternalEvents(mapped);
+                        alert(`סונכרנו בהצלחה ${retryEvents.length} אירועים מהיומן!`);
+                    }
+                } catch (retryError) {
+                    console.error("Re-auth failed", retryError);
+                    alert("Calendar sync failed. Please approve permissions.");
+                }
+            } else if ((error as Error).message.includes('token')) {
                 alert("נדרשת התחברות מחדש כדי לקרוא מהיומן. אנא התנתק והתחבר שוב.");
             } else {
                 alert("שגיאה בסנכרון יומן. נסה שנית.");
