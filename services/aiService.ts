@@ -142,7 +142,10 @@ const extractJSON = (text: string): string => {
   }
 
   const trimmed = text.trim();
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return trimmed;
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    // Basic Repair: Remove trailing commas before closing braces
+    return trimmed.replace(/,(\s*[}\]])/g, '$1');
+  }
 
   console.warn("Could not extract JSON from response:", text.substring(0, 100));
   return "{}";
