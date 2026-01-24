@@ -62,9 +62,9 @@ export const TripDateSelector: React.FC<TripDateSelectorProps> = ({
         }, [trip, timeline]);
 
         return (
-                <div className="fixed inset-0 z-[1300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
-                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl relative overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
-                                <div className="flex justify-between items-center mb-6">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm" onClick={onClose}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[320px] max-h-[70vh] flex flex-col animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center mb-4 px-6 pt-6 flex-shrink-0">
                                         <div>
                                                 <h3 className="text-xl font-black text-slate-800">{title}</h3>
                                                 {description && (
@@ -81,7 +81,7 @@ export const TripDateSelector: React.FC<TripDateSelectorProps> = ({
                                         </button>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                <div className="grid grid-cols-1 gap-2 flex-grow overflow-y-auto custom-scrollbar px-6 pb-6">
                                         {dates.map((day) => {
                                                 const hasEvents = day.events.length > 0;
                                                 const eventCount = day.events.length;
@@ -90,7 +90,7 @@ export const TripDateSelector: React.FC<TripDateSelectorProps> = ({
                                                         <button
                                                                 key={day.dateIso}
                                                                 onClick={() => onSelect(day.dateIso)}
-                                                                className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-all text-right group"
+                                                                className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-all text-right group flex-shrink-0"
                                                         >
                                                                 <div className="flex items-center gap-4">
                                                                         <div className="bg-slate-100 text-slate-600 w-10 h-10 rounded-lg flex flex-col items-center justify-center font-bold text-sm group-hover:bg-white group-hover:text-blue-600 transition-colors">
@@ -112,7 +112,7 @@ export const TripDateSelector: React.FC<TripDateSelectorProps> = ({
                                                                                 <span className="text-[10px] font-bold text-slate-400">{eventCount}</span>
                                                                         </div>
                                                                 ) : (
-                                                                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all" />
+                                                                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-50 opacity-0 group-hover:opacity-100 transition-all" />
                                                                 )}
                                                         </button>
                                                 );

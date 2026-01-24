@@ -781,10 +781,10 @@ export const ItineraryView: React.FC<{
             {
                 selectedDayIso && activeDay && (
                     <div
-                        className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-sm animate-fade-in flex items-center justify-center p-4"
+                        className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm animate-fade-in flex items-center justify-center p-4 content-center"
                         onClick={(e) => { if (e.target === e.currentTarget) setSelectedDayIso(null); }}
                     >
-                        <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[80vh] animate-scale-in">
+                        <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] animate-scale-in" onClick={e => e.stopPropagation()}>
                             {/* Modal Header */}
                             <div className="bg-white border-b border-slate-100 p-5 flex items-center justify-between flex-shrink-0">
                                 <div className="flex items-center gap-3">
@@ -849,8 +849,8 @@ export const ItineraryView: React.FC<{
             {/* Quick Add Modal */}
             {
                 quickAddModal.isOpen && (
-                    <div className="fixed inset-0 z-[1200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl relative max-h-[80vh] overflow-y-auto custom-scrollbar">
+                    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setQuickAddModal({ isOpen: false })}>
+                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-[320px] shadow-2xl relative max-h-[80vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center mb-6 relative z-10">
                                 <div>
                                     <h3 className="text-2xl font-black text-slate-800">הוספה ללו"ז</h3>
@@ -887,8 +887,8 @@ export const ItineraryView: React.FC<{
             {/* Transfer Modal */}
             {
                 transferModal && (
-                    <div className="fixed inset-0 z-[1200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <form onSubmit={handleSaveTransfer} className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl relative">
+                    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setTransferModal(null)}>
+                        <form onSubmit={handleSaveTransfer} className="bg-white rounded-[2rem] p-6 w-full max-w-[320px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-black text-slate-800">פרטי הסעה</h3>
                                 <button type="button" onClick={() => setTransferModal(null)} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5" /></button>
@@ -910,8 +910,8 @@ export const ItineraryView: React.FC<{
             {/* Starred Items Modal (Task 7) */}
             {
                 starredModal.isOpen && (
-                    <div className="fixed inset-0 z-[1200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-2xl shadow-2xl relative max-h-[80vh] overflow-y-auto">
+                    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setStarredModal({ type: null, isOpen: false })}>
+                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-[320px] shadow-2xl relative max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
                                     {starredModal.type === 'food' ? (

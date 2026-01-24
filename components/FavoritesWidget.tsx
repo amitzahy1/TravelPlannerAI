@@ -255,17 +255,17 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
 
                         {/* View All Modal */}
                         {showAllModal && (
-                                <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowAllModal(false)}>
-                                        <div className="bg-white w-full max-w-2xl max-h-[80vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-                                                <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm" onClick={() => setShowAllModal(false)}>
+                                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[320px] max-h-[70vh] flex flex-col animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                                                <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
                                                         <div className="flex items-center gap-3">
                                                                 <div className="p-2 bg-yellow-100 rounded-xl text-yellow-600"><Star className="w-5 h-5 fill-current" /></div>
-                                                                <h3 className="text-lg font-black text-slate-800">כל האטרקציות והמסעדות השמורות</h3>
+                                                                <h3 className="text-lg font-black text-slate-800">המועדפים</h3>
                                                         </div>
                                                         <button onClick={() => setShowAllModal(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-5 h-5" /></button>
                                                 </div>
                                                 <div className="flex-grow overflow-y-auto p-5 scrollbar-hide">
-                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                        <div className="grid grid-cols-1 gap-4">
                                                                 {favorites.map(fav => renderCard(fav, true))}
                                                         </div>
                                                 </div>
