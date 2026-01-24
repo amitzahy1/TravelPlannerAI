@@ -2,13 +2,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import {
-    Calendar, MapPin, Plane, Car,
+    Calendar, MapPin, Plane, Car, Globe,
     Hotel, Utensils, Ticket, Plus, Sparkles, X,
     ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronRight, Clock, MoreHorizontal, RefreshCw
 } from 'lucide-react';
 import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '../services/calendarService';
 import { requestAccessToken } from '../services/googleAuthService';
-import { FavoritesWidget } from './FavoritesWidget';
+import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
 
 // --- Types ---
@@ -63,7 +63,8 @@ export const ItineraryView: React.FC<{
     const [insights, setInsights] = useState<Insight[]>([]);
     const [isSyncing, setIsSyncing] = useState(false);
     const [externalEvents, setExternalEvents] = useState<TimelineEvent[]>([]);
-    const [starredModal, setStarredModal] = useState<{ type: 'food' | 'attractions' | null, isOpen: boolean }>({ type: null, isOpen: false });
+    const [viewingCategory, setViewingCategory] = useState<'food' | 'attractions' | 'hotels' | null>(null);
+    const [scheduleItem, setScheduleItem] = useState<{ item: any, type: 'food' | 'attraction' } | null>(null); // For the scheduler
 
     // Calculate favorite counts (Task 7)
     const favoriteRestaurants = useMemo(() => {
@@ -517,28 +518,7 @@ export const ItineraryView: React.FC<{
         if (url) onUpdateTrip({ ...trip, coverImage: url });
     };
 
-    const [datePickerModal, setDatePickerModal] = useState<{
-        isOpen: boolean;
-        item: Restaurant | Attraction | null;
-        type: 'food' | 'attractions' | null;
-    }>({ isOpen: false, item: null, type: null });
 
-    // Handler for starred modal (Task 7)
-    const handleAddStarredToTimeline = (item: Restaurant | Attraction, type: 'food' | 'attractions') => {
-        setDatePickerModal({ isOpen: true, item, type });
-        setStarredModal({ type: null, isOpen: false }); // Close list, open picker
-    };
-
-    const handleConfirmDate = (dateIso: string) => {
-        if (datePickerModal.item && datePickerModal.type) {
-            handleScheduleFavorite(
-                datePickerModal.item,
-                dateIso,
-                datePickerModal.type === 'food' ? 'food' : 'attraction'
-            );
-            setDatePickerModal({ isOpen: false, item: null, type: null });
-        }
-    };
 
     const handleScheduleFavorite = (item: Restaurant | Attraction, dateIso: string, type: 'food' | 'attraction') => {
         const [y, m, d] = dateIso.split('-');
@@ -584,7 +564,7 @@ export const ItineraryView: React.FC<{
     return (
         <div className="space-y-8 animate-fade-in pb-24">
 
-            {/* 1. COMPACT HEADER */}
+            {/* 1. HERO SECTION WITH INTERACTIVE STATS */}
             <div className="relative h-[220px] rounded-[2rem] overflow-hidden shadow-xl group mx-1">
                 <img
                     src={trip.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80'}
@@ -606,173 +586,146 @@ export const ItineraryView: React.FC<{
                         </div>
                     </div>
 
-                    {/* Stats */}
+                    {/* Interactive Hero Stats Bar */}
                     <div className="hidden md:flex gap-6 bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-3xl">
                         <div className="flex flex-col items-center min-w-[60px]">
                             <Plane className="w-8 h-8 text-blue-400 mb-1" />
                             <span className="text-3xl font-black text-white leading-none">{totalStats.flights}</span>
-                        </div>
-                        <div className="w-px bg-white/20"></div>
-                        <div className="flex flex-col items-center min-w-[60px]">
-                            <Hotel className="w-8 h-8 text-indigo-400 mb-1" />
-                            <span className="text-3xl font-black text-white leading-none">{totalStats.hotels}</span>
+                            <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1">טיסות</span>
                         </div>
                         <div className="w-px bg-white/20"></div>
                         <button
-                            onClick={() => setStarredModal({ type: 'food', isOpen: true })}
+                            onClick={() => setViewingCategory('hotels')}
                             className="flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group"
-                            title="לחץ להצגת מסעדות שמורות"
                         >
-                            <Utensils className="w-8 h-8 text-orange-400 mb-1 group-hover:text-orange-300 transition-colors" />
-                            <span className="text-3xl font-black text-white leading-none">{favoriteRestaurants.length}</span>
+                            <Hotel className="w-8 h-8 text-indigo-400 mb-1 group-hover:text-indigo-300 transition-colors" />
+                            <span className="text-3xl font-black text-white leading-none">{totalStats.hotels}</span>
+                            <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">מלונות</span>
                         </button>
                         <div className="w-px bg-white/20"></div>
                         <button
-                            onClick={() => setStarredModal({ type: 'attractions', isOpen: true })}
+                            onClick={() => setViewingCategory('food')}
                             className="flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group"
-                            title="לחץ להצגת אטרקציות שמורות"
+                        >
+                            <Utensils className="w-8 h-8 text-orange-400 mb-1 group-hover:text-orange-300 transition-colors" />
+                            <span className="text-3xl font-black text-white leading-none">{favoriteRestaurants.length}</span>
+                            <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">אוכל</span>
+                        </button>
+                        <div className="w-px bg-white/20"></div>
+                        <button
+                            onClick={() => setViewingCategory('attractions')}
+                            className="flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group"
                         >
                             <MapPin className="w-8 h-8 text-emerald-400 mb-1 group-hover:text-emerald-300 transition-colors" />
                             <span className="text-3xl font-black text-white leading-none">{favoriteAttractions.length}</span>
+                            <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">מקומות</span>
                         </button>
                     </div>
                 </div>
                 <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 className="w-4 h-4" /></button>
             </div>
 
-            {/* 2. DASHBOARD GRID: Insights & Favorites (Fixed Height to prevent overlap) */}
-            <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-4 h-[280px] mb-12 shrink-0 relative z-30">
-
-                {/* Left: Assistant Widget (4 Columns) */}
-                <div className="lg:col-span-4 h-full flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in relative z-20">
-                    {/* Clone Header: Assistant */}
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-20 h-[40px]">
-                        <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
-                                <Sparkles className="w-3.5 h-3.5" />
-                            </div>
-                            <h3 className="text-[11px] font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
-                                העוזר האישי
-                            </h3>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleSyncCalendar}
-                                disabled={isSyncing}
-                                className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-blue-600 transition-colors group flex items-center gap-1.5"
-                                title="יבא מיומן Google"
-                            >
-                                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Assistant Body - Micro List View */}
-                    <div className="flex-1 overflow-y-auto p-2 custom-scrollbar bg-slate-50/30">
-                        {insights.length > 0 ? (
-                            <div className="space-y-1.5">
-                                {insights.map(insight => (
-                                    <div key={insight.id} className="w-full bg-white rounded-lg border border-slate-100 p-2 shadow-sm hover:shadow-md transition-all relative overflow-hidden group flex items-center gap-2">
-                                        <div className={`w-0.5 h-full absolute right-0 top-0 ${insight.type === 'warning' ? 'bg-red-400' : 'bg-blue-400'}`}></div>
-                                        <div className={`p-1 rounded-md flex-shrink-0 ${insight.type === 'warning' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}><insight.icon className="w-3 h-3" /></div>
-                                        <div className="min-w-0 flex-1">
-                                            <h4 className="font-bold text-slate-800 text-[11px] truncate">{insight.title}</h4>
-                                            <p className="text-[10px] text-slate-400 leading-none truncate">{insight.description}</p>
-                                        </div>
-                                        <button onClick={insight.action} className="text-[10px] font-bold bg-slate-50 hover:bg-slate-100 text-slate-600 px-2 py-0.5 rounded flex items-center gap-1 group-hover:text-blue-600 border border-slate-100"><ArrowLeft className="w-3 h-3" /></button>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                                <Sparkles className="w-6 h-6 text-slate-200 mb-1" />
-                                <p className="text-xs font-bold text-slate-400">הכל נראה מצוין!</p>
-                            </div>
-                        )}
+            {/* 2. TRIP SUMMARY STRIP (High Level Stats) */}
+            <div className="flex items-center justify-around py-4 bg-white border-b border-slate-100 mb-6 rounded-2xl shadow-sm border mx-1">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Clock className="w-5 h-5" /></div>
+                    <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">משך הטיול</div>
+                        <div className="text-lg font-black text-slate-800">{timeline.length} ימים</div>
                     </div>
                 </div>
-
-                {/* Right: Favorites Widget (8 Columns) */}
-                <div className="lg:col-span-8 h-full min-w-0">
-                    <FavoritesWidget trip={trip} onSchedule={handleScheduleFavorite} />
+                <div className="w-px h-8 bg-slate-100 hidden md:block"></div>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Globe className="w-5 h-5" /></div>
+                    <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">יעדים</div>
+                        <div className="text-lg font-black text-slate-800">
+                            {trip.destination ? trip.destination.split(/[-–,]/).length : 1} ערים
+                        </div>
+                    </div>
+                </div>
+                <div className="w-px h-8 bg-slate-100 hidden md:block"></div>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><DollarSign className="w-5 h-5" /></div>
+                    <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">תקציב</div>
+                        <div className="text-lg font-black text-slate-800">$2.4k (משוער)</div>
+                    </div>
                 </div>
             </div>
 
-            {/* Date Picker Modal (Refactored) */}
-            < TripDateSelector
-                isOpen={datePickerModal.isOpen}
-                onClose={() => setDatePickerModal({ isOpen: false, item: null, type: null })}
-                onSelect={handleConfirmDate}
-                title="בחר תאריך"
-                description={`עבור: ${datePickerModal.item?.name || 'פריט חדש'}`}
-                trip={trip}
-                timeline={timeline}
-            />
+            {/* 3. MAIN CONTENT GRID (Timeline + Assistant) */}
+            <div className="px-1 md:px-1 grid grid-cols-1 lg:grid-cols-4 gap-6 relative z-10">
 
-            {/* 3. GRID DASHBOARD VIEW (COMPACT) */}
-            <div className="px-2 md:px-4 relative z-10">
-                {
-                    timeline.length === 0 ? (
-                        <div className="text-center py-20 text-slate-400">טוען לו"ז...</div>
-                    ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-                            {timeline.map((day) => {
-                                const [y, m, d] = day.dateIso.split('-');
+                {/* Main Column: Timeline (3/4 width) */}
+                <div className="lg:col-span-3 space-y-6">
+                    {/* TIMELINE GRID */}
+                    {
+                        timeline.length === 0 ? (
+                            <div className="text-center py-20 text-slate-400">טוען לו"ז...</div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                {timeline.map((day) => {
+                                    const [y, m, d] = day.dateIso.split('-');
 
-                                return (
-                                    <div
-                                        key={day.dateIso}
-                                        onClick={() => setSelectedDayIso(day.dateIso)}
-                                        className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden group flex flex-col h-[140px]"
-                                    >
-                                        {/* Header Compact */}
-                                        <div className="p-2 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                                            <div className="flex items-center gap-2">
-                                                <div className="bg-white border border-slate-200 text-slate-700 w-10 h-10 rounded-lg flex flex-col items-center justify-center shadow-sm">
-                                                    <span className="text-sm font-black leading-none">{d}</span>
+                                    return (
+                                        <div
+                                            key={day.dateIso}
+                                            onClick={() => setSelectedDayIso(day.dateIso)}
+                                            className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden group flex flex-col h-[160px]"
+                                        >
+                                            {/* Header Compact */}
+                                            <div className="p-3 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="bg-white border border-slate-200 text-slate-700 w-10 h-10 rounded-xl flex flex-col items-center justify-center shadow-sm">
+                                                        <span className="text-sm font-black leading-none">{d}</span>
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{day.displayDayOfWeek}</div>
+                                                        <h3 className="font-black text-slate-800 text-sm leading-tight line-clamp-2">{day.locationContext || 'יום בטיול'}</h3>
+                                                    </div>
                                                 </div>
-                                                <div className="min-w-0">
-                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{day.displayDayOfWeek}</div>
-                                                    <h3 className="font-black text-slate-800 text-sm leading-tight line-clamp-2">{day.locationContext || 'יום בטיול'}</h3>
-                                                </div>
+                                                {day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout') && (
+                                                    <div className="bg-indigo-50 text-indigo-500 p-1.5 rounded-lg"><Hotel className="w-3.5 h-3.5" /></div>
+                                                )}
                                             </div>
-                                            {day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout') && (
-                                                <div className="bg-indigo-50 text-indigo-500 p-1 rounded-full"><Hotel className="w-3 h-3" /></div>
-                                            )}
-                                        </div>
 
-                                        {/* Content Preview */}
-                                        <div className="p-2 flex-grow overflow-hidden relative bg-white">
-                                            {day.events.length > 0 ? (
-                                                <div className="space-y-1 relative z-10">
-                                                    {day.events.slice(0, 3).map((event, idx) => (
-                                                        <div key={idx} className="flex items-center gap-2 w-full">
-                                                            <span className="text-[10px] font-mono font-bold opacity-50 min-w-[32px]">{event.time || "--:--"}</span>
-                                                            <div className={`p-1 rounded-full ${event.bgClass} flex-shrink-0`}><event.icon className={`w-3 h-3 ${event.colorClass}`} /></div>
-                                                            <span className="text-xs font-bold text-slate-700 truncate leading-none flex-1 opacity-90">{event.title}</span>
-                                                        </div>
-                                                    ))}
-                                                    {day.events.length > 3 && (
-                                                        <div className="text-[9px] font-bold text-slate-300 pt-0.5 px-7">
-                                                            + עוד {day.events.length - 3}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2">
-                                                    <Moon className="w-5 h-5 mb-1" />
-                                                    <span className="text-[9px] font-bold">חופשי</span>
-                                                </div>
-                                            )}
-                                            <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                                            {/* Content Preview */}
+                                            <div className="p-3 flex-grow overflow-hidden relative bg-white">
+                                                {day.events.length > 0 ? (
+                                                    <div className="space-y-1.5 relative z-10">
+                                                        {day.events.slice(0, 3).map((event, idx) => (
+                                                            <div key={idx} className="flex items-center gap-2 w-full">
+                                                                <span className="text-[10px] font-mono font-bold opacity-50 min-w-[32px]">{event.time || "--:--"}</span>
+                                                                <div className={`p-1 rounded-full ${event.bgClass} flex-shrink-0`}><event.icon className={`w-3 h-3 ${event.colorClass}`} /></div>
+                                                                <span className="text-xs font-bold text-slate-700 truncate leading-none flex-1 opacity-90">{event.title}</span>
+                                                            </div>
+                                                        ))}
+                                                        {day.events.length > 3 && (
+                                                            <div className="text-[10px] font-bold text-slate-400 pt-1 px-8">
+                                                                + עוד {day.events.length - 3} פריטים
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2">
+                                                        <Moon className="w-5 h-5 mb-1" />
+                                                        <span className="text-[10px] font-bold">יום חופשי</span>
+                                                    </div>
+                                                )}
+                                                <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )
-                }
-            </div >
+                                    );
+                                })}
+                            </div>
+                        )
+                    }
+                </div>
+
+            </div>
+
+
 
             {/* DAY DETAIL MODAL - FIXED POSITIONING */}
             {
@@ -904,91 +857,7 @@ export const ItineraryView: React.FC<{
                 )
             }
 
-            {/* Starred Items Modal (Task 7) */}
-            {
-                starredModal.isOpen && (
-                    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setStarredModal({ type: null, isOpen: false })}>
-                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-[320px] shadow-2xl relative max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                                    {starredModal.type === 'food' ? (
-                                        <>
-                                            <Utensils className="w-6 h-6 text-orange-500" />
-                                            מסעדות שמורות
-                                        </>
-                                    ) : (
-                                        <>
-                                            <MapPin className="w-6 h-6 text-emerald-500" />
-                                            אטרקציות שמורות
-                                        </>
-                                    )}
-                                </h3>
-                                <button
-                                    type="button"
-                                    onClick={() => setStarredModal({ type: null, isOpen: false })}
-                                    className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
 
-                            {starredModal.type === 'food' && favoriteRestaurants.length === 0 && (
-                                <div className="text-center py-12">
-                                    <Utensils className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                                    <p className="text-slate-500 font-medium">אין מסעדות שמורות עדיין</p>
-                                </div>
-                            )}
-
-                            {starredModal.type === 'attractions' && favoriteAttractions.length === 0 && (
-                                <div className="text-center py-12">
-                                    <MapPin className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                                    <p className="text-slate-500 font-medium">אין אטרקציות שמורות עדיין</p>
-                                </div>
-                            )}
-
-                            <div className="space-y-3">
-                                {starredModal.type === 'food' && favoriteRestaurants.map((restaurant) => (
-                                    <div key={restaurant.id} className="bg-slate-50 rounded-xl p-4 flex items-start justify-between gap-4 hover:bg-slate-100 transition-colors">
-                                        <div className="flex-1">
-                                            <h4 className="font-bold text-slate-800 mb-1">{restaurant.nameEnglish || restaurant.name}</h4>
-                                            <p className="text-xs text-slate-500 mb-2">{restaurant.cuisine}</p>
-                                            {restaurant.description && (
-                                                <p className="text-xs text-slate-600 line-clamp-2">{restaurant.description}</p>
-                                            )}
-                                        </div>
-                                        <button
-                                            onClick={() => handleAddStarredToTimeline(restaurant, 'food')}
-                                            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                            הוסף ליום
-                                        </button>
-                                    </div>
-                                ))}
-
-                                {starredModal.type === 'attractions' && favoriteAttractions.map((attraction) => (
-                                    <div key={attraction.id} className="bg-slate-50 rounded-xl p-4 flex items-start justify-between gap-4 hover:bg-slate-100 transition-colors">
-                                        <div className="flex-1">
-                                            <h4 className="font-bold text-slate-800 mb-1">{attraction.nameEnglish || attraction.name}</h4>
-                                            <p className="text-xs text-slate-500 mb-2">{attraction.category}</p>
-                                            {attraction.description && (
-                                                <p className="text-xs text-slate-600 line-clamp-2">{attraction.description}</p>
-                                            )}
-                                        </div>
-                                        <button
-                                            onClick={() => handleAddStarredToTimeline(attraction, 'attractions')}
-                                            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                            הוסף ליום
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
 
 
         </div >
