@@ -87,7 +87,6 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
         );
 
         return (
-        return (
                 <div className="h-full px-1 animate-fade-in relative z-30 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                         {/* Clone Header: Favorites */}
                         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white/50 backdrop-blur-md sticky top-0 z-20">
