@@ -68,7 +68,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                         </div>
 
                         {/* Content */}
-                        <div className="p-3 flex flex-col flex-grow bg-white min-h-0">
+                        <div className="p-2 flex flex-col flex-grow bg-white min-h-0">
                                 <h4 className="text-xs font-black text-slate-800 line-clamp-2 leading-tight mb-0.5" dir="ltr">
                                         {fav.data.name}
                                 </h4>
@@ -87,13 +87,14 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
         );
 
         return (
-                <div className="h-full px-2 animate-fade-in relative z-30 flex flex-col">
-                        <div className="flex items-center gap-2 mb-3 px-2 flex-shrink-0">
-                                <div className="p-1.5 bg-yellow-100 rounded-lg text-yellow-600">
+                <div className="h-full px-1 animate-fade-in relative z-30 flex flex-col">
+                        {/* Unified Header */}
+                        <div className="flex items-center gap-3 mb-3 px-1 flex-shrink-0">
+                                <div className="p-2 bg-yellow-50 rounded-xl text-yellow-600">
                                         <Star className="w-4 h-4 fill-yellow-600" />
                                 </div>
-                                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">המועדפים שלי</h3>
-                                <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{favorites.length}</span>
+                                <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest">המועדפים שלי</h3>
+                                <span className="ml-auto text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{favorites.length}</span>
                         </div>
 
                         {/* Smart Grid */}

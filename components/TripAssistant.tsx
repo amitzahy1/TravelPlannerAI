@@ -37,7 +37,7 @@ export const TripAssistant: React.FC<TripAssistantProps> = ({ trip, onClose }) =
 
     try {
       const ai = getAI();
-      
+
       const prompt = `${SYSTEM_PROMPT}
 
 You are a helpful travel assistant for a specific trip.
@@ -64,21 +64,19 @@ Instructions:
 
   return (
     <div className="flex flex-col h-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-4 flex justify-between items-center text-white">
-        <div className="flex items-center gap-3">
-          <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
-            <Bot className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h3 className="font-bold text-lg">Travel Bot</h3>
-            <p className="text-xs text-gray-300 flex items-center gap-1">
-               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> מחובר לנתוני הטיול
-            </p>
-          </div>
+      {/* Header (Unified Design) */}
+      <div className="flex items-center gap-3 p-3 border-b border-slate-100 bg-slate-50/50">
+        <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+          <Bot className="w-4 h-4" />
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-          <X className="w-5 h-5" />
+        <div>
+          <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none">Travel Bot</h3>
+          <p className="text-[9px] text-slate-400 font-bold mt-0.5 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span> מחובר
+          </p>
+        </div>
+        <button onClick={onClose} className="ml-auto p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
+          <X className="w-4 h-4" />
         </button>
       </div>
 
@@ -86,11 +84,10 @@ Instructions:
       <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50 custom-scrollbar">
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${
-              msg.role === 'user' 
-              ? 'bg-blue-600 text-white rounded-br-none' 
-              : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
-            }`}>
+            <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === 'user'
+                ? 'bg-blue-600 text-white rounded-br-none'
+                : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
+              }`}>
               {msg.text}
             </div>
           </div>
@@ -98,8 +95,8 @@ Instructions:
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-white p-4 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 flex gap-2 items-center">
-               <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-               <span className="text-xs text-gray-400 font-bold">מקליד...</span>
+              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+              <span className="text-xs text-gray-400 font-bold">מקליד...</span>
             </div>
           </div>
         )}
@@ -109,14 +106,14 @@ Instructions:
       {/* Input */}
       <div className="p-4 bg-white border-t border-gray-100">
         <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-2xl border border-gray-200 focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-          <input 
+          <input
             className="flex-grow bg-transparent outline-none px-2 text-sm font-medium"
             placeholder="שאל אותי משהו על הטיול..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           />
-          <button 
+          <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
             className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"

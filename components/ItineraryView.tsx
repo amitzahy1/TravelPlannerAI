@@ -614,24 +614,23 @@ export const ItineraryView: React.FC<{
             </div>
 
             {/* 2. DASHBOARD GRID: Insights & Favorites (Task 7.1) */}
-            {/* 2. DASHBOARD GRID: Insights & Favorites (Compact Layout) */}
-            <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[320px] mb-8">
+            {/* 2. DASHBOARD GRID: Insights & Favorites (Compact Layout h-64) */}
+            <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-64 mb-8">
 
                 {/* Left: Assistant Widget (4 Columns) */}
                 <div className="lg:col-span-4 h-full flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in relative z-20">
-                    {/* Assistant Header */}
-                    <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                        <div className="flex items-center gap-2">
-                            <div className="p-1.5 bg-purple-100 rounded-lg text-purple-600">
-                                <Sparkles className="w-4 h-4" />
-                            </div>
-                            <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">העוזר האישי</h3>
+                    {/* Assistant Header (Unified Design) */}
+                    <div className="flex items-center gap-3 p-3 border-b border-slate-100 bg-slate-50/50">
+                        <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+                            <Sparkles className="w-4 h-4" />
                         </div>
-                        {/* Import Button (Moved to Header) */}
+                        <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest">העוזר האישי</h3>
+
+                        {/* Import Button (Far Left) */}
                         <button
                             onClick={handleSyncCalendar}
                             disabled={isSyncing}
-                            className="p-1.5 bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 rounded-lg transition-all disabled:opacity-50 group flex items-center gap-1.5 shadow-sm"
+                            className="ml-auto p-1.5 bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 rounded-lg transition-all disabled:opacity-50 group flex items-center gap-1.5 shadow-sm"
                             title="יבא מיומן Google"
                         >
                             <span className="text-[10px] font-bold hidden group-hover:inline-block text-blue-600">יבא יומן</span>
@@ -640,11 +639,11 @@ export const ItineraryView: React.FC<{
                     </div>
 
                     {/* Assistant Body */}
-                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50/30">
+                    <div className="flex-1 overflow-y-auto p-3 custom-scrollbar bg-slate-50/30">
                         {insights.length > 0 ? (
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {insights.map(insight => (
-                                    <div key={insight.id} className="w-full bg-white rounded-2xl border border-slate-100 p-3 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                                    <div key={insight.id} className="w-full bg-white rounded-2xl border border-slate-100 p-2.5 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
                                         <div className={`absolute top-0 right-0 w-1 h-full ${insight.type === 'warning' ? 'bg-red-400' : 'bg-blue-400'}`}></div>
                                         <div className="flex items-start gap-3">
                                             <div className={`p-2 rounded-xl flex-shrink-0 ${insight.type === 'warning' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}><insight.icon className="w-4 h-4" /></div>
