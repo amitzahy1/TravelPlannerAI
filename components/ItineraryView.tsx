@@ -90,6 +90,28 @@ export const ItineraryView: React.FC<{
     const [insights, setInsights] = useState<Insight[]>([]);
     const [isSyncing, setIsSyncing] = useState(false);
     const [externalEvents, setExternalEvents] = useState<TimelineEvent[]>([]);
+    const [starredModal, setStarredModal] = useState<{ type: 'food' | 'attractions' | null, isOpen: boolean }>({ type: null, isOpen: false });
+
+    // Calculate favorite counts (Task 7)
+    const favoriteRestaurants = useMemo(() => {
+        const items: Restaurant[] = [];
+        trip.restaurants?.forEach(cat =>
+            cat.restaurants.forEach(r => {
+                if (r.isFavorite) items.push(r);
+            })
+        );
+        return items;
+    }, [trip.restaurants]);
+
+    const favoriteAttractions = useMemo(() => {
+        const items: Attraction[] = [];
+        trip.attractions?.forEach(cat =>
+            cat.attractions.forEach(a => {
+                if (a.isFavorite) items.push(a);
+            })
+        );
+        return items;
+    }, [trip.attractions]);
 
     useEffect(() => {
         const generateTimeline = () => {
@@ -435,6 +457,27 @@ export const ItineraryView: React.FC<{
         if (url) onUpdateTrip({ ...trip, coverImage: url });
     };
 
+    // Handler for starred modal (Task 7)
+    const handleAddStarredToTimeline = (item: Restaurant | Attraction, type: 'food' | 'attractions') => {
+        const dates = timeline.map(d => ({ iso: d.dateIso, display: d.displayDate }));
+        if (dates.length === 0) {
+            alert('אין תאריכים בלוח הזמנים.');
+            return;
+        }
+
+        const dateStr = prompt(
+            `בחר תאריך (1-${dates.length}):\n` +
+            dates.map((d, i) => `${i + 1}. ${d.display}`).join('\n')
+        );
+
+        const dateIndex = parseInt(dateStr || '') - 1;
+        if (isNaN(dateIndex) || dateIndex < 0 || dateIndex >= dates.length) return;
+
+        const selectedDateIso = dates[dateIndex].iso;
+        handleScheduleFavorite(item, selectedDateIso, type === 'food' ? 'food' : 'attraction');
+        setStarredModal({ type: null, isOpen: false });
+    };
+
     const handleScheduleFavorite = (item: Restaurant | Attraction, dateIso: string, type: 'food' | 'attraction') => {
         const [y, m, d] = dateIso.split('-');
         const dateFormatted = `${d}/${m}/${y}`;
@@ -514,10 +557,23 @@ export const ItineraryView: React.FC<{
                             <span className="text-3xl font-black text-white leading-none">{totalStats.hotels}</span>
                         </div>
                         <div className="w-px bg-white/20"></div>
-                        <div className="flex flex-col items-center min-w-[60px]">
-                            <Utensils className="w-8 h-8 text-orange-400 mb-1" />
-                            <span className="text-3xl font-black text-white leading-none">{totalStats.restaurants}</span>
-                        </div>
+                        <button
+                            onClick={() => setStarredModal({ type: 'food', isOpen: true })}
+                            className="flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group"
+                            title="לחץ להצגת מסעדות שמורות"
+                        >
+                            <Utensils className="w-8 h-8 text-orange-400 mb-1 group-hover:text-orange-300 transition-colors" />
+                            <span className="text-3xl font-black text-white leading-none">{favoriteRestaurants.length}</span>
+                        </button>
+                        <div className="w-px bg-white/20"></div>
+                        <button
+                            onClick={() => setStarredModal({ type: 'attractions', isOpen: true })}
+                            className="flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group"
+                            title="לחץ להצגת אטרקציות שמורות"
+                        >
+                            <MapPin className="w-8 h-8 text-emerald-400 mb-1 group-hover:text-emerald-300 transition-colors" />
+                            <span className="text-3xl font-black text-white leading-none">{favoriteAttractions.length}</span>
+                        </button>
                     </div>
                 </div>
                 <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 className="w-4 h-4" /></button>
@@ -749,6 +805,90 @@ export const ItineraryView: React.FC<{
                             <button type="submit" className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold">שמור</button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* Starred Items Modal (Task 7) */}
+            {starredModal.isOpen && (
+                <div className="fixed inset-0 z-[1200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white rounded-[2rem] p-6 w-full max-w-2xl shadow-2xl relative max-h-[80vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                {starredModal.type === 'food' ? (
+                                    <>
+                                        <Utensils className="w-6 h-6 text-orange-500" />
+                                        מסעדות שמורות
+                                    </>
+                                ) : (
+                                    <>
+                                        <MapPin className="w-6 h-6 text-emerald-500" />
+                                        אטרקציות שמורות
+                                    </>
+                                )}
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setStarredModal({ type: null, isOpen: false })}
+                                className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {starredModal.type === 'food' && favoriteRestaurants.length === 0 && (
+                            <div className="text-center py-12">
+                                <Utensils className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                                <p className="text-slate-500 font-medium">אין מסעדות שמורות עדיין</p>
+                            </div>
+                        )}
+
+                        {starredModal.type === 'attractions' && favoriteAttractions.length === 0 && (
+                            <div className="text-center py-12">
+                                <MapPin className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                                <p className="text-slate-500 font-medium">אין אטרקציות שמורות עדיין</p>
+                            </div>
+                        )}
+
+                        <div className="space-y-3">
+                            {starredModal.type === 'food' && favoriteRestaurants.map((restaurant) => (
+                                <div key={restaurant.id} className="bg-slate-50 rounded-xl p-4 flex items-start justify-between gap-4 hover:bg-slate-100 transition-colors">
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-slate-800 mb-1">{restaurant.nameEnglish || restaurant.name}</h4>
+                                        <p className="text-xs text-slate-500 mb-2">{restaurant.cuisine}</p>
+                                        {restaurant.description && (
+                                            <p className="text-xs text-slate-600 line-clamp-2">{restaurant.description}</p>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => handleAddStarredToTimeline(restaurant, 'food')}
+                                        className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        הוסף ליום
+                                    </button>
+                                </div>
+                            ))}
+
+                            {starredModal.type === 'attractions' && favoriteAttractions.map((attraction) => (
+                                <div key={attraction.id} className="bg-slate-50 rounded-xl p-4 flex items-start justify-between gap-4 hover:bg-slate-100 transition-colors">
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-slate-800 mb-1">{attraction.nameEnglish || attraction.name}</h4>
+                                        <p className="text-xs text-slate-500 mb-2">{attraction.category}</p>
+                                        {attraction.description && (
+                                            <p className="text-xs text-slate-600 line-clamp-2">{attraction.description}</p>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => handleAddStarredToTimeline(attraction, 'attractions')}
+                                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        הוסף ליום
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
