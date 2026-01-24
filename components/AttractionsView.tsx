@@ -174,7 +174,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                     // Filter out closed businesses
                     const validResults = data.results
                         .filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL')
-                        .map((r: any, i: number) => ({ ...r, id: `search-attr-${i}` }));
+                        .map((r: any, i: number) => ({ ...r, id: `search-attr-${i}`, categoryTitle: 'תוצאות חיפוש' }));
                     setSearchResults(validResults);
 
                     // Log filtered count
@@ -289,7 +289,14 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
             try {
                 const data = JSON.parse(textContent || '{}');
                 if (data.categories) {
-                    const processed = data.categories.map((c: any) => ({ ...c, attractions: c.attractions.map((a: any, i: number) => ({ ...a, id: `ai-attr-${c.id}-${i}` })) }));
+                    const processed = data.categories.map((c: any) => ({
+                        ...c,
+                        attractions: c.attractions.map((a: any, i: number) => ({
+                            ...a,
+                            id: `ai-attr-${c.id}-${i}`,
+                            categoryTitle: c.title // INJECT TITLE HERE
+                        }))
+                    }));
                     setAiCategories(processed);
                     setSelectedCategory('all');
                     onUpdateTrip({ ...trip, aiAttractions: processed });
@@ -321,8 +328,8 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
     const handleAddRec = (attraction: Attraction, catTitle: string) => {
         let newAttractions = [...attractionsData];
 
-        // Determine smart category name based on attraction type, fallback to the AI category title if generic
-        const smartCategory = mapTypeToCategoryTitle(attraction.type, catTitle);
+        // Use passed catTitle if available (Fix Bug 2)
+        const smartCategory = catTitle || mapTypeToCategoryTitle(attraction.type, catTitle);
 
         let targetCatIndex = newAttractions.findIndex(c => c.title === smartCategory);
         if (targetCatIndex === -1) {
@@ -340,12 +347,13 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
     };
 
     const currentCategoryAttractions = useMemo(() => {
-        let list = [];
+        let list: any[] = [];
         if (selectedCategory === 'all') {
-            aiCategories.forEach(c => list.push(...c.attractions));
+            // Include categoryTitle when flattening
+            aiCategories.forEach(c => list.push(...c.attractions.map(a => ({ ...a, categoryTitle: c.title }))));
         } else {
             const cat = aiCategories.find(c => c.id === selectedCategory);
-            list = cat ? cat.attractions : [];
+            list = cat ? cat.attractions.map(a => ({ ...a, categoryTitle: cat.title })) : [];
         }
 
         if (selectedRater !== 'all') {
@@ -408,10 +416,10 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
 
             {/* Search Bar */}
             <div className="relative z-20">
-                <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-200 flex items-center gap-2 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
-                    <Search className="w-5 h-5 text-gray-400 mr-2" />
-                    <input className="flex-grow outline-none text-gray-700 font-medium text-sm" placeholder='חפש אטרקציה (כולל גוגל מפות ודירוגים)...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
-                    {textQuery && (<button onClick={clearSearch} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400"><X className="w-4 h-4" /></button>)}
+                <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
+                    <Search className="w-5 h-5 text-slate-400 mr-2" />
+                    <input className="flex-grow outline-none text-slate-700 font-medium text-sm" placeholder='חפש אטרקציה (כולל גוגל מפות ודירוגים)...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
+                    {textQuery && (<button onClick={clearSearch} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-4 h-4" /></button>)}
                     <button onClick={handleTextSearch} disabled={isSearching || !textQuery.trim()} className="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50">{isSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{isSearching ? '...' : 'חיפוש'}</button>
                 </div>
 
@@ -449,7 +457,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
             {/* Search Results */}
             {searchResults && (
                 <div className="space-y-3 animate-fade-in">
-                    <div className="flex justify-between items-center"><h3 className="text-lg font-black text-gray-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-xs text-gray-500 hover:text-red-500 underline">נקה</button></div>
+                    <div className="flex justify-between items-center"><h3 className="text-lg font-black text-slate-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-xs text-slate-500 hover:text-red-500 underline">נקה</button></div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {searchResults.map(res => (
                             <AttractionRecommendationCard
@@ -458,37 +466,37 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                 tripDestination={trip.destination}
                                 tripDestinationEnglish={trip.destinationEnglish}
                                 isAdded={addedIds.has(res.id)}
-                                onAdd={handleAddRec}
+                                onAdd={(r) => handleAddRec(r, (r as any).categoryTitle || 'תוצאות חיפוש')}
                             />
                         ))}
                     </div>
-                    <div className="border-b border-gray-200 my-4"></div>
+                    <div className="border-b border-slate-200 my-4"></div>
                 </div>
             )}
 
             {/* Tabs */}
-            <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-200 p-1.5 flex mb-2">
-                <button onClick={() => setActiveTab('my_list')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'my_list' ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-50'}`}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
-                <button onClick={() => setActiveTab('recommended')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'recommended' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-purple-50 hover:text-purple-600'}`}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
+            <div className="bg-white rounded-[1.5rem] shadow-sm border border-slate-200 p-1.5 flex mb-2">
+                <button onClick={() => setActiveTab('my_list')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'my_list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
+                <button onClick={() => setActiveTab('recommended')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'recommended' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-purple-50 hover:text-purple-600'}`}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
             </div>
 
             {viewMode === 'map' ? (
                 <div className="space-y-3">
-                    <div className="flex justify-end"><button onClick={() => setViewMode('list')} className="px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold text-xs bg-gray-100 text-gray-900 transition-all hover:bg-gray-200"><List className="w-3 h-3" /> חזרה לרשימה</button></div>
+                    <div className="flex justify-end"><button onClick={() => setViewMode('list')} className="px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold text-xs bg-slate-100 text-slate-900 transition-all hover:bg-slate-200"><List className="w-3 h-3" /> חזרה לרשימה</button></div>
                     <UnifiedMapView items={getMapItems()} title={activeTab === 'my_list' ? `מפת האטרקציות שלי` : 'מפת המלצות'} />
                 </div>
             ) : (
                 <>
                     {activeTab === 'my_list' ? (
                         <>
-                            <div className="flex justify-between items-center mb-1"><button onClick={() => setViewMode('map')} className="px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold text-xs bg-white border border-gray-200 text-blue-600 hover:bg-blue-50 transition-all shadow-sm"><MapIcon className="w-3 h-3" /> מפה</button></div>
+                            <div className="flex justify-between items-center mb-1"><button onClick={() => setViewMode('map')} className="px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold text-xs bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 transition-all shadow-sm"><MapIcon className="w-3 h-3" /> מפה</button></div>
 
                             {/* My List Filters */}
                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
                                 <div className="flex gap-2">
-                                    <button onClick={() => setMySelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === 'all' ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
+                                    <button onClick={() => setMySelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
                                     {attractionsData.map(cat => (
-                                        <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === cat.title ? 'bg-gray-800 text-white border-gray-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>{cat.title}</button>
+                                        <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>{cat.title}</button>
                                     ))}
                                 </div>
                             </div>
@@ -498,7 +506,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                 <div className="space-y-4 mt-2">
                                     {filteredMyList.map((category) => (
                                         <div key={category.id} className="animate-fade-in">
-                                            <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center justify-between">{category.title}<span className="text-[10px] font-normal bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">{category.attractions.length}</span></h3>
+                                            <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center justify-between">{category.title}<span className="text-[10px] font-normal bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">{category.attractions.length}</span></h3>
                                             <div className="flex flex-col gap-2">
                                                 {[...category.attractions].map((attr) => (
                                                     <AttractionRow key={attr.id} data={attr} onSaveNote={(note) => handleUpdateAttraction(attr.id, { notes: note })} onUpdate={(updates) => handleUpdateAttraction(attr.id, updates)} onDelete={() => handleDeleteAttraction(attr.id)} />
@@ -508,11 +516,11 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-300 mt-4 flex flex-col items-center justify-center">
-                                    <Ticket className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                                    <p className="text-gray-500 text-sm font-bold mb-4">לא נמצאו אטרקציות ברשימה שלך.</p>
+                                <div className="text-center py-10 bg-white rounded-xl border border-dashed border-slate-300 mt-4 flex flex-col items-center justify-center">
+                                    <Ticket className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                    <p className="text-slate-500 text-sm font-bold mb-4">לא נמצאו אטרקציות ברשימה שלך.</p>
                                     <button onClick={() => { setActiveTab('recommended'); initiateResearch(); }} className="bg-purple-600 text-white px-6 py-2 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors shadow-lg flex items-center gap-2">
-                                        <Sparkles className="w-4 h-4" /> קבל המלצות AI עכשיו
+                                        <Sparkles className="w-4 h-4" /> קבל המלצות AI עכשim
                                     </button>
                                 </div>
                             )}
@@ -523,7 +531,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                             {!loadingRecs && aiCategories.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-8 space-y-4">
                                     <div className="bg-purple-100 p-4 rounded-full"><Navigation className="w-8 h-8 text-purple-600" /></div>
-                                    <h3 className="text-xl font-black text-gray-800">בחר עיר לחיפוש</h3>
+                                    <h3 className="text-xl font-black text-slate-800">בחר עיר לחיפוש</h3>
                                     <button onClick={initiateResearch} className="bg-white border-2 border-purple-500 text-purple-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-purple-50 transition-all">
                                         {trip.destination} - בצע מחקר שוק
                                     </button>
@@ -586,7 +594,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                                         tripDestination={trip.destination}
                                                         tripDestinationEnglish={trip.destinationEnglish}
                                                         isAdded={addedIds.has(rec.id)}
-                                                        onAdd={handleAddRec}
+                                                        onAdd={(r) => handleAddRec(r, (r as any).categoryTitle || 'תכנון טיול')}
                                                     />
                                                 ))}
                                             </div>

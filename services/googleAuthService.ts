@@ -14,50 +14,96 @@ declare global {
 
 let tokenClient: any;
 
-export const initGoogleAuth = (clientId: string) => {
-        if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-                console.warn("Google Identity Services script not loaded yet.");
-                return;
-        }
+// Helper: Wait for Google Script to be available
+const waitForGoogle = (): Promise<void> => {
+        return new Promise((resolve, reject) => {
+                if (window.google?.accounts?.oauth2) return resolve();
 
-        tokenClient = window.google.accounts.oauth2.initTokenClient({
-                client_id: clientId,
-                scope: 'https://www.googleapis.com/auth/calendar.readonly',
-                callback: (response: any) => {
-                        // Callback is handled by the promise wrapper below usually, 
-                        // or we can set a global handler if we want.
-                        // For on-demand, we will override this callback in requestAccessToken
-                },
+                let attempts = 0;
+                const interval = setInterval(() => {
+                        attempts++;
+                        if (window.google?.accounts?.oauth2) {
+                                clearInterval(interval);
+                                resolve();
+                        }
+                        if (attempts > 50) { // 5 seconds (50 * 100ms)
+                                clearInterval(interval);
+                                reject(new Error("Google Script Timeout"));
+                        }
+                }, 100);
         });
 };
 
-export const requestAccessToken = (prompt: string = ''): Promise<string> => {
+// Helper: Inject script if missing
+const ensureGoogleScript = () => {
+        if (typeof window === 'undefined') return;
+        if (window.google?.accounts?.oauth2) return;
+        if (document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) return;
+
+        console.log("Injecting Google Identity Services script...");
+        const script = document.createElement('script');
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        document.body.appendChild(script);
+};
+
+export const initGoogleAuth = async (clientId: string) => {
+        ensureGoogleScript();
+
+        try {
+                await waitForGoogle();
+        } catch (e) {
+                console.error("Failed to load Google Script:", e);
+                return;
+        }
+
+        if (!tokenClient) {
+                tokenClient = window.google.accounts.oauth2.initTokenClient({
+                        client_id: clientId,
+                        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+                        callback: (response: any) => {
+                                // Default callback, overridden in requests
+                                console.log("Google Auth Callback Init");
+                        },
+                });
+                console.log("✅ Google Token Client Initialized");
+        }
+};
+
+export const requestAccessToken = async (promptOverride?: string): Promise<string> => {
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        console.log("🔑 Auth Request - ClientID:", clientId ? `${clientId.substring(0, 8)}...` : 'MISSING');
+
+        // Make sure we have the client ready
+        if (!tokenClient) {
+                if (!clientId) throw new Error("Missing VITE_GOOGLE_CLIENT_ID");
+                await initGoogleAuth(clientId);
+        }
+
+        // Safety check if init failed
+        if (!tokenClient) {
+                throw new Error("Google Token Client failed to initialize.");
+        }
+
         return new Promise((resolve, reject) => {
-                if (!tokenClient) {
-                        // Try to init if missing (maybe script loaded late)
-                        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-                        if (clientId) {
-                                initGoogleAuth(clientId);
-                        }
-                }
-
-                if (!tokenClient) {
-                        reject(new Error("Google Auth Client not initialized. Missing VITE_GOOGLE_CLIENT_ID?"));
-                        return;
-                }
-
-                // Override the callback for this specific request
+                // Override callback
                 tokenClient.callback = (resp: any) => {
                         if (resp.error) {
+                                console.error("Google Auth Error:", resp);
                                 reject(resp);
                         } else {
                                 resolve(resp.access_token);
                         }
                 };
 
-                // Request the token
-                // prompt: '' will try to refresh silently without popup if possible
-                // prompt: 'consent' forces the popup
+                // Determine prompt:
+                // If promptOverride is provided, use it.
+                // If not, default to '' (silent attempt).
+                // If silent fails, the caller (AuthContext) should retry with 'consent'.
+                const prompt = promptOverride !== undefined ? promptOverride : '';
+
+                console.log(`Token Request Prompt: "${prompt}"`);
                 tokenClient.requestAccessToken({ prompt });
         });
 };

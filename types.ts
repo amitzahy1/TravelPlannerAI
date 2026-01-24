@@ -262,3 +262,34 @@ export interface AppState {
   trips: Trip[];
   activeTripId: string;
 }
+
+// --- Timeline Types (Shared for TripDateSelector) ---
+export type TimelineEventType = 'flight' | 'hotel_stay' | 'hotel_checkin' | 'hotel_checkout' | 'food' | 'attraction' | 'activity' | 'shopping' | 'travel';
+
+export interface TimelineEvent {
+  id: string;
+  type: TimelineEventType;
+  time: string; // HH:MM
+  title: string;
+  subtitle?: string;
+  location?: string;
+  price?: string;
+  icon: any; // Lucide Icon
+  colorClass: string;
+  bgClass: string;
+  externalLink?: string;
+  isManual?: boolean;
+  dayId?: string;
+  activityIndex?: number;
+  isExternal?: boolean;
+}
+
+export interface DayPlan {
+  dateIso: string;
+  displayDate: string;
+  displayDayOfWeek: string;
+  locationContext: string;
+  events: TimelineEvent[];
+  stats: { food: number, attr: number, flight: number, travel: number, hotel: number };
+  hasHotel: boolean;
+}

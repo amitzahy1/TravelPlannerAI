@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { Trip, Restaurant, Attraction } from '../types';
+import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import {
     Calendar, MapPin, Plane, Car,
     Hotel, Utensils, Ticket, Plus, Sparkles, X,
@@ -8,38 +8,10 @@ import {
 } from 'lucide-react';
 import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '../services/calendarService';
 import { FavoritesWidget } from './FavoritesWidget';
+import { TripDateSelector } from './TripDateSelector';
 
 // --- Types ---
-type TimelineEventType = 'flight' | 'hotel_stay' | 'hotel_checkin' | 'hotel_checkout' | 'food' | 'attraction' | 'activity' | 'shopping' | 'travel';
-
-interface TimelineEvent {
-    id: string;
-    type: TimelineEventType;
-    time: string; // HH:MM
-    title: string;
-    subtitle?: string;
-    location?: string;
-    price?: string;
-    icon: any;
-    colorClass: string;
-    bgClass: string;
-    externalLink?: string;
-    isManual?: boolean;
-    dayId?: string;
-    activityIndex?: number;
-    // New
-    isExternal?: boolean;
-}
-
-interface DayPlan {
-    dateIso: string;
-    displayDate: string;
-    displayDayOfWeek: string;
-    locationContext: string;
-    events: TimelineEvent[];
-    stats: { food: number, attr: number, flight: number, travel: number, hotel: number };
-    hasHotel: boolean;
-}
+// Removed to types.ts
 
 interface Insight {
     id: string;
@@ -642,63 +614,75 @@ export const ItineraryView: React.FC<{
             </div>
 
             {/* 2. DASHBOARD GRID: Insights & Favorites (Task 7.1) */}
-            <div className="px-2 md:px-4 grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
+            {/* 2. DASHBOARD GRID: Insights & Favorites (Compact Layout) */}
+            <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[320px] mb-8">
 
-                {/* Left: Personal Assistant (60%) */}
-                <div className="xl:col-span-3 space-y-4">
-                    {insights.length > 0 ? (
-                        <div>
-                            <div className="flex items-center gap-2 mb-3 px-2">
-                                <Sparkles className="w-5 h-5 text-purple-600 animate-pulse" />
-                                <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">ההמלצות של העוזר האישי</h3>
+                {/* Left: Assistant Widget (4 Columns) */}
+                <div className="lg:col-span-4 h-full flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in relative z-20">
+                    {/* Assistant Header */}
+                    <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <div className="flex items-center gap-2">
+                            <div className="p-1.5 bg-purple-100 rounded-lg text-purple-600">
+                                <Sparkles className="w-4 h-4" />
                             </div>
-                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide py-1">
+                            <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">העוזר האישי</h3>
+                        </div>
+                        {/* Import Button (Moved to Header) */}
+                        <button
+                            onClick={handleSyncCalendar}
+                            disabled={isSyncing}
+                            className="p-1.5 bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 rounded-lg transition-all disabled:opacity-50 group flex items-center gap-1.5 shadow-sm"
+                            title="יבא מיומן Google"
+                        >
+                            <span className="text-[10px] font-bold hidden group-hover:inline-block text-blue-600">יבא יומן</span>
+                            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
+                        </button>
+                    </div>
+
+                    {/* Assistant Body */}
+                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50/30">
+                        {insights.length > 0 ? (
+                            <div className="space-y-3">
                                 {insights.map(insight => (
-                                    <div key={insight.id} className="min-w-[280px] bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-                                        <div className={`absolute top-0 right-0 w-1.5 h-full ${insight.type === 'warning' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                                    <div key={insight.id} className="w-full bg-white rounded-2xl border border-slate-100 p-3 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                                        <div className={`absolute top-0 right-0 w-1 h-full ${insight.type === 'warning' ? 'bg-red-400' : 'bg-blue-400'}`}></div>
                                         <div className="flex items-start gap-3">
-                                            <div className={`p-2.5 rounded-xl ${insight.type === 'warning' ? 'bg-red-50 text-red-600' : 'bg-purple-50 text-purple-600'}`}><insight.icon className="w-5 h-5" /></div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-800 text-sm mb-1">{insight.title}</h4>
-                                                <p className="text-xs text-slate-500 leading-snug mb-3">{insight.description}</p>
-                                                <button onClick={insight.action} className="text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1">{insight.actionLabel} <ArrowLeft className="w-3 h-3" /></button>
+                                            <div className={`p-2 rounded-xl flex-shrink-0 ${insight.type === 'warning' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}><insight.icon className="w-4 h-4" /></div>
+                                            <div className="min-w-0 flex-1">
+                                                <h4 className="font-bold text-slate-800 text-xs mb-0.5 truncate">{insight.title}</h4>
+                                                <p className="text-[10px] text-slate-400 leading-snug mb-2 line-clamp-2">{insight.description}</p>
+                                                <button onClick={insight.action} className="text-[10px] font-bold bg-slate-50 hover:bg-slate-100 text-slate-600 px-2 py-1 rounded-lg flex items-center gap-1 w-fit group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">{insight.actionLabel} <ArrowLeft className="w-2.5 h-2.5" /></button>
                                             </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    ) : (
-                        <div className="bg-slate-50 rounded-2xl border border-slate-100 p-6 flex flex-col items-center justify-center text-center h-[200px]">
-                            <Sparkles className="w-8 h-8 text-slate-300 mb-2" />
-                            <p className="text-slate-400 font-bold text-sm">העוזר האישי לומד את הטיול שלך...</p>
-                        </div>
-                    )}
-
-                    {/* Sync Button (Moved here) */}
-                    <div className="flex justify-end">
-                        <button
-                            onClick={handleSyncCalendar}
-                            disabled={isSyncing}
-                            className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm border border-emerald-100 disabled:opacity-50"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                            {isSyncing ? 'מסנכרן...' : 'יבא יומן Google'}
-                        </button>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                                <Sparkles className="w-8 h-8 text-slate-200 mb-2" />
+                                <p className="text-sm font-bold text-slate-400">הכל נראה מצוין!</p>
+                                <p className="text-xs text-slate-300 mt-1">אין התראות או הצעות כרגע.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Right: Favorites Widget (40%) */}
-                <div className="xl:col-span-2 min-w-0">
-                    {/* Pass custom handleSchedule that opens OUR main modal if needed, 
-                         but FavoritesWidget has its own. 
-                         Actually, let's stick with FavoritesWidget's internal logic for now to avoid breaking it,
-                         since it works. 
-                     */}
+                {/* Right: Favorites Widget (8 Columns) */}
+                <div className="lg:col-span-8 h-full min-w-0">
                     <FavoritesWidget trip={trip} onSchedule={handleScheduleFavorite} />
                 </div>
-
             </div>
+
+            {/* Date Picker Modal (Refactored) */}
+            <TripDateSelector
+                isOpen={datePickerModal.isOpen}
+                onClose={() => setDatePickerModal({ isOpen: false, item: null, type: null })}
+                onSelect={handleConfirmDate}
+                title="בחר תאריך"
+                description={`עבור: ${datePickerModal.item?.name || 'פריט חדש'}`}
+                trip={trip}
+                timeline={timeline}
+            />
 
             {/* 3. GRID DASHBOARD VIEW (COMPACT) */}
             <div className="px-2 md:px-4">
@@ -971,67 +955,7 @@ export const ItineraryView: React.FC<{
                 </div>
             )}
 
-            {/* Date Picker Modal (Task 7.2) */}
-            {
-                datePickerModal.isOpen && (
-                    <div className="fixed inset-0 z-[1300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl relative overflow-hidden">
-                            <div className="flex justify-between items-center mb-6">
-                                <div>
-                                    <h3 className="text-xl font-black text-slate-800">בחר תאריך</h3>
-                                    <p className="text-xs text-slate-500 font-bold">
-                                        עבור: {datePickerModal.item?.name || 'פריט חדש'}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setDatePickerModal({ isOpen: false, item: null, type: null })}
-                                    className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
 
-                            <div className="grid grid-cols-1 gap-2 max-h-[60vh] overflow-y-auto">
-                                {timeline.map((day, idx) => {
-                                    const hasEvents = day.events.length > 0;
-                                    const eventCount = day.events.length;
-
-                                    return (
-                                        <button
-                                            key={day.dateIso}
-                                            onClick={() => handleConfirmDate(day.dateIso)}
-                                            className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-all text-right group"
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="bg-slate-100 text-slate-600 w-10 h-10 rounded-lg flex flex-col items-center justify-center font-bold text-sm group-hover:bg-white group-hover:text-blue-600 transition-colors">
-                                                    {day.displayDate.split(' ')[0]}
-                                                </div>
-                                                <div>
-                                                    <span className="text-xs font-bold text-slate-400 block mb-0.5">{day.displayDayOfWeek}</span>
-                                                    <span className="font-bold text-slate-800 block">{day.locationContext || 'יום בטיול'}</span>
-                                                </div>
-                                            </div>
-
-                                            {hasEvents ? (
-                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded-full border border-slate-100 shadow-sm">
-                                                    <div className="flex -space-x-1 space-x-reverse">
-                                                        {day.events.slice(0, 3).map((e, i) => (
-                                                            <div key={i} className={`w-2 h-2 rounded-full ${e.bgClass.replace('bg-', 'bg-').split(' ')[0].replace('50', '400')}`}></div>
-                                                        ))}
-                                                    </div>
-                                                    <span className="text-[10px] font-bold text-slate-400">{eventCount}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[10px] font-bold text-green-500 bg-green-50 px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">פנוי</span>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
         </div >
     );
 };

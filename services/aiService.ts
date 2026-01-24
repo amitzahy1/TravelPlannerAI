@@ -148,6 +148,21 @@ const extractJSON = (text: string): string => {
   return "{}";
 };
 
+// Injection Helper for Offline Models
+const injectVerificationWarning = (text: string): string => {
+  try {
+    const json = JSON.parse(extractJSON(text));
+    if (typeof json === 'object' && json !== null) {
+      json.verification_needed = true;
+      json.data_source = "offline_model";
+      return JSON.stringify(json);
+    }
+  } catch (e) {
+    // ignore
+  }
+  return text;
+};
+
 // --- CLIENTS ---
 
 let googleClient: GoogleGenAI | null = null;
@@ -313,6 +328,7 @@ export const generateWithFallback = async (
 
         if (config?.responseMimeType === 'application/json') {
           text = extractJSON(text);
+          if (intent === 'SMART') text = injectVerificationWarning(text);
         }
 
         return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
@@ -358,7 +374,10 @@ export const generateWithFallback = async (
         });
 
         console.log(`✅ [Groq] Success: ${model}`);
-        const text = completion.choices[0]?.message?.content || "";
+        let text = completion.choices[0]?.message?.content || "";
+        if (config?.responseMimeType === 'application/json' && intent === 'SMART') {
+          text = injectVerificationWarning(text);
+        }
         return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
 
       } catch (error: any) {

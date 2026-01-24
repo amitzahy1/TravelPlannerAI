@@ -68,6 +68,21 @@ export const fetchCalendarEvents = async (timeMin: string, timeMax: string, acce
         }
 };
 
+// Helper to extract city from address
+const extractCity = (address?: string): string => {
+        if (!address) return '';
+        const parts = address.split(',').map(p => p.trim());
+        // Heuristic: usually City is 2nd or 3rd from end? Or just take the largest non-number part?
+        // Let's try to take the part before the country if possible, or just the 2nd part?
+        // Simple heuristic: if > 2 parts, take 2nd to last (City, Country). If 2 parts, take 1st.
+        if (parts.length >= 2) {
+                // Filter out zip codes (numbers)
+                const candidates = parts.filter(p => isNaN(Number(p)) && p.length > 2);
+                if (candidates.length > 0) return candidates[candidates.length > 1 ? candidates.length - 2 : 0];
+        }
+        return parts[0] || '';
+};
+
 export const mapEventsToTimeline = (googleEvents: GoogleCalendarEvent[], startColor: string = 'text-green-600', startBg: string = 'bg-green-50') => {
         return googleEvents.map((ev, index) => {
                 let startTime = '';
@@ -90,9 +105,20 @@ export const mapEventsToTimeline = (googleEvents: GoogleCalendarEvent[], startCo
 
                 // Type Inference based on keywords
                 let type: any = 'activity';
+                let displayTitle = ev.summary || 'אירוע ללא כותרת';
+                let displaySubtitle = ev.description || '';
+
                 const lowerSummary = (ev.summary || '').toLowerCase();
                 if (lowerSummary.includes('flight') || lowerSummary.includes('טיסה')) type = 'flight';
-                else if (lowerSummary.includes('hotel') || lowerSummary.includes('מלון')) type = 'hotel_stay';
+                else if (lowerSummary.includes('hotel') || lowerSummary.includes('מלון') || lowerSummary.includes('stay')) {
+                        type = 'hotel_stay';
+                        // Semantic Title Logic (Task 2)
+                        const city = extractCity(ev.location);
+                        if (city) {
+                                displayTitle = `Stay in ${city}`; // Or "שהייה ב" if Hebrew preferred
+                                displaySubtitle = ev.summary; // Move hotel name to subtitle
+                        }
+                }
                 else if (lowerSummary.includes('dinner') || lowerSummary.includes('lunch') || lowerSummary.includes('מסעדה')) type = 'food';
 
                 return {
@@ -100,8 +126,8 @@ export const mapEventsToTimeline = (googleEvents: GoogleCalendarEvent[], startCo
                         originalId: ev.id,
                         type: type,
                         time: startTime,
-                        title: ev.summary || 'אירוע ללא כותרת',
-                        subtitle: ev.description || '',
+                        title: displayTitle,
+                        subtitle: displaySubtitle,
                         location: ev.location || '',
                         icon: Calendar,
                         colorClass: startColor,
