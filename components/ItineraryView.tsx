@@ -113,6 +113,77 @@ export const ItineraryView: React.FC<{
         return items;
     }, [trip.attractions]);
 
+    // Generate context-aware day title based on events (Task 6)
+    const generateDayTitle = (day: DayPlan, trip: Trip, dayIndex: number, totalDays: number): string => {
+        const events = day.events;
+
+        // Priority 1: Flight Day
+        const flightEvent = events.find(e => e.type === 'flight');
+        if (flightEvent) {
+            // Check if it's the last flight (return flight)
+            const isLastDay = dayIndex === totalDays - 1 || dayIndex === totalDays - 2;
+            if (isLastDay) {
+                return 'טיסה חזרה';
+            }
+            // Extract destination from flight title
+            const destMatch = flightEvent.title?.match(/טיסה ל(.+)/);
+            if (destMatch && destMatch[1]) {
+                return `טיסה ל${destMatch[1]}`;
+            }
+            return 'טיסה';
+        }
+
+        // Priority 2: Hotel Check-in Day
+        const hotelCheckin = events.find(e => e.type === 'hotel_checkin');
+        if (hotelCheckin) {
+            // Extract hotel name from "Check-in: Hotel Name"
+            const hotelMatch = hotelCheckin.title?.match(/Check-in: (.+)/);
+            if (hotelMatch && hotelMatch[1]) {
+                return `מלון ${hotelMatch[1]}`;
+            }
+            return day.hasHotel ? `צ'ק-אין` : 'מלון';
+        }
+
+        // Priority 3: Empty Day
+        if (events.length === 0) {
+            const location = trip.destinationEnglish || trip.destination.split('-')[0].trim();
+            return `יום חופשי ב${location}`;
+        }
+
+        // Priority 4: Single Event
+        if (events.length === 1) {
+            const event = events[0];
+            if (event.type === 'travel') return 'הסעה';
+            if (event.type === 'hotel_stay') return 'מלון';
+            // Use the event title if it's descriptive
+            if (event.title && event.title.length < 30) {
+                return event.title;
+            }
+        }
+
+        // Priority 5: Multiple Events - Analyze dominant type
+        const stats = {
+            food: events.filter(e => e.type === 'food').length,
+            attractions: events.filter(e => e.type === 'attraction').length,
+            activities: events.filter(e => e.type === 'activity').length,
+        };
+
+        const location = trip.destinationEnglish || trip.destination.split('-')[0].trim();
+
+        if (stats.attractions >= 2) {
+            return `סיורים ב${location}`;
+        }
+        if (stats.food >= 2) {
+            return `אוכל ב${location}`;
+        }
+        if (events.length >= 3) {
+            return `יום פעילויות ב${location}`;
+        }
+
+        // Default: Location name
+        return location;
+    };
+
     useEffect(() => {
         const generateTimeline = () => {
             let startDate = new Date();
@@ -174,12 +245,7 @@ export const ItineraryView: React.FC<{
                     colorClass: 'text-blue-600',
                     bgClass: 'bg-blue-50 border-blue-100'
                 });
-                const d = parseDateString(seg.date);
-                if (d) {
-                    const isoKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-                    const plan = dayMap.get(isoKey);
-                    if (plan) plan.locationContext = "טיסה";
-                }
+                // Title will be generated dynamically by generateDayTitle
             });
 
             trip.hotels?.forEach(hotel => {
@@ -310,15 +376,10 @@ export const ItineraryView: React.FC<{
 
             const sortedTimeline = Array.from(dayMap.values()).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
-            const mainDest = trip.destinationEnglish || trip.destination.split('-')[0].trim();
-            sortedTimeline.forEach(day => {
-                if (!day.locationContext) {
-                    if (day.hasHotel) {
-                        day.locationContext = mainDest;
-                    } else {
-                        day.locationContext = mainDest;
-                    }
-                }
+            // Generate dynamic titles for each day (Task 6)
+            sortedTimeline.forEach((day, index) => {
+                day.locationContext = generateDayTitle(day, trip, index, sortedTimeline.length);
+
                 day.events.sort((a, b) => {
                     if (a.type === 'hotel_stay' && !a.time) return -1;
                     if (b.type === 'hotel_stay' && !b.time) return 1;
