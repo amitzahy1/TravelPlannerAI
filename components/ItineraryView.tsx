@@ -602,31 +602,34 @@ return (
         </div>
 
         {/* 2. DASHBOARD GRID: Insights & Favorites (Task 7.1) */}
-        {/* 2. DASHBOARD GRID: Insights & Favorites (Ultra-Compact h-48) */}
-        <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-48 mb-8">
+        {/* 2. DASHBOARD GRID: Insights & Favorites (Unified Twin Layout h-80) */}
+        <div className="px-2 md:px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-80 mb-8">
 
             {/* Left: Assistant Widget (4 Columns) */}
             <div className="lg:col-span-4 h-full flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in relative z-20">
-                {/* Assistant Header (Unified Design) */}
-                <div className="flex items-center gap-3 p-2.5 border-b border-slate-100 bg-slate-50/50">
-                    <div className="p-1.5 bg-indigo-50 rounded-xl text-indigo-600">
-                        <Sparkles className="w-3.5 h-3.5" />
+                {/* Assistant Header (Twin Header Standard) */}
+                <div className="flex items-center gap-3 p-2 border-b border-slate-100/50 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+                    <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                        <Sparkles className="w-4 h-4" />
                     </div>
-                    <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest">העוזר האישי</h3>
+                    <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
+                        העוזר האישי
+                    </h3>
 
-                    {/* Import Button (Far Left) */}
-                    <button
-                        onClick={handleSyncCalendar}
-                        disabled={isSyncing}
-                        className="ml-auto p-1 bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 rounded-lg transition-all disabled:opacity-50 group flex items-center gap-1.5 shadow-sm"
-                        title="יבא מיומן Google"
-                    >
-                        <span className="text-[9px] font-bold hidden group-hover:inline-block text-blue-600">יבא יומן</span>
-                        <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
-                    </button>
+                    {/* Right Side Actions */}
+                    <div className="mr-auto flex items-center gap-2">
+                        <button
+                            onClick={handleSyncCalendar}
+                            disabled={isSyncing}
+                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors group flex items-center gap-1.5"
+                            title="יבא מיומן Google"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Assistant Body - Ultra Compact */}
+                {/* Assistant Body - List View */}
                 <div className="flex-1 overflow-y-auto p-2 custom-scrollbar bg-slate-50/30">
                     {insights.length > 0 ? (
                         <div className="space-y-2">
@@ -636,6 +639,7 @@ return (
                                     <div className={`p-1.5 rounded-lg flex-shrink-0 ${insight.type === 'warning' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}><insight.icon className="w-3 h-3" /></div>
                                     <div className="min-w-0 flex-1">
                                         <h4 className="font-bold text-slate-800 text-[10px] truncate">{insight.title}</h4>
+                                        <p className="text-[9px] text-slate-400 leading-snug line-clamp-1">{insight.description}</p>
                                     </div>
                                     <button onClick={insight.action} className="text-[9px] font-bold bg-slate-50 hover:bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded flex items-center gap-1 group-hover:text-blue-600 border border-slate-100"><ArrowLeft className="w-2.5 h-2.5" /></button>
                                 </div>

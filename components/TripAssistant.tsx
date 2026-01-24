@@ -64,20 +64,24 @@ Instructions:
 
   return (
     <div className="flex flex-col h-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200">
-      {/* Header (Unified Design) */}
-      <div className="flex items-center gap-3 p-3 border-b border-slate-100 bg-slate-50/50">
-        <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+      {/* Header (Unified Twin Design) */}
+      <div className="flex items-center gap-3 p-2 border-b border-slate-100/50 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
           <Bot className="w-4 h-4" />
         </div>
-        <div>
-          <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none">Travel Bot</h3>
-          <p className="text-[9px] text-slate-400 font-bold mt-0.5 flex items-center gap-1">
+        <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest leading-none mt-0.5">
+          TRAVEL BOT
+        </h3>
+
+        {/* Right Side Actions */}
+        <div className="mr-auto flex items-center gap-2">
+          <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1">
             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span> מחובר
-          </p>
+          </span>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <button onClick={onClose} className="ml-auto p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
-          <X className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Messages */}
