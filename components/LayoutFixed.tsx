@@ -195,7 +195,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
 
                                                                 <button
                                                                         onClick={() => { setIsWalletOpen(true); setIsTripMenuOpen(false); }}
-                                                                        className="flex flex-col items-center justify-center gap-2 bg-slate-900 text-white p-4 rounded-2xl transition-all shadow-lg shadow-slate-300"
+                                                                        className="flex flex-col items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 p-4 rounded-2xl transition-all border border-slate-200"
                                                                 >
                                                                         <Wallet className="w-6 h-6" />
                                                                         <span className="font-bold">ארנק</span>

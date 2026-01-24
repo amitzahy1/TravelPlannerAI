@@ -31,7 +31,7 @@ export const initGoogleAuth = (clientId: string) => {
         });
 };
 
-export const requestAccessToken = (): Promise<string> => {
+export const requestAccessToken = (prompt: string = ''): Promise<string> => {
         return new Promise((resolve, reject) => {
                 if (!tokenClient) {
                         // Try to init if missing (maybe script loaded late)
@@ -55,7 +55,9 @@ export const requestAccessToken = (): Promise<string> => {
                         }
                 };
 
-                // Request the token (triggers popup)
-                tokenClient.requestAccessToken({ prompt: 'consent' });
+                // Request the token
+                // prompt: '' will try to refresh silently without popup if possible
+                // prompt: 'consent' forces the popup
+                tokenClient.requestAccessToken({ prompt });
         });
 };

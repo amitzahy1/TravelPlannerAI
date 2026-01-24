@@ -518,25 +518,27 @@ export const ItineraryView: React.FC<{
         if (url) onUpdateTrip({ ...trip, coverImage: url });
     };
 
+    const [datePickerModal, setDatePickerModal] = useState<{
+        isOpen: boolean;
+        item: Restaurant | Attraction | null;
+        type: 'food' | 'attractions' | null;
+    }>({ isOpen: false, item: null, type: null });
+
     // Handler for starred modal (Task 7)
     const handleAddStarredToTimeline = (item: Restaurant | Attraction, type: 'food' | 'attractions') => {
-        const dates = timeline.map(d => ({ iso: d.dateIso, display: d.displayDate }));
-        if (dates.length === 0) {
-            alert('אין תאריכים בלוח הזמנים.');
-            return;
+        setDatePickerModal({ isOpen: true, item, type });
+        setStarredModal({ type: null, isOpen: false }); // Close list, open picker
+    };
+
+    const handleConfirmDate = (dateIso: string) => {
+        if (datePickerModal.item && datePickerModal.type) {
+            handleScheduleFavorite(
+                datePickerModal.item,
+                dateIso,
+                datePickerModal.type === 'food' ? 'food' : 'attraction'
+            );
+            setDatePickerModal({ isOpen: false, item: null, type: null });
         }
-
-        const dateStr = prompt(
-            `בחר תאריך (1-${dates.length}):\n` +
-            dates.map((d, i) => `${i + 1}. ${d.display}`).join('\n')
-        );
-
-        const dateIndex = parseInt(dateStr || '') - 1;
-        if (isNaN(dateIndex) || dateIndex < 0 || dateIndex >= dates.length) return;
-
-        const selectedDateIso = dates[dateIndex].iso;
-        handleScheduleFavorite(item, selectedDateIso, type === 'food' ? 'food' : 'attraction');
-        setStarredModal({ type: null, isOpen: false });
     };
 
     const handleScheduleFavorite = (item: Restaurant | Attraction, dateIso: string, type: 'food' | 'attraction') => {
@@ -639,47 +641,64 @@ export const ItineraryView: React.FC<{
                 <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 className="w-4 h-4" /></button>
             </div>
 
-            {/* 2. INSIGHTS & ACTIONS */}
-            <div className="px-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                {insights.length > 0 && (
-                    <div className="">
-                        <div className="flex items-center gap-2 mb-3 px-2">
-                            <Sparkles className="w-5 h-5 text-purple-600 animate-pulse" />
-                            <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">ההמלצות של העוזר האישי</h3>
-                        </div>
-                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide py-1">
-                            {insights.map(insight => (
-                                <div key={insight.id} className="min-w-[280px] bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-                                    <div className={`absolute top-0 right-0 w-1.5 h-full ${insight.type === 'warning' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-                                    <div className="flex items-start gap-3">
-                                        <div className={`p-2.5 rounded-xl ${insight.type === 'warning' ? 'bg-red-50 text-red-600' : 'bg-purple-50 text-purple-600'}`}><insight.icon className="w-5 h-5" /></div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 text-sm mb-1">{insight.title}</h4>
-                                            <p className="text-xs text-slate-500 leading-snug mb-3">{insight.description}</p>
-                                            <button onClick={insight.action} className="text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1">{insight.actionLabel} <ArrowLeft className="w-3 h-3" /></button>
+            {/* 2. DASHBOARD GRID: Insights & Favorites (Task 7.1) */}
+            <div className="px-2 md:px-4 grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
+
+                {/* Left: Personal Assistant (60%) */}
+                <div className="xl:col-span-3 space-y-4">
+                    {insights.length > 0 ? (
+                        <div>
+                            <div className="flex items-center gap-2 mb-3 px-2">
+                                <Sparkles className="w-5 h-5 text-purple-600 animate-pulse" />
+                                <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest">ההמלצות של העוזר האישי</h3>
+                            </div>
+                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide py-1">
+                                {insights.map(insight => (
+                                    <div key={insight.id} className="min-w-[280px] bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+                                        <div className={`absolute top-0 right-0 w-1.5 h-full ${insight.type === 'warning' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                                        <div className="flex items-start gap-3">
+                                            <div className={`p-2.5 rounded-xl ${insight.type === 'warning' ? 'bg-red-50 text-red-600' : 'bg-purple-50 text-purple-600'}`}><insight.icon className="w-5 h-5" /></div>
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 text-sm mb-1">{insight.title}</h4>
+                                                <p className="text-xs text-slate-500 leading-snug mb-3">{insight.description}</p>
+                                                <button onClick={insight.action} className="text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1">{insight.actionLabel} <ArrowLeft className="w-3 h-3" /></button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
+                    ) : (
+                        <div className="bg-slate-50 rounded-2xl border border-slate-100 p-6 flex flex-col items-center justify-center text-center h-[200px]">
+                            <Sparkles className="w-8 h-8 text-slate-300 mb-2" />
+                            <p className="text-slate-400 font-bold text-sm">העוזר האישי לומד את הטיול שלך...</p>
+                        </div>
+                    )}
+
+                    {/* Sync Button (Moved here) */}
+                    <div className="flex justify-end">
+                        <button
+                            onClick={handleSyncCalendar}
+                            disabled={isSyncing}
+                            className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm border border-emerald-100 disabled:opacity-50"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                            {isSyncing ? 'מסנכרן...' : 'יבא יומן Google'}
+                        </button>
                     </div>
-                )}
-
-                {/* Sync Button */}
-                <div className="flex justify-end px-2">
-                    <button
-                        onClick={handleSyncCalendar}
-                        disabled={isSyncing}
-                        className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl font-bold transition-all shadow-sm border border-emerald-100 disabled:opacity-50"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                        {isSyncing ? 'מסנכרן...' : 'יבא יומן Google'}
-                    </button>
                 </div>
-            </div>
 
-            {/* 2.5 FAVORITES WIDGET - NEW */}
-            <FavoritesWidget trip={trip} onSchedule={handleScheduleFavorite} />
+                {/* Right: Favorites Widget (40%) */}
+                <div className="xl:col-span-2 min-w-0">
+                    {/* Pass custom handleSchedule that opens OUR main modal if needed, 
+                         but FavoritesWidget has its own. 
+                         Actually, let's stick with FavoritesWidget's internal logic for now to avoid breaking it,
+                         since it works. 
+                     */}
+                    <FavoritesWidget trip={trip} onSchedule={handleScheduleFavorite} />
+                </div>
+
+            </div>
 
             {/* 3. GRID DASHBOARD VIEW (COMPACT) */}
             <div className="px-2 md:px-4">
@@ -814,7 +833,7 @@ export const ItineraryView: React.FC<{
             {/* Quick Add Modal */}
             {quickAddModal.isOpen && (
                 <div className="fixed inset-0 z-[1200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl relative overflow-hidden">
+                    <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl relative max-h-[80vh] overflow-y-auto custom-scrollbar">
                         <div className="flex justify-between items-center mb-6 relative z-10">
                             <div>
                                 <h3 className="text-2xl font-black text-slate-800">הוספה ללו"ז</h3>
@@ -951,6 +970,68 @@ export const ItineraryView: React.FC<{
                     </div>
                 </div>
             )}
-        </div>
+
+            {/* Date Picker Modal (Task 7.2) */}
+            {
+                datePickerModal.isOpen && (
+                    <div className="fixed inset-0 z-[1300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl relative overflow-hidden">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-800">בחר תאריך</h3>
+                                    <p className="text-xs text-slate-500 font-bold">
+                                        עבור: {datePickerModal.item?.name || 'פריט חדש'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setDatePickerModal({ isOpen: false, item: null, type: null })}
+                                    className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2 max-h-[60vh] overflow-y-auto">
+                                {timeline.map((day, idx) => {
+                                    const hasEvents = day.events.length > 0;
+                                    const eventCount = day.events.length;
+
+                                    return (
+                                        <button
+                                            key={day.dateIso}
+                                            onClick={() => handleConfirmDate(day.dateIso)}
+                                            className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-all text-right group"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="bg-slate-100 text-slate-600 w-10 h-10 rounded-lg flex flex-col items-center justify-center font-bold text-sm group-hover:bg-white group-hover:text-blue-600 transition-colors">
+                                                    {day.displayDate.split(' ')[0]}
+                                                </div>
+                                                <div>
+                                                    <span className="text-xs font-bold text-slate-400 block mb-0.5">{day.displayDayOfWeek}</span>
+                                                    <span className="font-bold text-slate-800 block">{day.locationContext || 'יום בטיול'}</span>
+                                                </div>
+                                            </div>
+
+                                            {hasEvents ? (
+                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded-full border border-slate-100 shadow-sm">
+                                                    <div className="flex -space-x-1 space-x-reverse">
+                                                        {day.events.slice(0, 3).map((e, i) => (
+                                                            <div key={i} className={`w-2 h-2 rounded-full ${e.bgClass.replace('bg-', 'bg-').split(' ')[0].replace('50', '400')}`}></div>
+                                                        ))}
+                                                    </div>
+                                                    <span className="text-[10px] font-bold text-slate-400">{eventCount}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[10px] font-bold text-green-500 bg-green-50 px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">פנוי</span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };

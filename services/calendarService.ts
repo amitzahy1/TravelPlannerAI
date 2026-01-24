@@ -10,34 +10,53 @@ export interface GoogleCalendarEvent {
 }
 
 
-export const fetchCalendarEvents = async (timeMin: string, timeMax: string, accessToken?: string): Promise<GoogleCalendarEvent[]> => {
-        // 1. Try passed token, then local storage, then fail
-        const token = accessToken || localStorage.getItem('google_access_token');
-        if (!token) {
-                throw new Error('No access token found.');
-        }
+import { requestAccessToken } from './googleAuthService';
 
-        try {
+export const fetchCalendarEvents = async (timeMin: string, timeMax: string, accessToken?: string): Promise<GoogleCalendarEvent[]> => {
+        // 1. Try passed token, then local storage
+        let token = accessToken || localStorage.getItem('google_access_token');
+
+        // Helper to perform the fetch
+        const doFetch = async (authToken: string) => {
                 const min = new Date(timeMin).toISOString();
                 const max = new Date(timeMax).toISOString();
-
-                const response = await fetch(
+                return await fetch(
                         `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${min}&timeMax=${max}&singleEvents=true&orderBy=startTime`,
                         {
                                 headers: {
-                                        'Authorization': `Bearer ${token}`,
+                                        'Authorization': `Bearer ${authToken}`,
                                         'Content-Type': 'application/json'
                                 }
                         }
                 );
+        };
+
+        try {
+                if (!token) throw new Error('No access token found.');
+
+                let response = await doFetch(token);
+
+                // 2. Handle 401 Token Expired - Auto Refresh
+                if (response.status === 401) {
+                        console.warn("Token expired. Attempting silent refresh...");
+                        try {
+                                // Request new token silently
+                                const newToken = await requestAccessToken(''); // Empty prompt = silent
+                                if (newToken) {
+                                        token = newToken;
+                                        localStorage.setItem('google_access_token', newToken); // Update storage
+                                        // Retry fetch with new token
+                                        response = await doFetch(newToken);
+                                }
+                        } catch (refreshError) {
+                                console.error("Silent refresh failed", refreshError);
+                                throw new Error('Token expired. Please re-login.');
+                        }
+                }
 
                 if (!response.ok) {
-                        if (response.status === 401) {
-                                throw new Error('Token expired');
-                        }
-                        if (response.status === 403) {
-                                throw new Error('Permission denied. Please Re-Authorize Google Calendar.');
-                        }
+                        if (response.status === 401) throw new Error('Token expired');
+                        if (response.status === 403) throw new Error('Permission denied. Please Re-Authorize Google Calendar.');
                         throw new Error(`Calendar API Error: ${response.statusText}`);
                 }
 
