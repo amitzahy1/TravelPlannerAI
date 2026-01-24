@@ -364,7 +364,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
 
         } catch (e: any) {
             console.error(e);
-            alert("שגיאה ביבוא: " + e.message);
+            if (e.message && e.message.includes("System Configuration Error")) {
+                alert(e.message); // Fail-Safe Message
+            } else {
+                alert("שגיאה ביבוא: " + (e.message || "Unknown Error"));
+            }
         }
 
 

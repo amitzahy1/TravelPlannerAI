@@ -49,6 +49,15 @@ const ensureGoogleScript = () => {
 };
 
 export const initGoogleAuth = async (clientId: string) => {
+        // Fail-Safe: Check Environment Variable
+        if (!clientId) {
+                console.error("❌ CRITICAL: VITE_GOOGLE_CLIENT_ID is missing from environment!");
+                if (window.location.hostname === 'localhost') {
+                        console.warn("⚠️ DEV NOTE: Please check your .env file or Vercel Environment Variables.");
+                }
+                return;
+        }
+
         ensureGoogleScript();
 
         try {
@@ -75,15 +84,18 @@ export const requestAccessToken = async (promptOverride?: string): Promise<strin
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
         console.log("🔑 Auth Request - ClientID:", clientId ? `${clientId.substring(0, 8)}...` : 'MISSING');
 
+        if (!clientId) {
+                throw new Error("System Configuration Error: Google Client ID is missing. Please check App Settings.");
+        }
+
         // Make sure we have the client ready
         if (!tokenClient) {
-                if (!clientId) throw new Error("Missing VITE_GOOGLE_CLIENT_ID");
                 await initGoogleAuth(clientId);
         }
 
-        // Safety check if init failed
+        // Safety check if init failed (Double Check)
         if (!tokenClient) {
-                throw new Error("Google Token Client failed to initialize.");
+                throw new Error("Google Service Failed: Could not initialize token client.");
         }
 
         return new Promise((resolve, reject) => {
