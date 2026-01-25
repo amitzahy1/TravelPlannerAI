@@ -237,32 +237,31 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
             const prevYear = currentYear - 1;
 
             // --- STRICT PROMPT ---
-            const prompt = `
-        Act as a strict, fact-checking Food Guide Editor for ${specificCity}.
-        Provide exactly 10 authentic recommendations for each of the following SPECIFIC categories.
+            Act as a strict, fact - checking Food Guide Editor for ${ specificCity }.
+        Provide exactly 4 authentic recommendations for each of the following SPECIFIC categories.
 
-        **Category Structure (Hebrew Titles):**
-        1. "אוכל רחוב אגדי" (Street Food Legends)
-        2. "הראמן הכי טוב" (Best Ramen - Must include Ramen places)
-        3. "הפיצה הכי טובה" (Best Pizza - Must include Pizza places)
-        4. "ההמבורגר הכי טוב" (Best Burger)
-        5. "נודלס ומוקפצים" (Noodles & Stir Fry)
-        6. "בתי קפה וקינוחים" (Cafes & Desserts)
-        7. "מסעדות יוקרה / מישלן" (Fine Dining)
-        8. "ברים וקוקטיילים" (Bars)
+        ** Category Structure(Hebrew Titles):**
+                1. "אוכל רחוב אגדי"(Street Food Legends)
+            2. "הראמן הכי טוב"(Best Ramen - Must include Ramen places)
+            3. "הפיצה הכי טובה"(Best Pizza - Must include Pizza places)
+            4. "ההמבורגר הכי טוב"(Best Burger)
+            5. "נודלס ומוקפצים"(Noodles & Stir Fry)
+            6. "בתי קפה וקינוחים"(Cafes & Desserts)
+            7. "מסעדות יוקרה / מישלן"(Fine Dining)
+            8. "ברים וקוקטיילים"(Bars)
 
-        **CRITICAL INTEGRITY RULES:**
-        1. **NAME:** Must be the REAL English name of the place (e.g. "Raan Jay Fai", "Thipsamai").
-        2. **DESCRIPTION:** Must be in HEBREW. Describe the food.
-        3. **SOURCES:** Use Michelin, 50 Best, or Local Favorites.
-        4. **HOTEL:** If the restaurant is inside a hotel, set isHotelRestaurant = true.
-        5. **ICONS:** Determine a 'cuisine' field (e.g. "Ramen", "Pizza", "Burger") for icon matching.
+                ** CRITICAL INTEGRITY RULES:**
+                    1. ** NAME:** Must be the REAL English name of the place(e.g. "Raan Jay Fai", "Thipsamai").
+        2. ** DESCRIPTION:** Must be in HEBREW.Very short(max 12 words).
+        3. ** SOURCES:** Use Michelin, 50 Best, or Local Favorites.
+        4. ** HOTEL:** If the restaurant is inside a hotel, set isHotelRestaurant = true.
+        5. ** ICONS:** Determine a 'cuisine' field(e.g. "Ramen", "Pizza", "Burger") for icon matching.
 
-        **DATA OUTPUT RULES:**
-        - 'name': English Name.
+        ** DATA OUTPUT RULES:**
+                    - 'name': English Name.
         - 'nameEnglish': English Name.
-        - 'description': Hebrew.
-        - 'googleRating': Realistic rating (e.g. 4.5).
+        - 'description': Hebrew(Concise!).
+        - 'googleRating': Realistic rating(e.g. 4.5).
         `;
 
             const schema: Schema = {
@@ -313,7 +312,7 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
                         region: specificCity,
                         restaurants: c.restaurants.map((r: any, i: number) => ({
                             ...r,
-                            id: `ai-rec-${c.id}-${i}`,
+                            id: `ai - rec - ${ c.id } -${ i } `,
                             categoryTitle: c.title
                         }))
                     }));
@@ -409,12 +408,12 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
         let targetRegion = 'כללי';
         let targetCatIndex = newRestaurants.findIndex(c => c.region === targetRegion && c.title === catTitle);
         if (targetCatIndex === -1) {
-            newRestaurants.push({ id: `cat-${Date.now()}`, title: catTitle, region: targetRegion, restaurants: [] });
+            newRestaurants.push({ id: `cat - ${ Date.now() } `, title: catTitle, region: targetRegion, restaurants: [] });
             targetCatIndex = newRestaurants.length - 1;
         }
         const exists = newRestaurants[targetCatIndex].restaurants.some(r => r.name === restaurant.name);
         if (!exists) {
-            newRestaurants[targetCatIndex].restaurants.push({ ...restaurant, id: `added-${Date.now()}` });
+            newRestaurants[targetCatIndex].restaurants.push({ ...restaurant, id: `added - ${ Date.now() } ` });
             onUpdateTrip({ ...trip, restaurants: newRestaurants });
             setAddedIds(prev => new Set(prev).add(restaurant.id));
             setTimeout(() => { setAddedIds(prev => { const next = new Set(prev); next.delete(restaurant.id); return next; }); }, 2000);
@@ -424,7 +423,7 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
     const getMapItems = () => {
         const items: any[] = [];
         if (activeTab === 'my_list') { trip.restaurants.forEach(cat => cat.restaurants.forEach(r => items.push({ id: r.id, type: 'restaurant', name: r.name, address: r.location, lat: r.lat, lng: r.lng, description: r.description }))); }
-        else { allAiRestaurants.forEach(r => items.push({ id: r.id, type: 'restaurant', name: r.name, address: r.location, lat: r.lat, lng: r.lng, description: `${r.googleRating}⭐` })); }
+        else { allAiRestaurants.forEach(r => items.push({ id: r.id, type: 'restaurant', name: r.name, address: r.location, lat: r.lat, lng: r.lng, description: `${ r.googleRating }⭐` })); }
         return items;
     };
 
@@ -490,8 +489,8 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
             )}
 
             <div className="bg-white rounded-[1.5rem] shadow-sm border border-slate-200 p-1.5 flex mb-2">
-                <button onClick={() => setActiveTab('my_list')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'my_list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}><Utensils className="w-4 h-4" /> הרשימה שלי</button>
-                <button onClick={() => setActiveTab('recommended')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'recommended' ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg' : 'text-slate-500 hover:bg-orange-50 hover:text-orange-600'}`}><Sparkles className="w-4 h-4" /> מחקר שוק (AI)</button>
+                <button onClick={() => setActiveTab('my_list')} className={`flex - 1 py - 3 rounded - [1.2rem] text - sm font - black flex items - center justify - center gap - 2 transition - all ${ activeTab === 'my_list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50' } `}><Utensils className="w-4 h-4" /> הרשימה שלי</button>
+                <button onClick={() => setActiveTab('recommended')} className={`flex - 1 py - 3 rounded - [1.2rem] text - sm font - black flex items - center justify - center gap - 2 transition - all ${ activeTab === 'recommended' ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg' : 'text-slate-500 hover:bg-orange-50 hover:text-orange-600' } `}><Sparkles className="w-4 h-4" /> מחקר שוק (AI)</button>
             </div>
 
             {viewMode === 'map' ? (
@@ -522,9 +521,9 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
 
                                     <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
                                         <div className="flex gap-2">
-                                            <button onClick={() => setMySelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
+                                            <button onClick={() => setMySelectedCategory('all')} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${ mySelectedCategory === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200' } `}>הכל</button>
                                             {myCategories.map(cat => (
-                                                <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>{cat.title}</button>
+                                                <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${ mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200' } `}>{cat.title}</button>
                                             ))}
                                         </div>
                                     </div>
@@ -641,9 +640,9 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
                                         <>
                                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1 ${selectedCategory === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}><LayoutGrid className="w-3 h-3" /> הכל</button>
+                                                    <button onClick={() => setSelectedCategory('all')} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all flex items - center gap - 1 ${ selectedCategory === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200' } `}><LayoutGrid className="w-3 h-3" /> הכל</button>
                                                     {aiCategories.map(cat => (
-                                                        <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${selectedCategory === cat.id ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>{cat.title}</button>
+                                                        <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${ selectedCategory === cat.id ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200' } `}>{cat.title}</button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -651,9 +650,9 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
                                             <div className="mb-4 overflow-x-auto pb-2 scrollbar-hide">
                                                 <div className="flex gap-2 items-center">
                                                     <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">הומלץ ע"י:</span>
-                                                    <button onClick={() => setSelectedRater('all')} className={`flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${selectedRater === 'all' ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-white text-slate-500 border-slate-200'}`}>הכל</button>
+                                                    <button onClick={() => setSelectedRater('all')} className={`flex - shrink - 0 px - 3 py - 1 rounded - full text - [10px] font - bold border transition - all ${ selectedRater === 'all' ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-white text-slate-500 border-slate-200' } `}>הכל</button>
                                                     {availableRaters.map(rater => (
-                                                        <button key={rater} onClick={() => setSelectedRater(rater)} className={`flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${selectedRater === rater ? 'bg-orange-100 text-orange-700 border-orange-200 ring-2 ring-orange-100' : 'bg-white text-slate-500 border-slate-200'}`}>{rater}</button>
+                                                        <button key={rater} onClick={() => setSelectedRater(rater)} className={`flex - shrink - 0 px - 3 py - 1 rounded - full text - [10px] font - bold border transition - all ${ selectedRater === rater ? 'bg-orange-100 text-orange-700 border-orange-200 ring-2 ring-orange-100' : 'bg-white text-slate-500 border-slate-200' } `}>{rater}</button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -721,60 +720,60 @@ const RestaurantRow: React.FC<{
     const extendedData = data as ExtendedRestaurant;
     const nameForMap = cleanTextForMap(extendedData.nameEnglish || data.name);
     const locationForMap = cleanTextForMap(data.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
-    const mapsQuery = encodeURIComponent(`${nameForMap} ${locationForMap}`);
+    const mapsQuery = encodeURIComponent(`${ nameForMap } ${ locationForMap } `);
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
-    const visuals = getCuisineVisuals(extendedData.cuisine);
+            const visuals = getCuisineVisuals(extendedData.cuisine);
 
-    return (
-        <div className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-all group flex flex-col md:flex-row gap-3 relative overflow-hidden pl-3 py-3 pr-3 md:pr-0 ${data.isFavorite ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-slate-100'}`}>
-            <div className={`absolute right-0 top-0 bottom-0 w-1 ${visuals.gradient.split(' ')[0]}`}></div>
+            return (
+                <div className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-all group flex flex-col md:flex-row gap-3 relative overflow-hidden pl-3 py-3 pr-3 md:pr-0 ${data.isFavorite ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-slate-100'}`}>
+                    <div className={`absolute right-0 top-0 bottom-0 w-1 ${visuals.gradient.split(' ')[0]}`}></div>
 
-            <div className="flex-grow min-w-0 pr-2">
-                <div className="flex justify-between items-start">
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                            <button onClick={toggleFavorite} className="focus:outline-none">
-                                <Star className={`w-5 h-5 transition-all ${data.isFavorite ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-slate-300 hover:text-yellow-400'}`} />
-                            </button>
-                            <span className="text-lg">{visuals.icon}</span>
-                            <h4 className="text-base font-black text-slate-900 leading-tight tracking-tight font-sans" dir="ltr">
-                                {extendedData.nameEnglish || data.name}
-                            </h4>
-                            {data.googleRating && (
-                                <div className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                                    <span className="text-[10px] font-bold text-slate-800">{data.googleRating}</span>
-                                    <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400 ml-0.5" />
+                    <div className="flex-grow min-w-0 pr-2">
+                        <div className="flex justify-between items-start">
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                    <button onClick={toggleFavorite} className="focus:outline-none">
+                                        <Star className={`w-5 h-5 transition-all ${data.isFavorite ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-slate-300 hover:text-yellow-400'}`} />
+                                    </button>
+                                    <span className="text-lg">{visuals.icon}</span>
+                                    <h4 className="text-base font-black text-slate-900 leading-tight tracking-tight font-sans" dir="ltr">
+                                        {extendedData.nameEnglish || data.name}
+                                    </h4>
+                                    {data.googleRating && (
+                                        <div className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                            <span className="text-[10px] font-bold text-slate-800">{data.googleRating}</span>
+                                            <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400 ml-0.5" />
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                                {/* Increased Text Size */}
+                                <p className="text-slate-600 text-sm mt-1 leading-snug line-clamp-2 md:line-clamp-1">{data.description}</p>
+
+                                <div className="flex gap-2 mt-2">
+                                    {data.recommendationSource && (
+                                        <div className="inline-flex items-center text-[9px] font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 w-fit">
+                                            <Trophy className="w-2.5 h-2.5 mr-1 text-yellow-600" /> {data.recommendationSource.replace('Bib', 'Michelin')}
+                                        </div>
+                                    )}
+                                    {extendedData.isHotelRestaurant && (
+                                        <div className="inline-flex items-center text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 w-fit">
+                                            <Hotel className="w-2.5 h-2.5 mr-1" /> במלון
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1 pl-1 ml-auto md:ml-0 self-start">
+                                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-500 hover:text-blue-600 bg-slate-50 rounded-lg hover:bg-blue-50 transition-colors"><MapIcon className="w-4 h-4" /></a>
+                                <button onClick={() => setIsScheduling(!isScheduling)} className={`p-2 rounded-lg border ${data.reservationDate ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-slate-50 text-slate-400 border-transparent hover:bg-slate-100'}`}><Calendar className="w-4 h-4" /></button>
+                                <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+                            </div>
                         </div>
-                        {/* Increased Text Size */}
-                        <p className="text-slate-600 text-sm mt-1 leading-snug line-clamp-2 md:line-clamp-1">{data.description}</p>
 
-                        <div className="flex gap-2 mt-2">
-                            {data.recommendationSource && (
-                                <div className="inline-flex items-center text-[9px] font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 w-fit">
-                                    <Trophy className="w-2.5 h-2.5 mr-1 text-yellow-600" /> {data.recommendationSource.replace('Bib', 'Michelin')}
-                                </div>
-                            )}
-                            {extendedData.isHotelRestaurant && (
-                                <div className="inline-flex items-center text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 w-fit">
-                                    <Hotel className="w-2.5 h-2.5 mr-1" /> במלון
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-1 pl-1 ml-auto md:ml-0 self-start">
-                        <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-500 hover:text-blue-600 bg-slate-50 rounded-lg hover:bg-blue-50 transition-colors"><MapIcon className="w-4 h-4" /></a>
-                        <button onClick={() => setIsScheduling(!isScheduling)} className={`p-2 rounded-lg border ${data.reservationDate ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-slate-50 text-slate-400 border-transparent hover:bg-slate-100'}`}><Calendar className="w-4 h-4" /></button>
-                        <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+                        {isScheduling && (<div className="mt-3 bg-orange-50 p-2 rounded-lg border border-orange-100 flex items-center gap-2 animate-fade-in"><input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="w-full p-1.5 rounded border border-orange-200 text-xs" /><input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full p-1.5 rounded border border-orange-200 text-xs" /><button onClick={handleSaveSchedule} className="bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap">שמור</button></div>)}
+                        {!isScheduling && data.reservationDate && (<div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 w-fit px-2 py-1 rounded border border-orange-100"><Clock className="w-3 h-3" /> {data.reservationDate} {data.reservationTime}</div>)}
+                        <div className="mt-2">{isEditingNote ? (<div className="bg-yellow-50 p-2 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-slate-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[10px] text-slate-500">ביטול</button><button onClick={saveNote} className="text-[10px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400 hover:border-slate-300'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
                     </div>
                 </div>
-
-                {isScheduling && (<div className="mt-3 bg-orange-50 p-2 rounded-lg border border-orange-100 flex items-center gap-2 animate-fade-in"><input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="w-full p-1.5 rounded border border-orange-200 text-xs" /><input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full p-1.5 rounded border border-orange-200 text-xs" /><button onClick={handleSaveSchedule} className="bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap">שמור</button></div>)}
-                {!isScheduling && data.reservationDate && (<div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 w-fit px-2 py-1 rounded border border-orange-100"><Clock className="w-3 h-3" /> {data.reservationDate} {data.reservationTime}</div>)}
-                <div className="mt-2">{isEditingNote ? (<div className="bg-yellow-50 p-2 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-slate-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[10px] text-slate-500">ביטול</button><button onClick={saveNote} className="text-[10px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400 hover:border-slate-300'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
-            </div>
-        </div>
-    );
-};
+            );
+        };

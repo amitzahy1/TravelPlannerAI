@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Trip } from '../types';
-import { Send, Bot, User, X, Loader2, Sparkles } from 'lucide-react';
+import { Send, Bot, User, X, Loader2, Sparkles, Maximize2, Minimize2 } from 'lucide-react';
 import { getAI, AI_MODEL, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 
 interface TripAssistantProps {
@@ -19,6 +19,7 @@ export const TripAssistant: React.FC<TripAssistantProps> = ({ trip, onClose }) =
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false); // Maximize state
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -62,8 +63,20 @@ Instructions:
     }
   };
 
+  const renderMessageText = (text: string) => {
+    // Basic markdown bold parser: **text** -> <strong>text</strong>
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-black text-indigo-900">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   return (
-    <div className="flex flex-col h-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200">
+    <div className={`flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200 transition-all duration-300 ${isExpanded ? 'fixed inset-4 z-[9999] h-auto shadow-[0_0_100px_rgba(0,0,0,0.5)]' : 'h-full'
+      }`}>
       {/* Clone Header: Assistant */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-20 h-[40px]">
         <div className="flex items-center gap-2">
@@ -76,12 +89,26 @@ Instructions:
         </div>
         <div className="flex items-center gap-2">
           {/* Right Side Actions */}
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+            title={isExpanded ? "מזער" : "הגדל"}
+          >
+            {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          </button>
           <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1">
             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span> מחובר
           </span>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
-            <X className="w-3.5 h-3.5" />
-          </button>
+          {!isExpanded && (
+            <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {isExpanded && (
+            <button onClick={() => setIsExpanded(false)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -93,7 +120,7 @@ Instructions:
               ? 'bg-blue-600 text-white rounded-br-none'
               : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
               }`}>
-              {msg.text}
+              {renderMessageText(msg.text)}
             </div>
           </div>
         ))}

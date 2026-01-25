@@ -738,25 +738,38 @@ export const ItineraryView: React.FC<{
             </div>
 
             {/* 4. MAIN CONTENT GRID (Timeline + Assistant) */}
-            <div className="px-1 md:px-1 grid grid-cols-1 lg:grid-cols-4 gap-6 relative z-10">
+            <div className="px-1 md:px-1 w-full space-y-6 relative z-10">
 
-                {/* Main Column: Timeline (3/4 width) */}
-                <div className="lg:col-span-3 space-y-6">
+                {/* Main Column: Timeline (Full width) */}
+                <div className="w-full space-y-6">
                     {/* TIMELINE GRID */}
                     {
                         timeline.length === 0 ? (
                             <div className="text-center py-20 text-slate-400">טוען לו"ז...</div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                                {timeline.map((day) => {
+                                {timeline.map((day, index) => {
                                     const [y, m, d] = day.dateIso.split('-');
+                                    const dayNumber = index + 1;
+                                    const isLastDay = index === timeline.length - 1;
 
                                     return (
                                         <div
                                             key={day.dateIso}
                                             onClick={() => setSelectedDayIso(day.dateIso)}
-                                            className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden group flex flex-col h-[160px]"
+                                            className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[160px] relative"
                                         >
+                                            {/* Flow Arrow (Desktop Only) */}
+                                            {!isLastDay && (
+                                                <div className="hidden xl:block absolute -left-5 top-1/2 -translate-y-1/2 z-20 text-slate-300">
+                                                    <ChevronRight className="w-6 h-6 stroke-[3] opacity-40" />
+                                                </div>
+                                            )}
+
+                                            {/* Day Counter Badge */}
+                                            <div className="absolute -top-2 -right-2 bg-slate-900 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-md z-30 transform group-hover:scale-110 transition-transform">
+                                                DAY {dayNumber.toString().padStart(2, '0')}
+                                            </div>
                                             {/* Header Compact */}
                                             <div className="p-3 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                                                 <div className="flex items-center gap-3">

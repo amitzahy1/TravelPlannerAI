@@ -224,24 +224,23 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
             const ai = getAI();
             const targetLocation = specificCity || trip.destinationEnglish || trip.destination;
 
-            const prompt = `
-        Act as a Luxury Travel Concierge for ${targetLocation}.
+            Act as a Luxury Travel Concierge for ${ targetLocation }.
         Provide a structured guide with 6 categories.
-        For each category, provide 10 items (Total ~60).
-        
-        Categories (Hebrew Titles):
-        1. "אתרי חובה" (Must See)
-        2. "פנינים נסתרות" (Hidden Gems)
-        3. "מוזיאונים ותרבות" (Museums)
-        4. "טבע ונופים" (Nature)
-        5. "קניות ושווקים" (Shopping)
-        6. "חיי לילה" (Nightlife)
+        For each category, provide exactly 4 items.
 
-        **CRITICAL RULES:**
-        1. **NAME:** Must be the REAL English name of the place (e.g. "Grand Palace", "Wat Arun").
-        2. **DESCRIPTION:** Must be in HEBREW.
-        3. **SOURCES:** "UNESCO", "TripAdvisor Choice", "Lonely Planet", "Atlas Obscura", "Local Secret".
-        4. **PRICE:** include estimate (e.g. "Free", "500 THB").
+                Categories(Hebrew Titles):
+            1. "אתרי חובה"(Must See)
+            2. "פנינים נסתרות"(Hidden Gems)
+            3. "מוזיאונים ותרבות"(Museums)
+            4. "טבע ונופים"(Nature)
+            5. "קניות ושווקים"(Shopping)
+            6. "חיי לילה"(Nightlife)
+
+                ** CRITICAL RULES:**
+                    1. ** NAME:** Must be the REAL English name of the place(e.g. "Grand Palace", "Wat Arun").
+        2. ** DESCRIPTION:** Must be in HEBREW.Very short(max 10 words).
+        3. ** SOURCES:** "UNESCO", "TripAdvisor Choice", "Lonely Planet", "Atlas Obscura", "Local Secret".
+        4. ** PRICE:** include estimate(e.g. "Free", "500 THB").
         `;
 
             const schema: Schema = {
@@ -288,7 +287,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                         ...c,
                         attractions: c.attractions.map((a: any, i: number) => ({
                             ...a,
-                            id: `ai-attr-${c.id}-${i}`,
+                            id: `ai - attr - ${ c.id } -${ i } `,
                             categoryTitle: c.title // INJECT TITLE HERE
                         }))
                     }));
@@ -304,7 +303,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
             console.error(e);
             const errMsg = e.message.includes("500") || e.message.includes("xhr")
                 ? "שגיאת תקשורת זמנית. אנא נסה שוב."
-                : `שגיאה בטעינה: ${e.message}`;
+                : `שגיאה בטעינה: ${ e.message } `;
             setRecError(errMsg);
         } finally { setLoadingRecs(false); }
     };
@@ -328,13 +327,13 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
 
         let targetCatIndex = newAttractions.findIndex(c => c.title === smartCategory);
         if (targetCatIndex === -1) {
-            newAttractions.push({ id: `cat-attr-${Date.now()}`, title: smartCategory, attractions: [] });
+            newAttractions.push({ id: `cat - attr - ${ Date.now() } `, title: smartCategory, attractions: [] });
             targetCatIndex = newAttractions.length - 1;
         }
 
         const exists = newAttractions[targetCatIndex].attractions.some(a => a.name === attraction.name);
         if (!exists) {
-            newAttractions[targetCatIndex].attractions.push({ ...attraction, id: `added-${Date.now()}` });
+            newAttractions[targetCatIndex].attractions.push({ ...attraction, id: `added - ${ Date.now() } ` });
             onUpdateTrip({ ...trip, attractions: newAttractions });
             setAddedIds(prev => new Set(prev).add(attraction.id));
             setTimeout(() => { setAddedIds(prev => { const next = new Set(prev); next.delete(attraction.id); return next; }); }, 2000);
@@ -401,7 +400,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
         if (activeTab === 'my_list') {
             attractionsData.forEach(cat => cat.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: a.description })));
         } else {
-            aiCategories.forEach(cat => cat.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: `${a.rating}⭐` })));
+            aiCategories.forEach(cat => cat.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: `${ a.rating }⭐` })));
         }
         return items;
     };
@@ -471,8 +470,8 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
 
             {/* Tabs */}
             <div className="bg-white rounded-[1.5rem] shadow-sm border border-slate-200 p-1.5 flex mb-2">
-                <button onClick={() => setActiveTab('my_list')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'my_list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
-                <button onClick={() => setActiveTab('recommended')} className={`flex-1 py-3 rounded-[1.2rem] text-sm font-black flex items-center justify-center gap-2 transition-all ${activeTab === 'recommended' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-purple-50 hover:text-purple-600'}`}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
+                <button onClick={() => setActiveTab('my_list')} className={`flex - 1 py - 3 rounded - [1.2rem] text - sm font - black flex items - center justify - center gap - 2 transition - all ${ activeTab === 'my_list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50' } `}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
+                <button onClick={() => setActiveTab('recommended')} className={`flex - 1 py - 3 rounded - [1.2rem] text - sm font - black flex items - center justify - center gap - 2 transition - all ${ activeTab === 'recommended' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-purple-50 hover:text-purple-600' } `}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
             </div>
 
             {viewMode === 'map' ? (
@@ -489,9 +488,9 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                             {/* My List Filters */}
                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
                                 <div className="flex gap-2">
-                                    <button onClick={() => setMySelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
+                                    <button onClick={() => setMySelectedCategory('all')} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${ mySelectedCategory === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200' } `}>הכל</button>
                                     {attractionsData.map(cat => (
-                                        <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}>{cat.title}</button>
+                                        <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${ mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200' } `}>{cat.title}</button>
                                     ))}
                                 </div>
                             </div>
@@ -586,12 +585,12 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                             {/* 1. Category Filter */}
                                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1 ${selectedCategory === 'all' ? 'bg-purple-800 text-white border-purple-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'}`}><LayoutGrid className="w-3 h-3" /> הכל</button>
+                                                    <button onClick={() => setSelectedCategory('all')} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all flex items - center gap - 1 ${ selectedCategory === 'all' ? 'bg-purple-800 text-white border-purple-800 shadow-md' : 'bg-white text-slate-600 border-slate-200' } `}><LayoutGrid className="w-3 h-3" /> הכל</button>
                                                     {aiCategories.map(cat => (
                                                         <button
                                                             key={cat.id}
                                                             onClick={() => setSelectedCategory(cat.id)}
-                                                            className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all ${selectedCategory === cat.id ? 'bg-purple-800 text-white border-purple-800 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
+                                                            className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${ selectedCategory === cat.id ? 'bg-purple-800 text-white border-purple-800 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300' } `}
                                                         >
                                                             {cat.title}
                                                         </button>
@@ -603,12 +602,12 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                             <div className="mb-4 overflow-x-auto pb-2 scrollbar-hide">
                                                 <div className="flex gap-2 items-center">
                                                     <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">הומלץ ע"י:</span>
-                                                    <button onClick={() => setSelectedRater('all')} className={`flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${selectedRater === 'all' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-white text-slate-500 border-slate-200'}`}>הכל</button>
+                                                    <button onClick={() => setSelectedRater('all')} className={`flex - shrink - 0 px - 3 py - 1 rounded - full text - [10px] font - bold border transition - all ${ selectedRater === 'all' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-white text-slate-500 border-slate-200' } `}>הכל</button>
                                                     {availableRaters.map(rater => (
                                                         <button
                                                             key={rater}
                                                             onClick={() => setSelectedRater(rater)}
-                                                            className={`flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${selectedRater === rater ? 'bg-purple-100 text-purple-700 border-purple-200 ring-2 ring-purple-100' : 'bg-white text-slate-500 border-slate-200'}`}
+                                                            className={`flex - shrink - 0 px - 3 py - 1 rounded - full text - [10px] font - bold border transition - all ${ selectedRater === rater ? 'bg-purple-100 text-purple-700 border-purple-200 ring-2 ring-purple-100' : 'bg-white text-slate-500 border-slate-200' } `}
                                                         >
                                                             {rater}
                                                         </button>
@@ -665,63 +664,63 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
     // Clean maps link
     const nameForMap = cleanTextForMap(data.name);
     const locationForMap = cleanTextForMap(data.location);
-    const mapsQuery = encodeURIComponent(`${nameForMap} ${locationForMap}`);
+    const mapsQuery = encodeURIComponent(`${ nameForMap } ${ locationForMap } `);
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
-    // Fix: Defined getTypeIcon
-    const getTypeIcon = () => {
-        const text = (data.name + ' ' + (data.description || '')).toLowerCase();
-        if (text.includes('museum') || text.includes('art') || text.includes('gallery')) return <Landmark className="w-5 h-5 text-amber-600" />;
-        if (text.includes('nature') || text.includes('park') || text.includes('garden')) return <Mountain className="w-5 h-5 text-emerald-600" />;
-        if (text.includes('beach') || text.includes('sea') || text.includes('island')) return <Palmtree className="w-5 h-5 text-cyan-600" />;
-        if (text.includes('shop') || text.includes('mall') || text.includes('market')) return <ShoppingBag className="w-5 h-5 text-pink-600" />;
-        return <Ticket className="w-5 h-5 text-purple-600" />;
-    };
+            // Fix: Defined getTypeIcon
+            const getTypeIcon = () => {
+                const text = (data.name + ' ' + (data.description || '')).toLowerCase();
+                if (text.includes('museum') || text.includes('art') || text.includes('gallery')) return <Landmark className="w-5 h-5 text-amber-600" />;
+                if (text.includes('nature') || text.includes('park') || text.includes('garden')) return <Mountain className="w-5 h-5 text-emerald-600" />;
+                if (text.includes('beach') || text.includes('sea') || text.includes('island')) return <Palmtree className="w-5 h-5 text-cyan-600" />;
+                if (text.includes('shop') || text.includes('mall') || text.includes('market')) return <ShoppingBag className="w-5 h-5 text-pink-600" />;
+                return <Ticket className="w-5 h-5 text-purple-600" />;
+            };
 
-    return (
-        <div className={`bg-white rounded-xl border p-3 hover:shadow-md transition-all group flex flex-col md:flex-row gap-3 relative overflow-hidden ${data.isFavorite ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-gray-100'}`}>
-            <div className="flex-shrink-0 flex items-center gap-3 md:block">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm bg-gray-50 text-gray-500 ring-1 ring-gray-100">{getTypeIcon()}</div>
-                <div className="md:hidden font-bold text-gray-900" dir="ltr">{data.name}</div>
-            </div>
-            <div className="flex-grow min-w-0">
-                <div className="flex justify-between items-start">
-                    <div className="hidden md:flex flex-col">
-                        <div className="flex items-center gap-2">
-                            <button onClick={toggleFavorite} className="focus:outline-none">
-                                <Star className={`w-4 h-4 transition-all ${data.isFavorite ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-slate-300 hover:text-yellow-400'}`} />
-                            </button>
-                            <h4 className="text-sm font-bold text-gray-900 leading-tight" dir="ltr">{data.name}</h4>
-                            {data.rating && (<div className="flex items-center bg-yellow-50 px-1 py-0.5 rounded border border-yellow-100"><span className="text-[9px] font-bold text-yellow-700">{data.rating}</span><Star className="w-2 h-2 text-yellow-600 fill-current mr-0.5" /></div>)}
-                        </div>
-                        <p className="text-gray-500 text-[10px] mt-0.5 leading-snug line-clamp-1">{data.description}</p>
-                        <div className="flex gap-2 mt-1">
-                            {data.recommendationSource && (
-                                <div className="inline-flex items-center text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 w-fit">
-                                    <Trophy className="w-2 h-2 mr-1" /> {data.recommendationSource}
-                                </div>
-                            )}
-                            {data.price && (
-                                <div className="inline-flex items-center text-[9px] font-bold text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 w-fit">
-                                    <DollarSign className="w-2 h-2 mr-1" /> {data.price}
-                                </div>
-                            )}
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-2 text-[9px] text-gray-400"><MapPin className="w-2 h-2" /> {data.location}</div>
+            return (
+                <div className={`bg-white rounded-xl border p-3 hover:shadow-md transition-all group flex flex-col md:flex-row gap-3 relative overflow-hidden ${data.isFavorite ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-gray-100'}`}>
+                    <div className="flex-shrink-0 flex items-center gap-3 md:block">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm bg-gray-50 text-gray-500 ring-1 ring-gray-100">{getTypeIcon()}</div>
+                        <div className="md:hidden font-bold text-gray-900" dir="ltr">{data.name}</div>
                     </div>
-                    <div className="flex items-center gap-1 pl-1 ml-auto md:ml-0">
-                        <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-lg text-[10px] flex items-center gap-1 font-bold"><MapIcon className="w-3 h-3" /> הצג במפות</a>
-                        <button onClick={() => setIsScheduling(!isScheduling)} className={`p-1.5 rounded-lg border ${data.scheduledDate ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-gray-50 text-gray-400 border-transparent'}`}><Calendar className="w-3.5 h-3.5" /></button>
-                        <button onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div className="flex-grow min-w-0">
+                        <div className="flex justify-between items-start">
+                            <div className="hidden md:flex flex-col">
+                                <div className="flex items-center gap-2">
+                                    <button onClick={toggleFavorite} className="focus:outline-none">
+                                        <Star className={`w-4 h-4 transition-all ${data.isFavorite ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-slate-300 hover:text-yellow-400'}`} />
+                                    </button>
+                                    <h4 className="text-sm font-bold text-gray-900 leading-tight" dir="ltr">{data.name}</h4>
+                                    {data.rating && (<div className="flex items-center bg-yellow-50 px-1 py-0.5 rounded border border-yellow-100"><span className="text-[9px] font-bold text-yellow-700">{data.rating}</span><Star className="w-2 h-2 text-yellow-600 fill-current mr-0.5" /></div>)}
+                                </div>
+                                <p className="text-gray-500 text-[10px] mt-0.5 leading-snug line-clamp-1">{data.description}</p>
+                                <div className="flex gap-2 mt-1">
+                                    {data.recommendationSource && (
+                                        <div className="inline-flex items-center text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 w-fit">
+                                            <Trophy className="w-2 h-2 mr-1" /> {data.recommendationSource}
+                                        </div>
+                                    )}
+                                    {data.price && (
+                                        <div className="inline-flex items-center text-[9px] font-bold text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 w-fit">
+                                            <DollarSign className="w-2 h-2 mr-1" /> {data.price}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-0.5 flex items-center gap-2 text-[9px] text-gray-400"><MapPin className="w-2 h-2" /> {data.location}</div>
+                            </div>
+                            <div className="flex items-center gap-1 pl-1 ml-auto md:ml-0">
+                                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-lg text-[10px] flex items-center gap-1 font-bold"><MapIcon className="w-3 h-3" /> הצג במפות</a>
+                                <button onClick={() => setIsScheduling(!isScheduling)} className={`p-1.5 rounded-lg border ${data.scheduledDate ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-gray-50 text-gray-400 border-transparent'}`}><Calendar className="w-3.5 h-3.5" /></button>
+                                <button onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                        </div>
+
+                        <div className="md:hidden mt-2 text-xs text-gray-500">{data.description}</div>
+
+                        {isScheduling && (<div className="mt-2 bg-purple-50 p-2 rounded-lg border border-purple-100 flex items-center gap-2"><input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="w-full p-1 rounded border border-purple-200 text-xs" /><input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full p-1 rounded border border-purple-200 text-xs" /><button onClick={handleSaveSchedule} className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap">שמור</button></div>)}
+                        {!isScheduling && data.scheduledDate && (<div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-purple-700 bg-purple-50 w-fit px-2 py-0.5 rounded border border-purple-100"><Clock className="w-2.5 h-2.5" /> {data.scheduledDate} {data.scheduledTime}</div>)}
+                        <div className="mt-1">{isEditingNote ? (<div className="bg-yellow-50 p-1.5 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-gray-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[9px] text-gray-500">ביטול</button><button onClick={saveNote} className="text-[9px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-gray-50 border-dashed border-gray-200 text-gray-400'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
                     </div>
                 </div>
-
-                <div className="md:hidden mt-2 text-xs text-gray-500">{data.description}</div>
-
-                {isScheduling && (<div className="mt-2 bg-purple-50 p-2 rounded-lg border border-purple-100 flex items-center gap-2"><input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="w-full p-1 rounded border border-purple-200 text-xs" /><input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full p-1 rounded border border-purple-200 text-xs" /><button onClick={handleSaveSchedule} className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap">שמור</button></div>)}
-                {!isScheduling && data.scheduledDate && (<div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-purple-700 bg-purple-50 w-fit px-2 py-0.5 rounded border border-purple-100"><Clock className="w-2.5 h-2.5" /> {data.scheduledDate} {data.scheduledTime}</div>)}
-                <div className="mt-1">{isEditingNote ? (<div className="bg-yellow-50 p-1.5 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-gray-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[9px] text-gray-500">ביטול</button><button onClick={saveNote} className="text-[9px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-gray-50 border-dashed border-gray-200 text-gray-400'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
-            </div>
-        </div>
-    );
-};
+            );
+        };

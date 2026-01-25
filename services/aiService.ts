@@ -166,6 +166,56 @@ const extractJSON = (text: string): string => {
   return "{}";
 };
 
+// Robust JSON Repair for Truncated Responses
+const repairJSON = (jsonString: string): string => {
+  try {
+    // If valid, return as is
+    JSON.parse(jsonString);
+    return jsonString;
+  } catch (e) {
+    // Only attempt repair if it looks like a JSON object/array
+    if (!jsonString.trim().startsWith('{') && !jsonString.trim().startsWith('[')) {
+      return jsonString;
+    }
+
+    console.log('🔧 [JSON] Attempting to repair truncated JSON...');
+    let repaired = jsonString.trim();
+
+    // 1. Remove trailing comma if exists (e.g. {"a": 1, )
+    repaired = repaired.replace(/,\s*$/, '');
+
+    // 2. Close unclosed strings
+    const quoteCount = (repaired.match(/"/g) || []).length;
+    if (quoteCount % 2 !== 0) {
+      repaired += '"';
+    }
+
+    // 3. Count brackets to close them
+    const openBraces = (repaired.match(/{/g) || []).length;
+    const closeBraces = (repaired.match(/}/g) || []).length;
+    const openBrackets = (repaired.match(/\[/g) || []).length;
+    const closeBrackets = (repaired.match(/\]/g) || []).length;
+
+    const missingBraces = openBraces - closeBraces;
+    const missingBrackets = openBrackets - closeBrackets;
+
+    // Append missing closures based on what was opened last
+    // This is a naive heuristic but works for many truncation cases
+    // A proper stack-based parser would be better but overkill here
+    for (let i = 0; i < missingBraces; i++) repaired += '}';
+    for (let i = 0; i < missingBrackets; i++) repaired += ']';
+
+    try {
+      JSON.parse(repaired);
+      console.log('✅ [JSON] Repair successful!');
+      return repaired;
+    } catch (finalErr) {
+      console.warn('❌ [JSON] Repair failed:', finalErr);
+      return "{}"; // Fail safe
+    }
+  }
+};
+
 // Injection Helper for Offline Models
 const injectVerificationWarning = (text: string): string => {
   try {
@@ -296,6 +346,8 @@ export const generateWithFallback = async (
         // Normalize JSON if needed
         if (config?.responseMimeType === 'application/json') {
           rawText = extractJSON(rawText);
+          // Auto-repair if needed
+          rawText = repairJSON(rawText);
         }
 
         return {
@@ -349,6 +401,7 @@ export const generateWithFallback = async (
 
         if (config?.responseMimeType === 'application/json') {
           text = extractJSON(text);
+          text = repairJSON(text);
           if (intent === 'SMART') text = injectVerificationWarning(text);
         }
 
