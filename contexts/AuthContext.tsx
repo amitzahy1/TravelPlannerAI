@@ -20,7 +20,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const googleProvider = new GoogleAuthProvider();
-googleProvider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+// googleProvider.addScope('https://www.googleapis.com/auth/calendar.readonly'); // REMOVED to prevent "Unverified App" warning
 googleProvider.setCustomParameters({
   prompt: 'select_account consent'
 });

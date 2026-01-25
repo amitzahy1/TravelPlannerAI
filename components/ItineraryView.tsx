@@ -606,8 +606,8 @@ export const ItineraryView: React.FC<{
                                             </button>
                                         </div>
 
-                                        {/* Micro-Cards Grid */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+                                        {/* Micro-Cards Grid - RICH DESIGN */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar p-1">
                                             {(viewingCategory === 'hotels' ? (trip.hotels || []) :
                                                 viewingCategory === 'food' ? favoriteRestaurants :
                                                     favoriteAttractions
@@ -618,31 +618,55 @@ export const ItineraryView: React.FC<{
                                                         setViewingCategory(null);
                                                         setScheduleItem({ item, type: viewingCategory === 'food' ? 'food' : 'attraction' });
                                                     }}
-                                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 cursor-pointer group"
+                                                    className="relative flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer group h-full"
                                                 >
-                                                    {/* Thumbnail */}
-                                                    <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
+                                                    {/* Image Header */}
+                                                    <div className="h-32 w-full bg-slate-100 relative overflow-hidden">
                                                         <img
-                                                            src={`https://images.unsplash.com/photo-${viewingCategory === 'hotels' ? '1566073771259-6a8506099945' : viewingCategory === 'food' ? '1517248135467-4c7edcad34c4' : '1469854523086-cc02fe5d8800'}?auto=format&fit=crop&w=100&q=60`}
+                                                            src={item.imageUrl || item.image || `https://images.unsplash.com/photo-${viewingCategory === 'hotels' ? '1566073771259-6a8506099945' : viewingCategory === 'food' ? '1517248135467-4c7edcad34c4' : '1469854523086-cc02fe5d8800'}?auto=format&fit=crop&w=400&q=80`}
                                                             alt=""
-                                                            className="w-full h-full object-cover"
+                                                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
                                                         />
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+
+                                                        {/* Top Badge */}
+                                                        <div className="absolute top-2 right-2 flex gap-1">
+                                                            {(item.rating || item.googleRating) && (
+                                                                <span className="bg-white/90 backdrop-blur text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
+                                                                    {item.rating || item.googleRating}<span className="text-yellow-500">★</span>
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
 
-                                                    {/* Info */}
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="text-xs font-bold text-slate-800 truncate">{item.name}</h4>
-                                                        <p className="text-[10px] text-slate-400 truncate">
-                                                            {item.address || item.location || item.cuisine || item.type || 'לחץ לתזמון'}
-                                                        </p>
-                                                    </div>
+                                                    {/* Content Body */}
+                                                    <div className="p-3 flex flex-col flex-1 gap-1">
+                                                        <h4 className="text-sm font-black text-slate-800 leading-tight line-clamp-2" dir="ltr">{item.name}</h4>
 
-                                                    {/* Rating */}
-                                                    {(item.rating || item.googleRating) && (
-                                                        <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold flex-shrink-0">
-                                                            {item.rating || item.googleRating}★
-                                                        </span>
-                                                    )}
+                                                        <div className="flex items-start gap-1.5 text-xs text-slate-500 mt-1 line-clamp-2">
+                                                            <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                                                            <span dir="ltr">{item.address || item.location || 'Location available on map'}</span>
+                                                        </div>
+
+                                                        {/* Category Specific Info */}
+                                                        {viewingCategory === 'hotels' && (
+                                                            <div className="mt-2 pt-2 border-t border-slate-50 flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2 py-1 rounded-md">
+                                                                    <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                                                                    <span className="font-bold">{item.checkInDate ? `${parseDateString(item.checkInDate)?.getDate()}/${parseDateString(item.checkInDate)?.getMonth()! + 1}` : '--'} - {item.checkOutDate ? `${parseDateString(item.checkOutDate)?.getDate()}/${parseDateString(item.checkOutDate)?.getMonth()! + 1}` : '--'}</span>
+                                                                </div>
+                                                                {item.nights && <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full">{item.nights} לילות</span>}
+                                                            </div>
+                                                        )}
+
+                                                        {(viewingCategory === 'food' || viewingCategory === 'attractions') && (
+                                                            <div className="mt-auto pt-2 flex items-center gap-2">
+                                                                <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-md">
+                                                                    {item.cuisine || item.type || (viewingCategory === 'food' ? 'Restaurant' : 'Activity')}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
 
@@ -650,8 +674,11 @@ export const ItineraryView: React.FC<{
                                             {((viewingCategory === 'hotels' && (trip.hotels || []).length === 0) ||
                                                 (viewingCategory === 'food' && favoriteRestaurants.length === 0) ||
                                                 (viewingCategory === 'attractions' && favoriteAttractions.length === 0)) && (
-                                                    <div className="col-span-full text-center py-6 text-slate-400 text-sm">
-                                                        אין פריטים בקטגוריה זו
+                                                    <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
+                                                        <div className={`p-4 rounded-full bg-slate-50 ${viewingCategory === 'hotels' ? 'text-indigo-200' : viewingCategory === 'food' ? 'text-orange-200' : 'text-emerald-200'}`}>
+                                                            {viewingCategory === 'hotels' ? <Hotel className="w-8 h-8" /> : viewingCategory === 'food' ? <Utensils className="w-8 h-8" /> : <MapIcon className="w-8 h-8" />}
+                                                        </div>
+                                                        <span className="text-sm font-bold">אין פריטים בקטגוריה זו</span>
                                                     </div>
                                                 )}
                                         </div>
@@ -664,9 +691,6 @@ export const ItineraryView: React.FC<{
                 </div>
             </div>
 
-            {/* 2. TRIP SUMMARY STRIP REMOVED PER USER FEEDBACK - DIRECT TO COMMAND CENTER */}
-
-            {/* 3. COMMAND CENTER: Tasks & Favorites (Phase 1 Titanium UX) */}
             {/* 3. COMMAND CENTER: Tasks & Favorites (Phase 1 Titanium UX) */}
             <div className="px-1 md:px-2 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[260px] mb-8 relative z-30 mt-6">
                 {/* Column 1: TripAssistant */}
@@ -682,21 +706,7 @@ export const ItineraryView: React.FC<{
                     <FavoritesWidget
                         trip={trip}
                         timeline={timeline}
-                        onSchedule={(item, date, type) => {
-                            // Find day and add activity
-                            const targetDay = timeline.find(d => d.dateIso === date);
-                            if (targetDay) {
-                                const newActivity = {
-                                    description: item.name,
-                                    time: '12:00',
-                                    type: type === 'food' ? 'restaurant' : 'attraction'
-                                };
-                                const updatedTimeline = timeline.map(d =>
-                                    d.id === targetDay.id ? { ...d, activities: [...(d.activities || []), newActivity] } : d
-                                );
-                                onUpdateTrip({ ...trip, timeline: updatedTimeline });
-                            }
-                        }}
+                        onSchedule={(item, date, type) => handleScheduleFavorite(item, date, type)}
                     />
                 </div>
             </div>
