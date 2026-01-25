@@ -110,6 +110,11 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteTrip = async (tripId: string) => {
+    // Store previous state for rollback
+    const previousTrips = [...trips];
+    const previousActiveId = activeTripId;
+
+    // Optimistic UI update
     const newTrips = trips.filter(t => t.id !== tripId);
     setTrips(newTrips);
 
@@ -119,8 +124,14 @@ const AppContent: React.FC = () => {
 
     try {
       await deleteTrip(tripId, user?.uid);
+      console.log('✅ Trip deleted successfully from Firebase');
     } catch (err) {
-      console.error('Error deleting trip:', err);
+      console.error('❌ Error deleting trip - REVERTING UI:', err);
+      // CRITICAL: Revert UI to prevent zombie data
+      setTrips(previousTrips);
+      setActiveTripId(previousActiveId);
+      // Optionally show error to user
+      alert('שגיאה במחיקת הטיול. נסה שוב.');
     }
   };
 

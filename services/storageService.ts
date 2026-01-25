@@ -32,34 +32,50 @@ export const saveTripsToLocal = (trips: Trip[]): void => {
 
 /**
  * Load trips - uses Firestore if userId provided, otherwise localStorage
+ * CRITICAL: New users MUST start with empty trips, not demo data
  */
 export const loadTrips = async (userId?: string): Promise<Trip[]> => {
   if (!userId) {
     return loadTripsFromLocal();
   }
-  
+
   try {
     const hasTrips = await userHasTrips(userId);
     if (!hasTrips) {
       // First time user - check if they have local data to migrate
       const localTrips = loadTripsFromLocal();
-      if (localTrips.length > 0 && localTrips !== INITIAL_DATA) {
-        // Migrate local data to Firestore
-        await saveAllTrips(userId, localTrips);
-        // Clear local storage after migration
-        localStorage.removeItem(STORAGE_KEY);
-        return localTrips;
+
+      // Only migrate if:
+      // 1. They have local trips
+      // 2. The trips are NOT the INITIAL_DATA (check by ID)
+      const initialDataIds = INITIAL_DATA.map(t => t.id);
+      const hasRealLocalData = localTrips.length > 0 &&
+        !localTrips.every(t => initialDataIds.includes(t.id));
+
+      if (hasRealLocalData) {
+        // Filter out any INITIAL_DATA entries before migration
+        const userTrips = localTrips.filter(t => !initialDataIds.includes(t.id));
+        if (userTrips.length > 0) {
+          await saveAllTrips(userId, userTrips);
+          // Clear local storage after migration
+          localStorage.removeItem(STORAGE_KEY);
+          return userTrips;
+        }
       }
-      // No local data, return initial data and save it
-      await saveAllTrips(userId, INITIAL_DATA);
-      return INITIAL_DATA;
+
+      // NEW USER: Return empty array, NOT initial data!
+      // This prevents data leak between users
+      console.log('✨ New user with no trips - starting fresh');
+      return [];
     }
-    
+
     return await getUserTrips(userId);
   } catch (error) {
     console.error('Error loading trips from Firestore:', error);
-    // Fallback to local storage on error
-    return loadTripsFromLocal();
+    // On error, still return empty for logged-in users to prevent data leak
+    // Only use localStorage for truly offline/anonymous users
+    console.warn('⚠️ Firestore error - returning empty trips (not falling back to local storage for security)');
+    return [];
   }
 };
 
@@ -71,7 +87,7 @@ export const saveTrips = async (trips: Trip[], userId?: string): Promise<void> =
     saveTripsToLocal(trips);
     return;
   }
-  
+
   try {
     await saveAllTrips(userId, trips);
   } catch (error) {
@@ -96,7 +112,7 @@ export const saveSingleTrip = async (trip: Trip, userId?: string): Promise<void>
     saveTripsToLocal(trips);
     return;
   }
-  
+
   try {
     await saveTrip(userId, trip);
   } catch (error) {
@@ -115,7 +131,7 @@ export const deleteTrip = async (tripId: string, userId?: string): Promise<void>
     saveTripsToLocal(filtered);
     return;
   }
-  
+
   try {
     await firestoreDeleteTrip(userId, tripId);
   } catch (error) {
