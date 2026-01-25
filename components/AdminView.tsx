@@ -54,11 +54,12 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai'>('overview');
 
-    // Helper: Format for Display (DD/MM/YYYY)
+    // Helper: Format for Display (e.g. "08 Aug")
     const formatDisplayDate = (iso: string) => {
         if (!iso) return '';
-        const [y, m, d] = iso.split('-');
-        return `${d}/${m}/${y}`;
+        const date = new Date(iso);
+        if (isNaN(date.getTime())) return iso;
+        return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short' }).format(date);
     };
 
     // Auto-open wizard for new users (First Time Experience)
@@ -472,8 +473,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                             </button>
                         ))}
                         <button
-                            onClick={() => setIsWizardOpen(true)}
-                            className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 font-bold text-xs hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 mt-4"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsWizardOpen(true);
+                            }}
+                            className="relative z-10 w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 font-bold text-xs hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 mt-4 cursor-pointer"
                         >
                             <Plus className="w-4 h-4" /> טיול חדש
                         </button>
@@ -495,21 +499,21 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                             <div className="flex p-1 bg-slate-100 rounded-lg">
                                 <button
                                     onClick={() => setActiveTab('overview')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                                    className={`px-6 py-2.5 rounded-lg text-base font-bold transition-all ${activeTab === 'overview' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
                                 >
                                     סקירה
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('logistics')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'logistics' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                                    className={`px-6 py-2.5 rounded-lg text-base font-bold transition-all ${activeTab === 'logistics' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
                                 >
                                     לוגיסטיקה
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('ai')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'ai' ? 'bg-white shadow text-purple-700' : 'text-slate-400 hover:text-purple-500'}`}
+                                    className={`px-6 py-2.5 rounded-lg text-base font-bold transition-all ${activeTab === 'ai' ? 'bg-white shadow text-purple-700' : 'text-slate-400 hover:text-purple-500'}`}
                                 >
-                                    <Sparkles className="w-3.5 h-3.5 inline-block ml-1" /> AI Magic
+                                    <Sparkles className="w-4 h-4 inline-block ml-1" /> AI Magic
                                 </button>
                             </div>
                         </div>
@@ -542,20 +546,6 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                                     className="w-full text-lg font-bold bg-slate-50 border-b-2 border-slate-200 focus:border-blue-500 px-3 py-2 rounded-t-lg outline-none transition-colors"
                                                     placeholder="למשל: טיול משפחתי לתאילנד"
                                                 />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-slate-400 uppercase">תמונת קאבר</label>
-                                                <div className="flex gap-2">
-                                                    <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
-                                                        <img src={activeTrip.coverImage} className="w-full h-full object-cover" />
-                                                    </div>
-                                                    <input
-                                                        value={activeTrip.coverImage}
-                                                        onChange={e => handleUpdateTrip({ coverImage: e.target.value })}
-                                                        className="flex-1 text-sm bg-slate-50 border-b-2 border-slate-200 focus:border-blue-500 px-3 py-2 rounded-t-lg outline-none transition-colors"
-                                                        placeholder="https://..."
-                                                    />
-                                                </div>
                                             </div>
                                         </div>
                                     </div>

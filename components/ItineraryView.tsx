@@ -49,11 +49,12 @@ const parseDateString = (dateStr: string): Date | null => {
 };
 
 const formatDateDisplay = (date: Date) => {
-    // User requested dd-mm-yyyy format
-    const d = date.getDate().toString().padStart(2, '0');
-    const m = (date.getMonth() + 1).toString().padStart(2, '0');
-    const y = date.getFullYear();
-    return `${d}/${m}/${y}`;
+    // Google Style: "08 Aug 2026"
+    return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    }).format(date);
 };
 const getDayOfWeek = (date: Date) => {
     const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
