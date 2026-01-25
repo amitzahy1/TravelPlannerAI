@@ -3,6 +3,7 @@ import { Trip, Attraction, AttractionCategory } from '../types';
 import { MapPin, Ticket, Star, ExternalLink, Palmtree, ShoppingBag, Music, Landmark, Sparkles, Filter, StickyNote, Edit, Check, Plus, Loader2, BrainCircuit, RotateCw, Users, CheckCircle2, RefreshCw, Navigation, Calendar, Clock, Trash2, Baby, Search, X, List, Map as MapIcon, Trophy, Camera, Gem, Mountain, Award, LayoutGrid, Globe, ChevronLeft, DollarSign } from 'lucide-react';
 import { Type, Schema } from "@google/genai";
 import { getAI, AI_MODEL, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
+import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
 import { ThinkingLoader } from './ThinkingLoader';
 import { PlaceCard } from './PlaceCard';
@@ -732,8 +733,54 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
 
                 <div className="md:hidden mt-2 text-xs text-gray-500">{data.description}</div>
 
-                {isScheduling && (<div className="mt-2 bg-purple-50 p-2 rounded-lg border border-purple-100 flex items-center gap-2"><input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="w-full p-1 rounded border border-purple-200 text-xs" /><input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full p-1 rounded border border-purple-200 text-xs" /><button onClick={handleSaveSchedule} className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap">שמור</button></div>)}
-                {!isScheduling && data.scheduledDate && (<div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-purple-700 bg-purple-50 w-fit px-2 py-0.5 rounded border border-purple-100"><Clock className="w-2.5 h-2.5" /> {data.scheduledDate} {data.scheduledTime}</div>)}
+                {isScheduling && (
+                    <div className="mt-2 bg-purple-50 p-3 rounded-lg border border-purple-100 space-y-3">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[10px] font-bold text-purple-700 mr-1">תאריך</label>
+                            <button
+                                type="button"
+                                onClick={() => (window as any)._showAttrDatePicker = true}
+                                className="w-full p-2 bg-white rounded-lg border border-purple-200 text-xs font-bold text-right flex items-center justify-between"
+                            >
+                                <span>{data.scheduledDate || "בחר תאריך"}</span>
+                                <Calendar className="w-3 h-3 text-purple-400" />
+                            </button>
+                            {(window as any)._showAttrDatePicker && (
+                                <CalendarDatePicker
+                                    value={data.scheduledDate || ''}
+                                    title="מזמן אטרקציה"
+                                    onChange={(iso) => {
+                                        onUpdate({ scheduledDate: iso });
+                                        (window as any)._showAttrDatePicker = false;
+                                    }}
+                                    onClose={() => (window as any)._showAttrDatePicker = false}
+                                />
+                            )}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[10px] font-bold text-purple-700 mr-1">שעה</label>
+                            <input
+                                type="time"
+                                value={scheduleTime}
+                                onChange={(e) => setScheduleTime(e.target.value)}
+                                className="w-full p-2 rounded-lg border border-purple-200 text-xs outline-none focus:ring-2 focus:ring-purple-100"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-1">
+                            <button onClick={() => setIsScheduling(false)} className="text-[10px] text-purple-400 font-bold px-3 py-1.5 hover:bg-purple-100/50 rounded-lg">ביטול</button>
+                            <button onClick={handleSaveSchedule} className="bg-purple-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold shadow-md hover:bg-purple-700 transition-all">שמור</button>
+                        </div>
+                    </div>
+                )}
+                {!isScheduling && data.scheduledDate && (
+                    <div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-purple-700 bg-purple-50 w-fit px-2 py-0.5 rounded border border-purple-100">
+                        <Clock className="w-2.5 h-2.5" />
+                        {data.scheduledDate.match(/^\d{4}-\d{2}-\d{2}$/)
+                            ? data.scheduledDate.split('-').reverse().join('/')
+                            : data.scheduledDate}
+                        {data.scheduledTime}
+                    </div>
+                )}
                 <div className="mt-1">{isEditingNote ? (<div className="bg-yellow-50 p-1.5 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-gray-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[9px] text-gray-500">ביטול</button><button onClick={saveNote} className="text-[9px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-gray-50 border-dashed border-gray-200 text-gray-400'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
             </div>
         </div>

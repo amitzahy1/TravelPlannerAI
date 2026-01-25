@@ -24,6 +24,12 @@ When providing recommendations:
 - Consider value for money
 - Set business_status to "OPERATIONAL" only if verified
 
+CRITICAL SCHEMA RULES (Schema Guardian):
+1. Use ONLY ISO 8601 for dates (YYYY-MM-DD). Never use DD/MM or slashes.
+2. Ensure all arrays exist, even if empty (restaurants, hotels, itinerary).
+3. 'price' fields should be numbers (estimatedCost, budgetLimit) unless explicitly marked for display.
+4. Descriptions must be in HEBREW (max 15 words). Names must be in English.
+
 CRITICAL OUTPUT RULES:
 1. You MUST return ONLY valid JSON
 2. Do NOT format with markdown (no \`\`\`json blocks)
@@ -44,6 +50,12 @@ EXTRACTION RULES:
 - Do NOT infer or guess missing information
 - If a field is not found, omit it or set to null
 - Preserve original formatting for names and addresses
+
+CRITICAL SCHEMA RULES (Schema Guardian):
+1. Use ONLY ISO 8601 for dates (YYYY-MM-DD). Never use DD/MM or slashes.
+2. Ensure all arrays exist, even if empty (restaurants, hotels, itinerary).
+3. 'price' fields should be numbers (estimatedCost, budgetLimit) unless explicitly marked for display.
+4. Descriptions must be in HEBREW (max 15 words). Names must be in English.
 
 CRITICAL OUTPUT RULES:
 1. You MUST return ONLY valid JSON
@@ -148,73 +160,103 @@ const extractJSON = (text: string): string => {
       const extracted = text.substring(startIndex, lastIndex + 1);
 
       // Check for truncation indicators
-      if (!extracted.endsWith('}') && !extracted.endsWith(']')) {
-        console.warn(`⚠️ [JSON] Possible truncation detected! Ends with: "${extracted.slice(-20)}"`);
+      if (extracted.length > 0) {
+        try {
+          JSON.parse(extracted);
+          return extracted;
+        } catch (e) {
+          console.warn("⚠️ [JSON] Extraction checking failed, attempting repair...");
+          return repairJSON(extracted);
+        }
       }
-
-      return extracted;
     }
   }
 
-  const trimmed = text.trim();
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-    // Basic Repair: Remove trailing commas before closing braces
-    return trimmed.replace(/,(\s*[}\]])/g, '$1');
-  }
-
-  console.warn(`⚠️ [JSON] Could not extract JSON from response (length: ${text.length}):`, text.substring(0, 100));
-  return "{}";
+  // Fallback: Attempt repair on the whole text if standard extraction failed
+  return repairJSON(text);
 };
 
 // Robust JSON Repair for Truncated Responses
-const repairJSON = (jsonString: string): string => {
-  try {
-    // If valid, return as is
-    JSON.parse(jsonString);
-    return jsonString;
-  } catch (e) {
-    // Only attempt repair if it looks like a JSON object/array
-    if (!jsonString.trim().startsWith('{') && !jsonString.trim().startsWith('[')) {
-      return jsonString;
+const repairJSON = (json: string): string => {
+  let repaired = json.trim();
+
+  // Step 1: Initial cleanup of obvious trailing junk
+  repaired = repaired.replace(/,[\s\t\n]*$/, ""); // Remove trailing comma at the absolute end
+
+  // Step 2: Fix unclosed strings
+  // Count counts of quotes and check if we are mid-string
+  let inString = false;
+  for (let i = 0; i < repaired.length; i++) {
+    if (repaired[i] === '"' && repaired[i - 1] !== '\\') inString = !inString;
+  }
+  if (inString) repaired += '"';
+
+  // Step 3: Progressive Structural Backtracking
+  // We will repeatedly try to close brackets and parse. 
+  // If it fails, we strip back to the last likely boundary and try again.
+  const tryFix = (str: string): string | null => {
+    let current = str.trim();
+    const stack: string[] = [];
+    let insideStr = false;
+
+    for (let i = 0; i < current.length; i++) {
+      const char = current[i];
+      if (char === '"' && current[i - 1] !== '\\') {
+        insideStr = !insideStr;
+        continue;
+      }
+      if (insideStr) continue;
+
+      if (char === '{' || char === '[') stack.push(char);
+      else if (char === '}') { if (stack[stack.length - 1] === '{') stack.pop(); }
+      else if (char === ']') { if (stack[stack.length - 1] === '[') stack.pop(); }
     }
 
-    console.log('🔧 [JSON] Attempting to repair truncated JSON...');
-    let repaired = jsonString.trim();
-
-    // 1. Remove trailing comma if exists (e.g. {"a": 1, )
-    repaired = repaired.replace(/,\s*$/, '');
-
-    // 2. Close unclosed strings
-    const quoteCount = (repaired.match(/"/g) || []).length;
-    if (quoteCount % 2 !== 0) {
-      repaired += '"';
+    let closed = current;
+    const tempStack = [...stack];
+    while (tempStack.length > 0) {
+      const open = tempStack.pop();
+      if (open === '{') closed += '}';
+      if (open === '[') closed += ']';
     }
 
-    // 3. Count brackets to close them
-    const openBraces = (repaired.match(/{/g) || []).length;
-    const closeBraces = (repaired.match(/}/g) || []).length;
-    const openBrackets = (repaired.match(/\[/g) || []).length;
-    const closeBrackets = (repaired.match(/\]/g) || []).length;
-
-    const missingBraces = openBraces - closeBraces;
-    const missingBrackets = openBrackets - closeBrackets;
-
-    // Append missing closures based on what was opened last
-    // This is a naive heuristic but works for many truncation cases
-    // A proper stack-based parser would be better but overkill here
-    for (let i = 0; i < missingBraces; i++) repaired += '}';
-    for (let i = 0; i < missingBrackets; i++) repaired += ']';
+    // Clean up trailing commas before closing
+    closed = closed.replace(/,(\s*[}\\]])/g, '$1');
 
     try {
-      JSON.parse(repaired);
-      console.log('✅ [JSON] Repair successful!');
-      return repaired;
-    } catch (finalErr) {
-      console.warn('❌ [JSON] Repair failed:', finalErr);
-      return "{}"; // Fail safe
+      JSON.parse(closed);
+      return closed;
+    } catch (e) {
+      return null;
     }
+  };
+
+  // Try original
+  let result = tryFix(repaired);
+  if (result) return result;
+
+  // Step 4: Destructive Repair
+  // If simple closing fails, it's likely a half-written property: "price": 
+  // We backtrack to the last successfully closed object } or array ] 
+  for (let limit = 0; limit < 10; limit++) { // Up to 10 attempts to find a boundary
+    const lastBrace = Math.max(repaired.lastIndexOf('}'), repaired.lastIndexOf(']'));
+    if (lastBrace === -1) break;
+
+    repaired = repaired.substring(0, lastBrace + 1);
+    result = tryFix(repaired);
+    if (result) {
+      console.log(`🔧 [JSON] Structural repair succeeded after backtracking to index ${lastBrace}`);
+      return result;
+    }
+    // If that didn't work, strip the brace we just found and look for the one before it
+    repaired = repaired.substring(0, lastBrace);
   }
+
+  // Final fallback: just return what we have (likely still broken, but it's our best shot)
+  return repaired;
 };
+
+
 
 // Injection Helper for Offline Models
 const injectVerificationWarning = (text: string): string => {
@@ -229,6 +271,33 @@ const injectVerificationWarning = (text: string): string => {
     // ignore
   }
   return text;
+};
+
+/**
+ * Schema Guardian: Ensures a partial Trip object from AI 
+ * matches the required application schema to prevent UI crashes.
+ */
+export const ensureTripSchema = (data: any): any => {
+  if (!data || typeof data !== 'object') return {};
+
+  const defaults = {
+    hotels: [],
+    restaurants: [],
+    attractions: [],
+    itinerary: [],
+    documents: [],
+    flights: { segments: [], passengerName: '', pnr: '' }
+  };
+
+  return {
+    ...defaults,
+    ...data,
+    // Deep merge/cleanup for flights
+    flights: {
+      ...defaults.flights,
+      ...(data.flights || {})
+    }
+  };
 };
 
 // --- CLIENTS ---
@@ -549,11 +618,60 @@ export const parseTripWizardInputs = async (inputs: { name: string, dates: strin
     }
   });
 
-  return generateWithFallback(
+  const response = await generateWithFallback(
     null,
     [{ role: 'user', parts: contentParts }],
     { responseMimeType: 'application/json' },
     'FAST' // Use Flash for speed
+  );
+
+  // Apply Schema Guardian
+  if (response.text) {
+    try {
+      const raw = JSON.parse(response.text);
+      response.text = JSON.stringify(ensureTripSchema(raw));
+    } catch (e) { /* fallback to original if parse failed */ }
+  }
+
+  return response;
+};
+
+/**
+ * Plan a full day for an empty slot in the itinerary
+ */
+export const planFullDay = async (city: string, date: string, tripNotes: string = "") => {
+  const prompt = `
+  You are an expert local guide for ${city}.
+  Plan a complete, high-quality one-day itinerary for ${date}.
+  
+  Trip Context/Style: ${tripNotes}
+
+  CRITICAL STRUCTURE:
+  - 3-4 distinct activities (Morning, Lunch, Afternoon, evening).
+  - Each activity MUST include a suggested time (HH:MM).
+  - Descriptions MUST be in HEBREW (max 15 words).
+  - Titles MUST be in Hebrew or common English (e.g. "ביקור במגדל אייפל").
+  - Be specific. Don't say "Go see a park", say "Visit Luxembourg Gardens".
+
+  OUTPUT FORMAT (JSON ONLY):
+  {
+    "activities": [
+      "09:00 ☕ ארוחת בוקר קונטיננטלית בבית קפה מקומי",
+      "10:30 🏛️ סיור מודרך במוזיאון הלובר",
+      "13:30 🍽️ ארוחת צהריים ברובע הלטיני",
+      "16:00 🗼 תצפית מהפיסגה של מגדל אייפל",
+      "20:00 🍷 ארוחת ערב רומנטית על גדות הסיין"
+    ]
+  }
+  
+  Do NOT return markdown. Return ONLY valid JSON.
+  `;
+
+  return generateWithFallback(
+    null,
+    prompt,
+    { responseMimeType: "application/json" },
+    'SMART'
   );
 };
 

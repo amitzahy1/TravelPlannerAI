@@ -3,6 +3,7 @@ import { Trip, Restaurant, RestaurantIconType, RestaurantCategory } from '../typ
 import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel } from 'lucide-react';
 import { Type, Schema } from "@google/genai";
 import { getAI, AI_MODEL, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
+import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
 import { ThinkingLoader } from './ThinkingLoader';
 import { PlaceCard } from './PlaceCard';
@@ -726,7 +727,7 @@ const RestaurantRow: React.FC<{
         if (data.reservationTime) setScheduleTime(data.reservationTime);
     }, [data.reservationDate, data.reservationTime]);
 
-    const handleSaveSchedule = () => { onUpdate({ reservationDate: fromInputDate(scheduleDate), reservationTime: scheduleTime }); setIsScheduling(false); };
+    const handleSaveSchedule = () => { onUpdate({ reservationDate: scheduleDate, reservationTime: scheduleTime }); setIsScheduling(false); };
     const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
     const toggleFavorite = () => { onUpdate({ isFavorite: !data.isFavorite }); };
 
@@ -784,8 +785,54 @@ const RestaurantRow: React.FC<{
                     </div>
                 </div>
 
-                {isScheduling && (<div className="mt-3 bg-orange-50 p-2 rounded-lg border border-orange-100 flex items-center gap-2 animate-fade-in"><input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="w-full p-1.5 rounded border border-orange-200 text-xs" /><input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full p-1.5 rounded border border-orange-200 text-xs" /><button onClick={handleSaveSchedule} className="bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap">שמור</button></div>)}
-                {!isScheduling && data.reservationDate && (<div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 w-fit px-2 py-1 rounded border border-orange-100"><Clock className="w-3 h-3" /> {data.reservationDate} {data.reservationTime}</div>)}
+                {isScheduling && (
+                    <div className="mt-3 bg-orange-50 p-3 rounded-xl border border-orange-100 space-y-3 animate-fade-in shadow-inner">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[10px] font-bold text-orange-700 mr-1">תאריך</label>
+                            <button
+                                type="button"
+                                onClick={() => (window as any)._showRestDatePicker = true}
+                                className="w-full p-2.5 bg-white rounded-xl border border-orange-200 text-xs font-bold text-right flex items-center justify-between shadow-sm"
+                            >
+                                <span>{data.reservationDate || "בחר תאריך"}</span>
+                                <Calendar className="w-4 h-4 text-orange-400" />
+                            </button>
+                            {(window as any)._showRestDatePicker && (
+                                <CalendarDatePicker
+                                    value={data.reservationDate || ''}
+                                    title="זיהוי הזמנה"
+                                    onChange={(iso) => {
+                                        onUpdate({ reservationDate: iso });
+                                        (window as any)._showRestDatePicker = false;
+                                    }}
+                                    onClose={() => (window as any)._showRestDatePicker = false}
+                                />
+                            )}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[10px] font-bold text-orange-700 mr-1">שעה</label>
+                            <input
+                                type="time"
+                                value={scheduleTime}
+                                onChange={(e) => setScheduleTime(e.target.value)}
+                                className="w-full p-2.5 rounded-xl border border-orange-200 text-xs outline-none focus:ring-2 focus:ring-orange-100 transition-all"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-1">
+                            <button onClick={() => setIsScheduling(false)} className="text-[10px] text-orange-400 font-bold px-3 py-1.5 hover:bg-orange-100/50 rounded-lg transition-colors">ביטול</button>
+                            <button onClick={handleSaveSchedule} className="bg-orange-600 text-white px-5 py-2 rounded-xl text-[11px] font-bold shadow-md hover:bg-orange-700 transition-all hover:shadow-orange-200">שמור</button>
+                        </div>
+                    </div>
+                )}
+                {!isScheduling && data.reservationDate && (
+                    <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 w-fit px-2 py-1 rounded border border-orange-100">
+                        <Clock className="w-3 h-3" />
+                        {data.reservationDate.match(/^\d{4}-\d{2}-\d{2}$/)
+                            ? data.reservationDate.split('-').reverse().join('/')
+                            : data.reservationDate}
+                        {data.reservationTime}
+                    </div>
+                )}
                 <div className="mt-2">{isEditingNote ? (<div className="bg-yellow-50 p-2 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-slate-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[10px] text-slate-500">ביטול</button><button onClick={saveNote} className="text-[10px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400 hover:border-slate-300'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
             </div>
         </div>

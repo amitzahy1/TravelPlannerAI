@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Trip, HotelBooking } from '../types';
 import { Hotel, MapPin, Calendar, ExternalLink, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X, Save, DollarSign, Image as ImageIcon, Link as LinkIcon, Globe, Sparkles, Loader2, Navigation, Search, UploadCloud, FileText, Coffee, ShieldCheck } from 'lucide-react';
 import { getAI, AI_MODEL, generateWithFallback } from '../services/aiService';
+import { CalendarDatePicker } from './CalendarDatePicker';
 
 // Helper to determine placeholder image based on address
 const getPlaceImage = (address: string): string => {
@@ -248,31 +249,86 @@ const HotelCard: React.FC<{
 };
 
 const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () => void; onSave: (data: HotelBooking) => void; }> = ({ initialData, onClose, onSave }) => {
-    // ... existing modal logic ...
     const [formData, setFormData] = useState<Partial<HotelBooking>>(initialData || { name: '', address: '', checkInDate: '', checkOutDate: '', bookingSource: 'Direct', price: '' });
-    const toInputDate = (d?: string) => d?.split('/').reverse().join('-') || '';
-    const fromInputDate = (d: string) => d.split('-').reverse().join('/');
+    const [showInPicker, setShowInPicker] = useState(false);
+    const [showOutPicker, setShowOutPicker] = useState(false);
+
+    const formatForDisplay = (d?: string) => {
+        if (!d) return "בחר תאריך";
+        if (d.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [y, m, day] = d.split('-');
+            return `${day}/${m}/${y}`;
+        }
+        return d;
+    };
+
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData as HotelBooking); };
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
-                <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center"><h3 className="text-xl font-black text-slate-800">הוספת מלון ידנית</h3><button onClick={onClose}><X className="w-6 h-6 text-slate-400" /></button></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
+            <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-scale-in" onClick={e => e.stopPropagation()}>
+                <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="text-xl font-black text-slate-800">{initialData ? 'עריכת מלון' : 'הוספת מלון ידנית'}</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X className="w-6 h-6 text-slate-400" /></button>
+                </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <input required className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-lg outline-none focus:ring-2 focus:ring-indigo-100" placeholder="שם המלון" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-                    <input className="w-full p-4 bg-slate-50 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-indigo-100" placeholder="כתובת" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-400 mr-2">שם המלון</label>
+                        <input required className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-lg outline-none focus:ring-2 focus:ring-indigo-100 transition-all" placeholder="שם המלון" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-400 mr-2">כתובת</label>
+                        <input className="w-full p-4 bg-slate-50 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-indigo-100 transition-all" placeholder="כתובת" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
-                        <input type="date" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" value={toInputDate(formData.checkInDate)} onChange={e => setFormData({ ...formData, checkInDate: fromInputDate(e.target.value) })} />
-                        <input type="date" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" value={toInputDate(formData.checkOutDate)} onChange={e => setFormData({ ...formData, checkOutDate: fromInputDate(e.target.value) })} />
+                        <div className="space-y-1 relative">
+                            <label className="text-xs font-bold text-slate-400 mr-2">צ'ק-אין</label>
+                            <button
+                                type="button"
+                                onClick={() => setShowInPicker(true)}
+                                className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm text-right flex items-center justify-between hover:bg-indigo-50 transition-colors"
+                            >
+                                <span>{formatForDisplay(formData.checkInDate)}</span>
+                                <Calendar className="w-4 h-4 text-slate-400" />
+                            </button>
+                            {showInPicker && (
+                                <CalendarDatePicker
+                                    value={formData.checkInDate || ''}
+                                    title="צ'ק-אין"
+                                    onChange={(iso) => setFormData({ ...formData, checkInDate: iso })}
+                                    onClose={() => setShowInPicker(false)}
+                                />
+                            )}
+                        </div>
+                        <div className="space-y-1 relative">
+                            <label className="text-xs font-bold text-slate-400 mr-2">צ'ק-אאוט</label>
+                            <button
+                                type="button"
+                                onClick={() => setShowOutPicker(true)}
+                                className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm text-right flex items-center justify-between hover:bg-indigo-50 transition-colors"
+                            >
+                                <span>{formatForDisplay(formData.checkOutDate)}</span>
+                                <Calendar className="w-4 h-4 text-slate-400" />
+                            </button>
+                            {showOutPicker && (
+                                <CalendarDatePicker
+                                    value={formData.checkOutDate || ''}
+                                    title="צ'ק-אאוט"
+                                    onChange={(iso) => setFormData({ ...formData, checkOutDate: iso })}
+                                    onClose={() => setShowOutPicker(false)}
+                                />
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-4 bg-indigo-50 p-4 rounded-2xl">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" className="w-5 h-5" checked={formData.breakfastIncluded || false} onChange={e => setFormData({ ...formData, breakfastIncluded: e.target.checked })} />
+                        <label className="flex items-center gap-2 cursor-pointer flex-1">
+                            <input type="checkbox" className="w-5 h-5 rounded-md text-indigo-600 focus:ring-indigo-500" checked={formData.breakfastIncluded || false} onChange={e => setFormData({ ...formData, breakfastIncluded: e.target.checked })} />
                             <span className="font-bold text-indigo-900">ארוחת בוקר כלולה?</span>
                         </label>
                     </div>
 
-                    <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-200 hover:scale-[1.02] transition-transform">שמור</button>
+                    <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all">שמור</button>
                 </form>
             </div>
         </div>
@@ -317,7 +373,7 @@ const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBo
 
             const response = await generateWithFallback(
                 ai,
-                { role: 'user', parts: contentParts },
+                [{ role: 'user', parts: contentParts }],
                 { responseMimeType: 'application/json' }
             );
 

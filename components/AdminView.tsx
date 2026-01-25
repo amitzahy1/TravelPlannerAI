@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment } from '../types';
 import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu } from 'lucide-react';
 import { getAI, AI_MODEL, generateWithFallback, extractTripFromDoc } from '../services/aiService';
@@ -10,6 +10,7 @@ import { AlertTriangle, Calendar as CalIcon } from 'lucide-react';
 // CALENDAR INTEGRATION REMOVED - Security Fix
 // import { requestAccessToken } from '../services/googleAuthService';
 // import { fetchCalendarEvents, mapEventsToTimeline } from '../services/calendarService';
+import { CalendarDatePicker } from './CalendarDatePicker';
 
 interface TripSettingsModalProps {
     data: Trip[];
@@ -41,57 +42,39 @@ const DateInput: React.FC<{
     value: string, // ISO YYYY-MM-DD
     onChange: (isoDate: string) => void,
     className?: string,
-    placeholder?: string
-}> = ({ value, onChange, className, placeholder }) => {
-    const [text, setText] = useState('');
+    placeholder?: string,
+    title?: string
+}> = ({ value, onChange, className, placeholder, title }) => {
+    const [showPicker, setShowPicker] = useState(false);
 
-    useEffect(() => {
-        if (value) {
-            // Check if already in DD/MM/YYYY format to avoid flip-flopping if data is messy
-            if (value.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                setText(value);
-            } else if (value.includes('-')) {
-                const [y, m, d] = value.split('-');
-                if (y.length === 4) {
-                    setText(`${d}/${m}/${y}`);
-                } else {
-                    setText(value);
-                }
-            } else {
-                setText(value);
-            }
-        } else {
-            setText('');
-        }
-    }, [value]);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        let val = e.target.value;
-
-        // Auto-insert slashes
-        if (val.length === 2 && text.length === 1) val += '/';
-        if (val.length === 5 && text.length === 4) val += '/';
-
-        setText(val);
-
-        // Try parse
-        if (val.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-            const [d, m, y] = val.split('/');
-            onChange(`${y}-${m}-${d}`);
-        } else if (val === '') {
-            onChange('');
-        }
-    };
+    const displayDate = useMemo(() => {
+        if (!value) return placeholder || "בחר תאריך";
+        if (value.includes('/')) return value;
+        const [y, m, d] = value.split('-');
+        if (y && m && d && y.length === 4) return `${d}/${m}/${y}`;
+        return value;
+    }, [value, placeholder]);
 
     return (
-        <input
-            type="text"
-            value={text}
-            onChange={handleChange}
-            placeholder={placeholder || "DD/MM/YYYY"}
-            className={className}
-            maxLength={10}
-        />
+        <div className="relative w-full">
+            <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowPicker(true); }}
+                className={`${className} flex items-center justify-between text-right font-bold`}
+            >
+                <span>{displayDate}</span>
+                <Calendar className="w-4 h-4 text-slate-400" />
+            </button>
+
+            {showPicker && (
+                <CalendarDatePicker
+                    value={value}
+                    title={title}
+                    onChange={onChange}
+                    onClose={() => setShowPicker(false)}
+                />
+            )}
+        </div>
     );
 };
 
@@ -1120,24 +1103,23 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
                             </div>
                         ) : currentField === 'dates' ? (
                             <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1 text-right">
-                                        <label className="text-xs font-bold text-slate-500">תאריך התחלה</label>
-                                        <input
-                                            type="date"
+                                <div className="grid grid-cols-2 gap-4 text-right">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500 mr-2">תאריך התחלה</label>
+                                        <DateInput
                                             value={tripData.startDate || ''}
-                                            onChange={(e) => setTripData({ ...tripData, startDate: e.target.value, dates: `${e.target.value} - ${tripData.endDate}` })}
-                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-purple-500 focus:outline-none text-lg text-center font-medium transition-all"
+                                            title="תאריך התחלה"
+                                            onChange={(iso) => setTripData({ ...tripData, startDate: iso, dates: `${iso} - ${tripData.endDate}` })}
+                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 hover:border-purple-300 transition-all bg-white"
                                         />
                                     </div>
-                                    <div className="space-y-1 text-right">
-                                        <label className="text-xs font-bold text-slate-500">תאריך סיום</label>
-                                        <input
-                                            type="date"
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500 mr-2">תאריך סיום</label>
+                                        <DateInput
                                             value={tripData.endDate || ''}
-                                            min={tripData.startDate}
-                                            onChange={(e) => setTripData({ ...tripData, endDate: e.target.value, dates: `${tripData.startDate} - ${e.target.value}` })}
-                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-purple-500 focus:outline-none text-lg text-center font-medium transition-all"
+                                            title="תאריך סיום"
+                                            onChange={(iso) => setTripData({ ...tripData, endDate: iso, dates: `${tripData.startDate} - ${iso}` })}
+                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 hover:border-purple-300 transition-all bg-white"
                                         />
                                     </div>
                                 </div>

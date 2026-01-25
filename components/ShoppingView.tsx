@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Trip, ShoppingItem, VatStatus } from '../types';
-import { ShoppingBag, FileText, Camera, Plus, Trash2, CheckCircle2, AlertCircle, Stamp, ArrowLeft, DollarSign, Image as ImageIcon, X, Loader2, Sparkles, UploadCloud, Search, List, Receipt } from 'lucide-react';
+import { ShoppingBag, FileText, Camera, Plus, Trash2, CheckCircle2, AlertCircle, Stamp, ArrowLeft, DollarSign, Image as ImageIcon, X, Loader2, Sparkles, UploadCloud, Search, List, Receipt, Calendar } from 'lucide-react';
 import { getAI, AI_MODEL, generateWithFallback } from '../services/aiService';
+import { CalendarDatePicker } from './CalendarDatePicker';
 
 interface ShoppingViewProps {
     trip: Trip;
@@ -113,13 +114,13 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
 
                 const response = await generateWithFallback(
                     ai,
-                    {
+                    [{
                         role: 'user',
                         parts: [
                             { text: prompt },
                             { inlineData: { mimeType: file.type, data: base64Data } }
                         ]
-                    },
+                    }],
                     { responseMimeType: 'application/json' }
                 );
 
@@ -370,6 +371,29 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
                             <div>
                                 <label className="text-xs font-bold text-slate-400 block mb-1">חנות</label>
                                 <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 outline-none" value={newItem.shopName || ''} onChange={e => setNewItem({ ...newItem, shopName: e.target.value })} />
+                            </div>
+
+                            <div className="relative">
+                                <label className="text-xs font-bold text-slate-400 block mb-1">תאריך קנייה</label>
+                                <button
+                                    type="button"
+                                    onClick={() => (window as any)._showShopDatePicker = true}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-right flex items-center justify-between outline-none"
+                                >
+                                    <span>{newItem.purchaseDate || "בחר תאריך"}</span>
+                                    <Calendar className="w-4 h-4 text-slate-400" />
+                                </button>
+                                {(window as any)._showShopDatePicker && (
+                                    <CalendarDatePicker
+                                        value={newItem.purchaseDate || ''}
+                                        title="תאריך קנייה"
+                                        onChange={(iso) => {
+                                            setNewItem({ ...newItem, purchaseDate: iso });
+                                            (window as any)._showShopDatePicker = false;
+                                        }}
+                                        onClose={() => (window as any)._showShopDatePicker = false}
+                                    />
+                                )}
                             </div>
 
                             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">

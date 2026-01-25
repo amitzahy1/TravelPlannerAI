@@ -14,6 +14,7 @@ import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
 import { FavoritesWidget } from './FavoritesWidget';
 import { TripAssistant } from './TripAssistant';
+import { SmartDayPlanner } from './SmartDayPlanner';
 
 // --- Types ---
 // Removed to types.ts
@@ -430,6 +431,30 @@ export const ItineraryView: React.FC<{
         setQuickAddModal({ isOpen: false });
     };
 
+    const handleSmartPlanGenerated = (dateIso: string, activities: string[]) => {
+        const [y, m, d] = dateIso.split('-');
+        const dateFormatted = `${d}/${m}/${y}`;
+
+        let newItinerary = [...trip.itinerary];
+        let dayIndex = newItinerary.findIndex(day => day.date === dateFormatted);
+
+        if (dayIndex === -1) {
+            newItinerary.push({
+                id: `day-${Date.now()}`,
+                day: 0,
+                date: dateFormatted,
+                title: 'יום מתוכנן (AI)',
+                activities: activities
+            });
+        } else {
+            newItinerary[dayIndex] = {
+                ...newItinerary[dayIndex],
+                activities: [...newItinerary[dayIndex].activities, ...activities]
+            };
+        }
+        onUpdateTrip({ ...trip, itinerary: newItinerary });
+    };
+
     const handleDeleteActivity = (dayId: string, index: number) => {
         if (!window.confirm("למחוק פעילות זו?")) return;
         const newItinerary = trip.itinerary.map(day => {
@@ -789,9 +814,21 @@ export const ItineraryView: React.FC<{
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2">
-                                                        <Moon className="w-5 h-5 mb-1" />
-                                                        <span className="text-[10px] font-bold">יום חופשי</span>
+                                                    <div className="h-full">
+                                                        {/* CONTEXTUAL INTELLIGENCE: SMART PLANNER */}
+                                                        {day.stats.food === 0 && day.stats.attr === 0 && day.stats.flight === 0 && day.stats.travel === 0 ? (
+                                                            <SmartDayPlanner
+                                                                city={day.locationContext || trip.destinationEnglish || trip.destination}
+                                                                date={day.dateIso}
+                                                                tripNotes={trip.notes}
+                                                                onPlanGenerated={(acts) => handleSmartPlanGenerated(day.dateIso, acts)}
+                                                            />
+                                                        ) : (
+                                                            <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2">
+                                                                <Moon className="w-5 h-5 mb-1" />
+                                                                <span className="text-[10px] font-bold">יום חופשי</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                                 <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>

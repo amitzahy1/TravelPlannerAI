@@ -10,6 +10,8 @@ export default {
                 extend: {
                         fontFamily: {
                                 'rubik': ['Rubik', 'sans-serif'],
+                                'outfit': ['Outfit', 'sans-serif'],
+                                'heebo': ['Heebo', 'sans-serif'],
                         },
                         animation: {
                                 'fade-in': 'fadeIn 0.4s ease-out forwards',
