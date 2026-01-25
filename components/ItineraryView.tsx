@@ -700,37 +700,11 @@ export const ItineraryView: React.FC<{
                 <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 className="w-4 h-4" /></button>
             </div>
 
-            {/* 2. TRIP SUMMARY STRIP (High Level Stats) */}
-            <div className="flex items-center justify-around py-4 bg-white border-b border-slate-100 mb-6 rounded-2xl shadow-sm border mx-1">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Clock className="w-5 h-5" /></div>
-                    <div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">משך הטיול</div>
-                        <div className="text-lg font-black text-slate-800">{timeline.length} ימים</div>
-                    </div>
-                </div>
-                <div className="w-px h-8 bg-slate-100 hidden md:block"></div>
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Globe className="w-5 h-5" /></div>
-                    <div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">יעדים</div>
-                        <div className="text-lg font-black text-slate-800">
-                            {trip.destination ? trip.destination.split(/[-–,]/).length : 1} ערים
-                        </div>
-                    </div>
-                </div>
-                <div className="w-px h-8 bg-slate-100 hidden md:block"></div>
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><DollarSign className="w-5 h-5" /></div>
-                    <div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">תקציב</div>
-                        <div className="text-lg font-black text-slate-800">$2.4k (משוער)</div>
-                    </div>
-                </div>
-            </div>
+            {/* 2. TRIP SUMMARY STRIP REMOVED PER USER FEEDBACK - DIRECT TO COMMAND CENTER */}
 
             {/* 3. COMMAND CENTER: Tasks & Favorites (Phase 1 Titanium UX) */}
-            <div className="px-1 md:px-2 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[360px] mb-8 relative z-30">
+            {/* 3. COMMAND CENTER: Tasks & Favorites (Phase 1 Titanium UX) */}
+            <div className="px-1 md:px-2 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[260px] mb-8 relative z-30 mt-6">
                 {/* Column 1: TripAssistant */}
                 <div className="lg:col-span-1 h-full">
                     <TripAssistant
@@ -773,7 +747,7 @@ export const ItineraryView: React.FC<{
                         timeline.length === 0 ? (
                             <div className="text-center py-20 text-slate-400">טוען לו"ז...</div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                                 {timeline.map((day) => {
                                     const [y, m, d] = day.dateIso.split('-');
 
