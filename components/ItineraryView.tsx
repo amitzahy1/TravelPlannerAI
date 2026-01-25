@@ -588,40 +588,113 @@ export const ItineraryView: React.FC<{
                         </div>
                     </div>
 
-                    {/* Interactive Hero Stats Bar */}
-                    <div className="hidden md:flex gap-6 bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-3xl">
-                        <div className="flex flex-col items-center min-w-[60px]">
-                            <Plane className="w-8 h-8 text-blue-400 mb-1" />
-                            <span className="text-3xl font-black text-white leading-none">{totalStats.flights}</span>
-                            <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1">טיסות</span>
+                    {/* Interactive Hero Stats Bar with Popover */}
+                    <div className="hidden md:block relative">
+                        <div className="flex gap-6 bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-3xl">
+                            <div className="flex flex-col items-center min-w-[60px]">
+                                <Plane className="w-8 h-8 text-blue-400 mb-1" />
+                                <span className="text-3xl font-black text-white leading-none">{totalStats.flights}</span>
+                                <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1">טיסות</span>
+                            </div>
+                            <div className="w-px bg-white/20"></div>
+                            <button
+                                onClick={() => setViewingCategory(viewingCategory === 'hotels' ? null : 'hotels')}
+                                className={`flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group ${viewingCategory === 'hotels' ? 'scale-110' : ''}`}
+                            >
+                                <Hotel className={`w-8 h-8 mb-1 transition-colors ${viewingCategory === 'hotels' ? 'text-indigo-300' : 'text-indigo-400 group-hover:text-indigo-300'}`} />
+                                <span className="text-3xl font-black text-white leading-none">{totalStats.hotels}</span>
+                                <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">מלונות</span>
+                            </button>
+                            <div className="w-px bg-white/20"></div>
+                            <button
+                                onClick={() => setViewingCategory(viewingCategory === 'food' ? null : 'food')}
+                                className={`flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group ${viewingCategory === 'food' ? 'scale-110' : ''}`}
+                            >
+                                <Utensils className={`w-8 h-8 mb-1 transition-colors ${viewingCategory === 'food' ? 'text-orange-300' : 'text-orange-400 group-hover:text-orange-300'}`} />
+                                <span className="text-3xl font-black text-white leading-none">{favoriteRestaurants.length}</span>
+                                <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">אוכל</span>
+                            </button>
+                            <div className="w-px bg-white/20"></div>
+                            <button
+                                onClick={() => setViewingCategory(viewingCategory === 'attractions' ? null : 'attractions')}
+                                className={`flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group ${viewingCategory === 'attractions' ? 'scale-110' : ''}`}
+                            >
+                                <MapPin className={`w-8 h-8 mb-1 transition-colors ${viewingCategory === 'attractions' ? 'text-emerald-300' : 'text-emerald-400 group-hover:text-emerald-300'}`} />
+                                <span className="text-3xl font-black text-white leading-none">{favoriteAttractions.length}</span>
+                                <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">מקומות</span>
+                            </button>
                         </div>
-                        <div className="w-px bg-white/20"></div>
-                        <button
-                            onClick={() => setViewingCategory('hotels')}
-                            className="flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group"
-                        >
-                            <Hotel className="w-8 h-8 text-indigo-400 mb-1 group-hover:text-indigo-300 transition-colors" />
-                            <span className="text-3xl font-black text-white leading-none">{totalStats.hotels}</span>
-                            <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">מלונות</span>
-                        </button>
-                        <div className="w-px bg-white/20"></div>
-                        <button
-                            onClick={() => setViewingCategory('food')}
-                            className="flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group"
-                        >
-                            <Utensils className="w-8 h-8 text-orange-400 mb-1 group-hover:text-orange-300 transition-colors" />
-                            <span className="text-3xl font-black text-white leading-none">{favoriteRestaurants.length}</span>
-                            <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">אוכל</span>
-                        </button>
-                        <div className="w-px bg-white/20"></div>
-                        <button
-                            onClick={() => setViewingCategory('attractions')}
-                            className="flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group"
-                        >
-                            <MapPin className="w-8 h-8 text-emerald-400 mb-1 group-hover:text-emerald-300 transition-colors" />
-                            <span className="text-3xl font-black text-white leading-none">{favoriteAttractions.length}</span>
-                            <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">מקומות</span>
-                        </button>
+
+                        {/* Smart Popover (Floating Surface) */}
+                        {viewingCategory && (
+                            <>
+                                {/* Backdrop for click-outside */}
+                                <div className="fixed inset-0 z-40" onClick={() => setViewingCategory(null)} />
+
+                                {/* Popover Content */}
+                                <div className="absolute top-full left-0 right-0 mt-3 p-4 bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl z-50 origin-top animate-in slide-in-from-top-2 fade-in duration-200">
+                                    {/* Header */}
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+                                            {viewingCategory === 'hotels' ? 'מלונות' : viewingCategory === 'food' ? 'מסעדות מועדפות' : 'אטרקציות מועדפות'}
+                                        </h3>
+                                        <button onClick={() => setViewingCategory(null)} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
+                                            <X className="w-4 h-4 text-slate-400" />
+                                        </button>
+                                    </div>
+
+                                    {/* Micro-Cards Grid */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                                        {(viewingCategory === 'hotels' ? (trip.hotels || []) :
+                                            viewingCategory === 'food' ? favoriteRestaurants :
+                                                favoriteAttractions
+                                        ).map((item: any, idx: number) => (
+                                            <div
+                                                key={item.id || idx}
+                                                onClick={() => {
+                                                    setViewingCategory(null);
+                                                    setScheduleItem({ item, type: viewingCategory === 'food' ? 'food' : 'attraction' });
+                                                }}
+                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 cursor-pointer group"
+                                            >
+                                                {/* Thumbnail */}
+                                                <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
+                                                    <img
+                                                        src={`https://images.unsplash.com/photo-${viewingCategory === 'hotels' ? '1566073771259-6a8506099945' : viewingCategory === 'food' ? '1517248135467-4c7edcad34c4' : '1469854523086-cc02fe5d8800'}?auto=format&fit=crop&w=100&q=60`}
+                                                        alt=""
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+
+                                                {/* Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-xs font-bold text-slate-800 truncate">{item.name}</h4>
+                                                    <p className="text-[10px] text-slate-400 truncate">
+                                                        {item.address || item.location || item.cuisine || item.type || 'לחץ לתזמון'}
+                                                    </p>
+                                                </div>
+
+                                                {/* Rating */}
+                                                {(item.rating || item.googleRating) && (
+                                                    <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold flex-shrink-0">
+                                                        {item.rating || item.googleRating}★
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+
+                                        {/* Empty State */}
+                                        {((viewingCategory === 'hotels' && (trip.hotels || []).length === 0) ||
+                                            (viewingCategory === 'food' && favoriteRestaurants.length === 0) ||
+                                            (viewingCategory === 'attractions' && favoriteAttractions.length === 0)) && (
+                                                <div className="col-span-full text-center py-6 text-slate-400 text-sm">
+                                                    אין פריטים בקטגוריה זו
+                                                </div>
+                                            )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
                 <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 className="w-4 h-4" /></button>
@@ -894,20 +967,7 @@ export const ItineraryView: React.FC<{
             }
 
 
-
-            {/* Category List Modal (Hero Stats -> Modal) */}
-            {viewingCategory && (
-                <CategoryListModal
-                    type={viewingCategory}
-                    trip={trip}
-                    onClose={() => setViewingCategory(null)}
-                    onSelectItem={(data) => {
-                        setViewingCategory(null);
-                        // Open TripDateSelector for scheduling the selected item
-                        setScheduleItem({ item: data.item, type: data.type });
-                    }}
-                />
-            )}
+            {/* Note: CategoryListModal replaced by inline Smart Popover in Hero Stats section */}
 
             {/* Schedule Item Modal (from CategoryListModal selection) */}
             {scheduleItem && (
