@@ -10,13 +10,20 @@ service cloud.firestore {
     
     // 2. Shared Trips Collection (Email-Based System)
     match /shared-trips/{tripId} {
-      // 1. CREATE: Allow any logged-in user to create (Fixes 403 error)
+      // 1. CREATE: Allow any logged-in user to create
       allow create: if request.auth != null;
 
-      // 2. READ & WRITE: Owner UID match OR Email match
-      allow read, update: if request.auth != null && (
+      // 2. READ: Owner, Collaborator, or Email match
+      allow read: if request.auth != null && (
         resource.data.owner == request.auth.uid ||
+        (resource.data.collaborators is list && request.auth.uid in resource.data.collaborators) ||
         (resource.data.allowedEmails is list && request.auth.token.email in resource.data.allowedEmails)
+      );
+
+      // 3. UPDATE: Owner or Collaborator
+      allow update: if request.auth != null && (
+        resource.data.owner == request.auth.uid ||
+        (resource.data.collaborators is list && request.auth.uid in resource.data.collaborators)
       );
 
       // 3. DELETE: Owner only

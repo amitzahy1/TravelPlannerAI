@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Trip, Restaurant, RestaurantIconType, RestaurantCategory } from '../types';
-import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel } from 'lucide-react';
+import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel, Heart } from 'lucide-react';
 import { Type, Schema } from "@google/genai";
 import { getAI, AI_MODEL, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
@@ -632,34 +632,45 @@ Description in Hebrew. Netural English names.`;
                                         </button>
                                     </div>
 
-                                    <div className="space-y-8 mt-4">
-                                        {Object.entries(groupedMyList).map(([category, items]) => (
-                                            <div key={category} className="animate-fade-in">
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <div className="h-px bg-slate-200 flex-grow"></div>
-                                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
-                                                        {category} <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 rounded-full">{items.length}</span>
-                                                    </h3>
-                                                    <div className="h-px bg-slate-200 flex-grow"></div>
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                    {items.map((r) => (
-                                                        <RestaurantRow
-                                                            key={r.id}
-                                                            data={r}
-                                                            onSaveNote={(note) => handleUpdateRestaurant(r.id, { notes: note })}
-                                                            onUpdate={(updates) => handleUpdateRestaurant(r.id, updates)}
-                                                            onDelete={() => handleDeleteRestaurant(r.id)}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {Object.keys(groupedMyList).length === 0 && (
-                                            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 mt-4">
-                                                <p className="text-slate-500 text-sm font-bold">לא נמצאו מסעדות בסינון זה.</p>
-                                            </div>
-                                        )}
+                                    <div className="space-y-4 mt-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {/* FLAT LIST VIEW (User requested removal of categories) */}
+                                            {(() => {
+                                                // Flatten logic
+                                                const flatList: ExtendedRestaurant[] = [];
+                                                trip.restaurants.forEach(cat => cat.restaurants.forEach(r => flatList.push({
+                                                    ...r,
+                                                    cuisine: r.cuisine || r.iconType || cat.title || 'General' // Ensure genre is passed
+                                                })));
+
+                                                // Apply Filters
+                                                let filtered = flatList;
+                                                if (selectedCity !== 'all') {
+                                                    filtered = flatList.filter(r => (r.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
+                                                }
+
+                                                // Sort by Favorite then Rating
+                                                filtered = sortMyRestaurants(filtered);
+
+                                                if (filtered.length === 0) {
+                                                    return (
+                                                        <div className="col-span-full text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 mt-4">
+                                                            <p className="text-slate-500 text-sm font-bold">לא נמצאו מסעדות בסינון זה.</p>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return filtered.map((r) => (
+                                                    <RestaurantRow
+                                                        key={r.id}
+                                                        data={r}
+                                                        onSaveNote={(note) => handleUpdateRestaurant(r.id, { notes: note })}
+                                                        onUpdate={(updates) => handleUpdateRestaurant(r.id, updates)}
+                                                        onDelete={() => handleDeleteRestaurant(r.id)}
+                                                    />
+                                                ));
+                                            })()}
+                                        </div>
                                     </div>
                                 </>
                             )}
@@ -804,7 +815,7 @@ Description in Hebrew. Netural English names.`;
     );
 };
 
-const RestaurantRow: React.FC<{ data: Restaurant, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Restaurant>) => void, onDelete: () => void }> = ({ data, onSaveNote, onUpdate, onDelete }) => {
+const RestaurantRow: React.FC<{ data: Restaurant | ExtendedRestaurant, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Restaurant>) => void, onDelete: () => void }> = ({ data, onSaveNote, onUpdate, onDelete }) => {
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
     const [isScheduling, setIsScheduling] = useState(false);
@@ -813,29 +824,63 @@ const RestaurantRow: React.FC<{ data: Restaurant, onSaveNote: (n: string) => voi
     const handleSaveSchedule = () => { onUpdate({ reservationTime: scheduleTime }); setIsScheduling(false); };
     const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
 
+    // Visuals & Fallback
+    const cuisine = (data as any).cuisine || (data as any).categoryTitle || 'Restaurant';
+    const visuals = getCuisineVisuals(cuisine);
+
+    // Use stored image OR fallback to visual URL logic (simplified here or imported)
+    // Since getFoodImage isn't imported here, used hardcoded fallback based on cuisine if empty
+    // Actually, getCuisineVisuals returns a gradient and icon, but not an image URL.
+    // Let's use a reliable placeholder if imageUrl is missing/broken.
+    const imageSrc = data.imageUrl || `https://source.unsplash.com/400x300/?${cuisine.split(' ')[0]},food`;
+
     return (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 hover:shadow-md transition-shadow relative group">
             <div className="flex justify-between items-start gap-3">
                 <div className="flex gap-3 items-start flex-grow min-w-0">
                     <div className="w-16 h-16 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden relative border border-slate-200">
-                        {data.imageUrl ? <img src={data.imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">{data.iconType === 'ramen' ? '🍜' : '🍽️'}</div>}
+                        {/* Improved Image Handling */}
+                        <img
+                            src={imageSrc}
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80'; // Generic Food Fallback
+                            }}
+                            className="w-full h-full object-cover"
+                            alt={data.name}
+                        />
+                        <div className="absolute bottom-0 right-0 left-0 bg-black/40 backdrop-blur-[1px] p-0.5 text-center">
+                            <span className="text-[8px] font-bold text-white block truncate">{visuals.label}</span>
+                        </div>
                     </div>
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                             <h4 className="font-black text-slate-800 text-sm truncate">{data.name}</h4>
                             {data.michelin && <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded-md font-bold text-center border border-red-100">MICHELIN</span>}
                         </div>
-                        <p className="text-xs text-slate-500 truncate mt-0.5">{data.description || data.location}</p>
-                        <div className="flex items-center gap-2 mt-1.5">
+
+                        {/* Genre / Cuisine Badge (Requested Highlight) */}
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${visuals.gradient}`}>
+                                <span>{visuals.icon}</span>
+                                <span>{cuisine}</span>
+                            </div>
                             <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded">
                                 <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
                                 {data.googleRating}
                             </div>
-                            <span className="text-[10px] text-slate-400 font-medium">{data.priceRange || '$$'}</span>
                         </div>
+
+                        <p className="text-xs text-slate-400 truncate mt-1">{data.description || data.location}</p>
                     </div>
                 </div>
                 <div className="flex flex-col gap-1 flex-shrink-0">
+                    {/* Heart Icon (Toggle Favorite) */}
+                    <button
+                        onClick={() => onUpdate({ isFavorite: !data.isFavorite })} // Simple toggle
+                        className={`p-1.5 rounded-lg transition-colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'}`}
+                    >
+                        <Heart className={`w-4 h-4 ${data.isFavorite ? 'fill-current' : ''}`} />
+                    </button>
                     <button onClick={onDelete} className="p-1.5 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                 </div>
             </div>

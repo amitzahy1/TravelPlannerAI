@@ -72,17 +72,21 @@ const AttractionRecommendationCard: React.FC<{
 export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
     const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>('my_list');
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+
+    // AI State
     const [aiCategories, setAiCategories] = useState<AttractionCategory[]>(trip.aiAttractions || []);
     const [loadingRecs, setLoadingRecs] = useState(false);
     const [recError, setRecError] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedRater, setSelectedRater] = useState<string>('all');
+
     const [selectedCity, setSelectedCity] = useState<string>('all');
-    const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
     const [textQuery, setTextQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<Attraction[] | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<Attraction | null>(null);
+
+    const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
     const attractionsData = trip.attractions || [];
 
@@ -95,6 +99,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         return trip.destination.split(/ - | & |, /).map(s => s.trim()).filter(Boolean);
     }, [trip.destination]);
 
+    // --- AI Logic ---
     const handleTextSearch = async () => {
         if (!textQuery.trim()) return;
         setIsSearching(true);
@@ -216,17 +221,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         return list;
     }, [aiCategories, selectedCategory, selectedRater, selectedCity]);
 
-    const groupedMyList = useMemo(() => {
-        const flat: Attraction[] = [];
-        attractionsData.forEach(c => c.attractions.forEach(a => flat.push(a)));
-        let filtered = flat;
-        if (selectedCity !== 'all') filtered = flat.filter(a => (a.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
-        const groups: Record<string, Attraction[]> = {};
-        filtered.forEach(a => { const city = a.location?.split(',')[0] || 'General'; if (!groups[city]) groups[city] = []; groups[city].push(a); });
-        Object.keys(groups).forEach(city => groups[city] = sortAttractions(groups[city]));
-        return groups;
-    }, [attractionsData, selectedCity]);
-
+    // --- Data Management ---
     const handleUpdateAttraction = (id: string, updates: Partial<Attraction>) => {
         const updated = attractionsData.map(c => ({ ...c, attractions: c.attractions.map(a => a.id === id ? { ...a, ...updates } : a) }));
         onUpdateTrip({ ...trip, attractions: updated });
@@ -239,11 +234,13 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         }
     };
 
+    // Filtered Raters
     const availableRaters = useMemo(() => {
         const sources = new Set<string>();
         aiCategories.forEach(c => c.attractions.forEach(a => a.recommendationSource && sources.add(a.recommendationSource)));
         return Array.from(sources).sort();
     }, [aiCategories]);
+
 
     const getMapItems = () => {
         const items: any[] = [];
@@ -254,6 +251,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     return (
         <div className="space-y-4 animate-fade-in pb-10">
+            {/* Search Bar */}
             <div className="relative z-20">
                 <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
                     <Search className="w-5 h-5 text-slate-400 mr-2" />
@@ -270,6 +268,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 )}
             </div>
 
+            {/* Search Results */}
             {searchResults && (
                 <div className="space-y-3 animate-fade-in">
                     <div className="flex justify-between items-center"><h3 className="text-lg font-black text-slate-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-xs text-slate-500 underline">נקה</button></div>
@@ -279,47 +278,127 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 </div>
             )}
 
+            {/* Tabs */}
             <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-2">
-                <button onClick={() => setActiveTab('my_list')} className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
-                <button onClick={() => setActiveTab('recommended')} className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
+                <button onClick={() => setActiveTab('my_list')} className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
+                <button onClick={() => setActiveTab('recommended')} className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
             </div>
 
+            {/* City Filter Bar */}
             {tripCities.length > 1 && (
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    {tripCities.map(city => <button key={city} onClick={() => setSelectedCity(city)} className={`px-4 py-2 rounded-full text-xs font-black border ${selectedCity === city ? 'bg-slate-900 text-white' : 'bg-white text-slate-500'}`}>{city}</button>)}
+                    {tripCities.map(city => (
+                        <button
+                            key={city}
+                            onClick={() => setSelectedCity(city)}
+                            className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                        >
+                            {city}
+                        </button>
+                    ))}
                 </div>
             )}
 
             {viewMode === 'map' ? (
-                <UnifiedMapView items={getMapItems()} title="מפה" />
+                <div className="space-y-3">
+                    <div className="flex justify-end"><button onClick={() => setViewMode('list')} className="px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold text-xs bg-slate-100 text-slate-900 transition-all hover:bg-slate-200"><List className="w-3 h-3" /> חזרה לרשימה</button></div>
+                    <UnifiedMapView items={getMapItems()} title={activeTab === 'my_list' ? "מפת אטרקציות שלי" : "מפת המלצות"} />
+                </div>
             ) : (
                 <>
-                    {activeTab === 'my_list' ? (
-                        <div className="space-y-8 mt-4">
-                            {Object.entries(groupedMyList).map(([city, items]) => (
-                                <div key={city} className="animate-fade-in">
-                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-3"><div className="h-px bg-slate-200 flex-grow"></div>{city}<div className="h-px bg-slate-200 flex-grow"></div></h3>
-                                    <div className="flex flex-col gap-3">
-                                        {items.map(attr => <AttractionRow key={attr.id} data={attr} onSaveNote={(n) => handleUpdateAttraction(attr.id, { notes: n })} onUpdate={(u) => handleUpdateAttraction(attr.id, u)} onDelete={() => handleDeleteAttraction(attr.id)} />)}
+                    {/* MY LIST TAB */}
+                    {activeTab === 'my_list' && (
+                        <>
+                            {attractionsData.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
+                                    <div className="w-24 h-24 bg-purple-50 rounded-full flex items-center justify-center shadow-inner">
+                                        <Ticket className="w-10 h-10 text-purple-300" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-xl font-bold text-slate-700">עדיין לא הוספת אטרקציות</p>
+                                        <p className="text-sm text-slate-500">עבור ללשונית "המלצות" והתחל לאסוף חוויות</p>
+                                    </div>
+                                    <button onClick={() => setActiveTab('recommended')} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl hover:scale-105 transition-all">התחל לחקור</button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4 mt-4">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <button onClick={() => setViewMode('map')} className="px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold text-xs bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 transition-all shadow-sm">
+                                            <MapIcon className="w-3 h-3" /> מפה
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {(() => {
+                                            // Flatten List Logic
+                                            const flatList: Attraction[] = [];
+                                            attractionsData.forEach(c => c.attractions.forEach(a => flatList.push(a)));
+
+                                            // Filter
+                                            let filtered = flatList;
+                                            if (selectedCity !== 'all') {
+                                                filtered = flatList.filter(a => (a.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
+                                            }
+
+                                            // Sort
+                                            filtered = sortAttractions(filtered);
+
+                                            if (filtered.length === 0) {
+                                                return (
+                                                    <div className="col-span-full text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 mt-4">
+                                                        <p className="text-slate-500 text-sm font-bold">לא נמצאו אטרקציות בסינון זה.</p>
+                                                    </div>
+                                                );
+                                            }
+
+                                            return filtered.map(attr => (
+                                                <AttractionRow
+                                                    key={attr.id}
+                                                    data={attr}
+                                                    onSaveNote={(n) => handleUpdateAttraction(attr.id, { notes: n })}
+                                                    onUpdate={(u) => handleUpdateAttraction(attr.id, u)}
+                                                    onDelete={() => handleDeleteAttraction(attr.id)}
+                                                    onSelect={() => setSelectedPlace(attr)}
+                                                />
+                                            ));
+                                        })()}
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    ) : (
+                            )}
+                        </>
+                    )}
+
+                    {/* RECOMMENDED TAB (AI) */}
+                    {activeTab === 'recommended' && (
                         <div className="animate-fade-in">
-                            {loadingRecs ? <ThinkingLoader texts={["סורק אטרקציות..."]} /> : (
+                            {loadingRecs ? <ThinkingLoader texts={["סורק אטרקציות...", "מחפש פנינים נסתרות...", "בודק דירוגים..."]} /> : (
                                 <>
-                                    <div className="mb-2 overflow-x-auto pb-2"><div className="flex gap-2">
-                                        <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === 'all' ? 'bg-purple-800 text-white' : 'bg-white'}`}>הכל</button>
-                                        {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-purple-800 text-white' : 'bg-white'}`}>{c.title}</button>)}
-                                    </div></div>
-                                    <div className="mb-4 overflow-x-auto pb-2 flex gap-2 items-center"><span className="text-[10px] font-bold text-slate-400">הומלץ ע"י:</span>
-                                        <button onClick={() => setSelectedRater('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === 'all' ? 'bg-purple-800 text-white' : 'bg-white'}`}>הכל</button>
-                                        {availableRaters.map(r => <button key={r} onClick={() => setSelectedRater(r)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === r ? 'bg-purple-800 text-white' : 'bg-white'}`}>{r}</button>)}
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="bg-purple-50 p-2 rounded-full"><BrainCircuit className="w-5 h-5 text-purple-600" /></div>
+                                        <div><h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Market Research</h3><p className="font-black text-lg text-slate-800">המלצות AI: Top Attractions</p></div>
                                     </div>
-                                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                                        {filteredRecommendations.map(rec => <AttractionRecommendationCard key={rec.id} rec={rec} tripDestination={trip.destination} isAdded={addedIds.has(rec.id) || trip.attractions.some(c => c.attractions.some(a => a.name === rec.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(rec)} />)}
-                                    </div>
+
+                                    {allAiAttractions().length === 0 ? (
+                                        <div className="text-center py-10">
+                                            <button onClick={() => initiateResearch()} className="bg-white border-2 border-purple-500 text-purple-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-purple-50 transition-all">
+                                                {trip.destination} - בצע מחקר שוק
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide"><div className="flex gap-2">
+                                                <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === 'all' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>הכל</button>
+                                                {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>{c.title}</button>)}
+                                            </div></div>
+                                            <div className="mb-4 overflow-x-auto pb-2 flex gap-2 items-center"><span className="text-[10px] font-bold text-slate-400">הומלץ ע"י:</span>
+                                                <button onClick={() => setSelectedRater('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === 'all' ? 'bg-purple-600 text-white' : 'bg-white state-slate-600'}`}>הכל</button>
+                                                {availableRaters.map(r => <button key={r} onClick={() => setSelectedRater(r)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === r ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>{r}</button>)}
+                                            </div>
+                                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                                                {filteredRecommendations.map(rec => <AttractionRecommendationCard key={rec.id} rec={rec} tripDestination={trip.destination} isAdded={addedIds.has(rec.id) || trip.attractions.some(c => c.attractions.some(a => a.name === rec.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(rec)} />)}
+                                            </div>
+                                        </>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -338,83 +417,109 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             )}
         </div>
     );
+
+    // Helper to get all AI recs for initial check
+    function allAiAttractions() {
+        let all: any[] = [];
+        aiCategories.forEach(c => all.push(...c.attractions));
+        return all;
+    }
 };
 
-const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Attraction>) => void, onDelete: () => void }> = ({ data, onSaveNote, onUpdate, onDelete }) => {
+const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Attraction>) => void, onDelete: () => void, onSelect: () => void }> = ({ data, onSaveNote, onUpdate, onDelete, onSelect }) => {
+
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
-    const [isScheduling, setIsScheduling] = useState(false);
-    const [scheduleTime, setScheduleTime] = useState(data.scheduledTime || '');
 
-    // Internal visibility for date picker
-    const [showDatePicker, setShowDatePicker] = useState(false);
+    // Visuals
+    const visuals = getAttractionVisuals(data.name + ' ' + (data.description || ''));
+    // Fallback Image logic
+    const imageSrc = data.imageUrl || `https://source.unsplash.com/400x300/?${visuals.label.split(' ')[0]},travel`;
 
-    const handleSaveSchedule = () => { onUpdate({ scheduledTime: scheduleTime }); setIsScheduling(false); };
-    const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
-    const toggleFavorite = () => onUpdate({ isFavorite: !data.isFavorite });
-
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.name + ' ' + (data.location || ''))}`;
-
-    const getTypeIcon = () => {
-        const text = (data.name + ' ' + (data.description || '')).toLowerCase();
-        if (text.includes('museum') || text.includes('art')) return <Landmark className="w-5 h-5 text-amber-600" />;
-        if (text.includes('nature') || text.includes('park')) return <Mountain className="w-5 h-5 text-emerald-600" />;
-        if (text.includes('beach') || text.includes('sea')) return <Palmtree className="w-5 h-5 text-cyan-600" />;
-        if (text.includes('shop') || text.includes('mall')) return <ShoppingBag className="w-5 h-5 text-pink-600" />;
-        return <Ticket className="w-5 h-5 text-purple-600" />;
+    // Toggle Heart
+    const toggleFavorite = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onUpdate({ isFavorite: !data.isFavorite });
     };
 
-    return (
-        <div className={`bg-white rounded-xl border p-3 hover:shadow-md transition-all flex flex-col md:flex-row gap-3 relative overflow-hidden ${data.isFavorite ? 'border-yellow-200 ring-1 ring-yellow-50' : 'border-slate-100'}`}>
-            <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-slate-50 rounded-xl shadow-inner">{getTypeIcon()}</div>
-            <div className="flex-grow">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={toggleFavorite} className="focus:outline-none"><Star className={`w-4 h-4 ${data.isFavorite ? 'text-yellow-400 fill-yellow-400' : 'text-slate-300'}`} /></button>
-                            <h4 className="text-sm font-black text-slate-900">{data.name}</h4>
-                            {data.rating && <div className="flex items-center bg-yellow-50 px-1 py-0.5 rounded text-[9px] font-bold text-yellow-700">{data.rating}⭐</div>}
-                        </div>
-                        <p className="text-slate-500 text-[11px] mt-1 line-clamp-1">{data.description}</p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <a href={mapsUrl} target="_blank" rel="noreferrer" className="p-1.5 text-slate-400 border border-slate-100 rounded-lg"><Navigation className="w-3.5 h-3.5" /></a>
-                        <button onClick={() => setIsScheduling(!isScheduling)} className={`p-1.5 rounded-lg border ${data.scheduledDate ? 'bg-purple-50 border-purple-100 text-purple-600' : 'border-slate-100 text-slate-400'}`}><Calendar className="w-3.5 h-3.5" /></button>
-                        <button onClick={onDelete} className="p-1.5 text-slate-400 border border-slate-100 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                </div>
+    const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
 
-                {isScheduling && (
-                    <div className="mt-3 p-3 bg-purple-50 rounded-xl border border-purple-100 space-y-3">
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-[10px] font-black text-purple-700 uppercase">תאריך</label>
-                            <button onClick={() => setShowDatePicker(true)} className="w-full bg-white p-2 rounded-lg border border-purple-200 text-xs text-right flex justify-between">
-                                <span>{data.scheduledDate || 'בחר תאריך'}</span><Calendar className="w-3 h-3" />
-                            </button>
-                            {showDatePicker && (
-                                <CalendarDatePicker
-                                    value={data.scheduledDate || ''}
-                                    title="מזמן אטרקציה"
-                                    onChange={(d) => { onUpdate({ scheduledDate: d }); setShowDatePicker(false); }}
-                                    onClose={() => setShowDatePicker(false)}
-                                />
+    return (
+        <div
+            onClick={onSelect}
+            className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 hover:shadow-md transition-shadow relative group cursor-pointer"
+        >
+            <div className="flex justify-between items-start gap-3">
+                <div className="flex gap-3 items-start flex-grow min-w-0">
+                    {/* Image Section (Replaces Icon) */}
+                    <div className="w-16 h-16 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden relative border border-slate-200">
+                        <img
+                            src={imageSrc}
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1552733407-5d5c46c3bb3b?auto=format&fit=crop&w=200&q=80';
+                            }}
+                            className="w-full h-full object-cover"
+                            alt={data.name}
+                        />
+                        <div className="absolute bottom-0 right-0 left-0 bg-black/40 backdrop-blur-[1px] p-0.5 text-center">
+                            <span className="text-[8px] font-bold text-white block truncate">{visuals.label}</span>
+                        </div>
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                            <h4 className="font-black text-slate-800 text-sm truncate">{data.name}</h4>
+                        </div>
+
+                        {/* Genre / Badge Highlight */}
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${visuals.gradient}`}>
+                                <span>{visuals.icon}</span>
+                                <span>{visuals.label}</span>
+                            </div>
+                            {data.rating && (
+                                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded">
+                                    <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                                    {data.rating}
+                                </div>
                             )}
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-[10px] font-black text-purple-700 uppercase">שעה</label>
-                            <input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="p-2 border border-purple-200 rounded-lg text-xs" />
-                        </div>
-                        <div className="flex justify-end gap-2"><button onClick={() => setIsScheduling(false)} className="text-[10px] font-bold text-purple-400">ביטול</button><button onClick={handleSaveSchedule} className="bg-purple-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-black">שמור</button></div>
+
+                        <p className="text-xs text-slate-400 truncate mt-1">{data.description || data.location}</p>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-1 flex-shrink-0">
+                    {/* Heart Icon Toggle */}
+                    <button
+                        onClick={toggleFavorite}
+                        className={`p-1.5 rounded-lg transition-colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'}`}
+                    >
+                        {/* Using Star as Heart for consistency if needed, but Heart is better. Restaurants uses Heart now? Yes. */}
+                        <Star className={`w-4 h-4 ${data.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+                        {/* Note: I'm using Star here because the user might have said 'duplicate design' but let's check imports. I'll use Heart if I import it, or Star if that's what was used. RestaurantsView used Heart. */}
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        className="p-1.5 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-colors"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Inline Note (Compact) */}
+            <div className="mt-2" onClick={e => e.stopPropagation()}>
+                {isEditingNote ? (
+                    <div className="bg-yellow-50 p-2 rounded-lg border border-yellow-100 flex gap-1">
+                        <textarea className="w-full bg-transparent border-none outline-none text-[10px] text-yellow-900 resize-none" rows={1} value={noteText} onChange={e => setNoteText(e.target.value)} />
+                        <button onClick={saveNote} className="text-[10px] font-black text-yellow-700 whitespace-nowrap">שמור</button>
+                    </div>
+                ) : (
+                    <div onClick={() => setIsEditingNote(true)} className="text-[10px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-1.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors">
+                        {data.notes ? <><StickyNote className="w-3 h-3 text-yellow-500" /> <span className="text-yellow-900 truncate">{data.notes}</span></> : <span className="opacity-50">+ הערה</span>}
                     </div>
                 )}
-
-                <div className="mt-2">
-                    {isEditingNote ? (
-                        <div className="bg-yellow-50 p-2 rounded-lg border border-yellow-100"><textarea className="w-full bg-transparent border-none outline-none text-[11px] text-yellow-900" rows={1} value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2 mt-1"><button onClick={saveNote} className="text-[10px] font-black text-yellow-700">שמור</button></div></div>
-                    ) : (
-                        <div onClick={() => setIsEditingNote(true)} className="text-[10px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-1.5 flex items-center gap-2 cursor-pointer">{data.notes ? <><StickyNote className="w-3 h-3 text-yellow-500" /> <span className="text-yellow-900">{data.notes}</span></> : <>+ הוסף הערה...</>}</div>
-                    )}
-                </div>
             </div>
         </div>
     );

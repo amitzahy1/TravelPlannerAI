@@ -727,7 +727,7 @@ export const ItineraryView: React.FC<{
             </div>
 
             {/* 3. COMMAND CENTER: Tasks & Favorites (Phase 1 Titanium UX) */}
-            <div className="px-1 md:px-2 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[260px] h-auto mb-8 relative z-30 mt-6">
+            <div className="px-1 md:px-2 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[260px] h-auto mb-16 relative z-30 mt-6">
                 {/* Column 1: TripAssistant */}
                 <div className="lg:col-span-1 h-full min-h-[200px]">
                     <TripAssistant
