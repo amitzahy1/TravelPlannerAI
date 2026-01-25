@@ -506,15 +506,18 @@ export const parseTripWizardInputs = async (inputs: { name: string, dates: strin
       
       User Inputs:
       - Trip Name: "${name}"
-      - Dates Input: "${dates}" (Likely natural language like "Aug 8th to 26th")
-      - Destination: "${destination}"
+      - Dates Input (Manual): "${dates}"
+      - Destination (Manual): "${destination}"
       - User Notes: "${notes}"
       - Additional Files provided below.
 
+      CRITICAL INSTRUCTION - SOURCE OF TRUTH:
+      1. If the user provided uploaded files (tickets, hotel bookings, screenshots), you MUST trust the dates and locations in those files ABOVE the manual inputs.
+      2. People often make typos in manual entry. The file is the authority.
+      3. If the file says "Aug 6 - Aug 26" but user typed "Aug 7", use the FILE's dates.
+
       TASKS:
-      1. Dates: Parse the date string into a standard "YYYY-MM-DD - YYYY-MM-DD" format. 
-         - Assume the year is 2026 unless specified otherwise.
-         - If text is "8th to 26th Aug", parse as "2026-08-08 - 2026-08-26".
+      1. Dates: The manual dates are already formatted as "YYYY-MM-DD - YYYY-MM-DD". Verify they match the files. If files differ, use dates from files.
       2. Destination: Normalize city/country name (e.g., "Thailand" -> "Thailand", "NYC" -> "New York, USA").
       3. Extraction: Scan notes and any file content for:
          - Hotel names (add to hotels array)

@@ -778,6 +778,8 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
     const [tripData, setTripData] = useState({
         name: '',
         dates: '',
+        startDate: '',
+        endDate: '',
         destination: '',
         cities: [''], // Initialize with one empty city
         coverImage: '',
@@ -920,8 +922,11 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
     const isMagicStep = currentField === 'magic';
 
     // Allow proceeding if not Magic step and input has value, OR if Magic step (optional)
+    // Allow proceeding if not Magic step and input has value, OR if Magic step (optional)
     const canProceed = isMagicStep ||
-        (currentField === 'destination' ? (tripData.cities && tripData.cities.some(c => c.trim().length > 0)) : (tripData[currentField as keyof typeof tripData] as string)?.trim().length > 0);
+        (currentField === 'destination' ? (tripData.cities && tripData.cities.some(c => c.trim().length > 0)) :
+            currentField === 'dates' ? (tripData.startDate && tripData.endDate) :
+                (tripData[currentField as keyof typeof tripData] as string)?.trim().length > 0);
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6 animate-fade-in">
@@ -1024,6 +1029,35 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
                                 >
                                     <Plus className="w-4 h-4" /> הוסף עוד יעד
                                 </button>
+                            </div>
+                        ) : currentField === 'dates' ? (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1 text-right">
+                                        <label className="text-xs font-bold text-slate-500">תאריך התחלה</label>
+                                        <input
+                                            type="date"
+                                            value={tripData.startDate || ''}
+                                            onChange={(e) => setTripData({ ...tripData, startDate: e.target.value, dates: `${e.target.value} - ${tripData.endDate}` })}
+                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-purple-500 focus:outline-none text-lg text-center font-medium transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <label className="text-xs font-bold text-slate-500">תאריך סיום</label>
+                                        <input
+                                            type="date"
+                                            value={tripData.endDate || ''}
+                                            min={tripData.startDate}
+                                            onChange={(e) => setTripData({ ...tripData, endDate: e.target.value, dates: `${tripData.startDate} - ${e.target.value}` })}
+                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-purple-500 focus:outline-none text-lg text-center font-medium transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                {tripData.startDate && tripData.endDate && (
+                                    <div className="text-center text-sm font-bold text-purple-600 bg-purple-50 py-2 rounded-lg">
+                                        {tripData.startDate} עד {tripData.endDate}
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <input
