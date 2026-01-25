@@ -92,11 +92,13 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                 setRouteCities([]);
             }
 
-            // Sync Dates
-            if (activeTrip.dates && activeTrip.dates.includes('-')) {
-                const parts = activeTrip.dates.split('-').map(s => s.trim());
-                setStartDate(toInputDate(parts[0]));
-                setEndDate(toInputDate(parts[1]));
+            // Sync Dates - Split by ' - ' to avoid breaking ISO date format
+            if (activeTrip.dates && activeTrip.dates.includes(' - ')) {
+                const parts = activeTrip.dates.split(' - ').map(s => s.trim());
+                if (parts.length === 2) {
+                    setStartDate(toInputDate(parts[0]));
+                    setEndDate(toInputDate(parts[1]));
+                }
             } else {
                 setStartDate('');
                 setEndDate('');
