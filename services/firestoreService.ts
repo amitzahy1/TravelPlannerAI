@@ -6,10 +6,16 @@ import {
   deleteDoc,
   query,
   orderBy,
-  Timestamp
+  Timestamp,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  onSnapshot,
+  Unsubscribe
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { Trip } from '../types';
+import { Trip, SharedTripMetadata, UserTripRef } from '../types';
+import { cleanUndefined } from '../utils/cleanUndefined';
 
 // Collection paths
 const USERS_COLLECTION = 'users';
@@ -54,7 +60,7 @@ export const saveTrip = async (userId: string, trip: Trip): Promise<void> => {
   try {
     const tripRef = doc(db, USERS_COLLECTION, userId, TRIPS_SUBCOLLECTION, trip.id);
     await setDoc(tripRef, {
-      ...trip,
+      ...cleanUndefined(trip),
       updatedAt: Timestamp.now(),
     });
   } catch (error) {
@@ -105,15 +111,6 @@ export const userHasTrips = async (userId: string): Promise<boolean> => {
 
 // --- SHARING FUNCTIONS ---
 
-import {
-  getDoc,
-  updateDoc,
-  arrayUnion,
-  onSnapshot,
-  Unsubscribe
-} from 'firebase/firestore';
-import type { SharedTripMetadata, UserTripRef } from '../types';
-
 /**
  * Generate unique share ID
  */
@@ -160,7 +157,7 @@ export const createSharedTrip = async (
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       updatedBy: userId,
-      tripData: trip
+      tripData: cleanUndefined(trip)
     });
 
     // Add reference for user
@@ -222,7 +219,7 @@ export const updateSharedTrip = async (
   try {
     const tripRef = doc(db, 'shared-trips', shareId);
     await updateDoc(tripRef, {
-      tripData: trip,
+      tripData: cleanUndefined(trip),
       updatedAt: Timestamp.now(),
       updatedBy: userId
     });
