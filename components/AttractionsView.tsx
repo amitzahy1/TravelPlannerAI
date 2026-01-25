@@ -157,7 +157,13 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             const ai = getAI();
             const target = specificCity || trip.destinationEnglish || trip.destination;
             const prompt = `
-            Act as a Local Expert Guide for ${target}. Provide exactly 4 recommendations for each category.
+            Act as a Local Expert Guide for ${target} (and 30km radius surroundings).
+
+            **CORE SEARCH RULE:**
+            If the specific city/village ("${target}") is small, YOU MUST SEARCH WITHIN A 30KM RADIUS to find the best spots.
+            Do not return empty results unless the entire region is empty.
+
+            Provide exactly 4 recommendations for each category.
             
             **Categories (Hebrew Titles):**
             1. "אתרי חובה" (Must See)
