@@ -1,38 +1,48 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    
     // 1. Personal trips
     match /users/{userId}/trips/{tripId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    // 2. Shared Trips Collection (FIXED)
+    
+    // 2. Shared Trips Collection (FIXED & SEPARATED)
     match /shared-trips/{tripId} {
-      // Allow reading if you are the owner or a collaborator
+      // READ: Allow if you are the owner or a collaborator
       allow read: if request.auth != null && (
-        request.auth.uid == resource.data.owner ||
+        resource.data.owner == request.auth.uid ||
         request.auth.uid in resource.data.collaborators
       );
-      // Allow writing (Create & Update)
-      allow write: if request.auth != null && (
-        // Case 1: Creating a NEW document
-        (resource == null && request.resource.data.owner == request.auth.uid) ||
-        // Case 2: Updating an EXISTING document
-        (resource != null && (
-          request.auth.uid == resource.data.owner ||
-          request.auth.uid in resource.data.collaborators
-        ))
+      
+      // CREATE: Explicitly check for NEW document creation
+      // This runs when the document does NOT exist yet
+      allow create: if request.auth != null && 
+                    request.resource.data.owner == request.auth.uid;
+                    
+      // UPDATE: Explicitly check for EXISTING document update
+      // This runs when the document ALREADY exists
+      allow update: if request.auth != null && (
+        resource.data.owner == request.auth.uid ||
+        request.auth.uid in resource.data.collaborators
       );
-      // Only owner can delete
-      allow delete: if request.auth != null && request.auth.uid == resource.data.owner;
+      
+      // DELETE: Only owner can delete
+      allow delete: if request.auth != null && 
+                    resource.data.owner == request.auth.uid;
     }
+    
     // 3. Shared Trip References
     match /users/{userId}/shared-trip-refs/{refId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    
     // 4. AI Cache
     match /ai_cache/{hash} {
       allow read, write: if true;
     }
+
     // Default Deny
     match /{document=**} {
       allow read, write: if false;
