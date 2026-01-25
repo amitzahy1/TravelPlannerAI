@@ -22,6 +22,7 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const AppContent: React.FC = () => {
   const { user, signIn, loading: authLoading } = useAuth();
 
+  /* 
   useEffect(() => {
     if (CLIENT_ID && !authLoading) {
       const interval = setInterval(() => {
@@ -33,6 +34,7 @@ const AppContent: React.FC = () => {
       }, 500);
     }
   }, [authLoading]);
+  */
 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [activeTripId, setActiveTripId] = useState<string>('');

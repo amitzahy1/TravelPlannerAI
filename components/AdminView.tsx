@@ -482,31 +482,16 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
                                 </button>
                             </div>
 
-                            {/* Calendar Debug Section - Re-added for Fix */}
-                            <div className="pt-4 border-t border-slate-200 mt-2">
+                            {/* Calendar Debug Section - REMOVED for Security */}
+                            {/* <div className="pt-4 border-t border-slate-200 mt-2">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 block mb-2">פתרון תקלות</label>
                                 <button
-                                    onClick={async () => {
-                                        try {
-                                            const provider = new GoogleAuthProvider();
-                                            provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
-                                            provider.setCustomParameters({ prompt: 'select_account consent' });
-                                            await signInWithPopup(auth, provider).then(result => {
-                                                const credential = GoogleAuthProvider.credentialFromResult(result);
-                                                if (credential?.accessToken) {
-                                                    localStorage.setItem('google_access_token', credential.accessToken);
-                                                    alert("התחברת מחדש בהצלחה! נסה לסנכרן כעת.");
-                                                }
-                                            });
-                                        } catch (e: any) {
-                                            alert("שגיאה בהתחברות: " + e.message);
-                                        }
-                                    }}
-                                    className="w-full py-2 bg-yellow-50 border border-yellow-100 rounded-xl text-xs font-bold text-yellow-700 hover:bg-yellow-100 flex items-center justify-center gap-2"
+                                    onClick={() => alert("Calendar Sync is currently disabled for security.")}
+                                    className="w-full py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-400 cursor-not-allowed flex items-center justify-center gap-2"
                                 >
                                     <AlertTriangle className="w-3 h-3" /> תיקון חיבור ליומן
                                 </button>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
 
