@@ -42,6 +42,9 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
   try {
     const hasTrips = await userHasTrips(userId);
     if (!hasTrips) {
+      /* AUTO-MIGRATION DISABLED TO PREVENT ZOMBIE TRIPS
+         If the user has deleted all trips, we do NOT want to re-import from local storage.
+      
       // First time user - check if they have local data to migrate
       const localTrips = loadTripsFromLocal();
 
@@ -62,10 +65,10 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
           return userTrips;
         }
       }
+      */
 
-      // NEW USER: Return empty array, NOT initial data!
-      // This prevents data leak between users
-      console.log('✨ New user with no trips - starting fresh');
+      // NEW USER OR DELETED ALL TRIPS: Return empty array.
+      console.log('✨ User has no trips in DB (starting fresh)');
       return [];
     }
 
