@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Trip, Attraction, AttractionCategory } from '../types';
-import { MapPin, Ticket, Star, ExternalLink, Palmtree, ShoppingBag, Music, Landmark, Sparkles, Filter, StickyNote, Edit, Check, Plus, Loader2, BrainCircuit, RotateCw, Users, CheckCircle2, RefreshCw, Navigation, Calendar, Clock, Trash2, Baby, Search, X, List, Map as MapIcon, Trophy, Camera, Gem, Mountain, Award, LayoutGrid, Globe, ChevronLeft, DollarSign } from 'lucide-react';
+import { MapPin, Ticket, Star, Landmark, Sparkles, Filter, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid } from 'lucide-react';
 import { Type, Schema } from "@google/genai";
-import { getAI, AI_MODEL, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
+import { getAI, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
 import { ThinkingLoader } from './ThinkingLoader';
@@ -12,64 +12,43 @@ import { GlobalPlaceModal } from './GlobalPlaceModal';
 // Helper to remove Hebrew and special chars for Maps URL
 const cleanTextForMap = (text: string) => {
     if (!text) return "";
-    // Keep only English letters, numbers, and spaces
     return text.replace(/[^\x00-\x7F]/g, "").replace(/\s+/g, " ").trim();
 };
 
 // Enhanced Visuals with Gradients for Attractions
 const getAttractionVisuals = (type: string = '') => {
     const t = type.toLowerCase();
-
-    if (t.includes('must') || t.includes('top'))
-        return { icon: '🌟', gradient: 'bg-gradient-to-br from-purple-600 to-indigo-800 text-white', label: 'Must See' };
-
-    if (t.includes('nature') || t.includes('park') || t.includes('garden'))
-        return { icon: '🌿', gradient: 'bg-gradient-to-br from-emerald-500 to-green-700 text-white', label: 'Nature' };
-
-    if (t.includes('beach') || t.includes('island') || t.includes('sea'))
-        return { icon: '🏖️', gradient: 'bg-gradient-to-br from-cyan-400 to-blue-600 text-white', label: 'Beach & Sea' };
-
-    if (t.includes('museum') || t.includes('culture') || t.includes('history'))
-        return { icon: '🏛️', gradient: 'bg-gradient-to-br from-amber-600 to-orange-800 text-white', label: 'Culture' };
-
-    if (t.includes('shop') || t.includes('market') || t.includes('mall'))
-        return { icon: '🛍️', gradient: 'bg-gradient-to-br from-pink-500 to-rose-700 text-white', label: 'Shopping' };
-
-    if (t.includes('night') || t.includes('club') || t.includes('bar'))
-        return { icon: '🥂', gradient: 'bg-gradient-to-br from-slate-800 to-black text-white', label: 'Nightlife' };
-
-    if (t.includes('temple') || t.includes('religion'))
-        return { icon: '🙏', gradient: 'bg-gradient-to-br from-orange-500 to-amber-600 text-white', label: 'Temple' };
-
+    if (t.includes('must') || t.includes('top')) return { icon: '🌟', gradient: 'bg-gradient-to-br from-purple-600 to-indigo-800 text-white', label: 'Must See' };
+    if (t.includes('nature') || t.includes('park') || t.includes('garden')) return { icon: '🌿', gradient: 'bg-gradient-to-br from-emerald-500 to-green-700 text-white', label: 'Nature' };
+    if (t.includes('beach') || t.includes('island') || t.includes('sea')) return { icon: '🏖️', gradient: 'bg-gradient-to-br from-cyan-400 to-blue-600 text-white', label: 'Beach & Sea' };
+    if (t.includes('museum') || t.includes('culture') || t.includes('history')) return { icon: '🏛️', gradient: 'bg-gradient-to-br from-amber-600 to-orange-800 text-white', label: 'Culture' };
+    if (t.includes('shop') || t.includes('market') || t.includes('mall')) return { icon: '🛍️', gradient: 'bg-gradient-to-br from-pink-500 to-rose-700 text-white', label: 'Shopping' };
+    if (t.includes('night') || t.includes('club') || t.includes('bar')) return { icon: '🥂', gradient: 'bg-gradient-to-br from-slate-800 to-black text-white', label: 'Nightlife' };
+    if (t.includes('temple') || t.includes('religion')) return { icon: '⛩️', gradient: 'bg-gradient-to-br from-orange-500 to-amber-600 text-white', label: 'Temple' };
     return { icon: '🎫', gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white', label: 'Attraction' };
 };
 
 // Sort attractions: Favorites first, then Rating
 const sortAttractions = (list: Attraction[]) => {
     return list.sort((a, b) => {
-        // 1. Favorites First
         if (a.isFavorite && !b.isFavorite) return -1;
         if (!a.isFavorite && b.isFavorite) return 1;
-
-        // 2. Rating Second
         return (b.rating || 0) - (a.rating || 0);
     });
 };
 
-// Redesigned Card - Clean Google Style
 const AttractionRecommendationCard: React.FC<{
+    rec: any,
+    tripDestination: string,
     tripDestinationEnglish?: string,
     isAdded: boolean,
-    onAdd: (rec: any, source: string) => void,
+    onAdd: (rec: any, cat: string) => void,
     onClick: () => void
 }> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick }) => {
-
-    // Strict English-Only Maps Query
     const nameForMap = cleanTextForMap(rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
     const mapsQuery = encodeURIComponent(`${nameForMap} ${locationForMap}`);
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
-
     const visuals = getAttractionVisuals(rec.type);
 
     return (
@@ -85,7 +64,7 @@ const AttractionRecommendationCard: React.FC<{
             visualBgColor="bg-slate-50 group-hover:bg-slate-100"
             mapsUrl={mapsUrl}
             isAdded={isAdded}
-            onAdd={() => onAdd(rec, 'AI')}
+            onAdd={() => onAdd(rec, rec.categoryTitle || 'תכנון טיול')}
             onClick={onClick}
             recommendationSource={rec.recommendationSource}
             verification_needed={rec.verification_needed}
@@ -96,17 +75,12 @@ const AttractionRecommendationCard: React.FC<{
 export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
     const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>('my_list');
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-
-    // AI & Data State
     const [aiCategories, setAiCategories] = useState<AttractionCategory[]>(trip.aiAttractions || []);
     const [loadingRecs, setLoadingRecs] = useState(false);
     const [recError, setRecError] = useState('');
-    // showCitySelector removed
-
-    // UX State
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedRater, setSelectedRater] = useState<string>('all');
-
+    const [selectedCity, setSelectedCity] = useState<string>('all');
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
     const [textQuery, setTextQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
@@ -115,34 +89,22 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const attractionsData = trip.attractions || [];
 
-    // Persistence Sync
     useEffect(() => {
-        if (trip.aiAttractions && trip.aiAttractions.length > 0) {
-            setAiCategories(trip.aiAttractions);
-        }
+        if (trip.aiAttractions && trip.aiAttractions.length > 0) setAiCategories(trip.aiAttractions);
     }, [trip.aiAttractions]);
 
     const tripCities = useMemo(() => {
         if (!trip.destination) return [];
-        // Split by hyphen, ampersand, or comma
         return trip.destination.split(/ - | & |, /).map(s => s.trim()).filter(Boolean);
     }, [trip.destination]);
 
-    // --- Search Logic (gemini-3-flash-preview) ---
     const handleTextSearch = async () => {
         if (!textQuery.trim()) return;
         setIsSearching(true);
         setSearchResults(null);
-
         try {
             const ai = getAI();
-            const prompt = `${SYSTEM_PROMPT}
-
-Search for attractions in ${trip.destination} matching: "${textQuery}".
-Prioritize results from Google Maps Top Rated, TripAdvisor "Travelers' Choice" or UNESCO lists.
-Try to include a price estimate if possible.
-CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
-
+            const prompt = `${SYSTEM_PROMPT} Search for attractions in ${trip.destination} matching: "${textQuery}". CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
             const schema: Schema = {
                 type: Type.OBJECT,
                 properties: {
@@ -168,86 +130,30 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                     }
                 }
             };
-
             const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SMART');
-
-            const textContent = typeof response.text === 'function' ? response.text() : response.text;
-            try {
-                const data = JSON.parse(textContent || '{}');
-                if (data.results) {
-                    // Filter out closed businesses
-                    const validResults = data.results
-                        .filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL')
-                        .map((r: any, i: number) => ({ ...r, id: `search-attr-${i}`, categoryTitle: 'תוצאות חיפוש' }));
-                    setSearchResults(validResults);
-
-                    // Log filtered count
-                    const filtered = data.results.length - validResults.length;
-                    if (filtered > 0) {
-                        console.log(`✅ Filtered ${filtered} closed attraction(s) from search results`);
-                    }
-
-                    // Save custom category (Task 3)
-                    if (textQuery.trim() && validResults.length > 0) {
-                        const currentCategories = trip.customAttractionCategories || [];
-                        if (!currentCategories.includes(textQuery.trim())) {
-                            onUpdateTrip({
-                                ...trip,
-                                customAttractionCategories: [...currentCategories, textQuery.trim()]
-                            });
-                        }
-                    }
+            const data = JSON.parse(typeof response.text === 'function' ? response.text() : response.text || '{}');
+            if (data.results) {
+                const valid = data.results.filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search-attr-${i}`, categoryTitle: 'תוצאות חיפוש' }));
+                setSearchResults(valid);
+                if (textQuery.trim()) {
+                    const current = trip.customAttractionCategories || [];
+                    if (!current.includes(textQuery.trim())) onUpdateTrip({ ...trip, customAttractionCategories: [...current, textQuery.trim()] });
                 }
-            } catch (parseError: any) {
-                console.error('❌ AI Error: JSON Parse failed in handleTextSearch. Raw response:', textContent?.substring(0, 500));
-                alert('שגיאה בפרסור התוצאות. אנא נסה שנית.');
             }
-        } catch (e) {
-            console.error(e);
-            alert('חיפוש נכשל.');
-        } finally {
-            setIsSearching(false);
-        }
+        } catch (e) { console.error(e); } finally { setIsSearching(false); }
     };
 
     const clearSearch = () => { setTextQuery(''); setSearchResults(null); };
 
-    // --- Market Research Logic (gemini-3-flash-preview) ---
-    const initiateResearch = (city?: string) => {
-        fetchRecommendations(true, city || trip.destinationEnglish || tripCities[0]);
-    };
+    const initiateResearch = (city?: string) => fetchRecommendations(true, city || trip.destinationEnglish || tripCities[0]);
 
     const fetchRecommendations = async (forceRefresh = false, specificCity?: string) => {
-        if (!forceRefresh && !specificCity && trip.aiAttractions && trip.aiAttractions.length > 0) {
-            setAiCategories(trip.aiAttractions);
-            return;
-        }
         setLoadingRecs(true);
         setRecError('');
         try {
             const ai = getAI();
-            const targetLocation = specificCity || trip.destinationEnglish || trip.destination;
-
-            const prompt = `
-            Act as a Luxury Travel Concierge for ${targetLocation}.
-            Provide a structured guide with 6 categories.
-            For each category, provide exactly 4 items.
-
-            Categories (Hebrew Titles):
-            1. "אתרי חובה" (Must See)
-            2. "פנינים נסתרות" (Hidden Gems)
-            3. "מוזיאונים ותרבות" (Museums)
-            4. "טבע ונופים" (Nature)
-            5. "קניות ושווקים" (Shopping)
-            6. "חיי לילה" (Nightlife)
-
-            **CRITICAL RULES:**
-            1. **NAME:** Must be the REAL English name of the place (e.g. "Grand Palace", "Wat Arun").
-            2. **DESCRIPTION:** Must be in HEBREW. Very short (max 10 words).
-            3. **SOURCES:** "UNESCO", "TripAdvisor Choice", "Lonely Planet", "Atlas Obscura", "Local Secret".
-            4. **PRICE:** include estimate (e.g. "Free", "500 THB").
-            `;
-
+            const target = specificCity || trip.destinationEnglish || trip.destination;
+            const prompt = `Act as a Luxury Travel Concierge for ${target}. Provide guide with 6 categories (Hebrew Titles). Each 4 items. 'Grand Palace', 'Wat Arun'. Hebrew Description (10 words). Must See, Hidden Gems, Museums, Nature, Shopping, Nightlife.`;
             const schema: Schema = {
                 type: Type.OBJECT,
                 properties: {
@@ -262,16 +168,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                     type: Type.ARRAY,
                                     items: {
                                         type: Type.OBJECT,
-                                        properties: {
-                                            name: { type: Type.STRING },
-                                            description: { type: Type.STRING },
-                                            location: { type: Type.STRING },
-                                            rating: { type: Type.NUMBER },
-                                            type: { type: Type.STRING },
-                                            price: { type: Type.STRING },
-                                            recommendationSource: { type: Type.STRING },
-                                            googleMapsUrl: { type: Type.STRING }
-                                        },
+                                        properties: { name: { type: Type.STRING }, description: { type: Type.STRING }, location: { type: Type.STRING }, rating: { type: Type.NUMBER }, type: { type: Type.STRING }, price: { type: Type.STRING }, recommendationSource: { type: Type.STRING } },
                                         required: ["name", "description", "location", "recommendationSource"]
                                     }
                                 }
@@ -281,380 +178,152 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                     }
                 }
             };
-
             const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SMART');
-
-            const textContent = typeof response.text === 'function' ? response.text() : response.text;
-            try {
-                const data = JSON.parse(textContent || '{}');
-                if (data.categories) {
-                    const processed = data.categories.map((c: any) => ({
-                        ...c,
-                        attractions: c.attractions.map((a: any, i: number) => ({
-                            ...a,
-                            id: `ai - attr - ${c.id} -${i} `,
-                            categoryTitle: c.title // INJECT TITLE HERE
-                        }))
-                    }));
-                    setAiCategories(processed);
-                    setSelectedCategory('all');
-                    onUpdateTrip({ ...trip, aiAttractions: processed });
-                }
-            } catch (parseError: any) {
-                console.error('❌ AI Error: JSON Parse failed in fetchRecommendations. Raw response:', textContent?.substring(0, 500));
-                setRecError('שגיאה בפרסור התוצאות. אנא נסה שנית.');
+            const data = JSON.parse(typeof response.text === 'function' ? response.text() : response.text || '{}');
+            if (data.categories) {
+                const processed = data.categories.map((c: any) => ({ ...c, attractions: c.attractions.map((a: any, i: number) => ({ ...a, id: `ai-attr-${c.id}-${i}`, categoryTitle: c.title })) }));
+                setAiCategories(processed);
+                setSelectedCategory('all');
+                onUpdateTrip({ ...trip, aiAttractions: processed });
             }
-        } catch (e: any) {
-            console.error(e);
-            const errMsg = e.message.includes("500") || e.message.includes("xhr")
-                ? "שגיאת תקשורת זמנית. אנא נסה שוב."
-                : `שגיאה בטעינה: ${e.message} `;
-            setRecError(errMsg);
-        } finally { setLoadingRecs(false); }
+        } catch (e: any) { setRecError(e.message); } finally { setLoadingRecs(false); }
     };
 
-    // Helper to map AI type to Hebrew Category
-    const mapTypeToCategoryTitle = (type?: string, defaultTitle?: string) => {
-        const t = (type || '').toLowerCase();
-        if (t.includes('nature') || t.includes('park') || t.includes('beach')) return "טבע ונופים";
-        if (t.includes('museum') || t.includes('culture') || t.includes('history')) return "מוזיאונים ותרבות";
-        if (t.includes('shop') || t.includes('market') || t.includes('mall')) return "קניות ושווקים";
-        if (t.includes('night') || t.includes('bar') || t.includes('club')) return "חיי לילה";
-        if (t.includes('gem') || t.includes('hidden')) return "פנינים נסתרות";
-        return defaultTitle || "כללי";
-    };
-
-    const handleAddRec = (attraction: Attraction, catTitle: string) => {
+    const handleToggleRec = (attraction: Attraction, catTitle: string) => {
         let newAttractions = [...attractionsData];
-
-        // Use passed catTitle if available (Fix Bug 2)
-        const smartCategory = catTitle || mapTypeToCategoryTitle(attraction.type, catTitle);
-
-        let targetCatIndex = newAttractions.findIndex(c => c.title === smartCategory);
-        if (targetCatIndex === -1) {
-            newAttractions.push({ id: `cat - attr - ${Date.now()} `, title: smartCategory, attractions: [] });
-            targetCatIndex = newAttractions.length - 1;
+        let existingCatIndex = -1;
+        let existingAttrIndex = -1;
+        for (let i = 0; i < newAttractions.length; i++) {
+            const found = newAttractions[i].attractions.findIndex(a => a.name === attraction.name);
+            if (found !== -1) { existingCatIndex = i; existingAttrIndex = found; break; }
         }
-
-        const exists = newAttractions[targetCatIndex].attractions.some(a => a.name === attraction.name);
-        if (!exists) {
-            newAttractions[targetCatIndex].attractions.push({ ...attraction, id: `added - ${Date.now()} ` });
-            onUpdateTrip({ ...trip, attractions: newAttractions });
-            setAddedIds(prev => new Set(prev).add(attraction.id));
-            setTimeout(() => { setAddedIds(prev => { const next = new Set(prev); next.delete(attraction.id); return next; }); }, 2000);
+        if (existingCatIndex !== -1) {
+            newAttractions[existingCatIndex].attractions.splice(existingAttrIndex, 1);
+            if (newAttractions[existingCatIndex].attractions.length === 0) newAttractions.splice(existingCatIndex, 1);
+        } else {
+            const region = attraction.location?.split(',')[0] || 'Unknown City';
+            let targetIdx = newAttractions.findIndex(c => c.title === catTitle);
+            if (targetIdx === -1) { newAttractions.push({ id: `cat-attr-${Date.now()}`, title: catTitle, attractions: [] }); targetIdx = newAttractions.length - 1; }
+            newAttractions[targetIdx].attractions.push({ ...attraction, id: `added-${Date.now()}`, region: region });
         }
+        onUpdateTrip({ ...trip, attractions: newAttractions });
+        setAddedIds(prev => { const next = new Set(prev); if (existingCatIndex !== -1) next.delete(attraction.id); else next.add(attraction.id); return next; });
     };
 
-    const currentCategoryAttractions = useMemo(() => {
+    const filteredRecommendations = useMemo(() => {
         let list: any[] = [];
-        if (selectedCategory === 'all') {
-            // Include categoryTitle when flattening
-            aiCategories.forEach(c => list.push(...c.attractions.map(a => ({ ...a, categoryTitle: c.title }))));
-        } else {
-            const cat = aiCategories.find(c => c.id === selectedCategory);
-            list = cat ? cat.attractions.map(a => ({ ...a, categoryTitle: cat.title })) : [];
-        }
-
-        if (selectedRater !== 'all') {
-            list = list.filter(a => a.recommendationSource === selectedRater);
-        }
+        if (selectedCategory === 'all') aiCategories.forEach(c => list.push(...c.attractions.map(a => ({ ...a, categoryTitle: c.title }))));
+        else { const cat = aiCategories.find(c => c.id === selectedCategory); if (cat) list = cat.attractions.map(a => ({ ...a, categoryTitle: cat.title })); }
+        if (selectedCity !== 'all') list = list.filter(a => (a.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
+        if (selectedRater !== 'all') list = list.filter(a => a.recommendationSource === selectedRater);
         return list;
-    }, [aiCategories, selectedCategory, selectedRater]);
+    }, [aiCategories, selectedCategory, selectedRater, selectedCity]);
+
+    const groupedMyList = useMemo(() => {
+        const flat: Attraction[] = [];
+        attractionsData.forEach(c => c.attractions.forEach(a => flat.push(a)));
+        let filtered = flat;
+        if (selectedCity !== 'all') filtered = flat.filter(a => (a.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
+        const groups: Record<string, Attraction[]> = {};
+        filtered.forEach(a => { const city = a.location?.split(',')[0] || 'General'; if (!groups[city]) groups[city] = []; groups[city].push(a); });
+        Object.keys(groups).forEach(city => groups[city] = sortAttractions(groups[city]));
+        return groups;
+    }, [attractionsData, selectedCity]);
+
+    const handleUpdateAttraction = (id: string, updates: Partial<Attraction>) => {
+        const updated = attractionsData.map(c => ({ ...c, attractions: c.attractions.map(a => a.id === id ? { ...a, ...updates } : a) }));
+        onUpdateTrip({ ...trip, attractions: updated });
+    };
+
+    const handleDeleteAttraction = (id: string) => {
+        if (window.confirm("להסיר?")) {
+            const updated = attractionsData.map(c => ({ ...c, attractions: c.attractions.filter(a => a.id !== id) })).filter(c => c.attractions.length > 0);
+            onUpdateTrip({ ...trip, attractions: updated });
+        }
+    };
 
     const availableRaters = useMemo(() => {
         const sources = new Set<string>();
-        aiCategories.forEach(c => c.attractions.forEach(a => {
-            if (a.recommendationSource) sources.add(a.recommendationSource);
-        }));
+        aiCategories.forEach(c => c.attractions.forEach(a => a.recommendationSource && sources.add(a.recommendationSource)));
         return Array.from(sources).sort();
     }, [aiCategories]);
 
-    // My List Filtering & Sorting (Favorites First)
-    const [mySelectedCategory, setMySelectedCategory] = useState<string>('all');
-    const filteredMyList = useMemo(() => {
-        if (mySelectedCategory === 'all') {
-            // Sort all categories content
-            return attractionsData.map(cat => ({
-                ...cat,
-                attractions: sortAttractions([...cat.attractions])
-            })).filter(c => c.attractions.length > 0);
-        }
-        // Sort specific category content
-        return attractionsData
-            .filter(c => c.title === mySelectedCategory)
-            .map(cat => ({
-                ...cat,
-                attractions: sortAttractions([...cat.attractions])
-            }));
-    }, [attractionsData, mySelectedCategory]);
-
-    const handleUpdateAttraction = (attractionId: string, updates: Partial<Attraction>) => {
-        const updatedAttractions = attractionsData.map(cat => ({ ...cat, attractions: cat.attractions.map(attr => attr.id === attractionId ? { ...attr, ...updates } : attr) }));
-        onUpdateTrip({ ...trip, attractions: updatedAttractions });
-    };
-
-    const handleDeleteAttraction = (attractionId: string) => {
-        if (window.confirm("להסיר?")) {
-            const updatedAttractions = attractionsData.map(cat => ({ ...cat, attractions: cat.attractions.filter(a => a.id !== attractionId) })).filter(cat => cat.attractions.length > 0);
-            onUpdateTrip({ ...trip, attractions: updatedAttractions });
-        }
-    };
-
     const getMapItems = () => {
         const items: any[] = [];
-        if (activeTab === 'my_list') {
-            attractionsData.forEach(cat => cat.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: a.description })));
-        } else {
-            aiCategories.forEach(cat => cat.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: `${a.rating}⭐` })));
-        }
+        if (activeTab === 'my_list') attractionsData.forEach(c => c.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: a.description })));
+        else aiCategories.forEach(c => c.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: `${a.rating}⭐` })));
         return items;
     };
 
     return (
         <div className="space-y-4 animate-fade-in pb-10">
-
-            {/* Search Bar */}
             <div className="relative z-20">
                 <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
                     <Search className="w-5 h-5 text-slate-400 mr-2" />
-                    <input className="flex-grow outline-none text-slate-700 font-medium text-sm" placeholder='חפש אטרקציה (כולל גוגל מפות ודירוגים)...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
-                    {textQuery && (<button onClick={clearSearch} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-4 h-4" /></button>)}
+                    <input className="flex-grow outline-none text-slate-700 font-medium text-sm" placeholder='חפש אטרקציה...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
+                    {textQuery && <button onClick={clearSearch} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-4 h-4" /></button>}
                     <button onClick={handleTextSearch} disabled={isSearching || !textQuery.trim()} className="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50">{isSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{isSearching ? '...' : 'חיפוש'}</button>
                 </div>
-
-                {/* Custom Category Chips (Task 3) */}
                 {trip.customAttractionCategories && trip.customAttractionCategories.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
-                        <span className="text-xs font-bold text-slate-400 self-center">חיפושים שמורים:</span>
-                        {trip.customAttractionCategories.map((category, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => {
-                                    setTextQuery(category);
-                                    handleTextSearch();
-                                }}
-                                className="group flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded-full text-xs font-bold border border-slate-200 transition-all hover:shadow-sm hover:border-purple-200"
-                            >
-                                <Sparkles className="w-3 h-3 text-purple-400" />
-                                {category}
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        const updated = trip.customAttractionCategories?.filter((_, i) => i !== idx);
-                                        onUpdateTrip({ ...trip, customAttractionCategories: updated });
-                                    }}
-                                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-purple-100 rounded-full transition-all text-purple-400"
-                                >
-                                    <X className="w-3 h-3" />
-                                </button>
-                            </button>
+                        {trip.customAttractionCategories.map((cat, idx) => (
+                            <button key={idx} onClick={() => { setTextQuery(cat); handleTextSearch(); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-purple-50 text-slate-600 rounded-full text-xs font-bold border border-slate-200">{cat}</button>
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Search Results */}
             {searchResults && (
                 <div className="space-y-3 animate-fade-in">
-                    <div className="flex justify-between items-center"><h3 className="text-lg font-black text-slate-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-xs text-slate-500 hover:text-red-500 underline">נקה</button></div>
+                    <div className="flex justify-between items-center"><h3 className="text-lg font-black text-slate-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-xs text-slate-500 underline">נקה</button></div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {searchResults.map(res => (
-                            <AttractionRecommendationCard
-                                key={res.id}
-                                rec={res}
-                                tripDestination={trip.destination}
-                                tripDestinationEnglish={trip.destinationEnglish}
-                                isAdded={addedIds.has(res.id)}
-                                onAdd={(r) => handleAddRec(r, (r as any).categoryTitle || 'תוצאות חיפוש')}
-                                onClick={() => setSelectedPlace(res)}
-                            />
-                        ))}
+                        {searchResults.map(res => <AttractionRecommendationCard key={res.id} rec={res} tripDestination={trip.destination} isAdded={addedIds.has(res.id) || trip.attractions.some(c => c.attractions.some(a => a.name === res.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(res)} />)}
                     </div>
-                    <div className="border-b border-slate-200 my-4"></div>
                 </div>
             )}
 
-            {/* Tabs */}
-            {/* Tabs */}
-            <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-4">
-                <button
-                    onClick={() => setActiveTab('my_list')}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <Ticket className={`w-4 h-4 ${activeTab === 'my_list' ? 'text-purple-600' : 'text-slate-400'}`} />
-                    האטרקציות שלי
-                </button>
-                <button
-                    onClick={() => setActiveTab('recommended')}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <Sparkles className={`w-4 h-4 ${activeTab === 'recommended' ? 'text-purple-500' : 'text-slate-400'}`} />
-                    המלצות TOP (AI)
-                </button>
+            <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-2">
+                <button onClick={() => setActiveTab('my_list')} className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
+                <button onClick={() => setActiveTab('recommended')} className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
             </div>
 
-            {viewMode === 'map' ? (
-                <div className="space-y-3">
-                    <div className="flex justify-end"><button onClick={() => setViewMode('list')} className="px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold text-xs bg-slate-100 text-slate-900 transition-all hover:bg-slate-200"><List className="w-3 h-3" /> חזרה לרשימה</button></div>
-                    <UnifiedMapView items={getMapItems()} title={activeTab === 'my_list' ? `מפת האטרקציות שלי` : 'מפת המלצות'} />
+            {tripCities.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button onClick={() => setSelectedCity('all')} className={`px-4 py-2 rounded-full text-xs font-black border ${selectedCity === 'all' ? 'bg-slate-900 text-white' : 'bg-white text-slate-500'}`}>כל הערים</button>
+                    {tripCities.map(city => <button key={city} onClick={() => setSelectedCity(city)} className={`px-4 py-2 rounded-full text-xs font-black border ${selectedCity === city ? 'bg-slate-900 text-white' : 'bg-white text-slate-500'}`}>{city}</button>)}
                 </div>
+            )}
+
+            {viewMode === 'map' ? (
+                <UnifiedMapView items={getMapItems()} title="מפה" />
             ) : (
                 <>
                     {activeTab === 'my_list' ? (
-                        <>
-                            <div className="flex justify-end"><button onClick={() => setViewMode('map')} className="px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold text-xs bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 transition-all shadow-sm"><MapIcon className="w-3 h-3" /> מפה</button></div>
-
-                            {/* My List Filters */}
-                            <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
-                                <div className="flex gap-2">
-                                    <button onClick={() => setMySelectedCategory('all')} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === 'all' ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'} `}>הכל</button>
-                                    {attractionsData.map(cat => (
-                                        <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'} `}>{cat.title}</button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Results */}
-                            {filteredMyList.length > 0 ? (
-                                <div className="space-y-4 mt-2">
-                                    {filteredMyList.map((category) => (
-                                        <div key={category.id} className="animate-fade-in">
-                                            <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center justify-between">{category.title}<span className="text-[10px] font-normal bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">{category.attractions.length}</span></h3>
-                                            <div className="flex flex-col gap-2">
-                                                {[...category.attractions].map((attr) => (
-                                                    <AttractionRow key={attr.id} data={attr} onSaveNote={(note) => handleUpdateAttraction(attr.id, { notes: note })} onUpdate={(updates) => handleUpdateAttraction(attr.id, updates)} onDelete={() => handleDeleteAttraction(attr.id)} />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-10 bg-white rounded-xl border border-dashed border-slate-300 mt-4 flex flex-col items-center justify-center">
-                                    <Ticket className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                                    <p className="text-slate-500 text-sm font-bold mb-4">לא נמצאו אטרקציות ברשימה שלך.</p>
-                                    <button onClick={() => { setActiveTab('recommended'); initiateResearch(); }} className="bg-purple-600 text-white px-6 py-2 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors shadow-lg flex items-center gap-2">
-                                        <Sparkles className="w-4 h-4" /> קבל המלצות AI עכשim
-                                    </button>
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        /* Recommended Tab */
-                        <div className="animate-fade-in">
-                            {!loadingRecs && aiCategories.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                                    <div className="bg-purple-100 p-4 rounded-full"><Navigation className="w-8 h-8 text-purple-600" /></div>
-                                    <h3 className="text-xl font-black text-slate-800">
-                                        {tripCities.length > 1 ? 'באיזו עיר נתמקד?' : 'בחר עיר לחיפוש'}
-                                    </h3>
-
-                                    {tripCities.length > 1 ? (
-                                        <div className="flex flex-wrap justify-center gap-3 max-w-md">
-                                            {tripCities.map(city => (
-                                                <button
-                                                    key={city}
-                                                    onClick={() => initiateResearch(city)}
-                                                    className="bg-white border-2 border-slate-100 text-slate-700 px-6 py-2 rounded-xl text-sm font-bold shadow-sm hover:border-purple-500 hover:text-purple-600 hover:bg-purple-50 transition-all"
-                                                >
-                                                    {city}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <button onClick={() => initiateResearch()} className="bg-white border-2 border-purple-500 text-purple-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-purple-50 transition-all">
-                                            {trip.destination} - בצע מחקר שוק
-                                        </button>
-                                    )}
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="bg-white border border-slate-100 p-4 rounded-2xl mb-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3"><div className="bg-purple-50 p-2 rounded-full"><BrainCircuit className="w-5 h-5 text-purple-600" /></div><div><h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Market Research</h3><p className="font-black text-lg text-slate-800">המלצות AI: Travelers' Choice</p></div></div>
-
-                                        {!loadingRecs && (
-                                            <div className="flex items-center gap-2">
-                                                {tripCities.length > 1 && (
-                                                    <div className="flex gap-2 bg-white/50 p-1.5 rounded-xl">
-                                                        {tripCities.map(city => (
-                                                            <button
-                                                                key={city}
-                                                                onClick={() => initiateResearch(city)}
-                                                                className="text-sm font-bold px-3 py-1.5 rounded-lg hover:bg-white hover:shadow-sm text-purple-900 transition-all opacity-80 hover:opacity-100"
-                                                            >
-                                                                {city}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                <button onClick={() => initiateResearch()} className="text-[10px] font-bold text-slate-500 hover:text-purple-600 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg hover:bg-purple-50 flex items-center gap-1 transition-colors"><RotateCw className="w-3 h-3" /> רענן</button>
-                                            </div>
-                                        )}
+                        <div className="space-y-8 mt-4">
+                            {Object.entries(groupedMyList).map(([city, items]) => (
+                                <div key={city} className="animate-fade-in">
+                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-3"><div className="h-px bg-slate-200 flex-grow"></div>{city}<div className="h-px bg-slate-200 flex-grow"></div></h3>
+                                    <div className="flex flex-col gap-3">
+                                        {items.map(attr => <AttractionRow key={attr.id} data={attr} onSaveNote={(n) => handleUpdateAttraction(attr.id, { notes: n })} onUpdate={(u) => handleUpdateAttraction(attr.id, u)} onDelete={() => handleDeleteAttraction(attr.id)} />)}
                                     </div>
-
-                                    {loadingRecs ? (
-                                        <ThinkingLoader texts={[
-                                            "סורק אתרי תיירות...",
-                                            "בודק בגוגל מפות...",
-                                            "קורא בלוגים מקומיים...",
-                                            "מחפש המלצות אותנטיות...",
-                                            "ממיין לפי דירוג..."
-                                        ]} />
-                                    ) : recError ? (<div className="text-center text-red-500 text-sm font-bold py-4">{recError}</div>) : (
-                                        <>
-                                            {/* 1. Category Filter */}
-                                            <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
-                                                <div className="flex gap-2 p-1">
-                                                    <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1 ${selectedCategory === 'all' ? 'bg-purple-800 text-white border-purple-800 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}><LayoutGrid className="w-3 h-3" /> הכל</button>
-                                                    {aiCategories.map(cat => (
-                                                        <button
-                                                            key={cat.id}
-                                                            onClick={() => setSelectedCategory(cat.id)}
-                                                            className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedCategory === cat.id ? 'bg-purple-800 text-white border-purple-800 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}
-                                                        >
-                                                            {cat.title}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* 2. Rater Filter */}
-                                            <div className="mb-4 overflow-x-auto pb-2 scrollbar-hide">
-                                                <div className="flex gap-2 items-center">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">הומלץ ע"י:</span>
-                                                    <button onClick={() => setSelectedRater('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedRater === 'all' ? 'bg-purple-800 text-white border-purple-800 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}>הכל</button>
-                                                    {availableRaters.map(rater => (
-                                                        <button
-                                                            key={rater}
-                                                            onClick={() => setSelectedRater(rater)}
-                                                            className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedRater === rater ? 'bg-purple-800 text-white border-purple-800 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}
-                                                        >
-                                                            {rater}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                                {currentCategoryAttractions.map(rec => (
-                                                    <AttractionRecommendationCard
-                                                        key={rec.id}
-                                                        rec={rec}
-                                                        tripDestination={trip.destination}
-                                                        tripDestinationEnglish={trip.destinationEnglish}
-                                                        isAdded={addedIds.has(rec.id)}
-                                                        onAdd={(r) => handleAddRec(r, (r as any).categoryTitle || 'תכנון טיול')}
-                                                        onClick={() => setSelectedPlace(rec)}
-                                                    />
-                                                ))}
-                                            </div>
-
-                                            {currentCategoryAttractions.length === 0 && (
-                                                <div className="text-center py-10 col-span-full">
-                                                    <p className="text-slate-400 font-bold">אין תוצאות בקטגוריה זו.</p>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="animate-fade-in">
+                            {loadingRecs ? <ThinkingLoader texts={["סורק אטרקציות..."]} /> : (
+                                <>
+                                    <div className="mb-2 overflow-x-auto pb-2"><div className="flex gap-2">
+                                        <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === 'all' ? 'bg-purple-800 text-white' : 'bg-white'}`}>הכל</button>
+                                        {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-purple-800 text-white' : 'bg-white'}`}>{c.title}</button>)}
+                                    </div></div>
+                                    <div className="mb-4 overflow-x-auto pb-2 flex gap-2 items-center"><span className="text-[10px] font-bold text-slate-400">הומלץ ע"י:</span>
+                                        <button onClick={() => setSelectedRater('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === 'all' ? 'bg-purple-800 text-white' : 'bg-white'}`}>הכל</button>
+                                        {availableRaters.map(r => <button key={r} onClick={() => setSelectedRater(r)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === r ? 'bg-purple-800 text-white' : 'bg-white'}`}>{r}</button>)}
+                                    </div>
+                                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                                        {filteredRecommendations.map(rec => <AttractionRecommendationCard key={rec.id} rec={rec} tripDestination={trip.destination} isAdded={addedIds.has(rec.id) || trip.attractions.some(c => c.attractions.some(a => a.name === rec.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(rec)} />)}
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -662,18 +331,13 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                 </>
             )}
 
-            {/* City Selector Modal Removed */}
-
-            {/* Global Place Modal for Drill-down */}
             {selectedPlace && (
                 <GlobalPlaceModal
                     item={selectedPlace}
                     type="attraction"
                     onClose={() => setSelectedPlace(null)}
-                    onAddToPlan={() => {
-                        handleAddRec(selectedPlace, (selectedPlace as any).categoryTitle || 'תכנון טיול');
-                        setSelectedPlace(null);
-                    }}
+                    isAdded={trip.attractions.some(c => c.attractions.some(a => a.name === (selectedPlace as any).name))}
+                    onAddToPlan={() => handleToggleRec(selectedPlace, (selectedPlace as any).categoryTitle || 'תכנון טיול')}
                 />
             )}
         </div>
@@ -681,124 +345,80 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
 };
 
 const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Attraction>) => void, onDelete: () => void }> = ({ data, onSaveNote, onUpdate, onDelete }) => {
-    // ... reused code
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
     const [isScheduling, setIsScheduling] = useState(false);
-    const [scheduleDate, setScheduleDate] = useState('');
-    const [scheduleTime, setScheduleTime] = useState('');
-    const toInputDate = (d?: string) => d ? d.split('/').reverse().join('-') : '';
-    const fromInputDate = (d: string) => d.split('-').reverse().join('/');
-    useEffect(() => { if (data.scheduledDate) setScheduleDate(toInputDate(data.scheduledDate)); if (data.scheduledTime) setScheduleTime(data.scheduledTime); }, [data.scheduledDate, data.scheduledTime]);
-    const handleSaveSchedule = () => { onUpdate({ scheduledDate: fromInputDate(scheduleDate), scheduledTime: scheduleTime }); setIsScheduling(false); };
+    const [scheduleTime, setScheduleTime] = useState(data.scheduledTime || '');
+
+    // Internal visibility for date picker
+    const [showDatePicker, setShowDatePicker] = useState(false);
+
+    const handleSaveSchedule = () => { onUpdate({ scheduledTime }); setIsScheduling(false); };
     const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
-    const toggleFavorite = () => { onUpdate({ isFavorite: !data.isFavorite }); };
+    const toggleFavorite = () => onUpdate({ isFavorite: !data.isFavorite });
 
-    // Clean maps link
-    const nameForMap = cleanTextForMap(data.name);
-    const locationForMap = cleanTextForMap(data.location);
-    const mapsQuery = encodeURIComponent(`${nameForMap} ${locationForMap} `);
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.name + ' ' + (data.location || ''))}`;
 
-    // Fix: Defined getTypeIcon
     const getTypeIcon = () => {
         const text = (data.name + ' ' + (data.description || '')).toLowerCase();
-        if (text.includes('museum') || text.includes('art') || text.includes('gallery')) return <Landmark className="w-5 h-5 text-amber-600" />;
-        if (text.includes('nature') || text.includes('park') || text.includes('garden')) return <Mountain className="w-5 h-5 text-emerald-600" />;
-        if (text.includes('beach') || text.includes('sea') || text.includes('island')) return <Palmtree className="w-5 h-5 text-cyan-600" />;
-        if (text.includes('shop') || text.includes('mall') || text.includes('market')) return <ShoppingBag className="w-5 h-5 text-pink-600" />;
+        if (text.includes('museum') || text.includes('art')) return <Landmark className="w-5 h-5 text-amber-600" />;
+        if (text.includes('nature') || text.includes('park')) return <Mountain className="w-5 h-5 text-emerald-600" />;
+        if (text.includes('beach') || text.includes('sea')) return <Palmtree className="w-5 h-5 text-cyan-600" />;
+        if (text.includes('shop') || text.includes('mall')) return <ShoppingBag className="w-5 h-5 text-pink-600" />;
         return <Ticket className="w-5 h-5 text-purple-600" />;
     };
 
     return (
-        <div className={`bg-white rounded-xl border p-3 hover:shadow-md transition-all group flex flex-col md:flex-row gap-3 relative overflow-hidden ${data.isFavorite ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-gray-100'}`}>
-            <div className="flex-shrink-0 flex items-center gap-3 md:block">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm bg-gray-50 text-gray-500 ring-1 ring-gray-100">{getTypeIcon()}</div>
-                <div className="md:hidden font-bold text-gray-900" dir="ltr">{data.name}</div>
-            </div>
-            <div className="flex-grow min-w-0">
+        <div className={`bg-white rounded-xl border p-3 hover:shadow-md transition-all flex flex-col md:flex-row gap-3 relative overflow-hidden ${data.isFavorite ? 'border-yellow-200 ring-1 ring-yellow-50' : 'border-slate-100'}`}>
+            <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-slate-50 rounded-xl shadow-inner">{getTypeIcon()}</div>
+            <div className="flex-grow">
                 <div className="flex justify-between items-start">
-                    <div className="hidden md:flex flex-col">
+                    <div>
                         <div className="flex items-center gap-2">
-                            <button onClick={toggleFavorite} className="focus:outline-none relative z-20 p-1 -ml-1 hover:bg-slate-50 rounded-full transition-colors">
-                                <Star className={`w-4 h-4 transition-all ${data.isFavorite ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-slate-300 hover:text-yellow-400'}`} />
-                            </button>
-                            <h4 className="text-sm font-bold text-gray-900 leading-tight" dir="ltr">{data.name}</h4>
-                            {data.rating && (<div className="flex items-center bg-yellow-50 px-1 py-0.5 rounded border border-yellow-100"><span className="text-[9px] font-bold text-yellow-700">{data.rating}</span><Star className="w-2 h-2 text-yellow-600 fill-current mr-0.5" /></div>)}
+                            <button onClick={toggleFavorite} className="focus:outline-none"><Star className={`w-4 h-4 ${data.isFavorite ? 'text-yellow-400 fill-yellow-400' : 'text-slate-300'}`} /></button>
+                            <h4 className="text-sm font-black text-slate-900">{data.name}</h4>
+                            {data.rating && <div className="flex items-center bg-yellow-50 px-1 py-0.5 rounded text-[9px] font-bold text-yellow-700">{data.rating}⭐</div>}
                         </div>
-                        <p className="text-gray-500 text-[10px] mt-0.5 leading-snug line-clamp-1">{data.description}</p>
-                        <div className="flex gap-2 mt-1">
-                            {data.recommendationSource && (
-                                <div className="inline-flex items-center text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 w-fit">
-                                    <Trophy className="w-2 h-2 mr-1" /> {data.recommendationSource}
-                                </div>
-                            )}
-                            {data.price && (
-                                <div className="inline-flex items-center text-[9px] font-bold text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 w-fit">
-                                    <DollarSign className="w-2 h-2 mr-1" /> {data.price}
-                                </div>
-                            )}
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-2 text-[9px] text-gray-400"><MapPin className="w-2 h-2" /> {data.location}</div>
+                        <p className="text-slate-500 text-[11px] mt-1 line-clamp-1">{data.description}</p>
                     </div>
-                    <div className="flex items-center gap-1 pl-1 ml-auto md:ml-0">
-                        <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-lg text-[10px] flex items-center gap-1 font-bold"><MapIcon className="w-3 h-3" /> הצג במפות</a>
-                        <button onClick={() => setIsScheduling(!isScheduling)} className={`p-1.5 rounded-lg border ${data.scheduledDate ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-gray-50 text-gray-400 border-transparent'}`}><Calendar className="w-3.5 h-3.5" /></button>
-                        <button onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div className="flex items-center gap-1">
+                        <a href={mapsUrl} target="_blank" rel="noreferrer" className="p-1.5 text-slate-400 border border-slate-100 rounded-lg"><Navigation className="w-3.5 h-3.5" /></a>
+                        <button onClick={() => setIsScheduling(!isScheduling)} className={`p-1.5 rounded-lg border ${data.scheduledDate ? 'bg-purple-50 border-purple-100 text-purple-600' : 'border-slate-100 text-slate-400'}`}><Calendar className="w-3.5 h-3.5" /></button>
+                        <button onClick={onDelete} className="p-1.5 text-slate-400 border border-slate-100 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                 </div>
 
-                <div className="md:hidden mt-2 text-xs text-gray-500">{data.description}</div>
-
                 {isScheduling && (
-                    <div className="mt-2 bg-purple-50 p-3 rounded-lg border border-purple-100 space-y-3">
-                        <div className="flex flex-col gap-2">
-                            <label className="text-[10px] font-bold text-purple-700 mr-1">תאריך</label>
-                            <button
-                                type="button"
-                                onClick={() => (window as any)._showAttrDatePicker = true}
-                                className="w-full p-2 bg-white rounded-lg border border-purple-200 text-xs font-bold text-right flex items-center justify-between"
-                            >
-                                <span>{data.scheduledDate || "בחר תאריך"}</span>
-                                <Calendar className="w-3 h-3 text-purple-400" />
+                    <div className="mt-3 p-3 bg-purple-50 rounded-xl border border-purple-100 space-y-3">
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] font-black text-purple-700 uppercase">תאריך</label>
+                            <button onClick={() => setShowDatePicker(true)} className="w-full bg-white p-2 rounded-lg border border-purple-200 text-xs text-right flex justify-between">
+                                <span>{data.scheduledDate || 'בחר תאריך'}</span><Calendar className="w-3 h-3" />
                             </button>
-                            {(window as any)._showAttrDatePicker && (
+                            {showDatePicker && (
                                 <CalendarDatePicker
                                     value={data.scheduledDate || ''}
                                     title="מזמן אטרקציה"
-                                    onChange={(iso) => {
-                                        onUpdate({ scheduledDate: iso });
-                                        (window as any)._showAttrDatePicker = false;
-                                    }}
-                                    onClose={() => (window as any)._showAttrDatePicker = false}
+                                    onChange={(d) => { onUpdate({ scheduledDate: d }); setShowDatePicker(false); }}
+                                    onClose={() => setShowDatePicker(false)}
                                 />
                             )}
                         </div>
-                        <div className="flex flex-col gap-2">
-                            <label className="text-[10px] font-bold text-purple-700 mr-1">שעה</label>
-                            <input
-                                type="time"
-                                value={scheduleTime}
-                                onChange={(e) => setScheduleTime(e.target.value)}
-                                className="w-full p-2 rounded-lg border border-purple-200 text-xs outline-none focus:ring-2 focus:ring-purple-100"
-                            />
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] font-black text-purple-700 uppercase">שעה</label>
+                            <input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="p-2 border border-purple-200 rounded-lg text-xs" />
                         </div>
-                        <div className="flex justify-end gap-2 pt-1">
-                            <button onClick={() => setIsScheduling(false)} className="text-[10px] text-purple-400 font-bold px-3 py-1.5 hover:bg-purple-100/50 rounded-lg">ביטול</button>
-                            <button onClick={handleSaveSchedule} className="bg-purple-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold shadow-md hover:bg-purple-700 transition-all">שמור</button>
-                        </div>
+                        <div className="flex justify-end gap-2"><button onClick={() => setIsScheduling(false)} className="text-[10px] font-bold text-purple-400">ביטול</button><button onClick={handleSaveSchedule} className="bg-purple-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-black">שמור</button></div>
                     </div>
                 )}
-                {!isScheduling && data.scheduledDate && (
-                    <div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-purple-700 bg-purple-50 w-fit px-2 py-0.5 rounded border border-purple-100">
-                        <Clock className="w-2.5 h-2.5" />
-                        {data.scheduledDate.match(/^\d{4}-\d{2}-\d{2}$/)
-                            ? data.scheduledDate.split('-').reverse().join('/')
-                            : data.scheduledDate}
-                        {data.scheduledTime}
-                    </div>
-                )}
-                <div className="mt-1">{isEditingNote ? (<div className="bg-yellow-50 p-1.5 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-gray-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[9px] text-gray-500">ביטול</button><button onClick={saveNote} className="text-[9px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-gray-50 border-dashed border-gray-200 text-gray-400'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
+
+                <div className="mt-2">
+                    {isEditingNote ? (
+                        <div className="bg-yellow-50 p-2 rounded-lg border border-yellow-100"><textarea className="w-full bg-transparent border-none outline-none text-[11px] text-yellow-900" rows={1} value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2 mt-1"><button onClick={saveNote} className="text-[10px] font-black text-yellow-700">שמור</button></div></div>
+                    ) : (
+                        <div onClick={() => setIsEditingNote(true)} className="text-[10px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-1.5 flex items-center gap-2 cursor-pointer">{data.notes ? <><StickyNote className="w-3 h-3 text-yellow-500" /> <span className="text-yellow-900">{data.notes}</span></> : <>+ הוסף הערה...</>}</div>
+                    )}
+                </div>
             </div>
         </div>
     );

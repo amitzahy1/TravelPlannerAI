@@ -14,6 +14,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
         const [loading, setLoading] = useState(false);
         const [copied, setCopied] = useState(false);
         const [inviteEmail, setInviteEmail] = useState('');
+        const [successMessage, setSuccessMessage] = useState('');
         const [error, setError] = useState('');
 
         const auth = getAuth();
@@ -32,8 +33,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
 
                 setLoading(true);
                 setError('');
+                setSuccessMessage('');
                 try {
-                        const shareId = await createSharedTrip(user.uid, user.email, trip, inviteEmail || undefined);
+                        const shareId = await createSharedTrip(user.uid, trip, user.email, inviteEmail || undefined);
 
                         // Update local trip state to reflect sharing immediately
                         const updatedTrip: Trip = {
@@ -49,6 +51,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
                                 }
                         };
                         onUpdateTrip(updatedTrip);
+                        if (inviteEmail) {
+                                setSuccessMessage(`הזמנה נשלחה ל-${inviteEmail}`);
+                        }
                 } catch (e: any) {
                         console.error('Share error:', e);
                         setError('אירעה שגיאה ביצירת השיתוף. וודא שאתה מחובר ונסה שנית.');

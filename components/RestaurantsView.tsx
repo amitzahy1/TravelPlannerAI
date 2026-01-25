@@ -128,6 +128,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [selectedRater, setSelectedRater] = useState<string>('all');
 
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+    const [selectedCity, setSelectedCity] = useState<string>('all');
     const [textQuery, setTextQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<Restaurant[] | null>(null);
@@ -375,14 +376,71 @@ Description in Hebrew. Netural English names.`;
         return Array.from(sources).sort();
     }, [allAiRestaurants]);
 
-    // Filter Recommended
+    // Unified Toggle Logic (Fixes Task 4)
+    const handleToggleRec = (restaurant: Restaurant, catTitle: string) => {
+        let newRestaurants = [...trip.restaurants];
+
+        // Find if restaurant is already in any category
+        let existingCatIndex = -1;
+        let existingResIndex = -1;
+
+        for (let i = 0; i < newRestaurants.length; i++) {
+            const foundIndex = newRestaurants[i].restaurants.findIndex(r => r.name === restaurant.name);
+            if (foundIndex !== -1) {
+                existingCatIndex = i;
+                existingResIndex = foundIndex;
+                break;
+            }
+        }
+
+        if (existingCatIndex !== -1) {
+            // REMOVE Logic
+            newRestaurants[existingCatIndex].restaurants.splice(existingResIndex, 1);
+            // Clean up empty category
+            if (newRestaurants[existingCatIndex].restaurants.length === 0) {
+                newRestaurants.splice(existingCatIndex, 1);
+            }
+        } else {
+            // ADD Logic
+            const region = restaurant.location?.split(',')[0] || 'Unknown City';
+            let targetCatIndex = newRestaurants.findIndex(c => c.region === region && c.title === catTitle);
+
+            if (targetCatIndex === -1) {
+                newRestaurants.push({ id: `cat-${Date.now()}`, title: catTitle, region: region, restaurants: [] });
+                targetCatIndex = newRestaurants.length - 1;
+            }
+
+            newRestaurants[targetCatIndex].restaurants.push({
+                ...restaurant,
+                id: `added-${Date.now()}`,
+                region: region // Ensure city context is saved
+            });
+        }
+
+        onUpdateTrip({ ...trip, restaurants: newRestaurants });
+
+        // Immediate visual feedback for search/recs
+        setAddedIds(prev => {
+            const next = new Set(prev);
+            if (existingCatIndex !== -1) next.delete(restaurant.id);
+            else next.add(restaurant.id);
+            return next;
+        });
+    };
+
+    // Filtered Recommended (with City Filter)
     const filteredRestaurants = useMemo(() => {
         let list = [];
         if (selectedCategory === 'all') {
-            list = allAiRestaurants; // Already sorted
+            list = allAiRestaurants;
         } else {
             const cat = aiCategories.find(c => c.id === selectedCategory);
             list = cat ? [...cat.restaurants].sort((a, b) => (b.googleRating || 0) - (a.googleRating || 0)) : [];
+        }
+
+        // City Filter
+        if (selectedCity !== 'all') {
+            list = list.filter(r => (r.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
         }
 
         if (selectedRater !== 'all') {
@@ -396,45 +454,35 @@ Description in Hebrew. Netural English names.`;
             });
         }
         return list;
-    }, [aiCategories, selectedCategory, selectedRater, allAiRestaurants]);
+    }, [aiCategories, selectedCategory, selectedRater, selectedCity, allAiRestaurants]);
 
-    // Extract Categories and Raters for "My List"
-    const myCategories = useMemo(() => trip.restaurants, [trip.restaurants]);
-    const [mySelectedCategory, setMySelectedCategory] = useState<string>('all');
+    // Grouping Logic for "My List" (Task 3)
+    const groupedMyList = useMemo(() => {
+        const flatList: Restaurant[] = [];
+        trip.restaurants.forEach(cat => cat.restaurants.forEach(r => flatList.push(r)));
 
-    // FLATTEN MY LIST when "All" is selected AND SORT BY FAVORITE
-    const filteredMyList = useMemo(() => {
-        if (mySelectedCategory === 'all') {
-            // Flatten everything into one list
-            const flatList: Restaurant[] = [];
-            myCategories.forEach(cat => flatList.push(...cat.restaurants));
-            // Sort by Favorite THEN Rating
-            return sortMyRestaurants(flatList);
+        // Apply Filters
+        let filtered = flatList;
+        if (selectedCity !== 'all') {
+            filtered = flatList.filter(r => (r.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
         }
-        // Return specific category (will still be rendered as category group but with 1 item)
-        const cat = myCategories.find(c => c.title === mySelectedCategory);
-        if (cat) {
-            return [{ ...cat, restaurants: sortMyRestaurants([...cat.restaurants]) }];
-        }
-        return [];
-    }, [myCategories, mySelectedCategory]);
 
-    const handleAddRec = (restaurant: Restaurant, catTitle: string) => {
-        let newRestaurants = [...trip.restaurants];
-        let targetRegion = 'כללי';
-        let targetCatIndex = newRestaurants.findIndex(c => c.region === targetRegion && c.title === catTitle);
-        if (targetCatIndex === -1) {
-            newRestaurants.push({ id: `cat - ${Date.now()} `, title: catTitle, region: targetRegion, restaurants: [] });
-            targetCatIndex = newRestaurants.length - 1;
-        }
-        const exists = newRestaurants[targetCatIndex].restaurants.some(r => r.name === restaurant.name);
-        if (!exists) {
-            newRestaurants[targetCatIndex].restaurants.push({ ...restaurant, id: `added - ${Date.now()} ` });
-            onUpdateTrip({ ...trip, restaurants: newRestaurants });
-            setAddedIds(prev => new Set(prev).add(restaurant.id));
-            setTimeout(() => { setAddedIds(prev => { const next = new Set(prev); next.delete(restaurant.id); return next; }); }, 2000);
-        }
-    };
+        // Group by City
+        const groups: Record<string, Restaurant[]> = {};
+        filtered.forEach(r => {
+            const city = r.location?.split(',')[0] || 'General';
+            if (!groups[city]) groups[city] = [];
+            groups[city].push(r);
+        });
+
+        // Sort each group by Favorite
+        Object.keys(groups).forEach(city => {
+            groups[city] = sortMyRestaurants(groups[city]);
+        });
+
+        return groups;
+    }, [trip.restaurants, selectedCity]);
+
 
     const getMapItems = () => {
         const items: any[] = [];
@@ -495,8 +543,8 @@ Description in Hebrew. Netural English names.`;
                                 rec={res as ExtendedRestaurant}
                                 tripDestination={trip.destination}
                                 tripDestinationEnglish={trip.destinationEnglish}
-                                isAdded={addedIds.has(res.id)}
-                                onAdd={handleAddRec}
+                                isAdded={addedIds.has(res.id) || trip.restaurants.some(c => c.restaurants.some(r => r.name === res.name))}
+                                onAdd={handleToggleRec}
                                 onClick={() => setSelectedPlace(res as ExtendedRestaurant)}
                             />
                         ))}
@@ -505,7 +553,7 @@ Description in Hebrew. Netural English names.`;
                 </div>
             )}
 
-            <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-4">
+            <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-2">
                 <button
                     onClick={() => setActiveTab('my_list')}
                     className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
@@ -521,6 +569,27 @@ Description in Hebrew. Netural English names.`;
                     מחקר שוק (AI)
                 </button>
             </div>
+
+            {/* City Filter Bar (Task 3) */}
+            {tripCities.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button
+                        onClick={() => setSelectedCity('all')}
+                        className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                    >
+                        כל הערים
+                    </button>
+                    {tripCities.map(city => (
+                        <button
+                            key={city}
+                            onClick={() => setSelectedCity(city)}
+                            className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                        >
+                            {city}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {viewMode === 'map' ? (
                 <div className="space-y-3">
@@ -546,53 +615,61 @@ Description in Hebrew. Netural English names.`;
                                 </div>
                             ) : (
                                 <>
-                                    <div className="flex justify-between items-center mb-1"><button onClick={() => setViewMode('map')} className="px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold text-xs bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 transition-all shadow-sm"><MapIcon className="w-3 h-3" /> מפה</button></div>
-
-                                    <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
-                                        <div className="flex gap-2">
-                                            <button onClick={() => setMySelectedCategory('all')} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === 'all' ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700'} `}>הכל</button>
-                                            {myCategories.map(cat => (
-                                                <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700'} `}>{cat.title}</button>
-                                            ))}
-                                        </div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <button onClick={() => setViewMode('map')} className="px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold text-xs bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 transition-all shadow-sm">
+                                            <MapIcon className="w-3 h-3" /> מפה
+                                        </button>
                                     </div>
 
-                                    <div className="space-y-4 mt-2">
-                                        {mySelectedCategory === 'all' ? (
-                                            /* FLATTENED LIST */
-                                            <div className="flex flex-col gap-3">
-                                                {(filteredMyList as Restaurant[]).map((restaurant) => (
-                                                    <RestaurantRow
-                                                        key={restaurant.id}
-                                                        data={restaurant}
-                                                        tripDestination={trip.destination}
-                                                        tripDestinationEnglish={trip.destinationEnglish}
-                                                        onSaveNote={(n) => onUpdateTrip({ ...trip, restaurants: trip.restaurants.map(c => ({ ...c, restaurants: c.restaurants.map(r => r.id === restaurant.id ? { ...r, notes: n } : r) })) })}
-                                                        onUpdate={(u) => onUpdateTrip({ ...trip, restaurants: trip.restaurants.map(c => ({ ...c, restaurants: c.restaurants.map(r => r.id === restaurant.id ? { ...r, ...u } : r) })) })}
-                                                        onDelete={() => { if (window.confirm('למחוק?')) onUpdateTrip({ ...trip, restaurants: trip.restaurants.map(c => ({ ...c, restaurants: c.restaurants.filter(r => r.id !== restaurant.id) })).filter(c => c.restaurants.length > 0) }) }}
-                                                    />
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            /* CATEGORY VIEW */
-                                            (filteredMyList as RestaurantCategory[]).map((cat) => (
-                                                <div key={cat.id} className="animate-fade-in">
-                                                    <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center justify-between">{cat.title}<span className="text-[10px] font-normal bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">{cat.region}</span></h3>
-                                                    <div className="flex flex-col gap-3">
-                                                        {cat.restaurants.map((restaurant) => (
-                                                            <RestaurantRow
-                                                                key={restaurant.id}
-                                                                data={restaurant}
-                                                                tripDestination={trip.destination}
-                                                                tripDestinationEnglish={trip.destinationEnglish}
-                                                                onSaveNote={(n) => onUpdateTrip({ ...trip, restaurants: trip.restaurants.map(c => c.id === cat.id ? { ...c, restaurants: c.restaurants.map(r => r.id === restaurant.id ? { ...r, notes: n } : r) } : c) })}
-                                                                onUpdate={(u) => onUpdateTrip({ ...trip, restaurants: trip.restaurants.map(c => c.id === cat.id ? { ...c, restaurants: c.restaurants.map(r => r.id === restaurant.id ? { ...r, ...u } : r) } : c) })}
-                                                                onDelete={() => { if (window.confirm('למחוק?')) onUpdateTrip({ ...trip, restaurants: trip.restaurants.map(c => c.id === cat.id ? { ...c, restaurants: c.restaurants.filter(r => r.id !== restaurant.id) } : c).filter(c => c.restaurants.length > 0) }) }}
-                                                            />
-                                                        ))}
-                                                    </div>
+                                    <div className="space-y-8 mt-4">
+                                        {Object.entries(groupedMyList).map(([city, items]) => (
+                                            <div key={city} className="animate-fade-in">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="h-px bg-slate-200 flex-grow"></div>
+                                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
+                                                        {city}
+                                                    </h3>
+                                                    <div className="h-px bg-slate-200 flex-grow"></div>
                                                 </div>
-                                            ))
+                                                <div className="flex flex-col gap-3">
+                                                    {items.map((restaurant) => (
+                                                        <RestaurantRow
+                                                            key={restaurant.id}
+                                                            data={restaurant}
+                                                            tripDestination={trip.destination}
+                                                            tripDestinationEnglish={trip.destinationEnglish}
+                                                            onSaveNote={(n) => {
+                                                                const updated = trip.restaurants.map(c => ({
+                                                                    ...c,
+                                                                    restaurants: c.restaurants.map(r => r.id === restaurant.id ? { ...r, notes: n } : r)
+                                                                }));
+                                                                onUpdateTrip({ ...trip, restaurants: updated });
+                                                            }}
+                                                            onUpdate={(u) => {
+                                                                const updated = trip.restaurants.map(c => ({
+                                                                    ...c,
+                                                                    restaurants: c.restaurants.map(r => r.id === restaurant.id ? { ...r, ...u } : r)
+                                                                }));
+                                                                onUpdateTrip({ ...trip, restaurants: updated });
+                                                            }}
+                                                            onDelete={() => {
+                                                                if (window.confirm('למחוק מהרשימה?')) {
+                                                                    const updated = trip.restaurants.map(c => ({
+                                                                        ...c,
+                                                                        restaurants: c.restaurants.filter(r => r.id !== restaurant.id)
+                                                                    })).filter(c => c.restaurants.length > 0);
+                                                                    onUpdateTrip({ ...trip, restaurants: updated });
+                                                                }
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {Object.keys(groupedMyList).length === 0 && (
+                                            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+                                                <p className="text-slate-400 font-bold">לא נמצאו מסעדות בסינון זה.</p>
+                                            </div>
                                         )}
                                     </div>
                                 </>
@@ -693,8 +770,8 @@ Description in Hebrew. Netural English names.`;
                                                         rec={rec}
                                                         tripDestination={trip.destination}
                                                         tripDestinationEnglish={trip.destinationEnglish}
-                                                        isAdded={addedIds.has(rec.id)}
-                                                        onAdd={handleAddRec}
+                                                        isAdded={addedIds.has(rec.id) || trip.restaurants.some(c => c.restaurants.some(r => r.name === rec.name))}
+                                                        onAdd={handleToggleRec}
                                                         onClick={() => setSelectedPlace(rec)}
                                                     />
                                                 ))}
@@ -722,9 +799,9 @@ Description in Hebrew. Netural English names.`;
                     item={selectedPlace}
                     type="food"
                     onClose={() => setSelectedPlace(null)}
+                    isAdded={trip.restaurants.some(c => c.restaurants.some(r => r.name === (selectedPlace as any).name))}
                     onAddToPlan={() => {
-                        handleAddRec(selectedPlace, selectedPlace.categoryTitle || 'AI');
-                        setSelectedPlace(null);
+                        handleToggleRec(selectedPlace, selectedPlace.categoryTitle || 'AI');
                     }}
                 />
             )}

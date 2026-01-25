@@ -144,8 +144,8 @@ const addUserTripRef = async (
  */
 export const createSharedTrip = async (
   userId: string,
-  userEmail: string,
   trip: Trip,
+  userEmail: string,
   inviteEmail?: string
 ): Promise<string> => {
   try {
