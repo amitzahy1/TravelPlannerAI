@@ -782,6 +782,7 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
         endDate: '',
         destination: '',
         cities: [''], // Initialize with one empty city
+        cityHotels: {} as Record<number, string>,
         coverImage: '',
         notes: '',
         files: [] as any[]
@@ -813,6 +814,14 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
             color: "bg-orange-500",
             field: 'destination',
             placeholder: "יעד..."
+        },
+        {
+            title: "איפה ישנים?",
+            desc: "באיזה מלון תשהו בכל יעד? (אופציונלי)",
+            icon: Hotel,
+            color: "bg-indigo-500",
+            field: 'cityHotels',
+            placeholder: ""
         },
         {
             title: "העלאה חכמה (Magic)",
@@ -860,6 +869,24 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
                 // Always use AI to validate and normalize inputs (e.g. City names, Dates)
                 const needsAI = true;
 
+
+
+                // Construct initial hotels list from manual input
+                const manualHotels = tripData.cities?.map((city, idx) => {
+                    const hotelName = tripData.cityHotels?.[idx];
+                    if (hotelName && hotelName.trim()) {
+                        return {
+                            id: `h-${Date.now()}-${idx}`,
+                            name: hotelName,
+                            address: city,
+                            checkInDate: '', // AI or user can fill later
+                            checkOutDate: '',
+                            nights: 0
+                        };
+                    }
+                    return null;
+                }).filter(Boolean) || [];
+
                 let finalTrip: any = {
                     id: `t-${Date.now()}`,
                     name: tripData.name || 'טיול חדש',
@@ -867,7 +894,7 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
                     destination: tripData.destination || 'יעד כללי',
                     coverImage: tripData.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80',
                     flights: { passengerName: '', pnr: '', segments: [] },
-                    hotels: [],
+                    hotels: manualHotels,
                     restaurants: [],
                     attractions: [],
                     itinerary: [],
@@ -926,7 +953,8 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
     const canProceed = isMagicStep ||
         (currentField === 'destination' ? (tripData.cities && tripData.cities.some(c => c.trim().length > 0)) :
             currentField === 'dates' ? (tripData.startDate && tripData.endDate) :
-                (tripData[currentField as keyof typeof tripData] as string)?.trim().length > 0);
+                currentField === 'cityHotels' ? true : // Optional step
+                    (tripData[currentField as keyof typeof tripData] as string)?.trim().length > 0);
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6 animate-fade-in">
@@ -1057,6 +1085,30 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
                                     <div className="text-center text-sm font-bold text-purple-600 bg-purple-50 py-2 rounded-lg">
                                         {tripData.startDate} עד {tripData.endDate}
                                     </div>
+                                )}
+                            </div>
+                        ) : currentField === 'cityHotels' ? (
+                            <div className="space-y-4 max-h-[40vh] overflow-y-auto px-1">
+                                {(tripData.cities || []).filter(c => c.trim().length > 0).map((city, idx) => (
+                                    <div key={idx} className="space-y-1 text-right animate-scale-in" style={{ animationDelay: `${idx * 100}ms` }}>
+                                        <label className="text-xs font-bold text-slate-500">מלון ב-{city}</label>
+                                        <input
+                                            type="text"
+                                            value={tripData.cityHotels ? tripData.cityHotels[idx] || '' : ''}
+                                            onChange={(e) => {
+                                                const newHotels = { ...(tripData.cityHotels || {}) };
+                                                newHotels[idx] = e.target.value;
+                                                setTripData({ ...tripData, cityHotels: newHotels });
+                                            }}
+                                            placeholder={`שם המלון ב${city}...`}
+                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:outline-none text-lg text-center font-medium transition-all"
+                                            autoFocus={idx === 0}
+                                            onKeyDown={(e) => e.key === 'Enter' && canProceed && handleNext()}
+                                        />
+                                    </div>
+                                ))}
+                                {(tripData.cities || []).filter(c => c.trim().length > 0).length === 0 && (
+                                    <p className="text-slate-400 text-sm">לא הוזנו ערים בשלב הקודם.</p>
                                 )}
                             </div>
                         ) : (
