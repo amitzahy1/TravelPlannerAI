@@ -28,6 +28,56 @@ interface UnifiedMapViewProps {
 
 const STORAGE_KEY = 'travel_app_geo_cache_v4';
 
+// Cross-language city mapping for Hebrew <-> English filter matching
+const HEBREW_TO_ENGLISH_CITY_MAP: Record<string, string[]> = {
+    'בנגקוק': ['Bangkok', 'Krung Thep'],
+    'פטאייה': ['Pattaya', 'Chon Buri'],
+    'פוקט': ['Phuket'],
+    'קו סמט': ['Koh Samet', 'Ko Samet', 'Rayong'],
+    'צ\'יאנג מאי': ['Chiang Mai'],
+    'קוסמוי': ['Koh Samui', 'Ko Samui', 'Surat Thani'],
+    'קראבי': ['Krabi'],
+    'הואה הין': ['Hua Hin'],
+    'תל אביב': ['Tel Aviv'],
+    'ירושלים': ['Jerusalem'],
+    'אילת': ['Eilat'],
+    'חיפה': ['Haifa'],
+    'לונדון': ['London'],
+    'פריז': ['Paris'],
+    'ניו יורק': ['New York', 'NYC', 'Manhattan'],
+    'רומא': ['Rome', 'Roma'],
+    'ברצלונה': ['Barcelona'],
+    'אמסטרדם': ['Amsterdam'],
+    'ברלין': ['Berlin'],
+    'טוקיו': ['Tokyo'],
+    'סינגפור': ['Singapore'],
+    'דובאי': ['Dubai'],
+    'אתונה': ['Athens'],
+    'וינה': ['Vienna', 'Wien'],
+    'פראג': ['Prague', 'Praha'],
+    'בודפשט': ['Budapest'],
+    'ליסבון': ['Lisbon', 'Lisboa'],
+};
+
+// Helper: Get English keywords for a Hebrew city (or vice versa)
+const getCityKeywords = (cityName: string): string[] => {
+    const lowerCity = cityName.toLowerCase();
+
+    // Check Hebrew -> English
+    for (const [hebrew, englishList] of Object.entries(HEBREW_TO_ENGLISH_CITY_MAP)) {
+        if (hebrew.toLowerCase() === lowerCity) {
+            return englishList.map(e => e.toLowerCase());
+        }
+        // Check English -> Hebrew (reverse lookup)
+        if (englishList.some(e => e.toLowerCase() === lowerCity)) {
+            return [hebrew.toLowerCase(), ...englishList.map(e => e.toLowerCase())];
+        }
+    }
+
+    // Fallback: return the original city name
+    return [lowerCity];
+};
+
 // --- Helpers ---
 const isValidCoordinate = (lat?: number, lng?: number) => {
     return typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng);
@@ -255,10 +305,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         const rawCities = extractCities(trip.destination);
 
         return rawCities.map(city => {
-            // Find items belonging to this city
+            // Get all possible keywords (Hebrew + English variants)
+            const keywords = getCityKeywords(city);
+
+            // Find items belonging to this city using cross-language matching
             const matchItems = mapItems.filter(item => {
-                const searchStr = (item.address || item.city || '').toLowerCase();
-                return searchStr.includes(city.toLowerCase());
+                const searchStr = (item.address || item.city || item.name || '').toLowerCase();
+
+                // Match if address contains ANY of the keywords (Hebrew or English)
+                return keywords.some(kw => searchStr.includes(kw));
             });
 
             return {
