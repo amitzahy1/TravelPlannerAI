@@ -53,16 +53,15 @@ const parseDateString = (dateStr: string): Date | null => {
 };
 
 const formatDateDisplay = (date: Date) => {
-    // Google Style: "08 Aug 2026"
+    // Google Style: "27 Aug" (Day Month)
     return new Intl.DateTimeFormat('en-GB', {
         day: '2-digit',
-        month: 'short',
-        year: 'numeric'
+        month: 'short'
     }).format(date);
 };
 const getDayOfWeek = (date: Date) => {
-    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-    return `יום ${days[date.getDay()]}`;
+    const days = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'יום שבת'];
+    return days[date.getDay()];
 };
 
 export const ItineraryView: React.FC<{
@@ -182,7 +181,8 @@ export const ItineraryView: React.FC<{
             endDate.setHours(12, 0, 0, 0);
 
             if (trip.dates) {
-                const rangeParts = trip.dates.split('-').map(s => s.trim());
+                // Trip dates might be "DD/MM/YYYY - DD/MM/YYYY" OR "08 Aug 2026 - ..." OR ISO
+                const rangeParts = trip.dates.split(' - ').map(s => s.trim());
                 if (rangeParts.length === 2) {
                     const s = parseDateString(rangeParts[0]);
                     const e = parseDateString(rangeParts[1]);
