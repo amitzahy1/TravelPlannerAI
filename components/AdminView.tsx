@@ -14,6 +14,7 @@ import { AlertTriangle, Calendar as CalIcon } from 'lucide-react';
 interface TripSettingsModalProps {
     data: Trip[];
     onSave: (newData: Trip[]) => void;
+    onDeleteTrip: (tripId: string) => void;
     onClose: () => void;
 }
 
@@ -45,7 +46,7 @@ const toDisplayDate = (isoDate: string) => {
     return isoDate;
 };
 
-export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onClose }) => {
+export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDeleteTrip, onClose }) => {
     const [trips, setTrips] = useState<Trip[]>(data);
     const [activeTripId, setActiveTripId] = useState(data[0]?.id || '');
     const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -143,17 +144,19 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
     };
 
     // --- Deletion Logic ---
-    const handleDeleteTrip = (e: React.MouseEvent, tripIdToDelete: string) => {
+    const handleDeleteTrip = async (e: React.MouseEvent, tripIdToDelete: string) => {
         e.stopPropagation();
-        if (window.confirm("פעולה זו תמחק את הטיול ואת כל המידע שבו. האם להמשיך?")) {
+        if (window.confirm("פעולה זו תמחק את הטיול ואת כל המידע שבו לצמיתות. האם להמשיך?")) {
+            // Call the proper delete handler from App.tsx which uses deleteDoc on Firebase
+            await onDeleteTrip(tripIdToDelete);
+
+            // Update local UI state
             const newTrips = trips.filter(t => t.id !== tripIdToDelete);
-            if (newTrips.length === 0) {
-                const empty: Trip = { id: `t-${Date.now()}`, name: 'טיול חדש', dates: '', destination: 'יעד כללי', coverImage: '', flights: { passengerName: '', pnr: '', segments: [] }, hotels: [], restaurants: [], attractions: [], itinerary: [], documents: [] };
-                newTrips.push(empty);
-            }
             setTrips(newTrips);
-            if (activeTripId === tripIdToDelete) setActiveTripId(newTrips[0].id);
-            onSave(newTrips);
+
+            if (activeTripId === tripIdToDelete && newTrips.length > 0) {
+                setActiveTripId(newTrips[0].id);
+            }
         }
     };
 

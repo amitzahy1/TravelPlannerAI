@@ -246,6 +246,7 @@ const AppContent: React.FC = () => {
         <AdminView
           data={trips}
           onSave={handleSaveAllData}
+          onDeleteTrip={handleDeleteTrip}
           onClose={() => setShowAdmin(false)}
         />
       )}
