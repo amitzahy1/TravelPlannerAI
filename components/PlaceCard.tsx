@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, MapIcon, Trash2, CheckCircle2, Trophy, Hotel, AlertTriangle, Plus } from 'lucide-react';
+import { Star, MapIcon, Trash2, CheckCircle2, Trophy, Hotel, AlertTriangle, Plus, Utensils, Landmark, Moon } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 
 export interface PlaceCardProps {
@@ -23,9 +23,36 @@ export interface PlaceCardProps {
         verification_needed?: boolean;
 }
 
+// Helper to get Smart Chip styling based on category
+const getSmartChipStyle = (type: string, cuisine?: string, attractionType?: string) => {
+        const category = (cuisine || attractionType || '').toLowerCase();
+
+        // Food categories
+        if (type === 'restaurant' || cuisine) {
+                if (category.includes('bar') || category.includes('nightlife') || category.includes('pub')) {
+                        return { bg: 'bg-indigo-500/90', icon: Moon, label: cuisine || 'Nightlife' };
+                }
+                if (category.includes('cafe') || category.includes('coffee')) {
+                        return { bg: 'bg-amber-500/90', icon: Utensils, label: cuisine || 'Cafe' };
+                }
+                return { bg: 'bg-orange-500/90', icon: Utensils, label: cuisine || 'Restaurant' };
+        }
+
+        // Attraction categories
+        if (category.includes('museum') || category.includes('temple') || category.includes('history') || category.includes('culture')) {
+                return { bg: 'bg-purple-500/90', icon: Landmark, label: attractionType || 'Culture' };
+        }
+        if (category.includes('nature') || category.includes('park') || category.includes('beach') || category.includes('garden')) {
+                return { bg: 'bg-emerald-500/90', icon: MapIcon, label: attractionType || 'Nature' };
+        }
+
+        return { bg: 'bg-blue-500/90', icon: MapIcon, label: attractionType || 'Attraction' };
+};
+
 /**
  * Visual PlaceCard Component
  * High-Impact visual design with deterministic cover images.
+ * Titanium UX: Vivid images, bottom-only gradient, glassmorphism Smart Chips.
  */
 export const PlaceCard: React.FC<PlaceCardProps> = ({
         type,
@@ -59,20 +86,22 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         const coverImage = getPlaceImage(searchName, type, tags);
         const displayName = nameEnglish || name;
 
-        const mainCategory = type === 'restaurant' ? (cuisine || 'Restaurant') : (attractionType || 'Attraction');
+        // Get Smart Chip styling
+        const chipStyle = getSmartChipStyle(type, cuisine, attractionType);
+        const ChipIcon = chipStyle.icon;
 
         return (
                 <div className="group relative w-full h-48 rounded-xl overflow-hidden shadow-md bg-slate-900 transition-all duration-300 hover:shadow-xl hover:scale-[1.01]">
 
-                        {/* Background Image (Zoom Effect) */}
+                        {/* Background Image (Zoom Effect) - MORE VIVID */}
                         <img
                                 src={coverImage}
                                 alt={displayName}
-                                className="absolute inset-0 w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-110"
+                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
 
-                        {/* Gradient Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 transition-opacity duration-300 group-hover:via-black/50" />
+                        {/* Gradient Overlay - BOTTOM ONLY (Titanium UX: Luminance Fix) */}
+                        <div className="absolute bottom-0 left-0 right-0 h-[65%] bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
 
                         {/* Content Container */}
                         <div className="absolute inset-0 p-4 flex flex-col justify-end z-10">
@@ -97,9 +126,15 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                         </button>
                                 </div>
 
-                                {/* Rating Badge (Top Left) */}
+                                {/* Smart Chip Badge (Titanium UX: Glassmorphism) */}
+                                <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full backdrop-blur-md border border-white/20 shadow-lg z-20 flex items-center gap-1.5 ${chipStyle.bg} text-white`}>
+                                        <ChipIcon className="w-3 h-3" />
+                                        <span className="font-bold tracking-wider text-[10px] uppercase">{chipStyle.label}</span>
+                                </div>
+
+                                {/* Rating Badge (Below Chip if present) */}
                                 {rating && (
-                                        <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10 shadow-sm">
+                                        <div className="absolute top-12 left-3 flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10 shadow-sm">
                                                 <span className="text-sm font-bold text-white">{rating}</span>
                                                 <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                                         </div>
@@ -115,8 +150,6 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                                                 {recommendationSource.replace('Bib', 'Michelin')}
                                                         </span>
                                                 )}
-                                                <span>•</span>
-                                                <span>{mainCategory}</span>
                                                 {price && (
                                                         <>
                                                                 <span>•</span>

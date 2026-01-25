@@ -859,6 +859,45 @@ export const ItineraryView: React.FC<{
 
 
 
+            {/* Category List Modal (Hero Stats -> Modal) */}
+            {viewingCategory && (
+                <CategoryListModal
+                    type={viewingCategory}
+                    trip={trip}
+                    onClose={() => setViewingCategory(null)}
+                    onSelectItem={(data) => {
+                        setViewingCategory(null);
+                        // Open TripDateSelector for scheduling the selected item
+                        setScheduleItem({ item: data.item, type: data.type });
+                    }}
+                />
+            )}
+
+            {/* Schedule Item Modal (from CategoryListModal selection) */}
+            {scheduleItem && (
+                <TripDateSelector
+                    trip={trip}
+                    onClose={() => setScheduleItem(null)}
+                    onSchedule={(dayId: string) => {
+                        // Add item to the selected day
+                        const targetDay = trip.timeline?.find(d => d.id === dayId);
+                        if (targetDay && scheduleItem.item) {
+                            const newActivity = {
+                                description: scheduleItem.item.name || 'פריט',
+                                time: '12:00',
+                                type: scheduleItem.type === 'food' ? 'restaurant' : 'attraction'
+                            };
+                            const updatedTimeline = (trip.timeline || []).map(d =>
+                                d.id === dayId ? { ...d, activities: [...(d.activities || []), newActivity] } : d
+                            );
+                            onUpdateTrip({ ...trip, timeline: updatedTimeline });
+                        }
+                        setScheduleItem(null);
+                    }}
+                    itemName={scheduleItem.item?.name || 'פריט'}
+                />
+            )}
+
 
         </div >
     );
