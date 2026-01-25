@@ -1,45 +1,39 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
     // 1. Personal trips
-    // Only the user {userId} can read/write their own trips
     match /users/{userId}/trips/{tripId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // 2. Shared Trips Collection
+    // 2. Shared Trips Collection (FIXED)
     match /shared-trips/{tripId} {
-      // READ: Allow if user is in 'collaborators' array OR is owner
-      allow read: if request.auth != null && 
-                  (request.auth.uid in resource.data.collaborators || request.auth.uid == resource.data.owner);
-      
-      // CREATE: Allow if user is setting themselves as owner
-      allow create: if request.auth != null && 
-                    request.auth.uid == request.resource.data.owner;
-      
-      // UPDATE: Allow if user is in 'collaborators' array (existing doc)
-      allow update: if request.auth != null && 
-                    (request.auth.uid in resource.data.collaborators || request.auth.uid == resource.data.owner);
-      
-      // DELETE: Only the OWNER can delete the shared trip
-      allow delete: if request.auth != null && 
-                    request.auth.uid == resource.data.owner;
+      // Allow reading if you are the owner or a collaborator
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.owner ||
+        request.auth.uid in resource.data.collaborators
+      );
+      // Allow writing (Create & Update)
+      allow write: if request.auth != null && (
+        // Case 1: Creating a NEW document
+        (resource == null && request.resource.data.owner == request.auth.uid) ||
+        // Case 2: Updating an EXISTING document
+        (resource != null && (
+          request.auth.uid == resource.data.owner ||
+          request.auth.uid in resource.data.collaborators
+        ))
+      );
+      // Only owner can delete
+      allow delete: if request.auth != null && request.auth.uid == resource.data.owner;
     }
-    
-    // 3. Shared Trip References (User Profile)
-    // Only the specific user can manage their list of shared trips
+    // 3. Shared Trip References
     match /users/{userId}/shared-trip-refs/{refId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // 4. AI Cache (Publicly readable/writable for semantic caching)
+    // 4. AI Cache
     match /ai_cache/{hash} {
       allow read, write: if true;
     }
-
-    // 5. Default Deny
+    // Default Deny
     match /{document=**} {
       allow read, write: if false;
     }
