@@ -460,17 +460,30 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
 
                     <div className="flex-1 overflow-y-auto p-3 space-y-2">
                         {trips.map(t => (
-                            <button
-                                key={t.id}
-                                onClick={() => setActiveTripId(t.id)}
-                                className={`w-full text-right p-3 rounded-xl transition-all font-bold flex items-center justify-between text-sm ${activeTripId === t.id
-                                    ? 'bg-white shadow-md text-blue-600 border-2 border-blue-100'
-                                    : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
-                                    }`}
-                            >
-                                <span className="truncate">{t.name}</span>
-                                {activeTripId === t.id && <div className="w-2 h-2 rounded-full bg-blue-500"></div>}
-                            </button>
+                            <div key={t.id} className="relative group">
+                                <button
+                                    onClick={() => setActiveTripId(t.id)}
+                                    className={`w-full text-right p-3 pr-4 pl-10 rounded-xl transition-all font-bold flex items-center justify-between text-sm ${activeTripId === t.id
+                                        ? 'bg-white shadow-md text-blue-600 border-2 border-blue-100'
+                                        : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
+                                        }`}
+                                >
+                                    <span className="truncate">{t.name}</span>
+                                    {activeTripId === t.id && <div className="w-2 h-2 rounded-full bg-blue-500"></div>}
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm('האם למחוק את הטיול הזה?')) {
+                                            onDeleteTrip(t.id);
+                                        }
+                                    }}
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-20"
+                                    title="מחק טיול"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
                         ))}
                         <button
                             onClick={(e) => {
@@ -725,6 +738,20 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                             setTrips(newTrips);
                             onSave(newTrips);
                         }}
+                    />
+                )}
+
+                {/* Wizard Modal */}
+                {isWizardOpen && (
+                    <TripWizard
+                        onFinish={(newTrip) => {
+                            const updatedTrips = [...trips, newTrip];
+                            setTrips(updatedTrips);
+                            onSave(updatedTrips);
+                            setActiveTripId(newTrip.id);
+                            setIsWizardOpen(false);
+                        }}
+                        onCancel={() => setIsWizardOpen(false)}
                     />
                 )}
             </div>
