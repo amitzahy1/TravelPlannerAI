@@ -452,7 +452,7 @@ Description in Hebrew. Netural English names.`;
         return list;
     }, [aiCategories, selectedCategory, selectedRater, selectedCity, allAiRestaurants]);
 
-    // Grouping Logic for "My List" (Task 3)
+    // Grouping Logic for "My List"
     const groupedMyList = useMemo(() => {
         const flatList: Restaurant[] = [];
         trip.restaurants.forEach(cat => cat.restaurants.forEach(r => flatList.push(r)));
@@ -463,17 +463,18 @@ Description in Hebrew. Netural English names.`;
             filtered = flatList.filter(r => (r.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
         }
 
-        // Group by City
+        // Group by Category (User Request: "Food Categories", not streets)
         const groups: Record<string, Restaurant[]> = {};
         filtered.forEach(r => {
-            const city = r.location?.split(',')[0] || 'General';
-            if (!groups[city]) groups[city] = [];
-            groups[city].push(r);
+            // Use categoryTitle if available (from AI), or fallback to Type/Icon
+            const key = r.categoryTitle || r.iconType || 'General';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(r);
         });
 
         // Sort each group by Favorite
-        Object.keys(groups).forEach(city => {
-            groups[city] = sortMyRestaurants(groups[city]);
+        Object.keys(groups).forEach(key => {
+            groups[key] = sortMyRestaurants(groups[key]);
         });
 
         return groups;
@@ -485,6 +486,28 @@ Description in Hebrew. Netural English names.`;
         if (activeTab === 'my_list') { trip.restaurants.forEach(cat => cat.restaurants.forEach(r => items.push({ id: r.id, type: 'restaurant', name: r.name, address: r.location, lat: r.lat, lng: r.lng, description: r.description }))); }
         else { allAiRestaurants.forEach(r => items.push({ id: r.id, type: 'restaurant', name: r.name, address: r.location, lat: r.lat, lng: r.lng, description: `${r.googleRating}⭐` })); }
         return items;
+    };
+
+    const handleUpdateRestaurant = (id: string, updates: Partial<Restaurant>) => {
+        const newRestaurants = trip.restaurants.map(cat => ({
+            ...cat,
+            restaurants: cat.restaurants.map(r => r.id === id ? { ...r, ...updates } : r)
+        }));
+        onUpdateTrip({ ...trip, restaurants: newRestaurants });
+    };
+
+    const handleDeleteRestaurant = (id: string) => {
+        if (!window.confirm("להסיר את המסעדה מהרשימה?")) return;
+        const newRestaurants = trip.restaurants.map(cat => ({
+            ...cat,
+            restaurants: cat.restaurants.filter(r => r.id !== id)
+        })).filter(cat => cat.restaurants.length > 0); // Remove empty categories
+        onUpdateTrip({ ...trip, restaurants: newRestaurants });
+        setAddedIds(prev => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+        });
     };
 
     return (
@@ -569,12 +592,6 @@ Description in Hebrew. Netural English names.`;
             {/* City Filter Bar (Task 3) */}
             {tripCities.length > 1 && (
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    <button
-                        onClick={() => setSelectedCity('all')}
-                        className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
-                    >
-                        כל הערים
-                    </button>
                     {tripCities.map(city => (
                         <button
                             key={city}
@@ -598,16 +615,14 @@ Description in Hebrew. Netural English names.`;
                         <>
                             {trip.restaurants.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
-                                    <div className="bg-orange-50 p-8 rounded-full shadow-inner animate-pulse">
-                                        <Utensils className="w-16 h-16 text-orange-400" />
+                                    <div className="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center shadow-inner">
+                                        <Utensils className="w-10 h-10 text-orange-300" />
                                     </div>
-                                    <div>
-                                        <h3 className="text-2xl font-black text-slate-800">רשימה ריקה</h3>
-                                        <p className="text-slate-500 font-medium mt-2 max-w-xs mx-auto">תן ל-AI לבצע מחקר שוק מעמיק ולמצוא את המקומות הטובים ביותר בעיר.</p>
+                                    <div className="space-y-2">
+                                        <p className="text-xl font-bold text-slate-700">עדיין לא שמרת מסעדות</p>
+                                        <p className="text-sm text-slate-500 max-w-xs mx-auto">עבור ללשונית "מחקר שוק" והתחל לאסוף המלצות שוות</p>
                                     </div>
-                                    <button onClick={() => { setActiveTab('recommended'); initiateResearch(); }} className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-3 rounded-2xl font-bold shadow-xl shadow-orange-200 hover:scale-105 transition-transform flex items-center gap-2">
-                                        <Sparkles className="w-5 h-5" /> התחל מחקר שוק (AI)
-                                    </button>
+                                    <button onClick={() => setActiveTab('recommended')} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl hover:scale-105 transition-all">התחל לחקור</button>
                                 </div>
                             ) : (
                                 <>
@@ -618,53 +633,31 @@ Description in Hebrew. Netural English names.`;
                                     </div>
 
                                     <div className="space-y-8 mt-4">
-                                        {Object.entries(groupedMyList).map(([city, items]) => (
-                                            <div key={city} className="animate-fade-in">
+                                        {Object.entries(groupedMyList).map(([category, items]) => (
+                                            <div key={category} className="animate-fade-in">
                                                 <div className="flex items-center gap-3 mb-4">
                                                     <div className="h-px bg-slate-200 flex-grow"></div>
-                                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
-                                                        {city}
+                                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
+                                                        {category} <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 rounded-full">{items.length}</span>
                                                     </h3>
                                                     <div className="h-px bg-slate-200 flex-grow"></div>
                                                 </div>
-                                                <div className="flex flex-col gap-3">
-                                                    {items.map((restaurant) => (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                    {items.map((r) => (
                                                         <RestaurantRow
-                                                            key={restaurant.id}
-                                                            data={restaurant}
-                                                            tripDestination={trip.destination}
-                                                            tripDestinationEnglish={trip.destinationEnglish}
-                                                            onSaveNote={(n) => {
-                                                                const updated = trip.restaurants.map(c => ({
-                                                                    ...c,
-                                                                    restaurants: c.restaurants.map(r => r.id === restaurant.id ? { ...r, notes: n } : r)
-                                                                }));
-                                                                onUpdateTrip({ ...trip, restaurants: updated });
-                                                            }}
-                                                            onUpdate={(u) => {
-                                                                const updated = trip.restaurants.map(c => ({
-                                                                    ...c,
-                                                                    restaurants: c.restaurants.map(r => r.id === restaurant.id ? { ...r, ...u } : r)
-                                                                }));
-                                                                onUpdateTrip({ ...trip, restaurants: updated });
-                                                            }}
-                                                            onDelete={() => {
-                                                                if (window.confirm('למחוק מהרשימה?')) {
-                                                                    const updated = trip.restaurants.map(c => ({
-                                                                        ...c,
-                                                                        restaurants: c.restaurants.filter(r => r.id !== restaurant.id)
-                                                                    })).filter(c => c.restaurants.length > 0);
-                                                                    onUpdateTrip({ ...trip, restaurants: updated });
-                                                                }
-                                                            }}
+                                                            key={r.id}
+                                                            data={r}
+                                                            onSaveNote={(note) => handleUpdateRestaurant(r.id, { notes: note })}
+                                                            onUpdate={(updates) => handleUpdateRestaurant(r.id, updates)}
+                                                            onDelete={() => handleDeleteRestaurant(r.id)}
                                                         />
                                                     ))}
                                                 </div>
                                             </div>
                                         ))}
                                         {Object.keys(groupedMyList).length === 0 && (
-                                            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-                                                <p className="text-slate-400 font-bold">לא נמצאו מסעדות בסינון זה.</p>
+                                            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 mt-4">
+                                                <p className="text-slate-500 text-sm font-bold">לא נמצאו מסעדות בסינון זה.</p>
                                             </div>
                                         )}
                                     </div>
@@ -672,12 +665,13 @@ Description in Hebrew. Netural English names.`;
                             )}
                         </>
                     ) : (
+                        /* Recommended Tab */
                         <div className="animate-fade-in">
-                            {!loadingRecs && aiCategories.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-10 space-y-6">
-                                    <div className="bg-orange-100 p-6 rounded-full"><Navigation className="w-10 h-10 text-orange-600" /></div>
-                                    <h3 className="text-2xl font-black text-slate-800">
-                                        {tripCities.length > 1 ? 'באיזו עיר תרצו לאכול?' : 'איפה אוכלים היום?'}
+                            {!loadingRecs && allAiRestaurants.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                                    <div className="bg-blue-100 p-4 rounded-full"><BrainCircuit className="w-8 h-8 text-blue-600" /></div>
+                                    <h3 className="text-xl font-black text-slate-800">
+                                        {tripCities.length > 1 ? 'באיזו עיר נתמקד?' : 'בחר עיר לחיפוש'}
                                     </h3>
 
                                     {tripCities.length > 1 ? (
@@ -686,14 +680,14 @@ Description in Hebrew. Netural English names.`;
                                                 <button
                                                     key={city}
                                                     onClick={() => initiateResearch(city)}
-                                                    className="bg-white border-2 border-slate-100 text-slate-700 px-6 py-3 rounded-xl text-sm font-bold shadow-sm hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50 transition-all"
+                                                    className="bg-white border-2 border-slate-100 text-slate-700 px-6 py-2 rounded-xl text-sm font-bold shadow-sm hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
                                                 >
                                                     {city}
                                                 </button>
                                             ))}
                                         </div>
                                     ) : (
-                                        <button onClick={() => initiateResearch()} className="bg-white border-2 border-orange-500 text-orange-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-orange-50 transition-all">
+                                        <button onClick={() => initiateResearch()} className="bg-white border-2 border-blue-500 text-blue-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-blue-50 transition-all">
                                             {trip.destination} - בצע מחקר שוק
                                         </button>
                                     )}
@@ -701,74 +695,81 @@ Description in Hebrew. Netural English names.`;
                             ) : (
                                 <>
                                     <div className="bg-white border border-slate-100 p-4 rounded-2xl mb-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3"><div className="bg-orange-50 p-2 rounded-full"><BrainCircuit className="w-5 h-5 text-orange-500" /></div><div><h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Market Research</h3><p className="font-black text-lg text-slate-800">מדריך האוכל המלא</p></div></div>
+                                        <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-full"><BrainCircuit className="w-5 h-5 text-blue-600" /></div><div><h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Market Research</h3><p className="font-black text-lg text-slate-800">המלצות AI: Travelers' Choice</p></div></div>
 
                                         {!loadingRecs && (
                                             <div className="flex items-center gap-2">
                                                 {tripCities.length > 1 && (
-                                                    <div className="flex gap-2 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                                                    <div className="flex gap-2 bg-white/50 p-1.5 rounded-xl">
                                                         {tripCities.map(city => (
                                                             <button
                                                                 key={city}
                                                                 onClick={() => initiateResearch(city)}
-                                                                className="text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-white hover:shadow-sm text-slate-500 hover:text-slate-800 transition-all"
+                                                                className="text-sm font-bold px-3 py-1.5 rounded-lg hover:bg-white hover:shadow-sm text-blue-900 transition-all opacity-80 hover:opacity-100"
                                                             >
                                                                 {city}
                                                             </button>
                                                         ))}
                                                     </div>
                                                 )}
-                                                <button onClick={() => initiateResearch()} className="text-[10px] font-bold text-slate-500 hover:text-orange-600 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg hover:bg-orange-50 flex items-center gap-1 transition-colors"><RotateCw className="w-3 h-3" /> רענן</button>
+                                                <button onClick={() => initiateResearch()} className="text-[10px] font-bold text-slate-500 hover:text-blue-600 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg hover:bg-blue-50 flex items-center gap-1 transition-colors"><RotateCw className="w-3 h-3" /> רענן</button>
                                             </div>
                                         )}
                                     </div>
 
                                     {loadingRecs ? (
                                         <ThinkingLoader texts={[
-                                            "סורק בלוגים על מסעדות...",
+                                            "סורק בלוגים קולינריים...",
+                                            "מחפש המלצות אותנטיות...",
                                             "בודק דירוגי גוגל...",
-                                            "מחפש המלצות מישלן...",
-                                            "מאתר פנינים קולינריות...",
-                                            "מסנן תוצאות לא רלוונטיות..."
+                                            "מצליב נתונים עם מדריכי טיולים...",
+                                            "מסדר לפי קטגוריות..."
                                         ]} />
-                                    ) : recError ? (
-                                        <div className="text-center py-10">
-                                            <p className="text-red-500 text-sm font-bold mb-4">{recError}</p>
-                                            <button onClick={initiateResearch} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:scale-105 transition-transform flex items-center gap-2 mx-auto">
-                                                <RefreshCw className="w-4 h-4" /> נסה שנית
-                                            </button>
-                                        </div>
-                                    ) : (
+                                    ) : recError ? (<div className="text-center text-red-500 text-sm font-bold py-4">{recError}</div>) : (
                                         <>
+                                            {/* 1. Category Filter */}
                                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
                                                 <div className="flex gap-2 p-1">
-                                                    <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1 ${selectedCategory === 'all' ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}><LayoutGrid className="w-3 h-3" /> הכל</button>
+                                                    <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1 ${selectedCategory === 'all' ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}><LayoutGrid className="w-3 h-3" /> הכל</button>
                                                     {aiCategories.map(cat => (
-                                                        <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedCategory === cat.id ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}>{cat.title}</button>
+                                                        <button
+                                                            key={cat.id}
+                                                            onClick={() => setSelectedCategory(cat.id)}
+                                                            className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedCategory === cat.id ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}
+                                                        >
+                                                            {cat.title}
+                                                        </button>
                                                     ))}
                                                 </div>
                                             </div>
 
+                                            {/* 2. Rater Filter */}
                                             <div className="mb-4 overflow-x-auto pb-2 scrollbar-hide">
                                                 <div className="flex gap-2 items-center">
                                                     <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">הומלץ ע"י:</span>
                                                     <button onClick={() => setSelectedRater('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedRater === 'all' ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}>הכל</button>
                                                     {availableRaters.map(rater => (
-                                                        <button key={rater} onClick={() => setSelectedRater(rater)} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedRater === rater ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}>{rater}</button>
+                                                        <button
+                                                            key={rater}
+                                                            onClick={() => setSelectedRater(rater)}
+                                                            className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedRater === rater ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}
+                                                        >
+                                                            {rater}
+                                                        </button>
                                                     ))}
                                                 </div>
                                             </div>
 
                                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                                {filteredRestaurants.map((rec) => (
+                                                {filteredRestaurants.map(res => (
                                                     <RestaurantCard
-                                                        key={rec.id}
-                                                        rec={rec}
+                                                        key={res.id}
+                                                        rec={res as ExtendedRestaurant}
                                                         tripDestination={trip.destination}
                                                         tripDestinationEnglish={trip.destinationEnglish}
-                                                        isAdded={addedIds.has(rec.id) || trip.restaurants.some(c => c.restaurants.some(r => r.name === rec.name))}
+                                                        isAdded={addedIds.has(res.id) || trip.restaurants.some(c => c.restaurants.some(r => r.name === res.name))}
                                                         onAdd={handleToggleRec}
-                                                        onClick={() => setSelectedPlace(rec)}
+                                                        onClick={() => setSelectedPlace(res as ExtendedRestaurant)}
                                                     />
                                                 ))}
                                             </div>
@@ -803,111 +804,34 @@ Description in Hebrew. Netural English names.`;
     );
 };
 
-// Reused Component with new design
-const RestaurantRow: React.FC<{
-    data: Restaurant,
-    tripDestination: string,
-    tripDestinationEnglish?: string,
-    onSaveNote: (n: string) => void,
-    onUpdate: (updates: Partial<Restaurant>) => void,
-    onDelete: () => void
-}> = ({ data, tripDestination, tripDestinationEnglish, onSaveNote, onUpdate, onDelete }) => {
-
+const RestaurantRow: React.FC<{ data: Restaurant, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Restaurant>) => void, onDelete: () => void }> = ({ data, onSaveNote, onUpdate, onDelete }) => {
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
     const [isScheduling, setIsScheduling] = useState(false);
-    const [scheduleDate, setScheduleDate] = useState('');
-    const [scheduleTime, setScheduleTime] = useState('');
-    const toInputDate = (d?: string) => d ? d.split('/').reverse().join('-') : '';
-    const fromInputDate = (d: string) => d.split('-').reverse().join('/');
+    const [scheduleTime, setScheduleTime] = useState(data.reservationTime || '');
 
-    useEffect(() => {
-        if (data.reservationDate) setScheduleDate(toInputDate(data.reservationDate));
-        if (data.reservationTime) setScheduleTime(data.reservationTime);
-    }, [data.reservationDate, data.reservationTime]);
+    // Internal visibility for date picker
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
-    const handleSaveSchedule = () => { onUpdate({ reservationDate: scheduleDate, reservationTime: scheduleTime }); setIsScheduling(false); };
+    const handleSaveSchedule = () => { onUpdate({ reservationTime: scheduleTime }); setIsScheduling(false); };
     const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
-    const toggleFavorite = () => { onUpdate({ isFavorite: !data.isFavorite }); };
-
-    // Maps
-    const extendedData = data as ExtendedRestaurant;
-    const nameForMap = cleanTextForMap(extendedData.nameEnglish || data.name);
-    const locationForMap = cleanTextForMap(data.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
-    const mapsQuery = encodeURIComponent(`${nameForMap} ${locationForMap} `);
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
-
-    const visuals = getCuisineVisuals(extendedData.cuisine);
-
-    return (
-        <div className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-all group flex flex-col md:flex-row gap-3 relative overflow-hidden pl-3 py-3 pr-3 md:pr-0 ${data.isFavorite ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-slate-100'}`}>
-            <div className={`absolute right-0 top-0 bottom-0 w-1 ${visuals.gradient.split(' ')[0]}`}></div>
-
-            <div className="flex-grow min-w-0 pr-2">
-                <div className="flex justify-between items-start">
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                            <button onClick={toggleFavorite} className="focus:outline-none relative z-20 p-1 -ml-1 hover:bg-slate-50 rounded-full transition-colors">
-                                <Star className={`w-5 h-5 transition-all ${data.isFavorite ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-slate-300 hover:text-yellow-400'}`} />
-                            </button>
-                            <span className="text-lg">{visuals.icon}</span>
-                            <h4 className="text-base font-black text-slate-900 leading-tight tracking-tight font-sans" dir="ltr">
-                                {extendedData.nameEnglish || data.name}
-                            </h4>
-                            {data.googleRating && (
-                                <div className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                                    <span className="text-[10px] font-bold text-slate-800">{data.googleRating}</span>
-                                    <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400 ml-0.5" />
-                                </div>
-                            )}
-                        </div>
-                        {/* Increased Text Size */}
-                        <p className="text-slate-600 text-sm mt-1 leading-snug line-clamp-2 md:line-clamp-1">{data.description}</p>
-
-                        <div className="flex gap-2 mt-2">
-                            {data.recommendationSource && (
-                                <div className="inline-flex items-center text-[9px] font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 w-fit">
-                                    <Trophy className="w-2.5 h-2.5 mr-1 text-yellow-600" /> {data.recommendationSource.replace('Bib', 'Michelin')}
-                                </div>
-                            )}
-                            {extendedData.isHotelRestaurant && (
-                                <div className="inline-flex items-center text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 w-fit">
-                                    <Hotel className="w-2.5 h-2.5 mr-1" /> במלון
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-1 pl-1 ml-auto md:ml-0 self-start">
-                        <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-500 hover:text-blue-600 bg-slate-50 rounded-lg hover:bg-blue-50 transition-colors"><MapIcon className="w-4 h-4" /></a>
-                        <button onClick={() => setIsScheduling(!isScheduling)} className={`p-2 rounded-lg border ${data.reservationDate ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-slate-50 text-slate-400 border-transparent hover:bg-slate-100'}`}><Calendar className="w-4 h-4" /></button>
-                        <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded-lg hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                </div>
-
-                {isScheduling && (
-                    <div className="mt-3 bg-orange-50 p-3 rounded-xl border border-orange-100 space-y-3 animate-fade-in shadow-inner">
-                        <div className="flex flex-col gap-2">
-                            <label className="text-[10px] font-bold text-orange-700 mr-1">תאריך</label>
-                            <button
-                                type="button"
-                                onClick={() => (window as any)._showRestDatePicker = true}
-                                className="w-full p-2.5 bg-white rounded-xl border border-orange-200 text-xs font-bold text-right flex items-center justify-between shadow-sm"
-                            >
+    className = "w-full p-2.5 bg-white rounded-xl border border-orange-200 text-xs font-bold text-right flex items-center justify-between shadow-sm"
+        >
                                 <span>{data.reservationDate || "בחר תאריך"}</span>
                                 <Calendar className="w-4 h-4 text-orange-400" />
-                            </button>
-                            {(window as any)._showRestDatePicker && (
-                                <CalendarDatePicker
-                                    value={data.reservationDate || ''}
-                                    title="זיהוי הזמנה"
-                                    onChange={(iso) => {
-                                        onUpdate({ reservationDate: iso });
-                                        (window as any)._showRestDatePicker = false;
-                                    }}
-                                    onClose={() => (window as any)._showRestDatePicker = false}
-                                />
-                            )}
-                        </div>
+                            </button >
+    {(window as any)._showRestDatePicker && (
+        <CalendarDatePicker
+            value={data.reservationDate || ''}
+            title="זיהוי הזמנה"
+            onChange={(iso) => {
+                onUpdate({ reservationDate: iso });
+                (window as any)._showRestDatePicker = false;
+            }}
+            onClose={() => (window as any)._showRestDatePicker = false}
+        />
+    )}
+                        </div >
                         <div className="flex flex-col gap-2">
                             <label className="text-[10px] font-bold text-orange-700 mr-1">שעה</label>
                             <input
@@ -921,19 +845,21 @@ const RestaurantRow: React.FC<{
                             <button onClick={() => setIsScheduling(false)} className="text-[10px] text-orange-400 font-bold px-3 py-1.5 hover:bg-orange-100/50 rounded-lg transition-colors">ביטול</button>
                             <button onClick={handleSaveSchedule} className="bg-orange-600 text-white px-5 py-2 rounded-xl text-[11px] font-bold shadow-md hover:bg-orange-700 transition-all hover:shadow-orange-200">שמור</button>
                         </div>
-                    </div>
+                    </div >
                 )}
-                {!isScheduling && data.reservationDate && (
-                    <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 w-fit px-2 py-1 rounded border border-orange-100">
-                        <Clock className="w-3 h-3" />
-                        {data.reservationDate.match(/^\d{4}-\d{2}-\d{2}$/)
-                            ? data.reservationDate.split('-').reverse().join('/')
-                            : data.reservationDate}
-                        {data.reservationTime}
-                    </div>
-                )}
-                <div className="mt-2">{isEditingNote ? (<div className="bg-yellow-50 p-2 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-slate-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[10px] text-slate-500">ביטול</button><button onClick={saveNote} className="text-[10px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400 hover:border-slate-300'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
-            </div>
+{
+    !isScheduling && data.reservationDate && (
+        <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 w-fit px-2 py-1 rounded border border-orange-100">
+            <Clock className="w-3 h-3" />
+            {data.reservationDate.match(/^\d{4}-\d{2}-\d{2}$/)
+                ? data.reservationDate.split('-').reverse().join('/')
+                : data.reservationDate}
+            {data.reservationTime}
         </div>
+    )
+}
+<div className="mt-2">{isEditingNote ? (<div className="bg-yellow-50 p-2 rounded-lg border border-yellow-200"><textarea className="w-full bg-transparent border-none outline-none text-xs text-slate-800 resize-none" rows={1} placeholder="הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} /><div className="flex justify-end gap-2"><button onClick={() => setIsEditingNote(false)} className="text-[10px] text-slate-500">ביטול</button><button onClick={saveNote} className="text-[10px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded font-bold">שמור</button></div></div>) : (<div onClick={() => setIsEditingNote(true)} className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900' : 'bg-slate-50 border-dashed border-slate-200 text-slate-400 hover:border-slate-300'}`}><StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-gray-400'}`} /><span className="line-clamp-1">{data.notes || 'הוסף הערה...'}</span></div>)}</div>
+            </div >
+        </div >
     );
 };

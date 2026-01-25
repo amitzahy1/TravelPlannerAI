@@ -18,11 +18,27 @@ const FOOD_DB = {
         },
         pizza: {
                 label: '🍕 Pizza',
-                generic: ['1513104890138-7c749659a591', '1574071318508-1cdbab80d002', '1565299624946-b28f40a0ae38', '1593560708920-61dd98c46a4e', '1604382354936-07c5d9983bd3']
+                generic: ['1513104890138-7c749659a591', '1574071318508-1cdbab80d002', '1565299624946-b28f40a0ae38', '1593560708920-61dd98c46a4e', '1604382354936-07c5d9983bd3', '1571407970349-bc81e7e96d47']
         },
         burger: {
                 label: '🍔 Burger',
-                generic: ['1568901346375-23c9450c58cd', '1550547660-d9450f859349', '1594212699903-ec8a3eca50f5', '1571091718767-18b5b1457add']
+                generic: ['1568901346375-23c9450c58cd', '1550547660-d9450f859349', '1594212699903-ec8a3eca50f5', '1571091718767-18b5b1457add', '1551782450-a2132b4ba21d']
+        },
+        sushi: {
+                label: '🍣 Sushi',
+                generic: ['1579871494447-9811cf80d66c', '1553621042-f6e147245754', '1611143669182-6e21629fa270', '1615887023516-9b663b6f2461']
+        },
+        asian: {
+                label: '🥡 Asian Fusion',
+                generic: ['1512058564366-18510be2db19', '1541696490-8744a570242d', '1626804475297-411db704dc14', '1563865436814-448dac895cb1']
+        },
+        steakhouses: {
+                label: '🥩 Steakhouse',
+                generic: ['1600891964092-4316c288032e', '1546241072-480f0f69608f', '1432139509613-5c4255815697']
+        },
+        italian: {
+                label: '🍝 Italian',
+                generic: ['1498579150354-977475b7ea0b', '1591597028445-5df18cc4306c', '1566826627063-47a224c87c2b', '1481931098730-318b6f776db0']
         },
         street: {
                 label: '🥢 Street Food',
@@ -34,13 +50,17 @@ const FOOD_DB = {
         },
         cafe: {
                 label: '☕ Cafe',
-                generic: ['1509042239860-f550ce710b93', '1445116572660-236b28497be0', '1554118811-1e0d58224f24', '1521017432531-fbd92d768814']
+                generic: ['1509042239860-f550ce710b93', '1445116572660-236b28497be0', '1554118811-1e0d58224f24', '1521017432531-fbd92d768814', '1495474472287-4d71bcdd2085']
         },
         bar: {
                 label: '🍸 Bar & Nightlife',
                 generic: ['1514362545857-3bc16c4c7d1b', '1519671482538-30646ae149bc', '1551024709-3f23ad6edffb', '1574096079513-d8259312b785']
         },
-        fallback: ['1555939594-58d7cb561ad1', '1540189549347-c2411dc674 hands']
+        dessert: {
+                label: '🍦 Dessert',
+                generic: ['1563729784474-d77dbb933a9e', '1488477181946-607a753415eb', '1505253805406-382410a56658']
+        },
+        fallback: ['1555939594-58d7cb561ad1', '1540189549347-c2411dc674', '1504754524776-0f4f3b26c06b']
 };
 
 // --- 2. ATTRACTION DATABASE (MEGA-POOL EXPANSION v11) ---
@@ -59,7 +79,7 @@ const ATTRACTION_DB = {
                 generic: [
                         '1518998053901-5348d3969105', '1544967082-d9d3fbc7b3cc', '1449156001533-cb39c8994c00',
                         '1547841103-9d06859e9a41', '1554907984-18295550c666', '1605333396652-325b39860fcd',
-                        '1572953142014-11829f7ad901', '1564392361-f5fabf52701f'
+                        '1572953142014-11829f7ad901', '1564392361-f5fabf52701f', '1589828699175-9e6db5822b31'
                 ]
         },
         nature: {
@@ -67,7 +87,7 @@ const ATTRACTION_DB = {
                 generic: [
                         '1496347315686-5f274d046ccc', '1625234190130-f80c65590924', '1441974231531-c6227db76b6e',
                         '1500375592092-40eb2168fd21', '1546768223-997601aa4718', '1518173946687-a4c8892bbd9f',
-                        '1506744038136-155896265735', '1532274404305-62bb02f69326'
+                        '1506744038136-155896265735', '1532274404305-62bb02f69326', '1502082553049-l1259600e1e6'
                 ]
         },
         beach: {
@@ -75,7 +95,7 @@ const ATTRACTION_DB = {
                 generic: [
                         '1507525428034-b723cf961d3e', '1519046904884-53103b34b206', '1506929562872-bb421503ef21',
                         '1501785888041-af3ef285b470', '1544257750-572358f5da22', '1520440229-6469a149ac19',
-                        '1468413253725-0d5181091126', '1510414842564-a7515b3d6f8a'
+                        '1468413253725-0d5181091126', '1510414842564-a7515b3d6f8a', '1515238152791-8216bfdf89a7'
                 ]
         },
         view: {
@@ -124,6 +144,7 @@ function selectFromPool(name: string, ids: string[]): string {
 export function getFoodImage(name: string, description: string = "", tags: string[] = []): { url: string, label: string } {
         const query = `${name} ${description} ${tags.join(' ')}`.toLowerCase();
 
+        // High Priority Specifics
         if (query.includes('tonkotsu') || query.includes('creamy ramen') || query.includes('מרק סמיך'))
                 return { url: selectFromPool(name, FOOD_DB.ramen.types.tonkotsu.ids), label: '🍜 Tonkotsu' };
 
@@ -133,22 +154,37 @@ export function getFoodImage(name: string, description: string = "", tags: strin
         if (query.includes('ramen') || query.includes('noodle') || query.includes('ראמן'))
                 return { url: selectFromPool(name, FOOD_DB.ramen.generic), label: '🍜 Ramen' };
 
-        if (query.includes('pizza') || query.includes('italian') || query.includes('פיצה'))
+        if (query.includes('sushi') || query.includes('sashimi') || query.includes('roll') || query.includes('סושי'))
+                return { url: selectFromPool(name, FOOD_DB.sushi.generic), label: '🍣 Sushi' };
+
+        if (query.includes('pizza') || query.includes('pizzeria') || query.includes('פיצה'))
                 return { url: selectFromPool(name, FOOD_DB.pizza.generic), label: '🍕 Pizza' };
 
-        if (query.includes('burger') || query.includes('המבורגר'))
+        if (query.includes('burger') || query.includes('bun') || query.includes('המבורגר'))
                 return { url: selectFromPool(name, FOOD_DB.burger.generic), label: '🍔 Burger' };
 
-        if (query.includes('street') || query.includes('stall') || query.includes('רחוב'))
+        if (query.includes('italian') || query.includes('pasta') || query.includes('איטלקית'))
+                return { url: selectFromPool(name, FOOD_DB.italian.generic), label: '🍝 Italian' };
+
+        if (query.includes('steak') || query.includes('meat') || query.includes('grill') || query.includes('בשר'))
+                return { url: selectFromPool(name, FOOD_DB.steakhouses.generic), label: '🥩 Steakhouse' };
+
+        if (query.includes('asian') || query.includes('thai') || query.includes('chinese') || query.includes('japan') || query.includes('אסייתי'))
+                return { url: selectFromPool(name, FOOD_DB.asian.generic), label: '🥡 Asian Fusion' };
+
+        if (query.includes('street') || query.includes('stall') || query.includes('market') || query.includes('רחוב'))
                 return { url: selectFromPool(name, FOOD_DB.street.generic), label: '🥢 Street Food' };
 
-        if (query.includes('fine') || query.includes('michelin') || query.includes('יוקרה'))
+        if (query.includes('fine') || query.includes('michelin') || query.includes('gourmet') || query.includes('יוקרה'))
                 return { url: selectFromPool(name, FOOD_DB.fine.generic), label: '💎 Fine Dining' };
 
-        if (query.includes('cafe') || query.includes('coffee') || query.includes('קפה'))
+        if (query.includes('dessert') || query.includes('ice cream') || query.includes('cake') || query.includes('קינוח'))
+                return { url: selectFromPool(name, FOOD_DB.dessert.generic), label: '🍦 Dessert' };
+
+        if (query.includes('cafe') || query.includes('coffee') || query.includes('brunch') || query.includes('קפה'))
                 return { url: selectFromPool(name, FOOD_DB.cafe.generic), label: '☕ Cafe' };
 
-        if (query.includes('bar') || query.includes('cocktail') || query.includes('בר'))
+        if (query.includes('bar') || query.includes('club') || query.includes('pub') || query.includes('cocktail') || query.includes('בר'))
                 return { url: selectFromPool(name, FOOD_DB.bar.generic), label: '🍸 Nightlife' };
 
         return { url: selectFromPool(name, FOOD_DB.fallback), label: '🍽️ Restaurant' };
@@ -160,25 +196,25 @@ export function getFoodImage(name: string, description: string = "", tags: strin
 export function getAttractionImage(name: string, description: string = "", tags: string[] = []): { url: string, label: string } {
         const query = `${name} ${description} ${tags.join(' ')}`.toLowerCase();
 
-        if (query.includes('temple') || query.includes('wat') || query.includes('shrine') || query.includes('מקדש'))
+        if (query.includes('temple') || query.includes('wat') || query.includes('shrine') || query.includes('budhha') || query.includes('מקדש'))
                 return { url: selectFromPool(name, ATTRACTION_DB.temple.generic), label: '⛩️ Temple' };
 
-        if (query.includes('museum') || query.includes('art') || query.includes('gallery') || query.includes('מוזיאון'))
+        if (query.includes('museum') || query.includes('art') || query.includes('gallery') || query.includes('history') || query.includes('מוזיאון'))
                 return { url: selectFromPool(name, ATTRACTION_DB.museum.generic), label: '🏛️ Museum' };
 
-        if (query.includes('nature') || query.includes('park') || query.includes('garden') || query.includes('forest') || query.includes('טבע'))
+        if (query.includes('nature') || query.includes('park') || query.includes('garden') || query.includes('forest') || query.includes('waterfall') || query.includes('טבע'))
                 return { url: selectFromPool(name, ATTRACTION_DB.nature.generic), label: '🌳 Nature' };
 
-        if (query.includes('beach') || query.includes('sea') || query.includes('ocean') || query.includes('חוף'))
+        if (query.includes('beach') || query.includes('sea') || query.includes('ocean') || query.includes('sand') || query.includes('island') || query.includes('חוף'))
                 return { url: selectFromPool(name, ATTRACTION_DB.beach.generic), label: '🏖️ Beach' };
 
-        if (query.includes('view') || query.includes('skyline') || query.includes('observation') || query.includes('תצפית'))
+        if (query.includes('view') || query.includes('skyline') || query.includes('observation') || query.includes('deck') || query.includes('תצפית'))
                 return { url: selectFromPool(name, ATTRACTION_DB.view.generic), label: '🗼 Viewpoint' };
 
-        if (query.includes('market') || query.includes('bazaar') || query.includes('shopping') || query.includes('שוק') || query.includes('קניון'))
+        if (query.includes('market') || query.includes('bazaar') || query.includes('shopping') || query.includes('mall') || query.includes('שוק') || query.includes('קניון'))
                 return { url: selectFromPool(name, ATTRACTION_DB.market.generic), label: '🛍️ Market' };
 
-        if (query.includes('modern') || query.includes('skyscraper') || query.includes('building') || query.includes('city') || query.includes('עיר'))
+        if (query.includes('modern') || query.includes('skyscraper') || query.includes('building') || query.includes('city') || query.includes('tower') || query.includes('עיר'))
                 return { url: selectFromPool(name, ATTRACTION_DB.modern.generic), label: '🌆 Cityscape' };
 
         return { url: selectFromPool(name, ATTRACTION_DB.fallback), label: '📍 Destination' };

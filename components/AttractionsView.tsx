@@ -286,7 +286,6 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
             {tripCities.length > 1 && (
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    <button onClick={() => setSelectedCity('all')} className={`px-4 py-2 rounded-full text-xs font-black border ${selectedCity === 'all' ? 'bg-slate-900 text-white' : 'bg-white text-slate-500'}`}>כל הערים</button>
                     {tripCities.map(city => <button key={city} onClick={() => setSelectedCity(city)} className={`px-4 py-2 rounded-full text-xs font-black border ${selectedCity === city ? 'bg-slate-900 text-white' : 'bg-white text-slate-500'}`}>{city}</button>)}
                 </div>
             )}
