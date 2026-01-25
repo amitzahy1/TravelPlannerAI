@@ -631,75 +631,79 @@ export const ItineraryView: React.FC<{
                             </button>
                         </div>
 
-                        {/* Smart Popover (Floating Surface) */}
-                        {viewingCategory && (
+                        {/* Smart Popover (Floating Surface) - PORTAL */}
+                        {viewingCategory && createPortal(
                             <>
                                 {/* Backdrop for click-outside */}
-                                <div className="fixed inset-0 z-40" onClick={() => setViewingCategory(null)} />
+                                <div className="fixed inset-0 z-[9990]" onClick={() => setViewingCategory(null)} />
 
-                                {/* Popover Content */}
-                                <div className="absolute top-full left-0 right-0 mt-3 p-4 bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl z-50 origin-top animate-in slide-in-from-top-2 fade-in duration-200">
-                                    {/* Header */}
-                                    <div className="flex justify-between items-center mb-3">
-                                        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-                                            {viewingCategory === 'hotels' ? 'מלונות' : viewingCategory === 'food' ? 'מסעדות מועדפות' : 'אטרקציות מועדפות'}
-                                        </h3>
-                                        <button onClick={() => setViewingCategory(null)} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
-                                            <X className="w-4 h-4 text-slate-400" />
-                                        </button>
-                                    </div>
+                                {/* Popover Content - Centered Top or positioned appropriately */}
+                                <div className="fixed top-24 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-[9999] animate-in slide-in-from-top-4 fade-in duration-200">
+                                    <div className="bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl p-4">
+                                        {/* Header */}
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+                                                {viewingCategory === 'hotels' ? 'מלונות' : viewingCategory === 'food' ? 'מסעדות מועדפות' : 'אטרקציות מועדפות'}
+                                            </h3>
+                                            <div className="bg-slate-100 px-2 py-0.5 rounded text-[10px] text-slate-400 font-mono">POPUP MODE</div>
+                                            <button onClick={() => setViewingCategory(null)} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
+                                                <X className="w-4 h-4 text-slate-400" />
+                                            </button>
+                                        </div>
 
-                                    {/* Micro-Cards Grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                                        {(viewingCategory === 'hotels' ? (trip.hotels || []) :
-                                            viewingCategory === 'food' ? favoriteRestaurants :
-                                                favoriteAttractions
-                                        ).map((item: any, idx: number) => (
-                                            <div
-                                                key={item.id || idx}
-                                                onClick={() => {
-                                                    setViewingCategory(null);
-                                                    setScheduleItem({ item, type: viewingCategory === 'food' ? 'food' : 'attraction' });
-                                                }}
-                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 cursor-pointer group"
-                                            >
-                                                {/* Thumbnail */}
-                                                <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
-                                                    <img
-                                                        src={`https://images.unsplash.com/photo-${viewingCategory === 'hotels' ? '1566073771259-6a8506099945' : viewingCategory === 'food' ? '1517248135467-4c7edcad34c4' : '1469854523086-cc02fe5d8800'}?auto=format&fit=crop&w=100&q=60`}
-                                                        alt=""
-                                                        className="w-full h-full object-cover"
-                                                    />
+                                        {/* Micro-Cards Grid */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+                                            {(viewingCategory === 'hotels' ? (trip.hotels || []) :
+                                                viewingCategory === 'food' ? favoriteRestaurants :
+                                                    favoriteAttractions
+                                            ).map((item: any, idx: number) => (
+                                                <div
+                                                    key={item.id || idx}
+                                                    onClick={() => {
+                                                        setViewingCategory(null);
+                                                        setScheduleItem({ item, type: viewingCategory === 'food' ? 'food' : 'attraction' });
+                                                    }}
+                                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 cursor-pointer group"
+                                                >
+                                                    {/* Thumbnail */}
+                                                    <div className="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
+                                                        <img
+                                                            src={`https://images.unsplash.com/photo-${viewingCategory === 'hotels' ? '1566073771259-6a8506099945' : viewingCategory === 'food' ? '1517248135467-4c7edcad34c4' : '1469854523086-cc02fe5d8800'}?auto=format&fit=crop&w=100&q=60`}
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+
+                                                    {/* Info */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="text-xs font-bold text-slate-800 truncate">{item.name}</h4>
+                                                        <p className="text-[10px] text-slate-400 truncate">
+                                                            {item.address || item.location || item.cuisine || item.type || 'לחץ לתזמון'}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Rating */}
+                                                    {(item.rating || item.googleRating) && (
+                                                        <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold flex-shrink-0">
+                                                            {item.rating || item.googleRating}★
+                                                        </span>
+                                                    )}
                                                 </div>
+                                            ))}
 
-                                                {/* Info */}
-                                                <div className="flex-1 min-w-0">
-                                                    <h4 className="text-xs font-bold text-slate-800 truncate">{item.name}</h4>
-                                                    <p className="text-[10px] text-slate-400 truncate">
-                                                        {item.address || item.location || item.cuisine || item.type || 'לחץ לתזמון'}
-                                                    </p>
-                                                </div>
-
-                                                {/* Rating */}
-                                                {(item.rating || item.googleRating) && (
-                                                    <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold flex-shrink-0">
-                                                        {item.rating || item.googleRating}★
-                                                    </span>
+                                            {/* Empty State */}
+                                            {((viewingCategory === 'hotels' && (trip.hotels || []).length === 0) ||
+                                                (viewingCategory === 'food' && favoriteRestaurants.length === 0) ||
+                                                (viewingCategory === 'attractions' && favoriteAttractions.length === 0)) && (
+                                                    <div className="col-span-full text-center py-6 text-slate-400 text-sm">
+                                                        אין פריטים בקטגוריה זו
+                                                    </div>
                                                 )}
-                                            </div>
-                                        ))}
-
-                                        {/* Empty State */}
-                                        {((viewingCategory === 'hotels' && (trip.hotels || []).length === 0) ||
-                                            (viewingCategory === 'food' && favoriteRestaurants.length === 0) ||
-                                            (viewingCategory === 'attractions' && favoriteAttractions.length === 0)) && (
-                                                <div className="col-span-full text-center py-6 text-slate-400 text-sm">
-                                                    אין פריטים בקטגוריה זו
-                                                </div>
-                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </>
+                            </>,
+                            document.body
                         )}
                     </div>
                 </div>
@@ -828,9 +832,9 @@ export const ItineraryView: React.FC<{
 
 
 
-            {/* DAY DETAIL MODAL - FIXED POSITIONING */}
+            {/* DAY DETAIL MODAL - PORTAL FIXED POSITIONING */}
             {
-                selectedDayIso && activeDay && (
+                selectedDayIso && activeDay && createPortal(
                     <div
                         className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm animate-fade-in flex items-center justify-center p-4 content-center"
                         onClick={(e) => { if (e.target === e.currentTarget) setSelectedDayIso(null); }}
@@ -893,13 +897,14 @@ export const ItineraryView: React.FC<{
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )
             }
 
-            {/* Quick Add Modal */}
+            {/* Quick Add Modal - PORTAL */}
             {
-                quickAddModal.isOpen && (
+                quickAddModal.isOpen && createPortal(
                     <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setQuickAddModal({ isOpen: false })}>
                         <div className="bg-white rounded-[2rem] p-6 w-full max-w-[320px] shadow-2xl relative max-h-[80vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center mb-6 relative z-10">
@@ -931,7 +936,8 @@ export const ItineraryView: React.FC<{
                                 ))}
                             </div>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )
             }
 
