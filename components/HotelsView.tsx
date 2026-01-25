@@ -238,9 +238,7 @@ const HotelCard: React.FC<{
                             )}
                         </div>
 
-                        {data.googleMapsUrl && (
-                            <a href={data.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white p-1.5 md:p-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"><ExternalLink className="w-3 h-3 md:w-4 md:h-4" /></a>
-                        )}
+                        <a href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''}`)}`} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white p-1.5 md:p-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"><MapPin className="w-3 h-3 md:w-4 md:h-4" /></a>
                     </div>
                 </div>
             </div>

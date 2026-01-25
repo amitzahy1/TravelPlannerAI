@@ -52,6 +52,12 @@ const getCuisineVisuals = (cuisine: string = '') => {
     if (c.includes('dessert') || c.includes('ice cream'))
         return { icon: '🍦', gradient: 'bg-gradient-to-br from-pink-300 to-rose-400 text-white', label: 'Sweets' };
 
+    if (c.includes('local') || c.includes('authentic') || c.includes('georgian'))
+        return { icon: '🍲', gradient: 'bg-gradient-to-br from-amber-500 to-orange-700 text-white', label: 'Local Authentic' };
+
+    if (c.includes('family'))
+        return { icon: '👨‍👩‍👧‍👦', gradient: 'bg-gradient-to-br from-green-400 to-teal-600 text-white', label: 'Family Friendly' };
+
     return { icon: '🍽️', gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white', label: 'Restaurant' };
 };
 
@@ -243,38 +249,41 @@ Description in Hebrew. Netural English names.`;
 
             // --- STRICT PROMPT ---
             const prompt = `
-            Act as a strict, fact-checking Food Guide Editor for ${specificCity}.
-            Provide exactly 4 authentic recommendations for each of the following SPECIFIC categories.
+            Act as a strict, fact-checking Food Guide Editor for ${specificCity} (and 30km radius surroundings).
+
+            **CORE SEARCH RULE:**
+            If the specific city/village ("${specificCity}") is small, YOU MUST SEARCH WITHIN A 30KM RADIUS to find the best spots.
+            Do not return empty results unless the entire region is empty.
+
+            Provide exactly 4 authentic recommendations for each of the following SPECIFIC categories:
 
             **Category Structure (Hebrew Titles):**
-            1. "אוכל רחוב אגדי" (Street Food Legends)
-            2. "הראמן הכי טוב" (Best Ramen - Must include Ramen places)
-            3. "הפיצה הכי טובה" (Best Pizza - Must include Pizza places)
-            4. "ההמבורגר הכי טוב" (Best Burger)
-            5. "נודלס ומוקפצים" (Noodles & Stir Fry)
-            6. "בתי קפה וקינוחים" (Cafes & Desserts)
-            7. "מסעדות יוקרה / מישלן" (Fine Dining)
-            8. "ברים וקוקטיילים" (Bars)
+            1. "אוכל מקומי אותנטי" (Local Authentic Food - MUST be local cuisine)
+            2. "מסעדות יוקרה / מישלן" (Fine Dining / Luxury)
+            3. "בר קוקטיילים וחיי לילה" (Cocktail Bars & Nightlife)
+            4. "מסעדות משפחתיות" (Family Friendly / Casual)
+            5. "הראמן הכי טוב" (Best Ramen - STRICT: Return EMPTY list if no real Ramen place exists)
+            6. "הפיצה הכי טובה" (Best Pizza - STRICT: Return EMPTY list if no real Pizza place exists)
+            7. "ההמבורגר הכי טוב" (Best Burger)
+            8. "בתי קפה וקינוחים" (Cafes & Desserts)
 
             **CRITICAL INTEGRITY RULES:**
-            1. **NAME:** Must be the REAL English name of the place (e.g. "Raan Jay Fai", "Thipsamai").
-            2. **DESCRIPTION:** Must be in HEBREW. Very short (max 12 words).
-            3. **SOURCES:** Use Michelin, 50 Best, or Local Favorites.
-            4. **HOTEL:** If the restaurant is inside a hotel, set isHotelRestaurant = true.
-            5. **ICONS:** Set 'cuisine' field to match EXACTLY one of: [Ramen, Pizza, Burger, Sushi, Asian Fusion, Fine Dining, Cafe, Steakhouse, Seafood, Georgian, Dessert, Nightlife].
-               - "אוכל רחוב אגדי" -> local_food
+            1. **NAME:** Must be the REAL English name.
+            2. **DESCRIPTION:** Hebrew, max 12 words.
+            3. **RAMEN/PIZZA CHECK:** If searching for 'Ramen' and the only results are Sandwich shops or Georgian food -> RETURN EMPTY LIST for that category. Do not hallucinate.
+            4. **HOTEL:** If inside a hotel, set isHotelRestaurant = true.
+            5. **ICONS:** Set 'cuisine' field to match EXACTLY one of: [Ramen, Pizza, Burger, Sushi, Asian Fusion, Fine Dining, Cafe, Steakhouse, Seafood, Local Food, Dessert, Nightlife, Family].
+               - "אוכל מקומי אותנטי" -> Local Food
+               - "מסעדות יוקרה / מישלן" -> Fine Dining
+               - "בר קוקטיילים וחיי לילה" -> Nightlife
+               - "מסעדות משפחתיות" -> Family
                - "הראמן הכי טוב" -> Ramen
                - "הפיצה הכי טובה" -> Pizza
                - "ההמבורגר הכי טוב" -> Burger
-               - "נודלס ומוקפצים" -> Asian Fusion
-               - "בתי קפה וקינוחים" -> Cafe
-               - "מסעדות יוקרה / מישלן" -> Fine Dining
-               - "ברים וקוקטיילים" -> Nightlife
 
             **DATA OUTPUT RULES:**
             - **CRITICAL:** Return ONLY valid JSON.
-            - Do NOT return Markdown (no \`\`\`json blocks).
-            - Do NOT return conversational text.
+            - Do NOT return Markdown.
             `;
 
 

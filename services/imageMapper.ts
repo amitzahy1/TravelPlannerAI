@@ -220,7 +220,8 @@ export function getAttractionImage(name: string, description: string = "", tags:
         const query = `${name} ${description} ${tags.join(' ')}`.toLowerCase();
 
         // 1. Winery & Vineyards (High Priority for Georgia)
-        if (query.includes('wine') || query.includes('vineyard') || query.includes('cellar') || query.includes('winery') || query.includes('buera') || query.includes('יקב') || query.includes('כרם'))
+        if (query.includes('buera')) return { url: 'https://images.unsplash.com/photo-1566810842055-6bf467812f2c?auto=format&fit=crop&q=80', label: '🍇 Winery' };
+        if (query.includes('wine') || query.includes('vineyard') || query.includes('cellar') || query.includes('winery') || query.includes('יקב') || query.includes('כרם'))
                 return { url: selectFromPool(name, ATTRACTION_DB.winery.generic), label: '🍇 Winery' };
 
         // 2. Religion (Extended)

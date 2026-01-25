@@ -15,7 +15,7 @@ interface Message {
 
 export const TripAssistant: React.FC<TripAssistantProps> = ({ trip, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: `היי! אני העוזר האישי שלך לטיול ל${trip.destination}. מה תרצה לדעת? (למשל: "מתי הטיסה?", "איזה מלון בבנגקוק?", "מה הלו"ז ליום 3?")` }
+    { role: 'model', text: `היי! אני העוזר האישי שלך לטיול ל${trip.destination}. מה תרצה לדעת? (למשל: "מתי הטיסה?", "איזה מלון ב${trip.destination}?", "מה הלו"ז ליום 3?")` }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
