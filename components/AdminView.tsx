@@ -36,14 +36,63 @@ const toInputDate = (dateStr: string) => {
     return '';
 };
 
-// Helper: Display format
-const toDisplayDate = (isoDate: string) => {
-    if (!isoDate) return '';
-    if (isoDate.includes('-')) {
-        const [y, m, d] = isoDate.split('-');
-        return `${d}/${m}/${y}`;
-    }
-    return isoDate;
+// Helper: Input Component for DD/MM/YYYY
+const DateInput: React.FC<{
+    value: string, // ISO YYYY-MM-DD
+    onChange: (isoDate: string) => void,
+    className?: string,
+    placeholder?: string
+}> = ({ value, onChange, className, placeholder }) => {
+    const [text, setText] = useState('');
+
+    useEffect(() => {
+        if (value) {
+            // Check if already in DD/MM/YYYY format to avoid flip-flopping if data is messy
+            if (value.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                setText(value);
+            } else if (value.includes('-')) {
+                const [y, m, d] = value.split('-');
+                if (y.length === 4) {
+                    setText(`${d}/${m}/${y}`);
+                } else {
+                    setText(value);
+                }
+            } else {
+                setText(value);
+            }
+        } else {
+            setText('');
+        }
+    }, [value]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value;
+
+        // Auto-insert slashes
+        if (val.length === 2 && text.length === 1) val += '/';
+        if (val.length === 5 && text.length === 4) val += '/';
+
+        setText(val);
+
+        // Try parse
+        if (val.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+            const [d, m, y] = val.split('/');
+            onChange(`${y}-${m}-${d}`);
+        } else if (val === '') {
+            onChange('');
+        }
+    };
+
+    return (
+        <input
+            type="text"
+            value={text}
+            onChange={handleChange}
+            placeholder={placeholder || "DD/MM/YYYY"}
+            className={className}
+            maxLength={10}
+        />
+    );
 };
 
 export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDeleteTrip, onClose }) => {
@@ -150,7 +199,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
         }
 
         if (newStart && newEnd) {
-            const formatted = `${toDisplayDate(newStart)} - ${toDisplayDate(newEnd)}`;
+            const formatted = `${formatDisplayDate(newStart)} - ${formatDisplayDate(newEnd)}`;
             handleUpdateTrip({ dates: formatted });
         }
     };
@@ -571,21 +620,25 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                         <div className="flex gap-4">
                                             <div className="flex-1 space-y-1">
                                                 <label className="text-xs font-bold text-slate-400 uppercase">התחלה</label>
-                                                <input
-                                                    type="date"
-                                                    value={startDate}
-                                                    onChange={e => handleDateChange('start', e.target.value)}
-                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-purple-500"
-                                                />
+                                                <div className="relative">
+                                                    <DateInput
+                                                        value={startDate}
+                                                        onChange={iso => handleDateChange('start', iso)}
+                                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-purple-500 text-center"
+                                                        placeholder="DD/MM/YYYY"
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="flex-1 space-y-1">
                                                 <label className="text-xs font-bold text-slate-400 uppercase">סיום</label>
-                                                <input
-                                                    type="date"
-                                                    value={endDate}
-                                                    onChange={e => handleDateChange('end', e.target.value)}
-                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-purple-500"
-                                                />
+                                                <div className="relative">
+                                                    <DateInput
+                                                        value={endDate}
+                                                        onChange={iso => handleDateChange('end', iso)}
+                                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-purple-500 text-center"
+                                                        placeholder="DD/MM/YYYY"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="mt-4 p-3 bg-purple-50 rounded-xl text-center text-sm font-bold text-purple-700 border border-purple-100">
@@ -658,7 +711,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                                         <input className="flex-1 font-medium bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-sm px-2" value={seg.flightNumber} onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)} placeholder="מספר טיסה (LY001)" />
                                                     </div>
                                                     <div className="flex gap-4 text-sm">
-                                                        <input type="date" className="bg-white border border-slate-200 rounded px-2 py-1" value={toInputDate(seg.date)} onChange={(e) => handleUpdateFlightSegment(idx, 'date', e.target.value)} />
+                                                        <DateInput className="bg-white border border-slate-200 rounded px-2 py-1" value={seg.date} onChange={(iso) => handleUpdateFlightSegment(idx, 'date', iso)} />
                                                         <input className="w-20 bg-white border border-slate-200 rounded px-2 py-1" value={seg.departureTime} onChange={(e) => handleUpdateFlightSegment(idx, 'departureTime', e.target.value)} placeholder="המראה" />
                                                         <input className="w-20 bg-white border border-slate-200 rounded px-2 py-1" value={seg.arrivalTime} onChange={(e) => handleUpdateFlightSegment(idx, 'arrivalTime', e.target.value)} placeholder="נחיתה" />
                                                     </div>
@@ -694,11 +747,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                                         <div className="grid grid-cols-2 gap-4 mt-2">
                                                             <div className="bg-white px-2 py-1 rounded border border-slate-200">
                                                                 <label className="text-[10px] font-bold text-slate-400 block">Check-in</label>
-                                                                <input type="date" className="w-full text-xs font-bold outline-none" value={toInputDate(h.checkInDate)} onChange={(e) => handleUpdateHotel(h.id, 'checkInDate', e.target.value)} />
+                                                                <DateInput className="w-full text-xs font-bold outline-none" value={h.checkInDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkInDate', iso)} />
                                                             </div>
                                                             <div className="bg-white px-2 py-1 rounded border border-slate-200">
                                                                 <label className="text-[10px] font-bold text-slate-400 block">Check-out</label>
-                                                                <input type="date" className="w-full text-xs font-bold outline-none" value={toInputDate(h.checkOutDate)} onChange={(e) => handleUpdateHotel(h.id, 'checkOutDate', e.target.value)} />
+                                                                <DateInput className="w-full text-xs font-bold outline-none" value={h.checkOutDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkOutDate', iso)} />
                                                             </div>
                                                         </div>
                                                     </div>

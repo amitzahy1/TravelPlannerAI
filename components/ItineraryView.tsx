@@ -33,15 +33,19 @@ const parseDateString = (dateStr: string): Date | null => {
     let d: Date | null = null;
     if (dateStr.includes('/')) {
         const parts = dateStr.split('/');
+        // Assume DD/MM/YYYY
         d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]), 12, 0, 0);
     } else if (dateStr.includes('-')) {
         const parts = dateStr.split('-');
         if (parts[0].length === 4) {
+            // YYYY-MM-DD
             d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
         } else if (parts[2].length === 4) {
+            // DD-MM-YYYY
             d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]), 12, 0, 0);
         }
     } else {
+        // Try parsing "08 Aug 2026" or other text formats
         d = new Date(dateStr);
         d.setHours(12, 0, 0, 0);
     }
