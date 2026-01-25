@@ -54,12 +54,8 @@ const getCuisineVisuals = (cuisine: string = '') => {
     return { icon: '🍽️', gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white', label: 'Restaurant' };
 };
 
-// Helper to remove Hebrew and special chars for Maps URL
-const cleanTextForMap = (text: string) => {
-    if (!text) return "";
-    // Keep only English letters, numbers, and spaces
-    return text.replace(/[^\x00-\x7F]/g, "").replace(/\s+/g, " ").trim();
-};
+import { cleanTextForMap } from '../utils/textUtils';
+
 
 // Sorting helper: Favorites first, then Rating
 const sortMyRestaurants = (list: Restaurant[]) => {
@@ -797,12 +793,10 @@ Description in Hebrew. Netural English names.`;
             {selectedPlace && (
                 <GlobalPlaceModal
                     item={selectedPlace}
-                    type="food"
+                    type="restaurant"
                     onClose={() => setSelectedPlace(null)}
-                    isAdded={trip.restaurants.some(c => c.restaurants.some(r => r.name === (selectedPlace as any).name))}
-                    onAddToPlan={() => {
-                        handleToggleRec(selectedPlace, selectedPlace.categoryTitle || 'AI');
-                    }}
+                    isAdded={trip.restaurants.some(c => c.restaurants.some(r => r.name === selectedPlace?.name))}
+                    onAddToPlan={() => handleToggleRec(selectedPlace, selectedPlace?.categoryTitle || 'תכנון טיול')}
                 />
             )}
         </div>

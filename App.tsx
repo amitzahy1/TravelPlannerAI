@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter } from 'react-router-dom';
 import { LayoutFixed as Layout } from './components/LayoutFixed';
-import { FlightsView } from './components/FlightsView';
-import { RestaurantsView } from './components/RestaurantsView';
-import { AttractionsView } from './components/AttractionsView';
-import { ItineraryView } from './components/ItineraryView';
-import { HotelsView } from './components/HotelsView';
-import { AdminView } from './components/AdminView';
-import { UnifiedMapView } from './components/UnifiedMapView';
-import { BudgetView } from './components/BudgetView';
-import { ShoppingView } from './components/ShoppingView';
 import { loadTrips, saveTrips, saveSingleTrip, deleteTrip } from './services/storageService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Trip } from './types';
 import { LandingPage } from './components/LandingPage';
+import { UnifiedMapView } from './components/UnifiedMapView'; // Keep generic map eager or lazy? usually lazy if big.
+// Lazy Load Heavy Views
+const FlightsView = React.lazy(() => import('./components/FlightsView').then(module => ({ default: module.FlightsView })));
+const RestaurantsView = React.lazy(() => import('./components/RestaurantsView').then(module => ({ default: module.RestaurantsView })));
+const AttractionsView = React.lazy(() => import('./components/AttractionsView').then(module => ({ default: module.AttractionsView })));
+const ItineraryView = React.lazy(() => import('./components/ItineraryView').then(module => ({ default: module.ItineraryView })));
+const HotelsView = React.lazy(() => import('./components/HotelsView').then(module => ({ default: module.HotelsView })));
+const AdminView = React.lazy(() => import('./components/AdminView').then(module => ({ default: module.AdminView })));
+const BudgetView = React.lazy(() => import('./components/BudgetView').then(module => ({ default: module.BudgetView })));
+const ShoppingView = React.lazy(() => import('./components/ShoppingView').then(module => ({ default: module.ShoppingView })));
+
 
 import { initGoogleAuth } from './services/googleAuthService';
 
@@ -205,26 +207,28 @@ const AppContent: React.FC = () => {
   }
 
   const renderContent = () => {
-    switch (currentTab) {
-      case 'flights':
-        return <FlightsView trip={activeTrip} />;
-      case 'restaurants':
-        return <RestaurantsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-      case 'attractions':
-        return <AttractionsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-      case 'itinerary':
-        return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} onSwitchTab={setCurrentTab} />;
-      case 'hotels':
-        return <HotelsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-      case 'map_full':
-        return <UnifiedMapView trip={activeTrip} title="מפת הטיול המלאה" />;
-      case 'budget':
-        return <BudgetView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-      case 'shopping':
-        return <ShoppingView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-      default:
-        return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} onSwitchTab={setCurrentTab} />;
-    }
+    return (
+      <React.Suspense fallback={
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <span className="text-sm text-slate-400 mt-2">טוען רכיב...</span>
+        </div>
+      }>
+        {(() => {
+          switch (currentTab) {
+            case 'flights': return <FlightsView trip={activeTrip} />;
+            case 'restaurants': return <RestaurantsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
+            case 'attractions': return <AttractionsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
+            case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} onSwitchTab={setCurrentTab} />;
+            case 'hotels': return <HotelsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
+            case 'map_full': return <UnifiedMapView trip={activeTrip} title="מפת הטיול המלאה" />;
+            case 'budget': return <BudgetView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
+            case 'shopping': return <ShoppingView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
+            default: return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} onSwitchTab={setCurrentTab} />;
+          }
+        })()}
+      </React.Suspense>
+    );
   };
 
   return (
@@ -243,12 +247,14 @@ const AppContent: React.FC = () => {
       </Layout>
 
       {showAdmin && (
-        <AdminView
-          data={trips}
-          onSave={handleSaveAllData}
-          onDeleteTrip={handleDeleteTrip}
-          onClose={() => setShowAdmin(false)}
-        />
+        <React.Suspense fallback={null}>
+          <AdminView
+            data={trips}
+            onSave={handleSaveAllData}
+            onDeleteTrip={handleDeleteTrip}
+            onClose={() => setShowAdmin(false)}
+          />
+        </React.Suspense>
       )}
     </HashRouter>
   );

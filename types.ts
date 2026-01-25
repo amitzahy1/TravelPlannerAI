@@ -100,6 +100,7 @@ export interface Restaurant {
   matchReason?: string; // "Good for families", "Near your hotel"
   tags?: string[]; // "Spicy", "Vegetarian Options", "View"
   isFavorite?: boolean; // New: Pin to top
+  categoryTitle?: string; // New: For dynamic mapping
 }
 
 export interface RestaurantCategory {
@@ -128,6 +129,7 @@ export interface Attraction {
   type?: string;
   recommendationSource?: string;
   isFavorite?: boolean; // New: Pin to top
+  categoryTitle?: string; // New: For dynamic mapping
 }
 
 export interface AttractionCategory {

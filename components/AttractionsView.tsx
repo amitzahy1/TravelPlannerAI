@@ -9,11 +9,8 @@ import { ThinkingLoader } from './ThinkingLoader';
 import { PlaceCard } from './PlaceCard';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
 
-// Helper to remove Hebrew and special chars for Maps URL
-const cleanTextForMap = (text: string) => {
-    if (!text) return "";
-    return text.replace(/[^\x00-\x7F]/g, "").replace(/\s+/g, " ").trim();
-};
+import { cleanTextForMap } from '../utils/textUtils';
+
 
 // Enhanced Visuals with Gradients for Attractions
 const getAttractionVisuals = (type: string = '') => {
@@ -336,8 +333,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     item={selectedPlace}
                     type="attraction"
                     onClose={() => setSelectedPlace(null)}
-                    isAdded={trip.attractions.some(c => c.attractions.some(a => a.name === (selectedPlace as any).name))}
-                    onAddToPlan={() => handleToggleRec(selectedPlace, (selectedPlace as any).categoryTitle || 'תכנון טיול')}
+                    isAdded={trip.attractions.some(c => c.attractions.some(a => a.name === selectedPlace?.name))}
+                    onAddToPlan={() => handleToggleRec(selectedPlace, selectedPlace?.categoryTitle || 'תכנון טיול')}
                 />
             )}
         </div>
@@ -353,7 +350,7 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
     // Internal visibility for date picker
     const [showDatePicker, setShowDatePicker] = useState(false);
 
-    const handleSaveSchedule = () => { onUpdate({ scheduledTime }); setIsScheduling(false); };
+    const handleSaveSchedule = () => { onUpdate({ scheduledTime: scheduleTime }); setIsScheduling(false); };
     const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
     const toggleFavorite = () => onUpdate({ isFavorite: !data.isFavorite });
 
