@@ -489,9 +489,21 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
                 </div>
             )}
 
-            <div className="bg-white rounded-[1.5rem] shadow-sm border border-slate-200 p-1.5 flex mb-2">
-                <button onClick={() => setActiveTab('my_list')} className={`flex - 1 py - 3 rounded - [1.2rem] text - sm font - black flex items - center justify - center gap - 2 transition - all ${activeTab === 'my_list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'} `}><Utensils className="w-4 h-4" /> הרשימה שלי</button>
-                <button onClick={() => setActiveTab('recommended')} className={`flex - 1 py - 3 rounded - [1.2rem] text - sm font - black flex items - center justify - center gap - 2 transition - all ${activeTab === 'recommended' ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg' : 'text-slate-500 hover:bg-orange-50 hover:text-orange-600'} `}><Sparkles className="w-4 h-4" /> מחקר שוק (AI)</button>
+            <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-4">
+                <button
+                    onClick={() => setActiveTab('my_list')}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Utensils className={`w-4 h-4 ${activeTab === 'my_list' ? 'text-orange-500' : 'text-slate-400'}`} />
+                    הרשימה שלי
+                </button>
+                <button
+                    onClick={() => setActiveTab('recommended')}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Sparkles className={`w-4 h-4 ${activeTab === 'recommended' ? 'text-blue-500' : 'text-slate-400'}`} />
+                    מחקר שוק (AI)
+                </button>
             </div>
 
             {viewMode === 'map' ? (
@@ -605,12 +617,12 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
                                         {!loadingRecs && (
                                             <div className="flex items-center gap-2">
                                                 {tripCities.length > 1 && (
-                                                    <div className="flex gap-1 bg-white/10 p-1 rounded-lg">
+                                                    <div className="flex gap-2 bg-white/10 p-1.5 rounded-xl">
                                                         {tripCities.map(city => (
                                                             <button
                                                                 key={city}
                                                                 onClick={() => initiateResearch(city)}
-                                                                className="text-[10px] font-bold px-2 py-1 rounded hover:bg-white/20 text-orange-200 hover:text-orange-100 transition-all"
+                                                                className="text-sm font-bold px-3 py-1.5 rounded-lg hover:bg-white/20 text-orange-100 hover:text-white transition-all shadow-sm"
                                                             >
                                                                 {city}
                                                             </button>
@@ -640,10 +652,10 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
                                     ) : (
                                         <>
                                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => setSelectedCategory('all')} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all flex items - center gap - 1 ${selectedCategory === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200'} `}><LayoutGrid className="w-3 h-3" /> הכל</button>
+                                                <div className="flex gap-2 p-1">
+                                                    <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1 ${selectedCategory === 'all' ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}><LayoutGrid className="w-3 h-3" /> הכל</button>
                                                     {aiCategories.map(cat => (
-                                                        <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${selectedCategory === cat.id ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'} `}>{cat.title}</button>
+                                                        <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedCategory === cat.id ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}>{cat.title}</button>
                                                     ))}
                                                 </div>
                                             </div>
