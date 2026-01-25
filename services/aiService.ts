@@ -116,11 +116,19 @@ async function withBackoff<T>(
   throw new Error("Max retries reached");
 }
 
-// Enhanced JSON Extraction
+// Enhanced JSON Extraction with Truncation Detection
 const extractJSON = (text: string): string => {
   if (!text) return "{}";
+
+  // Log response length for truncation debugging
+  console.log(`📦 [JSON] Response length: ${text.length} chars`);
+
+  // Strip markdown code blocks
   const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (codeBlockMatch) return codeBlockMatch[1];
+  if (codeBlockMatch) {
+    console.log(`📦 [JSON] Extracted from markdown code block`);
+    return codeBlockMatch[1].trim();
+  }
 
   const firstOpenBrace = text.indexOf('{');
   const firstOpenBracket = text.indexOf('[');
@@ -137,7 +145,14 @@ const extractJSON = (text: string): string => {
   if (startIndex !== -1) {
     const lastIndex = text.lastIndexOf(isArray ? ']' : '}');
     if (lastIndex !== -1 && lastIndex > startIndex) {
-      return text.substring(startIndex, lastIndex + 1);
+      const extracted = text.substring(startIndex, lastIndex + 1);
+
+      // Check for truncation indicators
+      if (!extracted.endsWith('}') && !extracted.endsWith(']')) {
+        console.warn(`⚠️ [JSON] Possible truncation detected! Ends with: "${extracted.slice(-20)}"`);
+      }
+
+      return extracted;
     }
   }
 
@@ -147,7 +162,7 @@ const extractJSON = (text: string): string => {
     return trimmed.replace(/,(\s*[}\]])/g, '$1');
   }
 
-  console.warn("Could not extract JSON from response:", text.substring(0, 100));
+  console.warn(`⚠️ [JSON] Could not extract JSON from response (length: ${text.length}):`, text.substring(0, 100));
   return "{}";
 };
 
@@ -240,7 +255,8 @@ export const generateWithFallback = async (
   if (googleAI) {
     // Select model and tools based on intent
     const selectedModel = intent === 'SMART' ? GOOGLE_MODELS.SMART : GOOGLE_MODELS.FAST;
-    const tools = intent === 'SMART' ? [{ googleSearchRetrieval: {} }] : undefined;
+    // Use modern googleSearch tool (not deprecated googleSearchRetrieval)
+    const tools = intent === 'SMART' ? [{ googleSearch: {} }] : undefined;
 
     // Retry logic loop now just tries the selected model, or maybe fallbacks?
     // For simplicity given the requirement: Try selected, then fallback to stable.
@@ -263,6 +279,8 @@ export const generateWithFallback = async (
             config: {
               ...config,
               tools: currentTools,
+              // Prevent JSON truncation with high token limit
+              maxOutputTokens: 8192,
             },
           });
         });

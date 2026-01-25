@@ -10,6 +10,8 @@ import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '.
 import { requestAccessToken } from '../services/googleAuthService';
 import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
+import { FavoritesWidget } from './FavoritesWidget';
+import { TripAssistant } from './TripAssistant';
 
 // --- Types ---
 // Removed to types.ts
@@ -654,7 +656,41 @@ export const ItineraryView: React.FC<{
                 </div>
             </div>
 
-            {/* 3. MAIN CONTENT GRID (Timeline + Assistant) */}
+            {/* 3. COMMAND CENTER: Tasks & Favorites (Phase 1 Titanium UX) */}
+            <div className="px-1 md:px-2 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[360px] mb-8 relative z-30">
+                {/* Column 1: TripAssistant */}
+                <div className="lg:col-span-1 h-full">
+                    <TripAssistant
+                        trip={trip}
+                        onNavigate={(tab) => console.log('Navigate to:', tab)}
+                    />
+                </div>
+
+                {/* Columns 2-3: FavoritesWidget (Split-View: Food vs Attractions) */}
+                <div className="lg:col-span-2 h-full">
+                    <FavoritesWidget
+                        trip={trip}
+                        timeline={timeline}
+                        onSchedule={(item, date, type) => {
+                            // Find day and add activity
+                            const targetDay = timeline.find(d => d.dateIso === date);
+                            if (targetDay) {
+                                const newActivity = {
+                                    description: item.name,
+                                    time: '12:00',
+                                    type: type === 'food' ? 'restaurant' : 'attraction'
+                                };
+                                const updatedTimeline = timeline.map(d =>
+                                    d.id === targetDay.id ? { ...d, activities: [...(d.activities || []), newActivity] } : d
+                                );
+                                onUpdateTrip({ ...trip, timeline: updatedTimeline });
+                            }
+                        }}
+                    />
+                </div>
+            </div>
+
+            {/* 4. MAIN CONTENT GRID (Timeline + Assistant) */}
             <div className="px-1 md:px-1 grid grid-cols-1 lg:grid-cols-4 gap-6 relative z-10">
 
                 {/* Main Column: Timeline (3/4 width) */}
