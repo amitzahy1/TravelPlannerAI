@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Trip, HotelBooking, FlightSegment } from '../types';
-import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon } from 'lucide-react';
+import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu } from 'lucide-react';
 import { getAI, AI_MODEL, generateWithFallback, extractTripFromDoc } from '../services/aiService';
 import { MagicDropZone } from './MagicDropZone';
 import { ShareModal } from './ShareModal';
@@ -102,6 +102,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai'>('overview');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
 
     // Helper: Format for Display (e.g. "08 Aug")
     const formatDisplayDate = (iso: string) => {
@@ -497,14 +498,26 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-0 md:p-6 animate-fade-in" onClick={onClose}>
             <div className="w-full h-full md:max-w-6xl bg-white md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-scale-in" onClick={(e) => e.stopPropagation()}>
 
-                {/* SIDEBAR (List of Trips) */}
-                <div className="w-full md:w-64 bg-slate-50 border-b md:border-b-0 md:border-l border-slate-200 flex flex-col flex-shrink-0">
+                {/* MOBILE OVERLAY BACKDROP */}
+                {isSidebarOpen && (
+                    <div
+                        className="fixed inset-0 bg-slate-900/50 z-[105] md:hidden backdrop-blur-sm transition-opacity"
+                        onClick={() => setIsSidebarOpen(false)}
+                    />
+                )}
+
+                {/* SIDEBAR (List of Trips) - Drawer on Mobile, Column on Desktop */}
+                <div className={`
+                    fixed inset-y-0 right-0 z-[110] w-72 bg-slate-50 shadow-2xl transform transition-transform duration-300 ease-in-out
+                    md:relative md:translate-x-0 md:w-64 md:shadow-none md:z-auto md:border-l border-slate-200 flex flex-col flex-shrink-0
+                    ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
+                `}>
                     <div className="p-4 border-b border-slate-200 flex justify-between items-center md:block">
                         <div>
                             <h2 className="text-xl font-black text-slate-800">הטיולים שלי</h2>
                             <p className="text-xs text-slate-400 font-bold uppercase tracking-wider hidden md:block">ניהול כל הטיולים</p>
                         </div>
-                        <button onClick={onClose} className="md:hidden p-2 text-slate-400"><X className="w-6 h-6" /></button>
+                        <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 text-slate-400 hover:bg-slate-100 rounded-full"><X className="w-6 h-6" /></button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -555,13 +568,20 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                 {/* MAIN CONTENT AREA */}
                 <div className="flex-1 flex flex-col h-full overflow-hidden bg-white">
 
-                    {/* Header */}
                     <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white z-10">
                         <div className="flex items-center gap-4">
-                            <div className="flex p-1 bg-slate-100 rounded-lg">
+                            {/* Mobile Hamburger */}
+                            <button
+                                onClick={() => setIsSidebarOpen(true)}
+                                className="md:hidden p-2 -mr-2 text-slate-500 hover:bg-slate-50 rounded-lg"
+                            >
+                                <Menu className="w-6 h-6" />
+                            </button>
+
+                            <div className="flex p-1 bg-slate-100 rounded-lg overflow-x-auto max-w-[200px] md:max-w-none scrollbar-hide">
                                 <button
                                     onClick={() => setActiveTab('overview')}
-                                    className={`px-6 py-2.5 rounded-lg text-base font-bold transition-all ${activeTab === 'overview' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                                    className={`px-4 md:px-6 py-2 md:py-2.5 rounded-lg text-sm md:text-base font-bold transition-all whitespace-nowrap ${activeTab === 'overview' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
                                 >
                                     סקירה
                                 </button>

@@ -121,7 +121,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const tripCities = useMemo(() => {
         if (!trip.destination) return [];
-        return trip.destination.split('-').map(s => s.trim());
+        // Split by hyphen, ampersand, or comma
+        return trip.destination.split(/ - | & |, /).map(s => s.trim()).filter(Boolean);
     }, [trip.destination]);
 
     // --- Search Logic (gemini-3-flash-preview) ---

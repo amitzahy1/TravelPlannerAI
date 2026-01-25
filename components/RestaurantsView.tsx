@@ -137,7 +137,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const tripCities = useMemo(() => {
         if (!trip.destination) return [];
-        return trip.destination.split('-').map(s => s.trim());
+        // Split by hyphen, ampersand, or comma to handle "Tbilisi & Lopota Lake" or "London - Paris"
+        return trip.destination.split(/ - | & |, /).map(s => s.trim()).filter(Boolean);
     }, [trip.destination]);
 
     // --- Search Logic ---
