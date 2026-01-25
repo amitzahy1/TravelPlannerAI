@@ -7,8 +7,9 @@ import { ShareModal } from './ShareModal';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../services/firebaseConfig';
 import { AlertTriangle, Calendar as CalIcon } from 'lucide-react';
-import { requestAccessToken } from '../services/googleAuthService';
-import { fetchCalendarEvents, mapEventsToTimeline } from '../services/calendarService';
+// CALENDAR INTEGRATION REMOVED - Security Fix
+// import { requestAccessToken } from '../services/googleAuthService';
+// import { fetchCalendarEvents, mapEventsToTimeline } from '../services/calendarService';
 
 interface TripSettingsModalProps {
     data: Trip[];
@@ -283,98 +284,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
         if (importFileRef.current) importFileRef.current.value = '';
     };
 
+    // CALENDAR IMPORT REMOVED - Feature disabled to eliminate "Unverified App" security warning
     const handleImportFromGoogle = async () => {
-        try {
-            // Calculate date range: Trip Start or Today -> +30 days
-            let start = new Date().toISOString();
-            if (activeTrip.dates && activeTrip.dates.includes('-')) {
-                const p = activeTrip.dates.split('-')[0].trim();
-                const d = toInputDate(p);
-                if (d) start = new Date(d).toISOString();
-            }
-
-            const end = new Date(start);
-            end.setDate(end.getDate() + 30);
-
-            // 1. Try with existing token (if any)
-            let token = localStorage.getItem('google_access_token');
-            let events = [];
-
-            try {
-                events = await fetchCalendarEvents(start, end.toISOString(), token || undefined);
-            } catch (err: any) {
-                // 2. If failed, request new token
-                if (err.message.includes('Permission') || err.message.includes('expired') || err.message.includes('token')) {
-                    token = await requestAccessToken();
-                    localStorage.setItem('google_access_token', token);
-                    events = await fetchCalendarEvents(start, end.toISOString(), token);
-                } else {
-                    throw err;
-                }
-            }
-
-            // 3. Process Events
-            const mapped = mapEventsToTimeline(events);
-            if (mapped.length === 0) {
-                alert("לא נמצאו אירועים בטווח התאריכים הנבחר.");
-                return;
-            }
-
-            // Merge into itinerary (simple append for now)
-            const newItinerary = [...activeTrip.itinerary];
-
-            // Group by date
-            const byDate: Record<string, any[]> = {};
-            mapped.forEach(ev => {
-                if (!byDate[ev.date]) byDate[ev.date] = [];
-                byDate[ev.date].push(ev);
-            });
-
-            // Update itinerary items
-            Object.keys(byDate).forEach(date => {
-                const dayEvents = byDate[date];
-                const dayIndex = newItinerary.findIndex(item => item.date === date);
-
-                const activitiesToAdd = dayEvents.map(e => `${e.time ? e.time + ' ' : ''}${e.title}`);
-
-                if (dayIndex >= 0) {
-                    newItinerary[dayIndex] = {
-                        ...newItinerary[dayIndex],
-                        activities: [...newItinerary[dayIndex].activities, ...activitiesToAdd]
-                    };
-                } else {
-                    newItinerary.push({
-                        id: `day-${date}`,
-                        day: newItinerary.length + 1,
-                        date: date,
-                        title: `יום ${newItinerary.length + 1}`,
-                        activities: activitiesToAdd
-                    });
-                }
-            });
-
-            // Sort by date
-            newItinerary.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-            const updatedTrip = { ...activeTrip, itinerary: newItinerary };
-            handleUpdateTrip(updatedTrip);
-            onSave(trips.map(t => t.id === activeTripId ? updatedTrip : t));
-
-            alert(`יובאו בהצלחה ${mapped.length} אירועים מהיומן!`);
-
-        } catch (e: any) {
-            console.error(e);
-            if (e.message && e.message.includes("System Configuration Error")) {
-                alert(e.message); // Fail-Safe Message
-            } else {
-                alert("שגיאה ביבוא: " + (e.message || "Unknown Error"));
-            }
-        }
-
-
-
-
-
+        alert("יבוא מיומן Google הוסר לצורך אבטחה. הלו\"ז מנוהל ישירות באפליקציה.");
     };
 
     const handleSyncCalendar = () => {

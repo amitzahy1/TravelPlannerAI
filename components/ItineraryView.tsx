@@ -1,13 +1,15 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import {
     Calendar, MapPin, Plane, Car, Globe,
     Hotel, Utensils, Ticket, Plus, Sparkles, X,
     ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronRight, Clock, MoreHorizontal, RefreshCw
 } from 'lucide-react';
-import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '../services/calendarService';
-import { requestAccessToken } from '../services/googleAuthService';
+// CALENDAR INTEGRATION REMOVED - No longer calling Google Calendar API
+// import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '../services/calendarService';
+// CALENDAR REMOVED: import { requestAccessToken } from '../services/googleAuthService';
 import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
 import { FavoritesWidget } from './FavoritesWidget';
@@ -397,56 +399,9 @@ export const ItineraryView: React.FC<{
         generateTimeline();
     }, [trip, externalEvents]);
 
+    // CALENDAR SYNC REMOVED - Feature disabled to eliminate "Unverified App" warning
     const handleSyncCalendar = async () => {
-        setIsSyncing(true);
-        try {
-            // Default to trip dates or next 30 days
-            const startDate = trip.startDate ? parseDateString(trip.startDate) : new Date();
-            const endDate = trip.endDate ? parseDateString(trip.endDate) : new Date(new Date().setDate(new Date().getDate() + 30));
-
-            if (!startDate || !endDate) throw new Error("Invalid Dates");
-
-            // Adjust to cover full days
-            startDate.setHours(0, 0, 0, 0);
-            endDate.setHours(23, 59, 59, 999);
-
-            const events = await fetchCalendarEvents(startDate.toISOString(), endDate.toISOString());
-            const mapped = mapEventsToTimeline(events);
-
-            setExternalEvents(mapped);
-            alert(`סונכרנו בהצלחה ${events.length} אירועים מהיומן!`);
-        } catch (error: any) {
-            console.error("Sync failed", error);
-            if (error.message === 'NEEDS_AUTH' || error.message.includes('Permission denied')) {
-                // FORCE RE-AUTH
-                try {
-                    await requestAccessToken('consent');
-
-                    // Retry fetch immediately after success
-                    const startDate = trip.startDate ? parseDateString(trip.startDate) : new Date();
-                    const endDate = trip.endDate ? parseDateString(trip.endDate) : new Date(new Date().setDate(new Date().getDate() + 30));
-
-                    if (startDate && endDate) {
-                        startDate.setHours(0, 0, 0, 0);
-                        endDate.setHours(23, 59, 59, 999);
-
-                        const retryEvents = await fetchCalendarEvents(startDate.toISOString(), endDate.toISOString());
-                        const mapped = mapEventsToTimeline(retryEvents);
-                        setExternalEvents(mapped);
-                        alert(`סונכרנו בהצלחה ${retryEvents.length} אירועים מהיומן!`);
-                    }
-                } catch (retryError) {
-                    console.error("Re-auth failed", retryError);
-                    alert("Calendar sync failed. Please approve permissions.");
-                }
-            } else if ((error as Error).message.includes('token')) {
-                alert("נדרשת התחברות מחדש כדי לקרוא מהיומן. אנא התנתק והתחבר שוב.");
-            } else {
-                alert("שגיאה בסנכרון יומן. נסה שנית.");
-            }
-        } finally {
-            setIsSyncing(false);
-        }
+        alert("סנכרון יומן Google הוסר לצורך אבטחה. כעת הלו\"ז מנוהל ישירות באפליקציה.");
     };
 
     const handleManualAdd = (text: string) => {
@@ -970,25 +925,46 @@ export const ItineraryView: React.FC<{
             {/* Schedule Item Modal (from CategoryListModal selection) */}
             {scheduleItem && (
                 <TripDateSelector
+                    isOpen={true}
                     trip={trip}
+                    timeline={timeline}
+                    title="תזמון פעילות"
+                    description={`עבור: ${scheduleItem.item?.name || 'פריט'}`}
                     onClose={() => setScheduleItem(null)}
-                    onSchedule={(dayId: string) => {
-                        // Add item to the selected day
-                        const targetDay = trip.timeline?.find(d => d.id === dayId);
-                        if (targetDay && scheduleItem.item) {
-                            const newActivity = {
-                                description: scheduleItem.item.name || 'פריט',
-                                time: '12:00',
-                                type: scheduleItem.type === 'food' ? 'restaurant' : 'attraction'
+                    onSelect={(dateIso: string) => {
+                        // Convert dateIso (YYYY-MM-DD) to DD/MM/YYYY for itinerary
+                        const [y, m, d] = dateIso.split('-');
+                        const targetDateStr = `${d}/${m}/${y}`;
+
+                        // Add to trip.itinerary (this is what the timeline renders from)
+                        let newItinerary = [...trip.itinerary];
+                        let dayIndex = newItinerary.findIndex(day => day.date === targetDateStr);
+
+                        const activityText = `12:00 ${scheduleItem.type === 'food' ? '🍽️' : '🎟️'} ${scheduleItem.item?.name || 'פריט'}`;
+
+                        if (dayIndex === -1) {
+                            // Create new day entry
+                            newItinerary.push({
+                                id: `day-${Date.now()}`,
+                                day: 0,
+                                date: targetDateStr,
+                                title: 'יום חדש',
+                                activities: [activityText]
+                            });
+                        } else {
+                            // Add to existing day
+                            newItinerary[dayIndex] = {
+                                ...newItinerary[dayIndex],
+                                activities: [...newItinerary[dayIndex].activities, activityText]
                             };
-                            const updatedTimeline = (trip.timeline || []).map(d =>
-                                d.id === dayId ? { ...d, activities: [...(d.activities || []), newActivity] } : d
-                            );
-                            onUpdateTrip({ ...trip, timeline: updatedTimeline });
                         }
+
+                        onUpdateTrip({ ...trip, itinerary: newItinerary });
                         setScheduleItem(null);
+
+                        // Show confirmation
+                        alert(`✅ "${scheduleItem.item?.name}" נוסף ליום ${d}/${m}!`);
                     }}
-                    itemName={scheduleItem.item?.name || 'פריט'}
                 />
             )}
 

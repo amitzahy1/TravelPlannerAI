@@ -70,13 +70,13 @@ export const initGoogleAuth = async (clientId: string) => {
         if (!tokenClient) {
                 tokenClient = window.google.accounts.oauth2.initTokenClient({
                         client_id: clientId,
-                        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+                        // SECURITY FIX: Removed calendar scope - only basic profile
+                        scope: 'email profile openid',
                         callback: (response: any) => {
-                                // Default callback, overridden in requests
                                 console.log("Google Auth Callback Init");
                         },
                 });
-                console.log("✅ Google Token Client Initialized");
+                console.log("✅ Google Token Client Initialized (Profile Only)");
         }
 };
 
