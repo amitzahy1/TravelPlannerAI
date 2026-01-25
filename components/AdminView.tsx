@@ -779,6 +779,7 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
         name: '',
         dates: '',
         destination: '',
+        cities: [''], // Initialize with one empty city
         coverImage: '',
         notes: '',
         files: [] as any[]
@@ -824,7 +825,7 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const files = Array.from(e.target.files);
-            const newFilesPromises = files.map(file => {
+            const newFilesPromises = files.map((file: File) => {
                 return new Promise<{ name: string, mimeType: string, data: string, isText: boolean }>((resolve) => {
                     const reader = new FileReader();
                     reader.onloadend = () => {
@@ -854,8 +855,8 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
             // FINISH - Create with AI
             setIsLoading(true);
             try {
-                // If user entered details in Magic step OR used natural language dates, use AI
-                const needsAI = tripData.notes.length > 0 || tripData.files.length > 0 || tripData.dates.length > 4;
+                // Always use AI to validate and normalize inputs (e.g. City names, Dates)
+                const needsAI = true;
 
                 let finalTrip: any = {
                     id: `t-${Date.now()}`,
@@ -919,7 +920,8 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
     const isMagicStep = currentField === 'magic';
 
     // Allow proceeding if not Magic step and input has value, OR if Magic step (optional)
-    const canProceed = isMagicStep || (tripData[currentField as keyof typeof tripData] as string)?.trim().length > 0;
+    const canProceed = isMagicStep ||
+        (currentField === 'destination' ? (tripData.cities && tripData.cities.some(c => c.trim().length > 0)) : (tripData[currentField as keyof typeof tripData] as string)?.trim().length > 0);
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6 animate-fade-in">
@@ -982,6 +984,46 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
                                         ))}
                                     </div>
                                 )}
+                            </div>
+                        ) : currentField === 'destination' ? (
+                            <div className="space-y-3 max-h-[40vh] overflow-y-auto px-1">
+                                {(tripData.cities || ['']).map((city: string, idx: number) => (
+                                    <div key={idx} className="flex gap-2 animate-scale-in">
+                                        <input
+                                            type="text"
+                                            value={city}
+                                            onChange={(e) => {
+                                                const newCities = [...(tripData.cities || [''])];
+                                                newCities[idx] = e.target.value;
+                                                setTripData({ ...tripData, cities: newCities, destination: newCities.filter(Boolean).join(' - ') });
+                                            }}
+                                            placeholder={idx === 0 ? "עיר ראשית..." : "עיר נוספת..."}
+                                            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-orange-500 focus:outline-none text-lg text-center font-medium transition-all"
+                                            autoFocus={idx === (tripData.cities?.length || 1) - 1}
+                                            onKeyDown={(e) => e.key === 'Enter' && canProceed && handleNext()}
+                                        />
+                                        {(tripData.cities?.length || 1) > 1 && (
+                                            <button
+                                                onClick={() => {
+                                                    const newCities = (tripData.cities || ['']).filter((_, i) => i !== idx);
+                                                    setTripData({ ...tripData, cities: newCities, destination: newCities.filter(Boolean).join(' - ') });
+                                                }}
+                                                className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button
+                                    onClick={() => {
+                                        const newCities = [...(tripData.cities || ['']), ''];
+                                        setTripData({ ...tripData, cities: newCities });
+                                    }}
+                                    className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 hover:bg-orange-50 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" /> הוסף עוד יעד
+                                </button>
                             </div>
                         ) : (
                             <input

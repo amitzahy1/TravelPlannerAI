@@ -663,9 +663,9 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
                                             <div className="mb-4 overflow-x-auto pb-2 scrollbar-hide">
                                                 <div className="flex gap-2 items-center">
                                                     <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">הומלץ ע"י:</span>
-                                                    <button onClick={() => setSelectedRater('all')} className={`flex - shrink - 0 px - 3 py - 1 rounded - full text - [10px] font - bold border transition - all ${selectedRater === 'all' ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-white text-slate-500 border-slate-200'} `}>הכל</button>
+                                                    <button onClick={() => setSelectedRater('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedRater === 'all' ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}>הכל</button>
                                                     {availableRaters.map(rater => (
-                                                        <button key={rater} onClick={() => setSelectedRater(rater)} className={`flex - shrink - 0 px - 3 py - 1 rounded - full text - [10px] font - bold border transition - all ${selectedRater === rater ? 'bg-orange-100 text-orange-700 border-orange-200 ring-2 ring-orange-100' : 'bg-white text-slate-500 border-slate-200'} `}>{rater}</button>
+                                                        <button key={rater} onClick={() => setSelectedRater(rater)} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedRater === rater ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}>{rater}</button>
                                                     ))}
                                                 </div>
                                             </div>

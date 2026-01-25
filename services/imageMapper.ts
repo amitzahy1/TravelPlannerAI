@@ -17,7 +17,7 @@ export const IMAGE_BANK = {
         ],
         thai: [
                 'https://images.unsplash.com/photo-1559314809-0d155014e29e?auto=format&fit=crop&w=800&q=80',
-                'https://images.unsplash.com/photo-1562565652-f472ce0066d8?auto=format&fit=crop&w=800&q=80', // Pad Thai vibe
+                'https://images.unsplash.com/photo-1562565652-f472ce0066d8?auto=format&fit=crop&w=800&q=80',
                 'https://images.unsplash.com/photo-1562565651-78c64188b839?auto=format&fit=crop&w=800&q=80',
         ],
         cafe: [
@@ -38,15 +38,39 @@ export const IMAGE_BANK = {
                 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80',
                 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80',
         ],
+        skybar: [
+                'https://images.unsplash.com/photo-1519671482538-30646ae149bc?auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1577741314755-9c8d04130097?auto=format&fit=crop&w=800&q=80',
+        ],
         dessert: [
                 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=800&q=80',
                 'https://images.unsplash.com/photo-1551024601-5637ade98e42?auto=format&fit=crop&w=800&q=80',
         ],
 
-        // Attractions
+        // Specific Attractions
+        buddha: [
+                'https://images.unsplash.com/photo-1581061033236-4c4bf2359486?auto=format&fit=crop&w=800&q=80', // Big Buddha
+                'https://images.unsplash.com/photo-1627894006066-b4528c25785a?auto=format&fit=crop&w=800&q=80', // Golden Buddha
+        ],
         temple: [
                 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?auto=format&fit=crop&w=800&q=80', // Thai Temple
                 'https://images.unsplash.com/photo-1582234031737-25e640236a28?auto=format&fit=crop&w=800&q=80',
+        ],
+        viewpoint: [
+                'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=800&q=80', // High view
+                'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=800&q=80', // Scenic
+        ],
+        cave: [
+                'https://images.unsplash.com/photo-1506459312213-3392305aae25?auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1496504173823-3e0e7a2b97fe?auto=format&fit=crop&w=800&q=80',
+        ],
+        waterfall: [
+                'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1533038590840-1cde6e668a91?auto=format&fit=crop&w=800&q=80',
+        ],
+        ruins: [
+                'https://images.unsplash.com/photo-1569668723429-7fb36b586fad?auto=format&fit=crop&w=800&q=80', // Ayutthaya vibes
+                'https://images.unsplash.com/photo-1605630646194-e85d9c19b494?auto=format&fit=crop&w=800&q=80',
         ],
         beach: [
                 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
@@ -67,6 +91,7 @@ export const IMAGE_BANK = {
         ],
         museum: [
                 'https://images.unsplash.com/photo-1518998053901-5348d3969105?auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1544967082-d9d3fbc7b3cc?auto=format&fit=crop&w=800&q=80',
         ],
 
         // Default / Generic
@@ -82,25 +107,35 @@ export const getPlaceImage = (name: string, type: 'food' | 'attraction' | 'hotel
         const lowerType = type.toLowerCase();
         const allTags = tags.map(t => t.toLowerCase());
 
-        // 1. Determine Category
+        // 1. Determine Category (Specific -> General)
         let category = 'default';
 
-        if (lowerName.includes('burger') || allTags.includes('burger')) category = 'burger';
+        // Food Specifics
+        if (lowerName.includes('sky bar') || lowerName.includes('rooftop') || allTags.includes('skybar')) category = 'skybar';
+        else if (lowerName.includes('burger') || allTags.includes('burger')) category = 'burger';
         else if (lowerName.includes('pizza') || allTags.includes('pizza')) category = 'pizza';
         else if (lowerName.includes('sushi') || allTags.includes('sushi') || allTags.includes('japanese')) category = 'sushi';
         else if (lowerName.includes('thai') || allTags.includes('thai')) category = 'thai';
         else if (lowerName.includes('cafe') || lowerName.includes('coffee') || allTags.includes('cafe')) category = 'cafe';
         else if (lowerName.includes('steak') || lowerName.includes('grill') || allTags.includes('steakhouse')) category = 'steak';
         else if (lowerName.includes('sea') || lowerName.includes('fish') || allTags.includes('seafood')) category = 'seafood';
-        else if (lowerName.includes('bar') || lowerName.includes('pub') || allTags.includes('nightlife')) category = 'bar';
         else if (lowerName.includes('dessert') || lowerName.includes('ice cream')) category = 'dessert';
+        else if (lowerName.includes('bar') || lowerName.includes('pub') || allTags.includes('nightlife')) category = 'bar';
 
+        // Attraction Specifics
+        else if (lowerName.includes('buddha')) category = 'buddha';
+        else if (lowerName.includes('waterfall') || allTags.includes('waterfall')) category = 'waterfall';
+        else if (lowerName.includes('cave') || allTags.includes('cave')) category = 'cave';
+        else if (lowerName.includes('ruin') || lowerName.includes('ayutthaya') || lowerName.includes('sukhothai') || allTags.includes('history')) category = 'ruins';
+        else if (lowerName.includes('view') || lowerName.includes('lookout') || lowerName.includes('deck') || allTags.includes('viewpoint')) category = 'viewpoint';
         else if (lowerName.includes('temple') || lowerName.includes('wat ') || allTags.includes('temple')) category = 'temple';
-        else if (lowerName.includes('beach') || allTags.includes('beach')) category = 'beach';
-        else if (lowerName.includes('park') || allTags.includes('nature')) category = 'park';
+
+        // General Categories
+        else if (lowerName.includes('beach') || lowerName.includes('island') || lowerName.includes('ko ') || allTags.includes('beach')) category = 'beach';
+        else if (lowerName.includes('park') || lowerName.includes('garden') || allTags.includes('nature')) category = 'park';
         else if (lowerName.includes('mall') || lowerName.includes('central') || allTags.includes('shopping')) category = 'mall';
-        else if (lowerName.includes('market') || allTags.includes('market')) category = 'market';
-        else if (lowerName.includes('museum') || allTags.includes('culture')) category = 'museum';
+        else if (lowerName.includes('market') || lowerName.includes('bazaar') || allTags.includes('market')) category = 'market';
+        else if (lowerName.includes('museum') || lowerName.includes('gallery') || allTags.includes('culture')) category = 'museum';
 
         // 2. Select Image Deterministically
         const targetArray = (IMAGE_BANK as any)[category] || IMAGE_BANK.default;
