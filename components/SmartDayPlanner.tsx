@@ -35,8 +35,8 @@ export const SmartDayPlanner: React.FC<SmartDayPlannerProps> = ({ city, date, tr
                                         <Sparkles className={`w-6 h-6 text-indigo-500 mx-auto ${loading ? 'animate-spin' : 'group-hover:scale-110 transition-transform'}`} />
                                         {loading && <Loader2 className="w-6 h-6 text-indigo-500 absolute inset-0 animate-spin" />}
                                 </div>
-                                <h4 className="text-[11px] font-black text-slate-800 mb-1">יום חופשי בלו"ז</h4>
-                                <p className="text-[9px] text-slate-500 font-bold mb-3 leading-tight">רוצה שה-AI יתכנן לך <br />יום מושלם ב{city}?</p>
+                                <h4 className="text-[11px] font-black text-slate-800 mb-0.5">יום חופשי בלו"ז</h4>
+                                <p className="text-[9px] text-slate-500 font-bold mb-2 leading-tight line-clamp-2">רוצה שה-AI יתכנן לך <br />יום מושלם ב{city}?</p>
 
                                 <button
                                         disabled={loading}

@@ -767,7 +767,7 @@ export const ItineraryView: React.FC<{
                                         <div
                                             key={day.dateIso}
                                             onClick={() => setSelectedDayIso(day.dateIso)}
-                                            className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[160px] relative"
+                                            className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[185px] relative"
                                         >
                                             {/* Flow Arrow (Desktop Only) */}
                                             {!isLastDay && (
