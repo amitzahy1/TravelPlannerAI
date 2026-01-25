@@ -8,29 +8,19 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // 2. Shared Trips Collection (FIXED & SEPARATED)
+    // 2. Shared Trips Collection (Email-Based System)
     match /shared-trips/{tripId} {
-      // READ: Allow if you are the owner or a collaborator
-      allow read: if request.auth != null && (
+      // 1. CREATE: Allow any logged-in user to create (Fixes 403 error)
+      allow create: if request.auth != null;
+
+      // 2. READ & WRITE: Owner UID match OR Email match
+      allow read, update: if request.auth != null && (
         resource.data.owner == request.auth.uid ||
-        request.auth.uid in resource.data.collaborators
+        (resource.data.allowedEmails is list && request.auth.token.email in resource.data.allowedEmails)
       );
-      
-      // CREATE: Explicitly check for NEW document creation
-      // This runs when the document does NOT exist yet
-      allow create: if request.auth != null && 
-                    request.resource.data.owner == request.auth.uid;
-                    
-      // UPDATE: Explicitly check for EXISTING document update
-      // This runs when the document ALREADY exists
-      allow update: if request.auth != null && (
-        resource.data.owner == request.auth.uid ||
-        request.auth.uid in resource.data.collaborators
-      );
-      
-      // DELETE: Only owner can delete
-      allow delete: if request.auth != null && 
-                    resource.data.owner == request.auth.uid;
+
+      // 3. DELETE: Owner only
+      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
     
     // 3. Shared Trip References

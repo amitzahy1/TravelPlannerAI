@@ -1,6 +1,5 @@
 import React from 'react';
-import { X, Star, MapPin, Calendar, Clock, Globe } from 'lucide-react';
-import { PlaceIllustration } from './PlaceIllustration';
+import { X, Star, MapPin, Plus } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 
 interface GlobalPlaceModalProps {
@@ -15,93 +14,90 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
 
         // Get Smart Image
         const tags = [(item.cuisine || item.type || ''), item.location];
-        const image = getPlaceImage(item.name, type, tags);
+        const { url: imageUrl } = getPlaceImage(item.name, type, tags);
 
         return (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
                         {/* CARD (Centered, Elegant) */}
-                        <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-200 relative" onClick={e => e.stopPropagation()}>
+                        <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 relative" onClick={e => e.stopPropagation()}>
 
-                                {/* HEAD IMAGE */}
-                                <div className="h-56 relative group">
-                                        <img src={image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={item.name} />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                {/* HERO IMAGE (Clean, No Overlay) */}
+                                <div className="h-56 relative overflow-hidden flex-shrink-0">
+                                        <img src={imageUrl} className="w-full h-full object-cover" alt={item.name} />
 
-                                        <button onClick={onClose} className="absolute top-3 right-3 bg-white/20 hover:bg-white/40 backdrop-blur-md p-2 rounded-full text-white transition-all shadow-sm border border-white/10">
+                                        {/* Close Button (Glassmorphism) */}
+                                        <button onClick={onClose} className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 backdrop-blur-md p-2 rounded-full text-white transition-all shadow-sm border border-white/10 z-30">
                                                 <X className="w-5 h-5" />
                                         </button>
 
-                                        <div className="absolute bottom-4 left-4 right-4 text-white">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                        <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-white/10">
-                                                                {type === 'food' ? 'Restaurant' : 'Attraction'}
-                                                        </span>
-                                                        <div className="flex items-center gap-1 text-yellow-400 bg-black/20 px-1.5 py-0.5 rounded-md backdrop-blur-sm">
-                                                                <span className="text-xs font-bold">{item.rating || item.googleRating || '5.0'}</span>
-                                                                <Star className="w-3 h-3 fill-current" />
-                                                        </div>
-                                                </div>
-                                                <h2 className="text-2xl font-black leading-tight drop-shadow-md">{item.name}</h2>
+                                        {/* Type Chip (Top Left) */}
+                                        <div className="absolute top-4 left-4 z-30">
+                                                <span className="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-900 border border-white/20 shadow-sm">
+                                                        {type === 'food' ? 'Restaurant' : 'Attraction'}
+                                                </span>
                                         </div>
                                 </div>
 
-                                {/* CONTENT */}
-                                <div className="p-6 overflow-y-auto bg-white flex-1 custom-scrollbar">
-
-                                        {/* Meta Data */}
-                                        <div className="flex flex-wrap gap-2 mb-6">
+                                {/* HEADER SECTION (Title & Rating - Out of Image) */}
+                                <div className="px-6 pt-6 pb-2 bg-white flex-shrink-0">
+                                        <div className="flex items-center gap-2 mb-2">
+                                                <div className="flex items-center gap-1 text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100">
+                                                        <span className="text-xs font-black">{item.rating || item.googleRating || '5.0'}</span>
+                                                        <Star className="w-3 h-3 fill-current" />
+                                                </div>
                                                 {(item.cuisine || item.type) && (
-                                                        <span className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100 flex items-center gap-1.5">
-                                                                <Star className="w-3 h-3 text-slate-400" />
+                                                        <span className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100">
                                                                 {item.cuisine || item.type}
                                                         </span>
                                                 )}
-                                                {item.location && (
-                                                        <span className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100 flex items-center gap-1.5">
-                                                                <MapPin className="w-3 h-3 text-slate-400" />
-                                                                {item.location.split(',')[0]}
-                                                        </span>
-                                                )}
                                         </div>
+                                        <h2 className="text-2xl font-black leading-tight text-slate-900 mb-1">{item.name}</h2>
 
-                                        {/* Description (Mocked if missing) */}
-                                        <div className="space-y-4">
-                                                <div>
-                                                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-2">אודות</h3>
-                                                        <p className="text-sm text-slate-500 leading-relaxed">
-                                                                {item.description || `המקום המושלם ליהנות מ${item.cuisine || 'חוויה ייחודית'} ב${item.location?.split(',')[0] || 'אזור'}. מומלץ מאוד על ידי מטיילים.`}
+                                        {item.location && (
+                                                <div className="flex items-center gap-1.5 text-slate-400">
+                                                        <MapPin className="w-3.5 h-3.5" />
+                                                        <span className="text-xs font-medium">{item.location}</span>
+                                                </div>
+                                        )}
+                                </div>
+
+                                {/* CONTENT BODY */}
+                                <div className="px-6 py-4 overflow-y-auto bg-white flex-1 custom-scrollbar">
+                                        {/* Description */}
+                                        <div className="space-y-6">
+                                                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">אודות</h3>
+                                                        <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                                                                {item.description || (type === 'food' ? `מסעדה מומלצת ב${item.location || 'האזור'}` : `אטרקציה מומלצת ב${item.location || 'האזור'}`)}
                                                         </p>
                                                 </div>
 
                                                 {(item.price || item.priceLevel) && (
-                                                        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                                                <span className="text-xs font-bold text-slate-500">רמת מחיר</span>
-                                                                <span className="text-sm font-black text-slate-700">{item.price || item.priceLevel || '$$'}</span>
+                                                        <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                                                <div className="flex flex-col">
+                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">רמת מחיר</span>
+                                                                        <span className="text-sm font-black text-slate-900 mt-0.5">{item.price || item.priceLevel || '$$'}</span>
+                                                                </div>
+                                                                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                                                                        <div className="text-sm font-black">$</div>
+                                                                </div>
                                                         </div>
                                                 )}
                                         </div>
                                 </div>
 
                                 {/* FOOTER ACTIONS */}
-                                <div className="p-4 border-t border-slate-100 bg-slate-50 flex gap-3 flex-shrink-0 z-20">
-                                        <button onClick={onAddToPlan} className="flex-1 py-3.5 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95 flex items-center justify-center gap-2">
+                                <div className="px-6 py-5 border-t border-slate-50 bg-white flex gap-3 flex-shrink-0 z-20">
+                                        <button onClick={onAddToPlan} className="flex-1 py-4 rounded-2xl bg-slate-900 text-white font-black text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-95 flex items-center justify-center gap-2">
                                                 <Plus className="w-4 h-4" />
                                                 הוסף לתוכנית
                                         </button>
                                         {(() => {
-                                                // Robust Map Link Generation
-                                                let mapUrl = item.googleMapsUrl;
-
-                                                // 1. If no URL, or it's a broken dynamic link (goo.gl), or generic fallback
-                                                const isSuspicious = !mapUrl || mapUrl.includes('goo.gl') || mapUrl.includes('google.com/maps/place//');
-
-                                                if (isSuspicious) {
-                                                        const query = encodeURIComponent(`${item.name} ${item.location || ''} ${type === 'food' ? 'Restaurant' : ''}`);
-                                                        mapUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
-                                                }
+                                                const query = encodeURIComponent(`${item.name} ${item.location || ''}`);
+                                                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
 
                                                 return (
-                                                        <a href={mapUrl} target="_blank" rel="noreferrer" className="p-3.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all font-bold text-sm flex items-center justify-center">
+                                                        <a href={mapUrl} target="_blank" rel="noreferrer" className="w-14 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all flex items-center justify-center shadow-sm">
                                                                 <MapPin className="w-5 h-5" />
                                                         </a>
                                                 );
@@ -110,31 +106,10 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                         </div>
 
                         <style>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-            `}</style>
+                                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                                .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+                        `}</style>
                 </div>
         );
 };
-
-// Helper for quick icon use
-function Plus(props: any) {
-        return (
-                <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        {...props}
-                >
-                        <path d="M5 12h14" />
-                        <path d="M12 5v14" />
-                </svg>
-        )
-}

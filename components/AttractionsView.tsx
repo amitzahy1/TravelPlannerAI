@@ -7,6 +7,7 @@ import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
 import { ThinkingLoader } from './ThinkingLoader';
 import { PlaceCard } from './PlaceCard';
+import { GlobalPlaceModal } from './GlobalPlaceModal';
 
 // Helper to remove Hebrew and special chars for Maps URL
 const cleanTextForMap = (text: string) => {
@@ -57,12 +58,11 @@ const sortAttractions = (list: Attraction[]) => {
 
 // Redesigned Card - Clean Google Style
 const AttractionRecommendationCard: React.FC<{
-    rec: any,
-    tripDestination: string,
     tripDestinationEnglish?: string,
     isAdded: boolean,
-    onAdd: (rec: any, source: string) => void
-}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd }) => {
+    onAdd: (rec: any, source: string) => void,
+    onClick: () => void
+}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick }) => {
 
     // Strict English-Only Maps Query
     const nameForMap = cleanTextForMap(rec.name);
@@ -86,6 +86,7 @@ const AttractionRecommendationCard: React.FC<{
             mapsUrl={mapsUrl}
             isAdded={isAdded}
             onAdd={() => onAdd(rec, 'AI')}
+            onClick={onClick}
             recommendationSource={rec.recommendationSource}
             verification_needed={rec.verification_needed}
         />
@@ -110,6 +111,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [textQuery, setTextQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<Attraction[] | null>(null);
+    const [selectedPlace, setSelectedPlace] = useState<Attraction | null>(null);
 
     const attractionsData = trip.attractions || [];
 
@@ -464,6 +466,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                 tripDestinationEnglish={trip.destinationEnglish}
                                 isAdded={addedIds.has(res.id)}
                                 onAdd={(r) => handleAddRec(r, (r as any).categoryTitle || 'תוצאות חיפוש')}
+                                onClick={() => setSelectedPlace(res)}
                             />
                         ))}
                     </div>
@@ -499,7 +502,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                 <>
                     {activeTab === 'my_list' ? (
                         <>
-                            <div className="flex justify-between items-center mb-1"><button onClick={() => setViewMode('map')} className="px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold text-xs bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 transition-all shadow-sm"><MapIcon className="w-3 h-3" /> מפה</button></div>
+                            <div className="flex justify-end"><button onClick={() => setViewMode('map')} className="px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold text-xs bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 transition-all shadow-sm"><MapIcon className="w-3 h-3" /> מפה</button></div>
 
                             {/* My List Filters */}
                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -640,6 +643,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                                         tripDestinationEnglish={trip.destinationEnglish}
                                                         isAdded={addedIds.has(rec.id)}
                                                         onAdd={(r) => handleAddRec(r, (r as any).categoryTitle || 'תכנון טיול')}
+                                                        onClick={() => setSelectedPlace(rec)}
                                                     />
                                                 ))}
                                             </div>
@@ -659,6 +663,19 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
             )}
 
             {/* City Selector Modal Removed */}
+
+            {/* Global Place Modal for Drill-down */}
+            {selectedPlace && (
+                <GlobalPlaceModal
+                    item={selectedPlace}
+                    type="attraction"
+                    onClose={() => setSelectedPlace(null)}
+                    onAddToPlan={() => {
+                        handleAddRec(selectedPlace, (selectedPlace as any).categoryTitle || 'תכנון טיול');
+                        setSelectedPlace(null);
+                    }}
+                />
+            )}
         </div>
     );
 };

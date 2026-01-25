@@ -7,6 +7,7 @@ import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
 import { ThinkingLoader } from './ThinkingLoader';
 import { PlaceCard } from './PlaceCard';
+import { GlobalPlaceModal } from './GlobalPlaceModal';
 
 // Extended interface for internal use
 interface ExtendedRestaurant extends Restaurant {
@@ -77,8 +78,9 @@ const RestaurantCard: React.FC<{
     tripDestination: string,
     tripDestinationEnglish?: string,
     isAdded: boolean,
-    onAdd: (r: ExtendedRestaurant, cat: string) => void
-}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd }) => {
+    onAdd: (r: ExtendedRestaurant, cat: string) => void,
+    onClick: () => void
+}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick }) => {
 
     // Strict English-Only Maps Query
     const nameForMap = cleanTextForMap(rec.nameEnglish || rec.name);
@@ -102,6 +104,7 @@ const RestaurantCard: React.FC<{
             mapsUrl={mapsUrl}
             isAdded={isAdded}
             onAdd={() => onAdd(rec, rec.categoryTitle || 'AI')}
+            onClick={onClick}
             recommendationSource={rec.recommendationSource}
             isHotelRestaurant={rec.isHotelRestaurant}
             verification_needed={(rec as any).verification_needed}
@@ -128,6 +131,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [textQuery, setTextQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<Restaurant[] | null>(null);
+    const [selectedPlace, setSelectedPlace] = useState<ExtendedRestaurant | null>(null);
 
     // Sync state with trip prop
     useEffect(() => {
@@ -493,6 +497,7 @@ Description in Hebrew. Netural English names.`;
                                 tripDestinationEnglish={trip.destinationEnglish}
                                 isAdded={addedIds.has(res.id)}
                                 onAdd={handleAddRec}
+                                onClick={() => setSelectedPlace(res as ExtendedRestaurant)}
                             />
                         ))}
                     </div>
@@ -690,6 +695,7 @@ Description in Hebrew. Netural English names.`;
                                                         tripDestinationEnglish={trip.destinationEnglish}
                                                         isAdded={addedIds.has(rec.id)}
                                                         onAdd={handleAddRec}
+                                                        onClick={() => setSelectedPlace(rec)}
                                                     />
                                                 ))}
                                             </div>
@@ -709,6 +715,19 @@ Description in Hebrew. Netural English names.`;
             )}
 
             {/* City Selector Modal Removed */}
+
+            {/* Global Place Modal for Drill-down */}
+            {selectedPlace && (
+                <GlobalPlaceModal
+                    item={selectedPlace}
+                    type="food"
+                    onClose={() => setSelectedPlace(null)}
+                    onAddToPlan={() => {
+                        handleAddRec(selectedPlace, selectedPlace.categoryTitle || 'AI');
+                        setSelectedPlace(null);
+                    }}
+                />
+            )}
         </div>
     );
 };

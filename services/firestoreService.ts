@@ -144,7 +144,9 @@ const addUserTripRef = async (
  */
 export const createSharedTrip = async (
   userId: string,
-  trip: Trip
+  userEmail: string,
+  trip: Trip,
+  inviteEmail?: string
 ): Promise<string> => {
   try {
     const shareId = generateShareId();
@@ -153,6 +155,7 @@ export const createSharedTrip = async (
     await setDoc(sharedTripRef, {
       owner: userId,
       collaborators: [userId],
+      allowedEmails: inviteEmail ? [userEmail, inviteEmail] : [userEmail],
       shareId,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
