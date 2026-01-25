@@ -97,11 +97,11 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                         <img
                                 src={coverImage}
                                 alt={displayName}
-                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-105"
                         />
 
-                        {/* Gradient Overlay - BOTTOM ONLY (Titanium UX: Luminance Fix) */}
-                        <div className="absolute bottom-0 left-0 right-0 h-[65%] bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+                        {/* Gradient Scrim - BOTTOM 50% ONLY (Material 3 Style) */}
+                        <div className="absolute bottom-0 left-0 right-0 h-[50%] bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 
                         {/* Content Container */}
                         <div className="absolute inset-0 p-4 flex flex-col justify-end z-10">
@@ -164,8 +164,8 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                         </h3>
 
                                         {/* Location Badge (Brief) */}
-                                        <div className="flex items-center gap-1 text-slate-400 text-xs truncate max-w-[85%]">
-                                                <MapIcon className="w-3 h-3 flex-shrink-0" />
+                                        <div className="flex items-center gap-1 text-slate-300 text-xs truncate max-w-[85%] drop-shadow-sm">
+                                                <Navigation className="w-3 h-3 flex-shrink-0" />
                                                 <span className="truncate">{location}</span>
                                         </div>
                                 </div>
