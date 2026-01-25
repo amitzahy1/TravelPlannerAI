@@ -14,7 +14,6 @@ import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
 import { FavoritesWidget } from './FavoritesWidget';
 import { TripAssistant } from './TripAssistant';
-import { SmartDayPlanner } from './SmartDayPlanner';
 
 // --- Types ---
 // Removed to types.ts
@@ -815,20 +814,11 @@ export const ItineraryView: React.FC<{
                                                     </div>
                                                 ) : (
                                                     <div className="h-full">
-                                                        {/* CONTEXTUAL INTELLIGENCE: SMART PLANNER */}
-                                                        {day.stats.food === 0 && day.stats.attr === 0 && day.stats.flight === 0 && day.stats.travel === 0 ? (
-                                                            <SmartDayPlanner
-                                                                city={day.locationContext || trip.destinationEnglish || trip.destination}
-                                                                date={day.dateIso}
-                                                                tripNotes={trip.notes}
-                                                                onPlanGenerated={(acts) => handleSmartPlanGenerated(day.dateIso, acts)}
-                                                            />
-                                                        ) : (
-                                                            <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2">
-                                                                <Moon className="w-5 h-5 mb-1" />
-                                                                <span className="text-[10px] font-bold">יום חופשי</span>
-                                                            </div>
-                                                        )}
+                                                        {/* CONTEXTUAL INTELLIGENCE: SMART PLANNER REMOVED AS PER USER REQUEST */}
+                                                        <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2">
+                                                            <Moon className="w-5 h-5 mb-1" />
+                                                            <span className="text-[10px] font-bold">יום חופשי</span>
+                                                        </div>
                                                     </div>
                                                 )}
                                                 <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>

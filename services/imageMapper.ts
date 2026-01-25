@@ -46,6 +46,22 @@ export const IMAGE_BANK = {
                 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=800&q=80',
                 'https://images.unsplash.com/photo-1551024601-5637ade98e42?auto=format&fit=crop&w=800&q=80',
         ],
+        ramen: [
+                'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1591814441334-0f2c45791242?auto=format&fit=crop&w=800&q=80',
+        ],
+        asian_fusion: [
+                'https://images.unsplash.com/photo-1455619452474-d2fb29da6403?auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80',
+        ],
+        fine_dining: [
+                'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=800&q=80',
+        ],
+        georgian: [
+                'https://images.unsplash.com/photo-1628102475017-09f0753063eb?auto=format&fit=crop&w=800&q=80',
+                'https://images.unsplash.com/photo-1628102467333-e59546059d48?auto=format&fit=crop&w=800&q=80',
+        ],
 
         // Specific Attractions
         buddha: [
@@ -112,6 +128,10 @@ export const getPlaceImage = (name: string, type: 'food' | 'attraction' | 'hotel
 
         // Food Specifics
         if (lowerName.includes('sky bar') || lowerName.includes('rooftop') || allTags.includes('skybar')) category = 'skybar';
+        else if (lowerName.includes('ramen') || allTags.includes('ramen')) category = 'ramen';
+        else if (allTags.includes('fine dining') || allTags.includes('michelin')) category = 'fine_dining';
+        else if (lowerName.includes('fusion') || allTags.includes('asian_fusion') || allTags.includes('dim sum')) category = 'asian_fusion';
+        else if (lowerName.includes('georgian') || allTags.includes('georgian') || lowerName.includes('tsiskari')) category = 'georgian';
         else if (lowerName.includes('burger') || allTags.includes('burger')) category = 'burger';
         else if (lowerName.includes('pizza') || allTags.includes('pizza')) category = 'pizza';
         else if (lowerName.includes('sushi') || allTags.includes('sushi') || allTags.includes('japanese')) category = 'sushi';

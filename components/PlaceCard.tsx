@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, MapIcon, Trash2, CheckCircle2, Trophy, Hotel, AlertTriangle, Plus, Utensils, Landmark, Moon } from 'lucide-react';
+import { Star, MapIcon, Trash2, CheckCircle2, Trophy, Hotel, AlertTriangle, Plus, Utensils, Landmark, Moon, Navigation } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 
 export interface PlaceCardProps {
@@ -106,20 +106,20 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                         {/* Content Container */}
                         <div className="absolute inset-0 p-4 flex flex-col justify-end z-10">
 
-                                {/* Top Actions (Floating) */}
-                                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-[-10px] group-hover:translate-y-0">
+                                {/* Top Actions (Floating) - PERMANENTLY VISIBLE FOR ACCESSIBILITY */}
+                                <div className="absolute top-3 right-3 flex gap-2 z-30">
                                         <a
                                                 href={mapsUrl}
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                className="p-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-white hover:bg-white hover:text-slate-900 transition-colors shadow-lg"
+                                                className="p-2.5 bg-black/40 backdrop-blur-md border border-white/20 rounded-full text-white hover:bg-white hover:text-slate-900 transition-all shadow-lg active:scale-90"
                                                 title="View on Map"
                                         >
-                                                <MapIcon className="w-4 h-4" />
+                                                <Navigation className="w-4 h-4" />
                                         </a>
                                         <button
                                                 onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                                                className={`p-2 backdrop-blur-md border rounded-full transition-colors shadow-lg relative z-20 ${isAdded ? 'bg-yellow-400 border-yellow-500 text-yellow-900' : 'bg-white/20 border-white/30 text-white hover:bg-white hover:text-slate-900'}`}
+                                                className={`p-2.5 backdrop-blur-md border rounded-full transition-all shadow-lg relative z-20 active:scale-90 ${isAdded ? 'bg-yellow-400 border-yellow-500 text-yellow-900' : 'bg-black/40 border-white/20 text-white hover:bg-white hover:text-slate-900'}`}
                                                 title={isAdded ? "Remove" : "Save"}
                                         >
                                                 {isAdded ? <Star className="w-4 h-4 fill-current" /> : <Star className="w-4 h-4" />}

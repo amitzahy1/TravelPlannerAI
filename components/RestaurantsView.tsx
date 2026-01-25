@@ -154,7 +154,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             const prompt = `${SYSTEM_PROMPT}
 
 Search for: "${textQuery}" in ${trip.destination}. Return 6 high quality restaurant results.
-CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description in Hebrew.`;
+CRITICAL: 'cuisine' field MUST be one of: [Ramen, Pizza, Burger, Sushi, Asian Fusion, Fine Dining, Cafe, Steakhouse, Seafood, Georgian, Dessert, Nightlife].
+Description in Hebrew. Netural English names.`;
 
             const schema: Schema = {
                 type: Type.OBJECT,
@@ -258,7 +259,15 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
             2. **DESCRIPTION:** Must be in HEBREW. Very short (max 12 words).
             3. **SOURCES:** Use Michelin, 50 Best, or Local Favorites.
             4. **HOTEL:** If the restaurant is inside a hotel, set isHotelRestaurant = true.
-            5. **ICONS:** Determine a 'cuisine' field (e.g. "Ramen", "Pizza", "Burger") for icon matching.
+            5. **ICONS:** Set 'cuisine' field to match EXACTLY one of: [Ramen, Pizza, Burger, Sushi, Asian Fusion, Fine Dining, Cafe, Steakhouse, Seafood, Georgian, Dessert, Nightlife].
+               - "אוכל רחוב אגדי" -> local_food
+               - "הראמן הכי טוב" -> Ramen
+               - "הפיצה הכי טובה" -> Pizza
+               - "ההמבורגר הכי טוב" -> Burger
+               - "נודלס ומוקפצים" -> Asian Fusion
+               - "בתי קפה וקינוחים" -> Cafe
+               - "מסעדות יוקרה / מישלן" -> Fine Dining
+               - "ברים וקוקטיילים" -> Nightlife
 
             **DATA OUTPUT RULES:**
             - **CRITICAL:** Return ONLY valid JSON.

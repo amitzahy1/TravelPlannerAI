@@ -132,18 +132,14 @@ async function withBackoff<T>(
 const extractJSON = (text: string): string => {
   if (!text) return "{}";
 
-  // Log response length for truncation debugging
-  console.log(`📦 [JSON] Response length: ${text.length} chars`);
-
-  // Strip markdown code blocks
+  // Strip markdown code blocks early
   const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (codeBlockMatch) {
-    console.log(`📦 [JSON] Extracted from markdown code block`);
-    return codeBlockMatch[1].trim();
-  }
+  const cleanInput = codeBlockMatch ? codeBlockMatch[1].trim() : text.trim();
 
-  const firstOpenBrace = text.indexOf('{');
-  const firstOpenBracket = text.indexOf('[');
+  // Find boundaries
+  const firstOpenBrace = cleanInput.indexOf('{');
+  const firstOpenBracket = cleanInput.indexOf('[');
+
   let startIndex = -1;
   let isArray = false;
 
@@ -154,26 +150,21 @@ const extractJSON = (text: string): string => {
     isArray = true;
   }
 
-  if (startIndex !== -1) {
-    const lastIndex = text.lastIndexOf(isArray ? ']' : '}');
-    if (lastIndex !== -1 && lastIndex > startIndex) {
-      const extracted = text.substring(startIndex, lastIndex + 1);
+  if (startIndex === -1) return "{}";
 
-      // Check for truncation indicators
-      if (extracted.length > 0) {
-        try {
-          JSON.parse(extracted);
-          return extracted;
-        } catch (e) {
-          console.warn("⚠️ [JSON] Extraction checking failed, attempting repair...");
-          return repairJSON(extracted);
-        }
-      }
-    }
+  const lastIndex = cleanInput.lastIndexOf(isArray ? ']' : '}');
+  if (lastIndex === -1 || lastIndex <= startIndex) return "{}";
+
+  const extracted = cleanInput.substring(startIndex, lastIndex + 1);
+
+  try {
+    // Quick validation
+    JSON.parse(extracted);
+    return extracted;
+  } catch (e) {
+    // Attempt repair only if parsing failed
+    return repairJSON(extracted);
   }
-
-  // Fallback: Attempt repair on the whole text if standard extraction failed
-  return repairJSON(text);
 };
 
 // Robust JSON Repair for Truncated Responses
@@ -415,8 +406,6 @@ export const generateWithFallback = async (
         // Normalize JSON if needed
         if (config?.responseMimeType === 'application/json') {
           rawText = extractJSON(rawText);
-          // Auto-repair if needed
-          rawText = repairJSON(rawText);
         }
 
         return {
