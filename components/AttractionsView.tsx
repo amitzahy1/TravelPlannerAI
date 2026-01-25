@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Trip, Attraction, AttractionCategory } from '../types';
 import { MapPin, Ticket, Star, Landmark, Sparkles, Filter, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid } from 'lucide-react';
 import { Type, Schema } from "@google/genai";
+import { getAttractionImage } from '../services/imageMapper';
 import { getAI, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
@@ -332,7 +333,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                         {(() => {
                                             // Flatten List Logic
                                             const flatList: Attraction[] = [];
-                                            attractionsData.forEach(c => c.attractions.forEach(a => flatList.push(a)));
+                                            attractionsData.forEach(c => c.attractions.forEach(a => flatList.push({ ...a, categoryTitle: c.title })));
 
                                             // Filter
                                             let filtered = flatList;
@@ -431,10 +432,16 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
 
-    // Visuals
-    const visuals = getAttractionVisuals(data.name + ' ' + (data.description || ''));
+    // Use intelligent image mapper
+    const { url: mappedUrl, label: visualLabel } = getAttractionImage(
+        data.name || '',
+        data.description || '',
+        [data.categoryTitle || '', data.location || '']
+    );
+    const visuals = getAttractionVisuals(visualLabel);
+
     // Fallback Image logic
-    const imageSrc = data.imageUrl || `https://source.unsplash.com/400x300/?${visuals.label.split(' ')[0]},travel`;
+    const imageSrc = data.imageUrl || mappedUrl;
 
     // Toggle Heart
     const toggleFavorite = (e: React.MouseEvent) => {

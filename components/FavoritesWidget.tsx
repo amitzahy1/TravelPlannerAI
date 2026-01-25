@@ -33,7 +33,12 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                 return items.sort((a, b) => b.sortKey - a.sortKey);
         }, [trip]);
 
-        const compactFavorites = useMemo(() => favorites.slice(0, 3), [favorites]);
+        const [isInlineExpanded, setIsInlineExpanded] = useState(false);
+
+        const visibleItems = useMemo(() => {
+                if (isInlineExpanded) return favorites;
+                return favorites.slice(0, 2);
+        }, [favorites, isInlineExpanded]);
 
         if (favorites.length === 0) {
                 return (
@@ -55,7 +60,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
 
         const renderCompactItem = (fav: typeof favorites[0]) => {
                 const tags = [(fav.data as any).cuisine || (fav.data as any).type || '', fav.data.location];
-                const { url } = getPlaceImage(fav.data.name, fav.type as any, tags); // FIX: Destructure url
+                const { url } = getPlaceImage(fav.data.name, fav.type as any, tags);
 
                 return (
                         <div
@@ -94,7 +99,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
 
         return (
                 <>
-                        <div className="h-full px-1 animate-fade-in relative z-30 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-4">
+                        <div className={`px-1 animate-fade-in relative z-30 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-4 transition-all duration-300 ${isInlineExpanded ? 'h-auto shadow-xl ring-2 ring-blue-50/50' : 'h-full'}`}>
                                 {/* Header */}
                                 <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-2">
@@ -105,28 +110,33 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                                         המועדפים ({favorites.length})
                                                 </h3>
                                         </div>
-                                        {favorites.length > 3 && (
-                                                <button
-                                                        onClick={() => setIsExpanded(true)}
-                                                        className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
-                                                >
-                                                        הצג הכל <ArrowUpRight className="w-3 h-3" />
-                                                </button>
-                                        )}
+                                        {/* SlideOver Toggle (Show All details) */}
+                                        <button
+                                                onClick={() => setIsExpanded(true)}
+                                                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                                                title="פתח רשימה מלאה"
+                                        >
+                                                <ArrowUpRight className="w-4 h-4" />
+                                        </button>
                                 </div>
 
                                 {/* Compact List */}
                                 <div className="flex flex-col gap-2.5">
-                                        {compactFavorites.map(renderCompactItem)}
+                                        {visibleItems.map(renderCompactItem)}
                                 </div>
 
-                                {favorites.length > 3 && (
-                                        <div className="mt-auto pt-2 text-center">
+                                {/* Inline Expand Button - Only if > 2 */}
+                                {favorites.length > 2 && (
+                                        <div className="mt-3 pt-1 text-center border-t border-slate-50">
                                                 <button
-                                                        onClick={() => setIsExpanded(true)}
-                                                        className="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                                                        onClick={() => setIsInlineExpanded(!isInlineExpanded)}
+                                                        className="w-full py-1.5 text-[11px] font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all flex items-center justify-center gap-1"
                                                 >
-                                                        + עוד {favorites.length - 3} פריטים
+                                                        {isInlineExpanded ? (
+                                                                <>הצג פחות <ChevronRight className="w-3 h-3 rotate-[-90deg]" /></>
+                                                        ) : (
+                                                                <>+ עוד {favorites.length - 2} (הצג הכל)</>
+                                                        )}
                                                 </button>
                                         </div>
                                 )}

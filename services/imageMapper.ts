@@ -66,12 +66,13 @@ const FOOD_DB = {
 // --- 2. ATTRACTION DATABASE (MEGA-POOL EXPANSION v11) ---
 
 const ATTRACTION_DB = {
-        temple: {
-                label: '⛩️ Temple',
+        religion: {
+                label: '⛪ Religious Site',
                 generic: [
-                        '1563492065599-3520f775eeed', '1582234031737-25e640236a28', '1528127269322-539801943592',
-                        '1590510328545-c18684f03ddd', '1555519800-2ef2e705c567', '1584043204475-8caf7f1797fd',
-                        '1581417478185-a93dbc89d978', '1591937985473-b6d9da49e1a1', '1542640244171-ff124ca60be5'
+                        '1548625361-8889a0f55f91', '1548544149-4835e62ee5b3', '1566907489-0113c2c77648',
+                        '1518134707831-29e20a061803', '1568285642-1e967c13ac47', '1590053919934-0d70be5f64ee',
+                        '1572044733365-d016911f84cb', '1529524987368-2dd5301e741e', '1515250462708-3fa9c8f8b89d',
+                        '1578330836542-a0b23668c92e', '1581446726245-c48dc9ffc8f3', '1596726915220-435423871ee5'
                 ]
         },
         museum: {
@@ -79,7 +80,8 @@ const ATTRACTION_DB = {
                 generic: [
                         '1518998053901-5348d3969105', '1544967082-d9d3fbc7b3cc', '1449156001533-cb39c8994c00',
                         '1547841103-9d06859e9a41', '1554907984-18295550c666', '1605333396652-325b39860fcd',
-                        '1572953142014-11829f7ad901', '1564392361-f5fabf52701f', '1589828699175-9e6db5822b31'
+                        '1572953142014-11829f7ad901', '1564392361-f5fabf52701f', '1589828699175-9e6db5822b31',
+                        '1566127444941-897f52533e08', '1551049694-811c75955c48', '1504194784112-2c67623916dd'
                 ]
         },
         nature: {
@@ -87,7 +89,8 @@ const ATTRACTION_DB = {
                 generic: [
                         '1496347315686-5f274d046ccc', '1625234190130-f80c65590924', '1441974231531-c6227db76b6e',
                         '1500375592092-40eb2168fd21', '1546768223-997601aa4718', '1518173946687-a4c8892bbd9f',
-                        '1506744038136-155896265735', '1532274404305-62bb02f69326', '1502082553049-l1259600e1e6'
+                        '1506744038136-155896265735', '1532274404305-62bb02f69326', '1502082553049-l1259600e1e6',
+                        '1465147260589-9b489bc6b343', '1472214103451-9374bd1c798e', '1426604966848-d3adac350e9e'
                 ]
         },
         beach: {
@@ -95,7 +98,8 @@ const ATTRACTION_DB = {
                 generic: [
                         '1507525428034-b723cf961d3e', '1519046904884-53103b34b206', '1506929562872-bb421503ef21',
                         '1501785888041-af3ef285b470', '1544257750-572358f5da22', '1520440229-6469a149ac19',
-                        '1468413253725-0d5181091126', '1510414842564-a7515b3d6f8a', '1515238152791-8216bfdf89a7'
+                        '1468413253725-0d5181091126', '1510414842564-a7515b3d6f8a', '1515238152791-8216bfdf89a7',
+                        '1509233725347-880630e252a9', '1502208327471-d5dde4d78995', '1473116763249-29dd7e5a5e79'
                 ]
         },
         view: {
@@ -103,7 +107,8 @@ const ATTRACTION_DB = {
                 generic: [
                         '1533105079780-92b9be482077', '1446776811953-b23d57bd21aa', '1473625247510-8ceb1760943f',
                         '1526666923127-b2970f64b422', '1506973035872-a4ec16b848c2', '1532306793375-3574197ee4e5',
-                        '1496568811577-44df00c6d96e', '1533319047192-3a364be141a0'
+                        '1496568811577-44df00c6d96e', '1533319047192-3a364be141a0', '1512453979798-5ea9d4a8d904',
+                        '1505765050816-631629734004', '1534234828563-02517614e5a9'
                 ]
         },
         market: {
@@ -111,17 +116,35 @@ const ATTRACTION_DB = {
                 generic: [
                         '1533900298318-6b8da08a523e', '1553535919-4b62db9405d4', '1555392859-0098492040b2',
                         '1572403613768-45607a7dedf4', '1610488050982-f6735db9f182', '1532151624458-95bd32cd586a',
-                        '1543083477046-cd101f026710', '1550953930-b3b333405391'
+                        '1543083477046-cd101f026710', '1550953930-b3b333405391', '1472851294608-4155f2118261',
+                        '1567401893414-76b7b1e5a7a5', '1610996883203-512b1d60061e'
                 ]
         },
         modern: {
                 label: '🌆 Cityscape',
                 generic: [
                         '1534008897813-107b68da0cae', '1491904762174-88290edd5728', '1534430480872-3498386e7a20',
-                        '1518391846015-55a97ee46d73', '1533105079780-92b9be482077', '1506159904221-3432241793a2'
+                        '1518391846015-55a97ee46d73', '1533105079780-92b9be482077', '1506159904221-3432241793a2',
+                        '1480714378408-67cf0d13bc1b', '1477959858617-67f85cf4f1df', '1444723121867-fa630c680a47'
                 ]
         },
-        fallback: ['1476514525535-07fb3b4ae5f1', '1501785888041-af3ef285b470', '1506466010722-395ee2bef839']
+        winery: {
+                label: '🍇 Winery',
+                generic: [
+                        '1506377247377-2a5b3b417ebb', '1515598696887-o989098d009d', '1566810842055-6bf467812f2c',
+                        '1504279577054-123b5e096695', '1498429089284-41f8cf3ffd39', '1516594915697-87eb5293fae8',
+                        '1524314488824-34da71fe95df', '1528641151670-e3743c44c5c7'
+                ]
+        },
+        history: {
+                label: '🏰 Historic',
+                generic: [
+                        '1533052445738-f86462d77d70', '1552431792-54ac77f24021', '1527663363346-64fa41891b97',
+                        '1542353163-95b060611417', '1534211181282-3dbb531ed7f0', '1576487292158-b61556a3bd2e',
+                        '1523451703649-74d125ba7036', '1467269204594-9661b134dc2b', '1533929736458-ca588d080e81'
+                ]
+        },
+        fallback: ['1476514525535-07fb3b4ae5f1', '1501785888041-af3ef285b470', '1506466010722-395ee2bef839', '1503220317375-aaad6143d41b', '1469854523086-cc02fe5d8800', '1488646953014-85cb44e25828']
 };
 
 // --- 3. SCORING ENGINE ---
@@ -196,25 +219,34 @@ export function getFoodImage(name: string, description: string = "", tags: strin
 export function getAttractionImage(name: string, description: string = "", tags: string[] = []): { url: string, label: string } {
         const query = `${name} ${description} ${tags.join(' ')}`.toLowerCase();
 
-        if (query.includes('temple') || query.includes('wat') || query.includes('shrine') || query.includes('budhha') || query.includes('מקדש'))
-                return { url: selectFromPool(name, ATTRACTION_DB.temple.generic), label: '⛩️ Temple' };
+        // 1. Winery & Vineyards (High Priority for Georgia)
+        if (query.includes('wine') || query.includes('vineyard') || query.includes('cellar') || query.includes('winery') || query.includes('buera') || query.includes('יקב') || query.includes('כרם'))
+                return { url: selectFromPool(name, ATTRACTION_DB.winery.generic), label: '🍇 Winery' };
 
-        if (query.includes('museum') || query.includes('art') || query.includes('gallery') || query.includes('history') || query.includes('מוזיאון'))
+        // 2. Religion (Extended)
+        if (query.includes('temple') || query.includes('monastery') || query.includes('church') || query.includes('cathedral') || query.includes('shrine') || query.includes('chapel') || query.includes('synagogue') || query.includes('mosque') || query.includes('מנזר') || query.includes('כנסייה'))
+                return { url: selectFromPool(name, ATTRACTION_DB.religion.generic), label: '⛪ Religious Site' };
+
+        // 3. History (Castles, Forts)
+        if (query.includes('castle') || query.includes('fort') || query.includes('citadel') || query.includes('palace') || query.includes('ruins') || query.includes('ancient') || query.includes('history') || query.includes('מבצר') || query.includes('ארמון'))
+                return { url: selectFromPool(name, ATTRACTION_DB.history.generic), label: '🏰 Historic' };
+
+        if (query.includes('museum') || query.includes('art') || query.includes('gallery') || query.includes('exhibition') || query.includes('מוזיאון'))
                 return { url: selectFromPool(name, ATTRACTION_DB.museum.generic), label: '🏛️ Museum' };
 
-        if (query.includes('nature') || query.includes('park') || query.includes('garden') || query.includes('forest') || query.includes('waterfall') || query.includes('טבע'))
+        if (query.includes('nature') || query.includes('park') || query.includes('garden') || query.includes('forest') || query.includes('lake') || query.includes('river') || query.includes('cave') || query.includes('waterfall') || query.includes('טבע') || query.includes('אגם'))
                 return { url: selectFromPool(name, ATTRACTION_DB.nature.generic), label: '🌳 Nature' };
 
-        if (query.includes('beach') || query.includes('sea') || query.includes('ocean') || query.includes('sand') || query.includes('island') || query.includes('חוף'))
+        if (query.includes('beach') || query.includes('sea') || query.includes('ocean') || query.includes('sand') || query.includes('island') || query.includes('coast') || query.includes('חוף'))
                 return { url: selectFromPool(name, ATTRACTION_DB.beach.generic), label: '🏖️ Beach' };
 
-        if (query.includes('view') || query.includes('skyline') || query.includes('observation') || query.includes('deck') || query.includes('תצפית'))
+        if (query.includes('view') || query.includes('skyline') || query.includes('observation') || query.includes('deck') || query.includes('panorama') || query.includes('תצפית'))
                 return { url: selectFromPool(name, ATTRACTION_DB.view.generic), label: '🗼 Viewpoint' };
 
-        if (query.includes('market') || query.includes('bazaar') || query.includes('shopping') || query.includes('mall') || query.includes('שוק') || query.includes('קניון'))
+        if (query.includes('market') || query.includes('bazaar') || query.includes('shopping') || query.includes('mall') || query.includes('store') || query.includes('shop') || query.includes('שוק') || query.includes('קניון'))
                 return { url: selectFromPool(name, ATTRACTION_DB.market.generic), label: '🛍️ Market' };
 
-        if (query.includes('modern') || query.includes('skyscraper') || query.includes('building') || query.includes('city') || query.includes('tower') || query.includes('עיר'))
+        if (query.includes('modern') || query.includes('skyscraper') || query.includes('building') || query.includes('city') || query.includes('tower') || query.includes('bridge') || query.includes('עיר'))
                 return { url: selectFromPool(name, ATTRACTION_DB.modern.generic), label: '🌆 Cityscape' };
 
         return { url: selectFromPool(name, ATTRACTION_DB.fallback), label: '📍 Destination' };
@@ -227,3 +259,5 @@ export function getPlaceImage(name: string, type: 'food' | 'restaurant' | 'attra
         if (type === 'food' || type === 'restaurant') return getFoodImage(name, "", tags);
         return getAttractionImage(name, "", tags);
 }
+
+

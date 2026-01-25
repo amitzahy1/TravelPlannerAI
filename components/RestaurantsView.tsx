@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Trip, Restaurant, RestaurantIconType, RestaurantCategory } from '../types';
 import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel, Heart } from 'lucide-react';
 import { Type, Schema } from "@google/genai";
+import { getFoodImage } from '../services/imageMapper';
 import { getAI, AI_MODEL, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
@@ -828,11 +829,13 @@ const RestaurantRow: React.FC<{ data: Restaurant | ExtendedRestaurant, onSaveNot
     const cuisine = (data as any).cuisine || (data as any).categoryTitle || 'Restaurant';
     const visuals = getCuisineVisuals(cuisine);
 
-    // Use stored image OR fallback to visual URL logic (simplified here or imported)
-    // Since getFoodImage isn't imported here, used hardcoded fallback based on cuisine if empty
-    // Actually, getCuisineVisuals returns a gradient and icon, but not an image URL.
-    // Let's use a reliable placeholder if imageUrl is missing/broken.
-    const imageSrc = data.imageUrl || `https://source.unsplash.com/400x300/?${cuisine.split(' ')[0]},food`;
+    // Use intelligent image mapper
+    const { url: mappedUrl, label: visualLabel } = getFoodImage(
+        data.name || '',
+        data.description || '',
+        [cuisine, data.location || '']
+    );
+    const imageSrc = data.imageUrl || mappedUrl;
 
     return (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 hover:shadow-md transition-shadow relative group">
