@@ -84,8 +84,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
                                                 <Users className="w-8 h-8 text-indigo-600" />
                                         </div>
 
-                                        <h2 className="text-2xl font-black text-slate-900 mb-2">שתף טיול</h2>
-                                        <p className="text-slate-500 mb-6 text-xs font-medium leading-relaxed">
+                                        <h2 className="text-3xl font-black text-slate-900 mb-3">שתף טיול</h2>
+                                        <p className="text-slate-500 mb-8 text-sm font-medium leading-relaxed max-w-[280px] mx-auto">
                                                 הזמן חברים לערוך את הטיול איתך. הכנס מייל להזמנה או צור לינק פתוח.
                                         </p>
 
@@ -103,52 +103,52 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
                                                                         value={inviteEmail}
                                                                         onChange={(e) => setInviteEmail(e.target.value)}
                                                                         placeholder="מייל של חבר (אופציונלי)"
-                                                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-100 focus:bg-white transition-all text-sm font-medium"
+                                                                        className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-100 focus:bg-white transition-all text-lg font-medium placeholder:text-slate-400"
                                                                 />
                                                         </div>
                                                         <button
                                                                 onClick={handleCreateShare}
                                                                 disabled={loading}
-                                                                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-slate-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                                                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-slate-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
                                                         >
                                                                 {loading ? (
-                                                                        <span className="animate-spin text-lg">⌛</span>
+                                                                        <span className="animate-spin text-xl">⌛</span>
                                                                 ) : (
                                                                         <>
-                                                                                <Plus className="w-4 h-4" /> הזמן וצור לינק
+                                                                                <Plus className="w-5 h-5" /> הזמן וצור לינק
                                                                         </>
                                                                 )}
                                                         </button>
                                                 </div>
                                         ) : (
-                                                <div className="space-y-4 animate-fade-in">
-                                                        <div className="bg-slate-50 border border-slate-100 p-1.5 rounded-2xl flex items-center gap-2">
-                                                                <div className="bg-white flex-grow p-3 rounded-xl text-left text-[10px] text-slate-400 font-mono truncate border border-slate-50 select-all">
+                                                <div className="space-y-6 animate-fade-in">
+                                                        <div className="bg-slate-50 border border-slate-100 p-2 rounded-2xl flex items-center gap-3">
+                                                                <div className="bg-white flex-grow p-4 rounded-xl text-left text-sm text-slate-500 font-mono truncate border border-slate-50 select-all tracking-wide">
                                                                         {shareUrl}
                                                                 </div>
                                                                 <button
                                                                         onClick={handleCopy}
-                                                                        className={`p-3 rounded-xl font-bold transition-all flex items-center justify-center ${copied
+                                                                        className={`p-4 rounded-xl font-bold transition-all flex items-center justify-center ${copied
                                                                                 ? 'bg-green-500 text-white shadow-md'
                                                                                 : 'bg-slate-900 text-white hover:bg-slate-800 shadow-md'
                                                                                 }`}
                                                                 >
-                                                                        {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                                                                        {copied ? <Check className="w-6 h-6" /> : <Copy className="w-6 h-6" />}
                                                                 </button>
                                                         </div>
 
-                                                        <div className="flex items-center justify-center gap-4 mt-6">
-                                                                <div className="flex flex-col items-center gap-1.5">
-                                                                        <div className="bg-emerald-50 p-2 rounded-xl text-emerald-600 border border-emerald-100"><Shield className="w-4 h-4" /></div>
-                                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">מאובטח</span>
+                                                        <div className="flex items-center justify-center gap-8 mt-8">
+                                                                <div className="flex flex-col items-center gap-2">
+                                                                        <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600 border border-emerald-100"><Shield className="w-6 h-6" /></div>
+                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">מאובטח</span>
                                                                 </div>
-                                                                <div className="flex flex-col items-center gap-1.5">
-                                                                        <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600 border border-indigo-100"><Globe className="w-4 h-4" /></div>
-                                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">סנכרון בענן</span>
+                                                                <div className="flex flex-col items-center gap-2">
+                                                                        <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600 border border-indigo-100"><Globe className="w-6 h-6" /></div>
+                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">סנכרון מלא</span>
                                                                 </div>
-                                                                <div className="flex flex-col items-center gap-1.5">
-                                                                        <div className="bg-orange-50 p-2 rounded-xl text-orange-600 border border-orange-100"><Users className="w-4 h-4" /></div>
-                                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">עריכה משותפת</span>
+                                                                <div className="flex flex-col items-center gap-2">
+                                                                        <div className="bg-orange-50 p-3 rounded-2xl text-orange-600 border border-orange-100"><Users className="w-6 h-6" /></div>
+                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">עריכה משותפת</span>
                                                                 </div>
                                                         </div>
                                                 </div>

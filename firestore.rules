@@ -8,25 +8,26 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // 2. Shared Trips Collection (Email-Based System)
+    // 2. Shared Trips (SECURE & EMAIL ENABLED)
     match /shared-trips/{tripId} {
-      // CREATE: Allow any logged-in user to create (Nuclear Stability Fix)
-      allow create: if request.auth != null;
+      
+      // CREATE: SECURE. Only allow if the new doc's owner matches the logged-in user's UID.
+      // This prevents users from creating trips on behalf of others.
+      allow create: if request.auth != null && 
+                    request.resource.data.owner == request.auth.uid;
 
-      // 2. READ: Owner, Collaborator, or Email match
-      allow read: if request.auth != null && (
+      // READ & UPDATE: Hybrid Security (UID + Email)
+      // Allow access if:
+      // A. User is the Owner (UID match on existing doc)
+      // B. User is in the 'collaborators' list (Legacy UID support)
+      // C. User's Email is in the 'allowedEmails' list (New Sharing System)
+      allow read, update: if request.auth != null && (
         resource.data.owner == request.auth.uid ||
         (resource.data.collaborators is list && request.auth.uid in resource.data.collaborators) ||
         (resource.data.allowedEmails is list && request.auth.token.email in resource.data.allowedEmails)
       );
 
-      // 3. UPDATE: Owner or Collaborator
-      allow update: if request.auth != null && (
-        resource.data.owner == request.auth.uid ||
-        (resource.data.collaborators is list && request.auth.uid in resource.data.collaborators)
-      );
-
-      // 3. DELETE: Owner only
+      // DELETE: Owner only
       allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
     
