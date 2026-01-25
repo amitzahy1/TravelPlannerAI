@@ -429,9 +429,9 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                     setTextQuery(category);
                                     handleTextSearch();
                                 }}
-                                className="group flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-xs font-medium border border-purple-200 transition-all hover:shadow-sm"
+                                className="group flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded-full text-xs font-bold border border-slate-200 transition-all hover:shadow-sm hover:border-purple-200"
                             >
-                                <Sparkles className="w-3 h-3" />
+                                <Sparkles className="w-3 h-3 text-purple-400" />
                                 {category}
                                 <button
                                     onClick={(e) => {
@@ -439,7 +439,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                         const updated = trip.customAttractionCategories?.filter((_, i) => i !== idx);
                                         onUpdateTrip({ ...trip, customAttractionCategories: updated });
                                     }}
-                                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-purple-200 rounded-full transition-all"
+                                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-purple-100 rounded-full transition-all text-purple-400"
                                 >
                                     <X className="w-3 h-3" />
                                 </button>
@@ -502,9 +502,9 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                             {/* My List Filters */}
                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
                                 <div className="flex gap-2">
-                                    <button onClick={() => setMySelectedCategory('all')} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${mySelectedCategory === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200'} `}>הכל</button>
+                                    <button onClick={() => setMySelectedCategory('all')} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === 'all' ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'} `}>הכל</button>
                                     {attractionsData.map(cat => (
-                                        <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'} `}>{cat.title}</button>
+                                        <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'} `}>{cat.title}</button>
                                     ))}
                                 </div>
                             </div>
@@ -563,8 +563,8 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                 </div>
                             ) : (
                                 <>
-                                    <div className="bg-purple-50 p-3 rounded-xl mb-3 border border-purple-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-                                        <div className="flex items-center gap-2"><div className="bg-white p-1.5 rounded-full shadow-sm"><BrainCircuit className="w-4 h-4 text-purple-600" /></div><div><h3 className="text-xs font-black text-purple-900">המלצות AI: Travelers' Choice</h3></div></div>
+                                    <div className="bg-white border border-slate-100 p-4 rounded-2xl mb-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3"><div className="bg-purple-50 p-2 rounded-full"><BrainCircuit className="w-5 h-5 text-purple-600" /></div><div><h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Market Research</h3><p className="font-black text-lg text-slate-800">המלצות AI: Travelers' Choice</p></div></div>
 
                                         {!loadingRecs && (
                                             <div className="flex items-center gap-2">
@@ -581,7 +581,7 @@ CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
                                                         ))}
                                                     </div>
                                                 )}
-                                                <button onClick={() => initiateResearch()} className="text-[10px] font-bold text-purple-600 bg-white px-2 py-1 rounded shadow-sm flex items-center gap-1"><RotateCw className="w-3 h-3" /> רענן</button>
+                                                <button onClick={() => initiateResearch()} className="text-[10px] font-bold text-slate-500 hover:text-purple-600 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg hover:bg-purple-50 flex items-center gap-1 transition-colors"><RotateCw className="w-3 h-3" /> רענן</button>
                                             </div>
                                         )}
                                     </div>
@@ -701,7 +701,7 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
                 <div className="flex justify-between items-start">
                     <div className="hidden md:flex flex-col">
                         <div className="flex items-center gap-2">
-                            <button onClick={toggleFavorite} className="focus:outline-none">
+                            <button onClick={toggleFavorite} className="focus:outline-none relative z-20 p-1 -ml-1 hover:bg-slate-50 rounded-full transition-colors">
                                 <Star className={`w-4 h-4 transition-all ${data.isFavorite ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-slate-300 hover:text-yellow-400'}`} />
                             </button>
                             <h4 className="text-sm font-bold text-gray-900 leading-tight" dir="ltr">{data.name}</h4>

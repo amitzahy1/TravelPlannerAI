@@ -119,10 +119,10 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                         </a>
                                         <button
                                                 onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                                                className={`p-2 backdrop-blur-md border rounded-full transition-colors shadow-lg ${isAdded ? 'bg-green-500/80 border-green-400 text-white' : 'bg-white/20 border-white/30 text-white hover:bg-white hover:text-slate-900'}`}
+                                                className={`p-2 backdrop-blur-md border rounded-full transition-colors shadow-lg relative z-20 ${isAdded ? 'bg-yellow-400 border-yellow-500 text-yellow-900' : 'bg-white/20 border-white/30 text-white hover:bg-white hover:text-slate-900'}`}
                                                 title={isAdded ? "Remove" : "Save"}
                                         >
-                                                {isAdded ? <CheckCircle2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                                {isAdded ? <Star className="w-4 h-4 fill-current" /> : <Star className="w-4 h-4" />}
                                         </button>
                                 </div>
 

@@ -128,10 +128,19 @@ export const saveSingleTrip = async (trip: Trip, userId?: string): Promise<void>
  * Delete a trip - uses Firestore if userId provided, otherwise updates local storage
  */
 export const deleteTrip = async (tripId: string, userId?: string): Promise<void> => {
+  // Always clean up local storage first to prevent zombie data
+  try {
+    const local = loadTripsFromLocal();
+    if (local.find(t => t.id === tripId)) {
+      const filtered = local.filter(t => t.id !== tripId);
+      saveTripsToLocal(filtered);
+      console.log('🧹 Cleaned up deleted trip from localStorage backup');
+    }
+  } catch (e) {
+    console.warn('Failed to clean localStorage during delete relying on optimstic UI', e);
+  }
+
   if (!userId) {
-    const trips = loadTripsFromLocal();
-    const filtered = trips.filter(t => t.id !== tripId);
-    saveTripsToLocal(filtered);
     return;
   }
 

@@ -774,12 +774,17 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
 
 const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => void }> = ({ onFinish, onCancel }) => {
     const [step, setStep] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
     const [tripData, setTripData] = useState({
         name: '',
         dates: '',
         destination: '',
-        coverImage: ''
+        coverImage: '',
+        notes: '',
+        files: [] as any[]
     });
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const steps = [
         {
@@ -787,49 +792,134 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
             desc: "תן שם לטיול שלך - למשל 'טיול לתאילנד' או 'חופשה באיטליה'",
             icon: MapPin,
             color: "bg-blue-600",
-            field: 'name'
+            field: 'name',
+            placeholder: "שם הטיול..."
         },
         {
             title: "מתי הטיול?",
-            desc: "הזן את תאריכי הטיול (למשל: 15-22.1.2025)",
+            desc: "מתי טסים? אפשר לרשום חופשי (למשל: '8 באוגוסט עד 26 באוגוסט')",
             icon: Calendar,
             color: "bg-purple-600",
-            field: 'dates'
+            field: 'dates',
+            placeholder: "למשל: 15-22.1.2025 או 'שבועיים באוגוסט'"
         },
         {
             title: "לאן טסים?",
             desc: "מה היעד של הטיול? (למשל: בנגקוק, רומא, ניו יורק)",
             icon: Plane,
             color: "bg-orange-500",
-            field: 'destination'
+            field: 'destination',
+            placeholder: "יעד..."
+        },
+        {
+            title: "העלאה חכמה (Magic)",
+            desc: "העלה טיסות, מלונות או רשום הערות - ה-AI יסדר הכל!",
+            icon: Sparkles,
+            color: "bg-indigo-600",
+            field: 'magic',
+            placeholder: ""
         }
     ];
 
-    const handleNext = () => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files);
+            const newFilesPromises = files.map(file => {
+                return new Promise<{ name: string, mimeType: string, data: string, isText: boolean }>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const isText = file.type === 'text/plain' || file.name.endsWith('.txt');
+                        resolve({
+                            name: file.name,
+                            mimeType: file.type,
+                            data: isText ? (reader.result as string) : (reader.result as string).split(',')[1],
+                            isText
+                        });
+                    };
+                    if (file.type === 'text/plain') reader.readAsText(file);
+                    else reader.readAsDataURL(file);
+                });
+            });
+
+            Promise.all(newFilesPromises).then(processed => {
+                setTripData(prev => ({ ...prev, files: [...prev.files, ...processed] }));
+            });
+        }
+    };
+
+    const handleNext = async () => {
         if (step < steps.length - 1) {
             setStep(step + 1);
         } else {
-            // Create trip
-            const newTrip: Trip = {
-                id: `t-${Date.now()}`,
-                name: tripData.name || 'טיול חדש',
-                dates: tripData.dates,
-                destination: tripData.destination || 'יעד כללי',
-                coverImage: tripData.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80',
-                flights: { passengerName: '', pnr: '', segments: [] },
-                hotels: [],
-                restaurants: [],
-                attractions: [],
-                itinerary: [],
-                documents: []
-            };
-            onFinish(newTrip);
+            // FINISH - Create with AI
+            setIsLoading(true);
+            try {
+                // If user entered details in Magic step OR used natural language dates, use AI
+                const needsAI = tripData.notes.length > 0 || tripData.files.length > 0 || tripData.dates.length > 4;
+
+                let finalTrip: any = {
+                    id: `t-${Date.now()}`,
+                    name: tripData.name || 'טיול חדש',
+                    dates: tripData.dates,
+                    destination: tripData.destination || 'יעד כללי',
+                    coverImage: tripData.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80',
+                    flights: { passengerName: '', pnr: '', segments: [] },
+                    hotels: [],
+                    restaurants: [],
+                    attractions: [],
+                    itinerary: [],
+                    documents: []
+                };
+
+                if (needsAI) {
+                    console.log("🪄 Parsing trip with AI...");
+                    // Call new AI Service method
+                    const { parseTripWizardInputs } = await import('../services/aiService');
+                    const aiResult = await parseTripWizardInputs({
+                        name: tripData.name,
+                        dates: tripData.dates,
+                        destination: tripData.destination,
+                        notes: tripData.notes,
+                        files: tripData.files
+                    });
+
+                    const textContent = typeof aiResult.text === 'function' ? aiResult.text() : aiResult.text;
+                    let parsedData = {};
+                    try {
+                        // Robust JSON parsing
+                        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+                        parsedData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(textContent);
+                    } catch (e) {
+                        console.error("Failed to parse AI response", e);
+                    }
+
+                    // Merge AI data
+                    finalTrip = { ...finalTrip, ...parsedData };
+
+                    // Keep original ID if AI generated one (unlikely but safe)
+                    if (!finalTrip.id) finalTrip.id = `t-${Date.now()}`;
+
+                    // Add file names to documents list
+                    const docNames = tripData.files.map((f: any) => f.name);
+                    finalTrip.documents = [...(finalTrip.documents || []), ...docNames];
+                }
+
+                onFinish(finalTrip as Trip);
+
+            } catch (error) {
+                console.error("Error creating trip", error);
+                alert("אירעה שגיאה ביצירת הטיול. נסה שנית.");
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
     const currentField = steps[step]?.field;
-    const currentValue = currentField ? tripData[currentField as keyof typeof tripData] : '';
-    const canProceed = currentValue.trim().length > 0;
+    const isMagicStep = currentField === 'magic';
+
+    // Allow proceeding if not Magic step and input has value, OR if Magic step (optional)
+    const canProceed = isMagicStep || (tripData[currentField as keyof typeof tripData] as string)?.trim().length > 0;
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6 animate-fade-in">
@@ -839,12 +929,16 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
                 </button>
 
                 {/* Dynamic Header */}
-                <div className={`transition-all duration-500 overflow-hidden relative flex flex-col items-center justify-center h-72 ${steps[step].color}`}>
+                <div className={`transition-all duration-500 overflow-hidden relative flex flex-col items-center justify-center h-64 flex-shrink-0 ${steps[step].color}`}>
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20"></div>
 
                     <div className="relative z-10 bg-white/20 backdrop-blur-md p-4 rounded-full shadow-2xl border border-white/30 mb-2 animate-scale-in">
-                        {React.createElement(steps[step].icon, { className: "w-16 h-16 text-white drop-shadow-md" })}
+                        {isLoading ? (
+                            <Loader2 className="w-16 h-16 text-white animate-spin drop-shadow-md" />
+                        ) : (
+                            React.createElement(steps[step].icon, { className: "w-16 h-16 text-white drop-shadow-md" })
+                        )}
                     </div>
 
                     <div className="absolute bottom-6 flex gap-2">
@@ -855,34 +949,69 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
                 </div>
 
                 {/* Content */}
-                <div className="p-8 text-center flex flex-col flex-grow">
-                    <h2 className="text-3xl font-black text-slate-800 mb-4 tracking-tight leading-tight">{steps[step].title}</h2>
-                    <p className="text-slate-500 font-medium text-lg leading-relaxed mb-6">{steps[step].desc}</p>
+                <div className="p-8 text-center flex flex-col flex-grow overflow-y-auto">
+                    <h2 className="text-3xl font-black text-slate-800 mb-2 tracking-tight leading-tight">{isLoading ? "מנתח את הטיול..." : steps[step].title}</h2>
+                    <p className="text-slate-500 font-medium text-lg leading-relaxed mb-6">{isLoading ? "ה-AI בונה עבורך את המסלול, הטיסות והמלונות." : steps[step].desc}</p>
 
-                    {/* Input Field */}
-                    <input
-                        type="text"
-                        value={currentValue}
-                        onChange={(e) => setTripData({ ...tripData, [currentField]: e.target.value })}
-                        placeholder={steps[step].field === 'name' ? 'שם הטיול...' : steps[step].field === 'dates' ? 'תאריכים...' : 'יעד...'}
-                        className="w-full px-6 py-4 rounded-2xl border-2 border-slate-200 focus:border-blue-500 focus:outline-none text-lg text-center font-medium transition-all"
-                        autoFocus
-                    />
+                    {/* Input Field or Magic Zone */}
+                    {!isLoading && (
+                        isMagicStep ? (
+                            <div className="space-y-4 text-left">
+                                <textarea
+                                    className="w-full p-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:outline-none text-sm min-h-[100px] resize-none"
+                                    placeholder="רשום הערות חופשיות כאן... (למשל: מלון היאט, טיסה 001 ביום שלישי)"
+                                    value={tripData.notes}
+                                    onChange={(e) => setTripData({ ...tripData, notes: e.target.value })}
+                                />
+
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="border-2 border-dashed border-slate-300 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 hover:border-indigo-400 transition-all"
+                                >
+                                    <input type="file" multiple ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
+                                    <UploadCloud className="w-8 h-8 text-indigo-400" />
+                                    <span className="text-xs font-bold text-slate-400">העלה קבצים (PDF, תמונות)</span>
+                                </div>
+
+                                {tripData.files.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {tripData.files.map((f, i) => (
+                                            <span key={i} className="text-[10px] bg-slate-100 px-2 py-1 rounded-full text-slate-600 font-bold border border-slate-200 flex items-center gap-1">
+                                                <FileText className="w-3 h-3" /> {f.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <input
+                                type="text"
+                                value={tripData[currentField as keyof typeof tripData] as string}
+                                onChange={(e) => setTripData({ ...tripData, [currentField!]: e.target.value })}
+                                placeholder={steps[step].placeholder}
+                                className="w-full px-6 py-4 rounded-2xl border-2 border-slate-200 focus:border-blue-500 focus:outline-none text-lg text-center font-medium transition-all"
+                                autoFocus
+                                onKeyDown={(e) => e.key === 'Enter' && canProceed && handleNext()}
+                            />
+                        )
+                    )}
 
                     <div className="mt-auto pt-6 space-y-3">
                         <button
                             onClick={handleNext}
-                            disabled={!canProceed}
+                            disabled={!canProceed || isLoading}
                             className={`w-full py-4 rounded-2xl font-bold text-xl text-white shadow-xl transition-all hover:scale-[1.02] hover:shadow-2xl flex items-center justify-center gap-2 ${steps[step].color} disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
                         >
-                            {step < steps.length - 1 ? (
+                            {isLoading ? (
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                            ) : step < steps.length - 1 ? (
                                 <>הבא <ArrowLeft className="w-5 h-5 rotate-180" /></>
                             ) : (
-                                <>צור טיול <Sparkles className="w-5 h-5" /></>
+                                <>צור עם AI <Sparkles className="w-5 h-5" /></>
                             )}
                         </button>
 
-                        {step > 0 && (
+                        {step > 0 && !isLoading && (
                             <button
                                 onClick={() => setStep(step - 1)}
                                 className="w-full py-3 rounded-2xl font-medium text-slate-600 hover:bg-slate-100 transition-all flex items-center justify-center gap-2"

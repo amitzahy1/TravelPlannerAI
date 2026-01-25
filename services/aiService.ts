@@ -494,6 +494,67 @@ export const generateWithFallback = async (
 };
 
 /**
+ * Parse inputs from Trip Wizard (Text + Files)
+ * Used to normalize dates, extract details from notes/files, and build initial trip
+ */
+export const parseTripWizardInputs = async (inputs: { name: string, dates: string, destination: string, notes: string, files: any[] }) => {
+  const { name, dates, destination, notes, files } = inputs;
+
+  const contentParts: any[] = [
+    {
+      text: `You are an AI Travel Assistant. Your goal is to structure a trip based on user inputs.
+      
+      User Inputs:
+      - Trip Name: "${name}"
+      - Dates Input: "${dates}" (Likely natural language like "Aug 8th to 26th")
+      - Destination: "${destination}"
+      - User Notes: "${notes}"
+      - Additional Files provided below.
+
+      TASKS:
+      1. Dates: Parse the date string into a standard "YYYY-MM-DD - YYYY-MM-DD" format. 
+         - Assume the year is 2026 unless specified otherwise.
+         - If text is "8th to 26th Aug", parse as "2026-08-08 - 2026-08-26".
+      2. Destination: Normalize city/country name (e.g., "Thailand" -> "Thailand", "NYC" -> "New York, USA").
+      3. Extraction: Scan notes and any file content for:
+         - Hotel names (add to hotels array)
+         - Flight details (add to flights.segments array if possible, or just a summary)
+         - Activities/Attractions
+
+      OUTPUT FORMAT (JSON ONLY):
+      {
+        "name": "Final Trip Name",
+        "dates": "YYYY-MM-DD - YYYY-MM-DD",
+        "destination": "City, Country",
+        "hotels": [{ "id": "h-...", "name": "Hotel Name", "address": "City/Area" }],
+        "flights": { "segments": [{ "fromCode": "...", "toCode": "...", "date": "...", "flightNumber": "..." }] }
+        "itinerary": [] (optional, if detailed itinerary found)
+      }
+      
+      Do NOT return markdown. Return ONLY valid JSON.`
+    }
+  ];
+
+  // Append files
+  files.forEach(f => {
+    if (f.isText) {
+      contentParts.push({ text: `File (${f.name}):\n${f.data}` });
+    } else if (f.mimeType && f.data) {
+      contentParts.push({
+        inlineData: { mimeType: f.mimeType, data: f.data }
+      });
+    }
+  });
+
+  return generateWithFallback(
+    null,
+    [{ role: 'user', parts: contentParts }],
+    { responseMimeType: 'application/json' },
+    'FAST' // Use Flash for speed
+  );
+};
+
+/**
  * Extract trip details from a document
  * Falls back to standard generation but prepares mime data for Google if available
  */

@@ -450,9 +450,9 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
                                     setTextQuery(category);
                                     handleTextSearch();
                                 }}
-                                className="group flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-full text-xs font-medium border border-orange-200 transition-all hover:shadow-sm"
+                                className="group flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-orange-50 text-slate-600 hover:text-orange-700 rounded-full text-xs font-bold border border-slate-200 transition-all hover:shadow-sm hover:border-orange-200"
                             >
-                                <Sparkles className="w-3 h-3" />
+                                <Sparkles className="w-3 h-3 text-orange-400" />
                                 {category}
                                 <button
                                     onClick={(e) => {
@@ -460,7 +460,7 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
                                         const updated = trip.customFoodCategories?.filter((_, i) => i !== idx);
                                         onUpdateTrip({ ...trip, customFoodCategories: updated });
                                     }}
-                                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-orange-200 rounded-full transition-all"
+                                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-orange-100 rounded-full transition-all text-orange-400"
                                 >
                                     <X className="w-3 h-3" />
                                 </button>
@@ -534,9 +534,9 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
 
                                     <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
                                         <div className="flex gap-2">
-                                            <button onClick={() => setMySelectedCategory('all')} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${mySelectedCategory === 'all' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200'} `}>הכל</button>
+                                            <button onClick={() => setMySelectedCategory('all')} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === 'all' ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700'} `}>הכל</button>
                                             {myCategories.map(cat => (
-                                                <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex - shrink - 0 px - 4 py - 2 rounded - xl text - xs font - bold whitespace - nowrap border transition - all ${mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-600 border-slate-200'} `}>{cat.title}</button>
+                                                <button key={cat.id} onClick={() => setMySelectedCategory(cat.title)} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${mySelectedCategory === cat.title ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700'} `}>{cat.title}</button>
                                             ))}
                                         </div>
                                     </div>
@@ -611,25 +611,25 @@ CRITICAL: 'name' MUST be in English. 'nameEnglish' MUST be provided. Description
                                 </div>
                             ) : (
                                 <>
-                                    <div className="bg-slate-900 text-white p-4 rounded-2xl mb-4 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3"><div className="bg-white/10 p-2 rounded-full backdrop-blur-sm"><BrainCircuit className="w-5 h-5 text-orange-400" /></div><div><h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Market Research</h3><p className="font-black text-lg">מדריך האוכל המלא</p></div></div>
+                                    <div className="bg-white border border-slate-100 p-4 rounded-2xl mb-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3"><div className="bg-orange-50 p-2 rounded-full"><BrainCircuit className="w-5 h-5 text-orange-500" /></div><div><h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Market Research</h3><p className="font-black text-lg text-slate-800">מדריך האוכל המלא</p></div></div>
 
                                         {!loadingRecs && (
                                             <div className="flex items-center gap-2">
                                                 {tripCities.length > 1 && (
-                                                    <div className="flex gap-2 bg-white/10 p-1.5 rounded-xl">
+                                                    <div className="flex gap-2 bg-slate-50 p-1 rounded-xl border border-slate-100">
                                                         {tripCities.map(city => (
                                                             <button
                                                                 key={city}
                                                                 onClick={() => initiateResearch(city)}
-                                                                className="text-sm font-bold px-3 py-1.5 rounded-lg hover:bg-white/20 text-orange-100 hover:text-white transition-all shadow-sm"
+                                                                className="text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-white hover:shadow-sm text-slate-500 hover:text-slate-800 transition-all"
                                                             >
                                                                 {city}
                                                             </button>
                                                         ))}
                                                     </div>
                                                 )}
-                                                <button onClick={() => initiateResearch()} className="text-[10px] font-bold text-orange-400 bg-white/10 px-3 py-1.5 rounded-lg hover:bg-white/20 flex items-center gap-1"><RotateCw className="w-3 h-3" /> רענן</button>
+                                                <button onClick={() => initiateResearch()} className="text-[10px] font-bold text-slate-500 hover:text-orange-600 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg hover:bg-orange-50 flex items-center gap-1 transition-colors"><RotateCw className="w-3 h-3" /> רענן</button>
                                             </div>
                                         )}
                                     </div>
@@ -746,7 +746,7 @@ const RestaurantRow: React.FC<{
                 <div className="flex justify-between items-start">
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                            <button onClick={toggleFavorite} className="focus:outline-none">
+                            <button onClick={toggleFavorite} className="focus:outline-none relative z-20 p-1 -ml-1 hover:bg-slate-50 rounded-full transition-colors">
                                 <Star className={`w-5 h-5 transition-all ${data.isFavorite ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-slate-300 hover:text-yellow-400'}`} />
                             </button>
                             <span className="text-lg">{visuals.icon}</span>
