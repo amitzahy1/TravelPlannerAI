@@ -567,16 +567,22 @@ export const ItineraryView: React.FC<{
         <div className="space-y-8 animate-fade-in pb-24">
 
             {/* 1. HERO SECTION WITH INTERACTIVE STATS */}
-            <div className="relative h-[220px] rounded-[2rem] overflow-hidden shadow-xl group mx-1">
-                <img
-                    src={trip.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80'}
-                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-                    alt="Trip Cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
+            <div className="relative h-[220px] mx-1 group">
+                {/* Background Layer (Clipped) */}
+                <div className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-xl z-0">
+                    <img
+                        src={trip.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80'}
+                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                        alt="Trip Cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
+                    <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20"><Edit2 className="w-4 h-4" /></button>
+                </div>
 
-                <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col md:flex-row justify-between items-end gap-4">
-                    <div className="space-y-1 max-w-xl">
+                {/* Content Layer (Not clipped, allows Popovers) */}
+                <div className="absolute inset-0 pointer-events-none z-10 flex flex-col md:flex-row justify-between items-end p-6">
+                    {/* Text Info */}
+                    <div className="space-y-1 max-w-xl pointer-events-auto">
                         <div className="flex items-center gap-3 text-white/80 font-bold text-xs uppercase tracking-widest bg-white/10 backdrop-blur-md px-3 py-1 rounded-full w-fit border border-white/20">
                             <Calendar className="w-3.5 h-3.5" /> {trip.dates}
                         </div>
@@ -589,7 +595,7 @@ export const ItineraryView: React.FC<{
                     </div>
 
                     {/* Interactive Hero Stats Bar with Popover */}
-                    <div className="hidden md:block relative">
+                    <div className="hidden md:block relative pointer-events-auto">
                         <div className="flex gap-6 bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-3xl">
                             <div className="flex flex-col items-center min-w-[60px]">
                                 <Plane className="w-8 h-8 text-blue-400 mb-1" />
@@ -697,7 +703,6 @@ export const ItineraryView: React.FC<{
                         )}
                     </div>
                 </div>
-                <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 className="w-4 h-4" /></button>
             </div>
 
             {/* 2. TRIP SUMMARY STRIP REMOVED PER USER FEEDBACK - DIRECT TO COMMAND CENTER */}

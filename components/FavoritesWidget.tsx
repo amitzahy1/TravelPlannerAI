@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { TripDateSelector } from './TripDateSelector';
 import { GlobalPlaceModal } from './GlobalPlaceModal'; // Global Modal System
 import { PlaceIllustration } from './PlaceIllustration';
@@ -161,33 +162,39 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                 </div>
                         )}
 
-                        {/* Global Place Details Modal (NEW) */}
-                        <GlobalPlaceModal
-                                item={detailItem?.item}
-                                type={detailItem?.type}
-                                onClose={() => setDetailItem(null)}
-                                onAddToPlan={() => {
-                                        setIsScheduling(true);
-                                        // Don't close detailItem yet, wait for schedule success
-                                }}
-                        />
+                        {/* Global Place Details Modal (NEW) using Portal to escape overflow */}
+                        {detailItem && createPortal(
+                                <GlobalPlaceModal
+                                        item={detailItem.item}
+                                        type={detailItem.type}
+                                        onClose={() => setDetailItem(null)}
+                                        onAddToPlan={() => {
+                                                setIsScheduling(true);
+                                                // Don't close detailItem yet, wait for schedule success
+                                        }}
+                                />,
+                                document.body
+                        )}
 
-                        {/* Global Date Selection Modal (Chained) */}
-                        <TripDateSelector
-                                isOpen={isScheduling}
-                                onClose={() => setIsScheduling(false)}
-                                onSelect={(dateIso) => {
-                                        if (detailItem) {
-                                                onSchedule(detailItem.item, dateIso, detailItem.type);
-                                                setIsScheduling(false);
-                                                setDetailItem(null); // Close everything
-                                        }
-                                }}
-                                title="תזמון פעילות"
-                                description={`עבור: ${detailItem?.item.name || ''}`}
-                                trip={trip}
-                                timeline={timeline}
-                        />
+                        {/* Global Date Selection Modal (Chained) using Portal */}
+                        {isScheduling && createPortal(
+                                <TripDateSelector
+                                        isOpen={isScheduling}
+                                        onClose={() => setIsScheduling(false)}
+                                        onSelect={(dateIso) => {
+                                                if (detailItem) {
+                                                        onSchedule(detailItem.item, dateIso, detailItem.type);
+                                                        setIsScheduling(false);
+                                                        setDetailItem(null); // Close everything
+                                                }
+                                        }}
+                                        title="תזמון פעילות"
+                                        description={`עבור: ${detailItem?.item.name || ''}`}
+                                        trip={trip}
+                                        timeline={timeline}
+                                />,
+                                document.body
+                        )}
                 </div>
         );
 };
