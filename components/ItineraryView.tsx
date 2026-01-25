@@ -776,7 +776,7 @@ export const ItineraryView: React.FC<{
                                             )}
 
                                             {/* Day Counter Badge */}
-                                            <div className="absolute -top-2 -right-2 bg-slate-900 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-md z-30 transform group-hover:scale-110 transition-transform">
+                                            <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-md z-30 transform group-hover:scale-110 transition-transform">
                                                 DAY {dayNumber.toString().padStart(2, '0')}
                                             </div>
                                             {/* Header Compact */}
