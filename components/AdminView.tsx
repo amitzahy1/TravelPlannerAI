@@ -51,6 +51,16 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onCl
     const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Auto-open wizard for new users (First Time Experience)
+    useEffect(() => {
+        const hasSeenWizard = localStorage.getItem('welcome_wizard_seen');
+        // Only open if: Not loading, User has NO trips, and Has NOT definitely seen/dismissed it before
+        if (!isSaving && trips.length === 0 && !hasSeenWizard) {
+            setIsWizardOpen(true);
+            localStorage.setItem('welcome_wizard_seen', 'true');
+        }
+    }, [isSaving, trips.length]);
     const importFileRef = useRef<HTMLInputElement>(null);
 
     // --- Derived State for Route Builder ---
