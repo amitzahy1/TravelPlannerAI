@@ -10,8 +10,8 @@ service cloud.firestore {
 
     // 2. Shared Trips Collection (Email-Based System)
     match /shared-trips/{tripId} {
-      // 1. CREATE: Allow creating ONLY if setting yourself as owner
-      allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
+      // CREATE: Allow any logged-in user to create (Nuclear Stability Fix)
+      allow create: if request.auth != null;
 
       // 2. READ: Owner, Collaborator, or Email match
       allow read: if request.auth != null && (
