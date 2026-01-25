@@ -1096,7 +1096,13 @@ const TripWizard: React.FC<{ onFinish: (trip: Trip) => void, onCancel: () => voi
                                 </div>
                                 {tripData.startDate && tripData.endDate && (
                                     <div className="text-center text-sm font-bold text-purple-600 bg-purple-50 py-2 rounded-lg">
-                                        {tripData.startDate} עד {tripData.endDate}
+                                        {(() => {
+                                            const formatDate = (iso: string) => {
+                                                const [y, m, d] = iso.split('-');
+                                                return `${d}/${m}/${y.slice(2)}`;
+                                            };
+                                            return `${formatDate(tripData.startDate)} - ${formatDate(tripData.endDate)}`;
+                                        })()}
                                     </div>
                                 )}
                             </div>

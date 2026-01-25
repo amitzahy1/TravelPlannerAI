@@ -48,7 +48,10 @@ const parseDateString = (dateStr: string): Date | null => {
     return (d && !isNaN(d.getTime())) ? d : null;
 };
 
-const formatDateDisplay = (date: Date) => date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const formatDateDisplay = (date: Date) => {
+    const months = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יוני', 'יולי', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'];
+    return `${date.getDate()} ${months[date.getMonth()]}`;
+};
 const getDayOfWeek = (date: Date) => {
     const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
     return `יום ${days[date.getDay()]}`;
