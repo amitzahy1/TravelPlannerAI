@@ -750,8 +750,8 @@ export const ItineraryView: React.FC<{
                                             {/* Header Compact */}
                                             <div className="p-3 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="bg-white border border-slate-200 text-slate-700 w-10 h-10 rounded-xl flex flex-col items-center justify-center shadow-sm">
-                                                        <span className="text-sm font-black leading-none">{d}</span>
+                                                    <div className="bg-white border border-slate-200 text-slate-700 min-w-[48px] h-10 px-2 rounded-xl flex flex-col items-center justify-center shadow-sm">
+                                                        <span className="text-xs font-black leading-none whitespace-nowrap">{day.displayDate}</span>
                                                     </div>
                                                     <div className="min-w-0">
                                                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{day.displayDayOfWeek}</div>
@@ -811,8 +811,8 @@ export const ItineraryView: React.FC<{
                             {/* Modal Header */}
                             <div className="bg-white border-b border-slate-100 p-5 flex items-center justify-between flex-shrink-0">
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-blue-50 text-blue-600 w-12 h-12 rounded-xl flex flex-col items-center justify-center font-black text-xl border border-blue-100 shadow-inner">
-                                        {activeDay.displayDate.split(' ')[0]}
+                                    <div className="bg-blue-50 text-blue-600 min-w-[56px] h-12 px-2 rounded-xl flex flex-col items-center justify-center font-bold text-sm border border-blue-100 shadow-inner">
+                                        {activeDay.displayDate}
                                     </div>
                                     <div>
                                         <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{activeDay.displayDayOfWeek}</div>
