@@ -88,11 +88,24 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                                 <Plus className="w-4 h-4" />
                                                 הוסף לתוכנית
                                         </button>
-                                        {item.googleMapsUrl && (
-                                                <a href={item.googleMapsUrl} target="_blank" rel="noreferrer" className="p-3.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all font-bold text-sm flex items-center justify-center">
-                                                        <MapPin className="w-5 h-5" />
-                                                </a>
-                                        )}
+                                        {(() => {
+                                                // Robust Map Link Generation
+                                                let mapUrl = item.googleMapsUrl;
+
+                                                // 1. If no URL, or it's a broken dynamic link (goo.gl), or generic fallback
+                                                const isSuspicious = !mapUrl || mapUrl.includes('goo.gl') || mapUrl.includes('google.com/maps/place//');
+
+                                                if (isSuspicious) {
+                                                        const query = encodeURIComponent(`${item.name} ${item.location || ''} ${type === 'food' ? 'Restaurant' : ''}`);
+                                                        mapUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+                                                }
+
+                                                return (
+                                                        <a href={mapUrl} target="_blank" rel="noreferrer" className="p-3.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all font-bold text-sm flex items-center justify-center">
+                                                                <MapPin className="w-5 h-5" />
+                                                        </a>
+                                                );
+                                        })()}
                                 </div>
                         </div>
 
