@@ -49,8 +49,11 @@ const parseDateString = (dateStr: string): Date | null => {
 };
 
 const formatDateDisplay = (date: Date) => {
-    const months = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יוני', 'יולי', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'];
-    return `${date.getDate()} ${months[date.getMonth()]}`;
+    // User requested dd-mm-yyyy format
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = date.getFullYear();
+    return `${d}/${m}/${y}`;
 };
 const getDayOfWeek = (date: Date) => {
     const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
