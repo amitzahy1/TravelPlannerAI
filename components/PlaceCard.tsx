@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, MapIcon, Trash2, CheckCircle2, Trophy, Hotel, AlertTriangle, Plus, Utensils, Landmark, Moon, Navigation } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 
@@ -84,6 +84,23 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         // Prefer English name for better matching if available, otherwise name
         const searchName = nameEnglish || name;
         const { url: coverImage, label: visualLabel } = getPlaceImage(searchName, type, tags);
+        const [imgSrc, setImgSrc] = useState(coverImage);
+        const [hasError, setHasError] = useState(false);
+
+        // Sync local source when external coverImage changes (e.g. category switch)
+        useEffect(() => {
+                setImgSrc(coverImage);
+                setHasError(false);
+        }, [coverImage]);
+
+        const handleError = () => {
+                if (!hasError) {
+                        setHasError(true);
+                        // Bulletproof permanent fallback (Very reliable Unsplash stock travel photo)
+                        setImgSrc('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80');
+                }
+        };
+
         const displayName = nameEnglish || name;
 
         // Get Smart Chip styling (Legacy logic for color coordination)
@@ -93,10 +110,11 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         return (
                 <div className="group relative w-full h-48 rounded-xl overflow-hidden shadow-md bg-slate-900 transition-all duration-300 hover:shadow-xl hover:scale-[1.01]">
 
-                        {/* Background Image (Zoom Effect) - FIXED SOURCE PRIORITY */}
+                        {/* Background Image (Zoom Effect) - FIXED SOURCE PRIORITY + SELF HEALING */}
                         <img
-                                src={coverImage}
+                                src={imgSrc}
                                 alt={displayName}
+                                onError={handleError}
                                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-110"
                         />
 
