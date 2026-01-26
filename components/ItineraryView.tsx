@@ -916,39 +916,40 @@ export const ItineraryView: React.FC<{
             {
                 quickAddModal.isOpen && createPortal(
                     <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setQuickAddModal({ isOpen: false })}>
-                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl relative max-h-[80vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-between items-center mb-5 relative z-10">
+                        <div className="bg-white rounded-3xl w-[95%] max-w-xl p-6 shadow-2xl animate-scale-in relative z-50" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center mb-6">
                                 <div>
-                                    <h3 className="text-xl font-black text-slate-800">הוספה ללו"ז</h3>
-                                    <p className="text-[10px] text-slate-400 font-bold">תאריך: {quickAddModal.targetDate}</p>
+                                    <h3 className="text-2xl font-black text-slate-800">הוספה ללו"ז</h3>
+                                    <p className="text-sm text-slate-500 font-bold mt-1">תאריך: {quickAddModal.targetDate}</p>
                                 </div>
-                                <button onClick={() => setQuickAddModal({ isOpen: false })} className="p-1.5 bg-slate-100 rounded-full hover:bg-slate-200"><X className="w-4 h-4" /></button>
+                                <button onClick={() => setQuickAddModal({ isOpen: false })} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"><X className="w-5 h-5 text-slate-500" /></button>
                             </div>
-                            <div className="flex gap-2 mb-4">
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[10px] text-slate-400 font-bold mr-1">התחלה</span>
+
+                            <div className="flex gap-3 mb-6">
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-xs text-slate-400 font-bold mr-1">התחלה</span>
                                     <input
                                         type="time"
                                         id="quick-time"
                                         defaultValue="10:00"
-                                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 w-24 text-center"
+                                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-800 w-28 text-center shadow-sm"
                                     />
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[10px] text-slate-400 font-bold mr-1">סיום (אופציונלי)</span>
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-xs text-slate-400 font-bold mr-1">סיום (אופציונלי)</span>
                                     <input
                                         type="time"
                                         id="quick-end-time"
-                                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 w-24 text-center placeholder:text-slate-300"
+                                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-800 w-28 text-center placeholder:text-slate-300 shadow-sm"
                                     />
                                 </div>
-                                <div className="flex-1 flex flex-col gap-1">
-                                    <span className="text-[10px] text-slate-400 font-bold mr-1">תוכן</span>
+                                <div className="flex-1 flex flex-col gap-1.5">
+                                    <span className="text-xs text-slate-400 font-bold mr-1">תוכן</span>
                                     <input
                                         autoFocus
                                         id="quick-text"
                                         placeholder="מה בתוכנית?"
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 placeholder:text-slate-300"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 placeholder:text-slate-300 shadow-sm transition-all"
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
                                                 const time = (document.getElementById('quick-time') as HTMLInputElement).value;
@@ -971,12 +972,12 @@ export const ItineraryView: React.FC<{
                                         handleManualAdd(`${timeStr} ${textInput.value}`);
                                     }
                                 }}
-                                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-sm shadow-md transition-all mb-4 flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-base shadow-lg hover:shadow-xl transition-all mb-6 flex items-center justify-center gap-2 transform active:scale-95"
                             >
-                                <CheckCircle2 className="w-4 h-4" /> שמור וסגור
+                                <CheckCircle2 className="w-5 h-5" /> שמור וסגור
                             </button>
 
-                            <div className="flex flex-wrap gap-2 relative z-10 opacity-60 hover:opacity-100 transition-opacity">
+                            <div className="flex flex-wrap gap-3 relative z-10">
                                 {['✈️ טיסה', '🏨 מלון', '🍽️ אוכל', '🎟️ אטרקציה', '🚗 נסיעה'].map(suggestion => (
                                     <button
                                         key={suggestion}
@@ -986,7 +987,7 @@ export const ItineraryView: React.FC<{
                                             const timeStr = endTime ? `${time}-${endTime}` : time;
                                             handleManualAdd(`${timeStr} ${suggestion} ב...`);
                                         }}
-                                        className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-500 whitespace-nowrap transition-colors flex-grow text-center border border-slate-100"
+                                        className="px-4 py-2.5 bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 rounded-xl text-sm font-bold text-slate-600 whitespace-nowrap transition-all shadow-sm hover:shadow-md flex-grow text-center"
                                     >
                                         {suggestion}
                                     </button>
