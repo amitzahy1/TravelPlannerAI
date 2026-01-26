@@ -916,26 +916,26 @@ export const ItineraryView: React.FC<{
             {
                 quickAddModal.isOpen && createPortal(
                     <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setQuickAddModal({ isOpen: false })}>
-                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-[320px] shadow-2xl relative max-h-[80vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-between items-center mb-6 relative z-10">
+                        <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl relative max-h-[80vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center mb-5 relative z-10">
                                 <div>
-                                    <h3 className="text-2xl font-black text-slate-800">הוספה ללו"ז</h3>
-                                    <p className="text-xs text-slate-400 font-bold">תאריך: {quickAddModal.targetDate}</p>
+                                    <h3 className="text-xl font-black text-slate-800">הוספה ללו"ז</h3>
+                                    <p className="text-[10px] text-slate-400 font-bold">תאריך: {quickAddModal.targetDate}</p>
                                 </div>
-                                <button onClick={() => setQuickAddModal({ isOpen: false })} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X className="w-5 h-5" /></button>
+                                <button onClick={() => setQuickAddModal({ isOpen: false })} className="p-1.5 bg-slate-100 rounded-full hover:bg-slate-200"><X className="w-4 h-4" /></button>
                             </div>
-                            <div className="flex gap-3 mb-4">
+                            <div className="flex gap-2 mb-4">
                                 <input
                                     type="time"
                                     id="quick-time"
                                     defaultValue="10:00"
-                                    className="p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-lg text-slate-800 w-32 text-center"
+                                    className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 w-28 text-center"
                                 />
                                 <input
                                     autoFocus
                                     id="quick-text"
                                     placeholder="מה בתוכנית?"
-                                    className="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-lg text-slate-800 placeholder:text-slate-300"
+                                    className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 placeholder:text-slate-300"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             const time = (document.getElementById('quick-time') as HTMLInputElement).value;
@@ -952,7 +952,7 @@ export const ItineraryView: React.FC<{
                                             const time = (document.getElementById('quick-time') as HTMLInputElement).value;
                                             handleManualAdd(`${time} ${suggestion} ב...`);
                                         }}
-                                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600 whitespace-nowrap transition-colors flex-grow text-center"
+                                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 whitespace-nowrap transition-colors flex-grow text-center"
                                     >
                                         {suggestion}
                                     </button>
