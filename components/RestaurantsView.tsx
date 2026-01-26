@@ -397,20 +397,61 @@ Description in Hebrew. Netural English names.`;
         return all.sort((a, b) => (b.googleRating || 0) - (a.googleRating || 0));
     }, [aiCategories]);
 
-    // Extract Raters for Filtering (Recommended)
+    // Client-side translation for legacy/cached English titles
+    const HEBREW_TITLES: Record<string, string> = {
+        "Authentic Local Food": "אוכל מקומי אותנטי",
+        "Luxury & Michelin": "יוקרה ומישלן",
+        "Cocktail Bars": "ברי קוקטיילים",
+        "Family Friendly": "מסעדות משפחתיות",
+        "Ramen": "ראמן",
+        "Pizza": "פיצה",
+        "Burger": "המבורגר",
+        "Cafe & Dessert": "בתי קפה וקינוחים",
+        "Thai": "תאילנדי",
+        "Japanese - NO RAMEN": "יפני",
+        "Japanese": "יפני",
+        // Attractions
+        "Icons & Landmarks": "אתרי חובה",
+        "Nature & Views": "טבע ונופים",
+        "Heritage & Art": "מוזיאונים ותרבות",
+        "Retail Therapy": "קניות ושווקים",
+        "Adrenaline": "אקסטרים ופעילויות",
+        "Sun & Sea": "חופים ומים",
+        "Kids' Joy": "למשפחות וילדים",
+        "Spiritual": "היסטוריה ודת",
+        "Night Vibes": "חיי לילה ואווירה",
+        "Hidden Gems": "פינות נסתרות"
+    };
+
+    const displayTitle = (title: string) => HEBREW_TITLES[title] || title;
+
+    // Extract Raters for Filtering (Cleaned)
     const availableRaters = useMemo(() => {
         const sources = new Set<string>();
+        const ALLOWED_AUTHORITIES = ['michelin', '50 best', 'timeout', 'eater', 'tripadvisor', 'google', 'local', 'gault'];
+
         allAiRestaurants.forEach(r => {
             if (r.recommendationSource) {
                 let provider = r.recommendationSource;
                 const low = provider.toLowerCase();
+
+                // Consolidate Authoritative Sources
                 if (low.includes('michelin')) provider = "Michelin Guide";
                 else if (low.includes('50 best')) provider = "50 Best";
-                else if (low.includes('local') || low.includes('google')) provider = "Local / Google";
-                else {
-                    provider = provider.replace(/#\d+|20\d\d/g, '').trim();
+                else if (low.includes('timeout')) provider = "TimeOut";
+                else if (low.includes('eater')) provider = "Eater";
+                else if (low.includes('tripadvisor') || low.includes('trip advisor')) provider = "TripAdvisor";
+                else if (low.includes('google')) provider = "Google Review";
+                else if (low.includes('local')) provider = "Local Key";
+
+                // Filter out junk (Blogs, Awards) unless it matches Authority
+                const isAuthority = ALLOWED_AUTHORITIES.some(auth => low.includes(auth));
+                if (isAuthority) {
+                    sources.add(provider);
+                } else {
+                    // Map unknown/junk to "Local/Google" or ignore for filter list (but keep in list)
+                    // We simply don't add it to the FILTER list so the user doesn't see "Burger Blog" button
                 }
-                sources.add(provider);
             }
         });
         return Array.from(sources).sort();
@@ -793,7 +834,7 @@ Description in Hebrew. Netural English names.`;
                                                             onClick={() => setSelectedCategory(cat.id)}
                                                             className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedCategory === cat.id ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}
                                                         >
-                                                            {cat.title}
+                                                            {displayTitle(cat.title)}
                                                         </button>
                                                     ))}
                                                 </div>

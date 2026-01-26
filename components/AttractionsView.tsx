@@ -308,10 +308,38 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         }
     };
 
-    // Filtered Raters
+    // Client-side translation for legacy/cached English titles
+    const HEBREW_TITLES: Record<string, string> = {
+        "Icons & Landmarks": "אתרי חובה",
+        "Nature & Views": "טבע ונופים",
+        "Heritage & Art": "מוזיאונים ותרבות",
+        "Retail Therapy": "קניות ושווקים",
+        "Adrenaline": "אקסטרים ופעילויות",
+        "Sun & Sea": "חופים ומים",
+        "Kids' Joy": "למשפחות וילדים",
+        "Spiritual": "היסטוריה ודת",
+        "Night Vibes": "חיי לילה ואווירה",
+        "Hidden Gems": "פינות נסתרות",
+        "Must See": "אתרי חובה", // Legacy
+        "Shopping & Markets": "קניות ושווקים", // Legacy
+        "Culture & History": "מוזיאונים ותרבות", // Legacy
+        "Nightlife": "חיי לילה ואווירה" // Legacy
+    };
+
+    const displayTitle = (title: string) => HEBREW_TITLES[title] || title;
+
+    // Filtered Raters (Cleaned)
     const availableRaters = useMemo(() => {
         const sources = new Set<string>();
-        aiCategories.forEach(c => c.attractions.forEach(a => a.recommendationSource && sources.add(a.recommendationSource)));
+        const ALLOWED = ['unesco', 'tripadvisor', 'lonely planet', 'atlas obscura', 'timeout', 'google', 'local'];
+
+        aiCategories.forEach(c => c.attractions.forEach(a => {
+            if (a.recommendationSource) {
+                const low = a.recommendationSource.toLowerCase();
+                const isAuth = ALLOWED.some(k => low.includes(k));
+                if (isAuth) sources.add(a.recommendationSource);
+            }
+        }));
         return Array.from(sources).sort();
     }, [aiCategories]);
 
@@ -503,7 +531,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                         <>
                                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide"><div className="flex gap-2">
                                                 <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === 'all' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>הכל</button>
-                                                {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>{c.title}</button>)}
+                                                <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>{displayTitle(c.title)}</button>)}
                                             </div></div>
                                             <div className="mb-4 overflow-x-auto pb-2 flex gap-2 items-center"><span className="text-[10px] font-bold text-slate-400">הומלץ ע"י:</span>
                                                 <button onClick={() => setSelectedRater('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === 'all' ? 'bg-purple-600 text-white' : 'bg-white state-slate-600'}`}>הכל</button>
