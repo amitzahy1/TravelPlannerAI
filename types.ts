@@ -138,6 +138,12 @@ export interface Attraction {
   recommendationSource?: string;
   isFavorite?: boolean; // New: Pin to top
   categoryTitle?: string; // New: For dynamic mapping
+
+  // Unified Engine Upgrade (Jan 2026)
+  best_time_to_visit?: string; // "Sunset", "Early Morning"
+  activity_type?: "Adventure" | "Culture" | "Relaxation" | "Shopping" | string;
+  duration?: string; // "1-2 hours"
+  visual_tag?: string; // "temple_gold", "beach_sunset" for Image Mapper
 }
 
 export interface AttractionCategory {
