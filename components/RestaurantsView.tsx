@@ -254,8 +254,9 @@ Description in Hebrew. Netural English names.`;
 
             **PART 1: THE LOGIC RULES**
             1. **Scope Authority:** Search primarily in "${specificCity}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 30km to find quality spots.
-            2. **The "Power of 6":** You MUST return **EXACTLY 6** recommendations for each of the 10 categories below. No variance.
-            3. **Quality Firewall:** STRICTLY REJECT global fast-food chains (McDonald's, Starbucks, KFC). Prioritize "Chef-Driven" and "Local Legend" spots.
+            2. **Quality > Quantity:** Return **UP TO 6** recommendations. If only 3 amazing places exist, return 3. Do NOT fill with mediocrity.
+            3. **NO HALLUCINATIONS:** If a category (e.g. Ramen) has no real results in this city, return an empty list. Better empty than fake.
+            4. **Quality Firewall:** STRICTLY REJECT global fast-food chains (McDonald's, Starbucks, KFC). Prioritize "Chef-Driven" and "Local Legend" spots.
 
             **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
             
