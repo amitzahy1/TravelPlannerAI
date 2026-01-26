@@ -164,51 +164,56 @@ function selectFromPool(name: string, ids: string[]): string {
 /**
  * STRICT Isolated Food Mapper
  */
+/**
+ * STRICT Isolated Food Mapper - CURATOR ALGORITHM v2.0
+ * Supports the 10 "Perfect Definition Matrix" Categories
+ */
 export function getFoodImage(name: string, description: string = "", tags: string[] = []): { url: string, label: string } {
         const query = `${name} ${description} ${tags.join(' ')}`.toLowerCase();
 
-        // High Priority Specifics
-        if (query.includes('tonkotsu') || query.includes('creamy ramen') || query.includes('מרק סמיך'))
-                return { url: selectFromPool(name, FOOD_DB.ramen.types.tonkotsu.ids), label: '🍜 Tonkotsu' };
-
-        if (query.includes('shoyu') || query.includes('soy') || query.includes('כהה'))
-                return { url: selectFromPool(name, FOOD_DB.ramen.types.shoyu.ids), label: '🍜 Shoyu Ramen' };
-
+        // 1. RAMEN (Soul)
         if (query.includes('ramen') || query.includes('noodle') || query.includes('ראמן'))
                 return { url: selectFromPool(name, FOOD_DB.ramen.generic), label: '🍜 Ramen' };
 
-        if (query.includes('sushi') || query.includes('sashimi') || query.includes('roll') || query.includes('סושי'))
-                return { url: selectFromPool(name, FOOD_DB.sushi.generic), label: '🍣 Sushi' };
-
-        if (query.includes('pizza') || query.includes('pizzeria') || query.includes('פיצה'))
+        // 2. PIZZA (Dough & Fire)
+        if (query.includes('pizza') || query.includes('pizzeri') || query.includes('פיצה'))
                 return { url: selectFromPool(name, FOOD_DB.pizza.generic), label: '🍕 Pizza' };
 
-        if (query.includes('burger') || query.includes('bun') || query.includes('המבורגר'))
+        // 3. BURGER (Meat & Bun)
+        if (query.includes('burger') || query.includes('hamburger') || query.includes('המבורגר'))
                 return { url: selectFromPool(name, FOOD_DB.burger.generic), label: '🍔 Burger' };
 
-        if (query.includes('italian') || query.includes('pasta') || query.includes('איטלקית'))
-                return { url: selectFromPool(name, FOOD_DB.italian.generic), label: '🍝 Italian' };
+        // 4. SUSHI/JAPANESE (Precision - NO RAMEN)
+        if (query.includes('sushi') || query.includes('omakase') || query.includes('japan') || query.includes('izakaya') || query.includes('יפני') || query.includes('סושי'))
+                return { url: selectFromPool(name, FOOD_DB.sushi.generic), label: '🍣 Japanese' };
 
-        if (query.includes('steak') || query.includes('meat') || query.includes('grill') || query.includes('בשר'))
-                return { url: selectFromPool(name, FOOD_DB.steakhouses.generic), label: '🥩 Steakhouse' };
+        // 5. THAI (Spice & Wok)
+        if (query.includes('thai') || query.includes('pad thai') || query.includes('curry') || query.includes('תאילנדי'))
+                return { url: selectFromPool(name, FOOD_DB.asian.generic), label: '🌶️ Thai' };
 
-        if (query.includes('asian') || query.includes('thai') || query.includes('chinese') || query.includes('japan') || query.includes('אסייתי'))
-                return { url: selectFromPool(name, FOOD_DB.asian.generic), label: '🥡 Asian Fusion' };
-
-        if (query.includes('street') || query.includes('stall') || query.includes('market') || query.includes('רחוב'))
-                return { url: selectFromPool(name, FOOD_DB.street.generic), label: '🥢 Street Food' };
-
-        if (query.includes('fine') || query.includes('michelin') || query.includes('gourmet') || query.includes('יוקרה'))
+        // 6. FINE DINING (The Experience)
+        if (query.includes('fine dining') || query.includes('michelin') || query.includes('chef') || query.includes('tasting menu') || query.includes('יוקרה') || query.includes('מישלן'))
                 return { url: selectFromPool(name, FOOD_DB.fine.generic), label: '💎 Fine Dining' };
 
-        if (query.includes('dessert') || query.includes('ice cream') || query.includes('cake') || query.includes('קינוח'))
-                return { url: selectFromPool(name, FOOD_DB.dessert.generic), label: '🍦 Dessert' };
+        // 7. COCKTAIL BARS (The Vibe)
+        if (query.includes('cocktail') || query.includes('bar') || query.includes('speakeasy') || query.includes('lounge') || query.includes('בר') || query.includes('קוקטייל'))
+                return { url: selectFromPool(name, FOOD_DB.bar.generic), label: '🍸 Cocktail Bar' };
 
-        if (query.includes('cafe') || query.includes('coffee') || query.includes('brunch') || query.includes('קפה'))
-                return { url: selectFromPool(name, FOOD_DB.cafe.generic), label: '☕ Cafe' };
+        // 8. CAFE & DESSERT (Third Wave)
+        if (query.includes('cafe') || query.includes('coffee') || query.includes('bakery') || query.includes('pastry') || query.includes('dessert') || query.includes('gelato') || query.includes('ice cream') || query.includes('בתי קפה') || query.includes('קינוח'))
+                return { url: selectFromPool(name, FOOD_DB.cafe.generic), label: '☕ Cafe & Dessert' };
 
-        if (query.includes('bar') || query.includes('club') || query.includes('pub') || query.includes('cocktail') || query.includes('בר'))
-                return { url: selectFromPool(name, FOOD_DB.bar.generic), label: '🍸 Nightlife' };
+        // 9. LOCAL AUTHENTIC (City's Pride)
+        if (query.includes('local') || query.includes('authentic') || query.includes('traditional') || query.includes('market') || query.includes('street') || query.includes('אוכל מקומי') || query.includes('אותנטי'))
+                return { url: selectFromPool(name, FOOD_DB.street.generic), label: '🍲 Local Legend' };
+
+        // 10. FAMILY (The Balance)
+        if (query.includes('family') || query.includes('kids') || query.includes('casual') || query.includes('משפחתית') || query.includes('משפחתי'))
+                return { url: selectFromPool(name, FOOD_DB.italian.generic), label: '👨‍👩‍👧‍👦 Family' };
+
+        // Fallback
+        if (query.includes('steak') || query.includes('grill') || query.includes('meat'))
+                return { url: selectFromPool(name, FOOD_DB.steakhouses.generic), label: '🥩 Steakhouse' };
 
         return { url: selectFromPool(name, FOOD_DB.fallback), label: '🍽️ Restaurant' };
 }

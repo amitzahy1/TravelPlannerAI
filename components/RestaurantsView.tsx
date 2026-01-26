@@ -247,43 +247,62 @@ Description in Hebrew. Netural English names.`;
             const currentYear = new Date().getFullYear();
             const prevYear = currentYear - 1;
 
-            // --- STRICT PROMPT ---
+            // --- CURATOR ALGORITHM v2.0 (Strict Quota System) ---
             const prompt = `
-            Act as a strict, fact-checking Food Guide Editor for ${specificCity} (and 30km radius surroundings).
+            Role: You are the Lead Product Architect and Senior AI Engineer at Google Travel.
+            Mission: Re-engineer the Restaurant Discovery Engine to implement the "Curator Algorithm" - a strict, quota-based recommendation system.
 
-            **CORE SEARCH RULE:**
-            If the specific city/village ("${specificCity}") is small, YOU MUST SEARCH WITHIN A 30KM RADIUS to find the best spots.
-            Do not return empty results unless the entire region is empty.
+            **PART 1: THE LOGIC RULES**
+            1. **Scope Authority:** Search primarily in "${specificCity}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 30km to find quality spots.
+            2. **The "Power of 6":** You MUST return **EXACTLY 6** recommendations for each of the 10 categories below. No variance.
+            3. **Quality Firewall:** STRICTLY REJECT global fast-food chains (McDonald's, Starbucks, KFC). Prioritize "Chef-Driven" and "Local Legend" spots.
 
-            Provide exactly 6 authentic recommendations for each of the following SPECIFIC categories:
+            **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
+            
+            1. **"אוכל מקומי אותנטי"** (Authentic Local Food)
+               - Persona: The City's Pride. Iconic places serving the region's signature dish.
+               - Anti-Pattern: International food disguised as local.
+               
+            2. **"יוקרה ומישלן"** (Luxury & Michelin)
+               - Persona: The Experience. White tablecloths, tasting menus.
+               - Anti-Pattern: Casual or messy environments.
 
-            **Category Structure (Hebrew Titles):**
-            1. "אוכל מקומי אותנטי" (Local Authentic Food - MUST be local cuisine)
-            2. "מסעדות יוקרה / מישלן" (Fine Dining / Luxury)
-            3. "בר קוקטיילים וחיי לילה" (Cocktail Bars & Nightlife)
-            4. "מסעדות משפחתיות" (Family Friendly / Casual)
-            5. "הראמן הכי טוב" (Best Ramen - STRICT: Return EMPTY list if no real Ramen place exists)
-            6. "הפיצה הכי טובה" (Best Pizza - STRICT: Return EMPTY list if no real Pizza place exists)
-            7. "ההמבורגר הכי טוב" (Best Burger)
-            8. "בתי קפה וקינוחים" (Cafes & Desserts)
+            3. **"ברי קוקטיילים"** (Cocktail Bars)
+               - Persona: The Vibe. Mixology, speakeasies, high-end hotel bars.
+               - Anti-Pattern: Dance clubs, dive bars, student pubs.
+               
+            4. **"מסעדות משפחתיות"** (Family Friendly)
+               - Persona: The Balance. Great food with space for strollers/kids.
+               - Anti-Pattern: Cramped, silent, or dark places.
 
-            **CRITICAL INTEGRITY RULES:**
-            1. **NAME:** Must be the REAL English name.
-            2. **DESCRIPTION:** Hebrew, max 12 words.
-            3. **RAMEN/PIZZA CHECK:** If searching for 'Ramen' and the only results are Sandwich shops or Georgian food -> RETURN EMPTY LIST for that category. Do not hallucinate.
-            4. **HOTEL:** If inside a hotel, set isHotelRestaurant = true.
-            5. **ICONS:** Set 'cuisine' field to match EXACTLY one of: [Ramen, Pizza, Burger, Sushi, Asian Fusion, Fine Dining, Cafe, Steakhouse, Seafood, Local Food, Dessert, Nightlife, Family].
-               - "אוכל מקומי אותנטי" -> Local Food
-               - "מסעדות יוקרה / מישלן" -> Fine Dining
-               - "בר קוקטיילים וחיי לילה" -> Nightlife
-               - "מסעדות משפחתיות" -> Family
-               - "הראמן הכי טוב" -> Ramen
-               - "הפיצה הכי טובה" -> Pizza
-               - "ההמבורגר הכי טוב" -> Burger
+            5. **"ראמן"** (Ramen)
+               - Persona: Slurp & Soul. Dedicated Tonkotsu/Shoyu bars.
+               - Anti-Pattern: Generic Asian places that "have soup".
 
-            **DATA OUTPUT RULES:**
-            - **CRITICAL:** Return ONLY valid JSON.
-            - Do NOT return Markdown.
+            6. **"פיצה"** (Pizza)
+               - Persona: Dough & Fire. Wood-fired Neapolitan/Roman.
+               - Anti-Pattern: Commercial chains (Domino's).
+
+            7. **"המבורגר"** (Burger)
+               - Persona: Meat & Bun. Gourmet/Smash burgers.
+               - Anti-Pattern: Fast food chains.
+
+            8. **"בתי קפה וקינוחים"** (Cafe & Dessert)
+               - Persona: Third Wave & Sugar. Specialty roasters, Patisseries.
+               - Anti-Pattern: Restaurants that just "have dessert".
+
+            9. **"תאילנדי"** (Thai)
+               - Persona: Spice & Wok. Authentic Pad Thai/Green Curry.
+               - Anti-Pattern: Generic "Asian Fusion" or Sushi places.
+
+            10. **"יפני"** (Japanese - NO RAMEN)
+                - Persona: Precision. Sushi, Izakaya, Katsu.
+                - Anti-Pattern: Ramen bars (they have their own category).
+
+            **PART 3: DATA INTEGRITY**
+            - **CRITICAL:** Return pure JSON.
+            - **Icons:** Map 'cuisine' field to internal IDs: [Local, Fine, Bar, Family, Ramen, Pizza, Burger, Cafe, Thai, Japanese].
+            - **Hotel:** If inside a hotel, set isHotelRestaurant = true.
             `;
 
 
