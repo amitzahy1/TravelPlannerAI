@@ -53,7 +53,9 @@ const HEBREW_TAGS: Record<string, string> = {
         "Fine Dining": "שף",
         "Local": "מקומי",
         "Authentic": "אותנטי",
-        "Street Food": "אוכל רחוב"
+        "Street Food": "אוכל רחוב",
+        "Fine": "יוקרה",
+        "Gourmet": "גורמה"
 };
 
 const getSmartSubtitle = (item: any) => {
@@ -162,13 +164,8 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                         </div>
 
                                         <p className="text-sm text-slate-600 leading-relaxed mb-6 font-medium text-right" dir="auto">
-                                                {/* Fallback for English descriptions if client-side */}
-                                                {(item.description && /^[A-Za-z]/.test(item.description))
-                                                        ? (type === 'food' || type === 'restaurant'
-                                                                ? `מסעדה מומלצת: ${item.description}`
-                                                                : `אטרקציה מומלצת: ${item.description}`)
-                                                        : (item.description || (type === 'food' || type === 'restaurant' ? 'מסעדה מצוינת ששווה בדיקה.' : 'אטרקציה שווה ביקור.'))
-                                                }
+                                                {/* Clean Description without prefix, assuming AI fixes language. If English detected, we just show it clean. */}
+                                                {item.description || (type === 'food' || type === 'restaurant' ? 'מסעדה מצוינת ששווה בדיקה.' : 'אטרקציה שווה ביקור.')}
                                         </p>
 
                                         <div className="grid grid-cols-2 gap-3">

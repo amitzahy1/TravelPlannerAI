@@ -325,8 +325,10 @@ Description in Hebrew. Netural English names.`;
             **PART 5: CRITICAL QUALITY RULES**
             - **Review Check:** MUST have > 50 reviews (prefer >100). Do NOT invent places.
             - **Anti-Tourist Trap Rule:** REJECT places with > 3000 reviews but rating < 4.4. (High volume + mediocre score = Trap).
+            - **Hotel Logic:** EXCLUDE hotels unless they have a SPECIFIC, NAMED restaurant (e.g. "Alain Ducasse at The Dorchester"). Do NOT recommend "The Hilton" as a restaurant.
+            - **Language Rule:** Descriptions MUST be in HEBREW Only.
             - **Location Format:** "Street, City". Do NOT include text like "(30km radius)" or "(Approx)".
-            - **Hotel Logic:** If restaurant is inside a hotel, set 'isHotelRestaurant' = true and use "Name (at Hotel)" format.
+            - **Hotel Logic (Naming):** If restaurant is inside a hotel, set 'isHotelRestaurant' = true and use "Name (at Hotel)" format.
             `;
             const schema: Schema = {
                 type: Type.OBJECT,
