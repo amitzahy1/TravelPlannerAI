@@ -183,17 +183,40 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
         };
 
         const renderGroupedSection = (sectionFavorites: typeof favorites, type: 'food' | 'attraction', icon: React.ReactNode, typeName: string, colorClass: string, bgClass: string, borderClass: string) => (
-                <div className={`animate-fade-in flex flex-col h-full bg-${bgClass}-50/10 rounded-xl p-0.5 min-h-[120px]`}>
+                <div className={`animate-fade-in flex flex-col h-full bg-${bgClass}-50/10 rounded-xl p-0.5 min-h-[120px] overflow-hidden`}>
                         <div className={`flex items-center justify-between mb-2 px-1 pb-1 border-b border-${borderClass}-100`}>
                                 <span className={`text-[10px] font-black text-${colorClass}-400 uppercase tracking-widest flex items-center gap-1.5`}>{icon} {typeName} ({sectionFavorites.length})</span>
                         </div>
-                        <div className="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar pr-1 max-h-[220px]">
+                        <div className="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar pr-1 max-h-[180px]">
                                 {sectionFavorites.length > 0 ? (
                                         (() => {
-                                                // Group by Source Context (cat.title)
-                                                const groups: Record<string, typeof sectionFavorites> = {};
-                                                sectionFavorites.forEach(item => {
-                                                        const groupName = item.cityGroup || 'כללי';
+                                                // 1. Limit Items if Collapsed (User Request: "Show only 2 minimized")
+                                                const itemsToRender = isInlineExpanded ? sectionFavorites : sectionFavorites.slice(0, 2);
+
+                                                // 2. Strict City Grouping (User Request: "Division by Trip Cities")
+                                                // Extract Trip Cities from Trip Object
+                                                const tripCities = trip.destination ? trip.destination.split(/[-–,]/).map(c => c.trim()) : [];
+
+                                                const groups: Record<string, typeof itemsToRender> = {};
+
+                                                itemsToRender.forEach(item => {
+                                                        // Priority: 1. Explicit Region (from manual add) 2. Fuzzy Location Match
+                                                        const loc = (item.data.location || '').toLowerCase();
+                                                        const region = (item.data as any).region; // Explicit field if saved
+
+                                                        // Try to match a known Trip City
+                                                        let matchedCity = tripCities.find(c =>
+                                                                (region && region.toLowerCase().includes(c.toLowerCase())) ||
+                                                                loc.includes(c.toLowerCase())
+                                                        );
+
+                                                        // Fallback: If "Telavi" and trip has "Lopota", map it? (Heuristic)
+                                                        if (!matchedCity && loc.includes('telavi') && tripCities.some(c => c.includes('Lopota'))) {
+                                                                matchedCity = tripCities.find(c => c.includes('Lopota'));
+                                                        }
+
+                                                        const groupName = matchedCity || 'כללי'; // Default to 'General' (will appear as 'General')
+
                                                         if (!groups[groupName]) groups[groupName] = [];
                                                         groups[groupName].push(item);
                                                 });
