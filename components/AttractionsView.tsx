@@ -531,7 +531,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                         <>
                                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide"><div className="flex gap-2">
                                                 <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === 'all' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>הכל</button>
-                                                <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>{displayTitle(c.title)}</button>)}
+                                                {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>{displayTitle(c.title)}</button>)}
                                             </div></div>
                                             <div className="mb-4 overflow-x-auto pb-2 flex gap-2 items-center"><span className="text-[10px] font-bold text-slate-400">הומלץ ע"י:</span>
                                                 <button onClick={() => setSelectedRater('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === 'all' ? 'bg-purple-600 text-white' : 'bg-white state-slate-600'}`}>הכל</button>
