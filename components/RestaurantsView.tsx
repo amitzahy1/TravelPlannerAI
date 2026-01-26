@@ -280,32 +280,47 @@ Description in Hebrew. Netural English names.`;
                - Anti-Pattern: Generic Asian places that "have soup".
 
             6. **"פיצה"** (Pizza)
+               - Title ID: pizza
+               - Hebrew Title: "פיצה"
                - Persona: Dough & Fire. Wood-fired Neapolitan/Roman.
-               - Anti-Pattern: Commercial chains (Domino's).
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "פיצה".
 
             7. **"המבורגר"** (Burger)
+               - Title ID: burger
+               - Hebrew Title: "המבורגר"
                - Persona: Meat & Bun. Gourmet/Smash burgers.
-               - Anti-Pattern: Fast food chains.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "המבורגר".
 
             8. **"בתי קפה וקינוחים"** (Cafe & Dessert)
+               - Title ID: cafe_dessert
+               - Hebrew Title: "בתי קפה וקינוחים"
                - Persona: Third Wave & Sugar. Specialty roasters, Patisseries.
-               - Anti-Pattern: Restaurants that just "have dessert".
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "בתי קפה וקינוחים".
 
             9. **"תאילנדי"** (Thai)
+               - Title ID: thai
+               - Hebrew Title: "תאילנדי"
                - Persona: Spice & Wok. Authentic Pad Thai/Green Curry.
-               - Anti-Pattern: Generic "Asian Fusion" or Sushi places.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "תאילנדי".
 
             10. **"יפני"** (Japanese - NO RAMEN)
+                - Title ID: japanese
+                - Hebrew Title: "יפני"
                 - Persona: Precision. Sushi, Izakaya, Katsu.
-                - Anti-Pattern: Ramen bars (they have their own category).
+                - Multi-Lingual Rule: The JSON 'title' field MUST be "יפני".
 
             **PART 3: DATA INTEGRITY**
             - **CRITICAL:** Return pure JSON.
+            - **Titles:** The 'title' field in the JSON categories MUST be the Hebrew string (e.g. "פיצה", not "Pizza").
             - **Icons:** Map 'cuisine' field to internal IDs: [Local, Fine, Bar, Family, Ramen, Pizza, Burger, Cafe, Thai, Japanese].
             - **Hotel:** If inside a hotel, set isHotelRestaurant = true.
+            
+            **PART 4: AUTHORITY SOURCES ONLY**
+            - The 'recommendationSource' field must be a REAL, recognized authority.
+            - **ALLOWED SOURCES:** [Michelin Guide, 50 Best, TimeOut, Eater, TripAdvisor, Google Review, Local Legend, Gault & Millau].
+            - **BANNED SOURCES:** Generic names like "Burger Blog", "Bar Awards", "Foodie Guy", "American Blog".
+            - If no specific source exists, use "Google Review" or "Local Legend".
             `;
-
-
             const schema: Schema = {
                 type: Type.OBJECT,
                 properties: {

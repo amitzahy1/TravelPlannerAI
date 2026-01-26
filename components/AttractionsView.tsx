@@ -171,48 +171,64 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
             
             1. **"אתרי חובה"** (Icons & Landmarks)
+               - Hebrew Title: "אתרי חובה"
                - Persona: The Eiffel Tower equivalent. The most famous spots.
-               - Trigger: iconic, famous, tower.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "אתרי חובה".
 
             2. **"טבע ונופים"** (Nature & Views)
-               - Persona: Breath of Fresh Air. Viewpoints, botanical gardens, waterfalls, national parks.
-               - Trigger: nature, waterfall, view.
+               - Hebrew Title: "טבע ונופים"
+               - Persona: Breath of Fresh Air. Viewpoints, botanical gardens, waterfalls.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "טבע ונופים".
 
             3. **"מוזיאונים ותרבות"** (Heritage & Art)
-               - Persona: Heritage & Art. Galleries, history museums, cultural centers.
-               - Trigger: museum, art, history.
+               - Hebrew Title: "מוזיאונים ותרבות"
+               - Persona: Heritage & Art. Galleries, history museums.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "מוזיאונים ותרבות".
 
             4. **"קניות ושווקים"** (Retail Therapy)
-               - Persona: Massive malls, floating markets, famous shopping streets.
-               - Trigger: shopping, market, mall.
+               - Hebrew Title: "קניות ושווקים"
+               - Persona: Malls, floating markets, shopping streets.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "קניות ושווקים".
 
             5. **"אקסטרים ופעילויות"** (Adrenaline)
-               - Persona: Ziplines, ATV tours, surfing, water parks.
-               - Trigger: extreme, adventure, zipline.
+               - Hebrew Title: "אקסטרים ופעילויות"
+               - Persona: Ziplines, ATV tours, surfing.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "אקסטרים ופעילויות".
 
             6. **"חופים ומים"** (Sun & Sea)
-               - Persona: Best beaches, islands, boat tours, piers.
-               - Trigger: beach, sea, island.
+               - Hebrew Title: "חופים ומים"
+               - Persona: Beaches, islands, boat tours.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "חופים ומים".
 
             7. **"למשפחות וילדים"** (Kids' Joy)
-               - Persona: Zoos, aquariums, large theme parks.
-               - Trigger: family, zoo, kids.
+               - Hebrew Title: "למשפחות וילדים"
+               - Persona: Zoos, aquariums, theme parks.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "למשפחות וילדים".
 
             8. **"היסטוריה ודת"** (Spiritual)
-               - Persona: Temples (Wats), Shrines, Churches, Ancient Ruins.
-               - Trigger: temple, ancient, religion.
+               - Hebrew Title: "היסטוריה ודת"
+               - Persona: Temples, Shrines, Churches.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "היסטוריה ודת".
 
             9. **"חיי לילה ואווירה"** (Night Vibes)
+               - Hebrew Title: "חיי לילה ואווירה"
                - Persona: Night markets, neon streets, light shows.
-               - Trigger: night, neon, market.
+               - Multi-Lingual Rule: The JSON 'title' field MUST be "חיי לילה ואווירה".
 
             10. **"פינות נסתרות"** (Hidden Gems)
-                - Persona: Unknown alleys, local hangouts, secret viewpoints.
-                - Trigger: hidden, secret, alley.
+                - Hebrew Title: "פינות נסתרות"
+                - Persona: Unknown alleys, local hangouts.
+                - Multi-Lingual Rule: The JSON 'title' field MUST be "פינות נסתרות".
 
             **PART 3: DATA INTEGRITY**
             - **CRITICAL:** Return pure JSON.
+            - **Titles:** The 'title' field in the JSON categories MUST be the Hebrew string.
             - **Type Mapping:** Map 'type' field to one of: [Landmark, Nature, Culture, Shopping, Extreme, Beach, Family, Spiritual, Nightlife, Hidden].
+            
+            **PART 4: AUTHORITY SOURCES ONLY**
+            - The 'recommendationSource' field must be a REAL authority.
+            - **ALLOWED:** [UNESCO, TripAdvisor, Lonely Planet, Atlas Obscura, TimeOut, Google Review, Local Legend].
+            - **BANNED:** Generic names.
             `;
             const schema: Schema = {
                 type: Type.OBJECT,
