@@ -258,7 +258,18 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                         {renderGroupedSection(favorites.filter(f => f.type === 'attraction'), 'attraction', <Ticket className="w-3 h-3" />, 'אטרקציות', 'purple', 'purple', 'purple')}
                                 </div>
 
-                                {/* NO BOTTOM BUTTON AS REQUESTED */}
+                                {/* Smart "View All" Modal Trigger */}
+                                {(favorites.length > 4) && (
+                                        <div className="pt-2 mt-auto text-center border-t border-slate-50/50">
+                                                <button
+                                                        onClick={() => setIsExpanded(true)}
+                                                        className="text-[10px] font-bold text-slate-400 hover:text-blue-600 transition-colors flex items-center justify-center gap-1 w-full py-1"
+                                                >
+                                                        <span>צפה בכל הרשימה ({favorites.length})</span>
+                                                        <ArrowUpRight className="w-3 h-3" />
+                                                </button>
+                                        </div>
+                                )}
                         </div>
 
                         {/* EXPANDED SLIDE-OVER PANEL */}
