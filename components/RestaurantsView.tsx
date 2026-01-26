@@ -255,7 +255,7 @@ Description in Hebrew. Netural English names.`;
             If the specific city/village ("${specificCity}") is small, YOU MUST SEARCH WITHIN A 30KM RADIUS to find the best spots.
             Do not return empty results unless the entire region is empty.
 
-            Provide exactly 4 authentic recommendations for each of the following SPECIFIC categories:
+            Provide exactly 6 authentic recommendations for each of the following SPECIFIC categories:
 
             **Category Structure (Hebrew Titles):**
             1. "אוכל מקומי אותנטי" (Local Authentic Food - MUST be local cuisine)
