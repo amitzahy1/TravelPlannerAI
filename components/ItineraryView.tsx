@@ -924,22 +924,35 @@ export const ItineraryView: React.FC<{
                                 </div>
                                 <button onClick={() => setQuickAddModal({ isOpen: false })} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X className="w-5 h-5" /></button>
                             </div>
-                            <input
-                                autoFocus
-                                placeholder="למשל: 19:00 ארוחת ערב"
-                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-lg text-slate-800 placeholder:text-slate-300 relative z-10"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleManualAdd(e.currentTarget.value);
-                                    }
-                                }}
-                            />
-                            <div className="mt-4 flex gap-2 overflow-x-auto pb-2 relative z-10 no-scrollbar">
+                            <div className="flex gap-3 mb-4">
+                                <input
+                                    type="time"
+                                    id="quick-time"
+                                    defaultValue="10:00"
+                                    className="p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-lg text-slate-800 w-32 text-center"
+                                />
+                                <input
+                                    autoFocus
+                                    id="quick-text"
+                                    placeholder="מה בתוכנית?"
+                                    className="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-lg text-slate-800 placeholder:text-slate-300"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            const time = (document.getElementById('quick-time') as HTMLInputElement).value;
+                                            handleManualAdd(`${time} ${e.currentTarget.value}`);
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2 relative z-10">
                                 {['✈️ טיסה', '🏨 מלון', '🍽️ אוכל', '🎟️ אטרקציה', '🚗 נסיעה'].map(suggestion => (
                                     <button
                                         key={suggestion}
-                                        onClick={() => handleManualAdd(`${suggestion} ב...`)}
-                                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600 whitespace-nowrap transition-colors"
+                                        onClick={() => {
+                                            const time = (document.getElementById('quick-time') as HTMLInputElement).value;
+                                            handleManualAdd(`${time} ${suggestion} ב...`);
+                                        }}
+                                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600 whitespace-nowrap transition-colors flex-grow text-center"
                                     >
                                         {suggestion}
                                     </button>
