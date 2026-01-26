@@ -162,7 +162,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             Mission: Re-engineer the Attraction Discovery Engine to implement the "Curator Algorithm" - a strict, quota-based recommendation system.
 
             **PART 1: THE LOGIC RULES**
-            1. **Scope Authority:** Search primarily in "${target}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 30km to find quality spots (e.g. waterfalls, nature).
+            1. **Scope Authority:** Search primarily in "${target}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 20km to find quality spots (e.g. waterfalls, nature).
             2. **Quality > Quantity:** Return **UP TO 6** recommendations. If only 3 amazing places exist, return 3. Do NOT fill with mediocrity.
             3. **NO HALLUCINATIONS:** If a category has no real results in this area, return an empty list. Better empty than fake.
             3. **Quality Firewall:** 
