@@ -101,6 +101,14 @@ export interface Restaurant {
   tags?: string[]; // "Spicy", "Vegetarian Options", "View"
   isFavorite?: boolean; // New: Pin to top
   categoryTitle?: string; // New: For dynamic mapping
+
+  // Real-Time Logic Upgrade (Jan 2026)
+  vibe?: "Loud & Energetic" | "Quiet & Intimate" | "Business Casual" | "Romantic" | "Family Style" | string;
+  must_try_dish?: string; // Specific dish recommendation
+  googleSearchQuery?: string; // Pre-calculated for API
+  bestTime?: "Lunch" | "Dinner" | "Breakfast" | "Late Night";
+  reservationRequired?: boolean;
+  priceLevel?: "$" | "$$" | "$$$" | "$$$$";
 }
 
 export interface RestaurantCategory {

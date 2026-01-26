@@ -7,34 +7,39 @@ import { getCachedResponse, cacheResponse } from "./cacheService";
  * System prompt for Research & Recommendations (SMART tasks)
  * Includes strict business verification and professional sourcing
  */
-export const SYSTEM_PROMPT_RESEARCH = `You are a skeptical researcher and expert in culinary arts and travel at Google.
+export const SYSTEM_PROMPT_RESEARCH = `Role: You are a Senior Backend Architect & Prompt Engineer at Google Maps.
+
+Objective: Overhaul the generateTripPlan function to produce strictly high-quality, authentic, and non-hallucinated restaurant recommendations.
+
+Current Flaw: The AI suggests generic places or places that might be closed. It lacks "Soul" and specific culinary insight.
+
+Task 1: The "Michelin Guide" Prompt Injection
+
+Anti-Chain Policy: Explicitly forbid major global chains (McDonalds, Starbucks) unless specifically requested. Prioritize "Local Legends" and "Hidden Gems".
+
+The "Why" Factor: For every restaurant, generate a match_reason: strictly explain why this specific place fits the user's specific persona (e.g., "Perfect for couples because of the dim lighting and jazz music").
+
+Dish Specificity: Instead of "Italian Food", require a must_try_dish: "Truffle Carbonara made in a cheese wheel".
+
+Vibe Quantifier: Add a vibe field: "Loud & Energetic", "Quiet & Intimate", "Business Casual".
 
 CRITICAL VERIFICATION RULES (January 2026):
 1. MUST perform web search to verify current business status
-2. MUST filter out ANY business marked as "Permanently Closed" or "Temporarily Closed"
-3. MUST prioritize results from professional sources (Michelin Guide, James Beard Foundation, Lonely Planet, TripAdvisor Travelers' Choice, UNESCO)
-4. MUST include verification_needed: true if data is older than 6 months or status is uncertain
-5. REJECT viral/TikTok trends - only evidence-based professional recommendations
-
-When providing recommendations:
-- Cite professional sources with recent timestamps (2025-2026)
-- Verify current ratings from Google Maps or TripAdvisor
-- Prioritize authenticity and quality over social media popularity
-- Provide context (awards, chef credentials, historical significance)
-- Consider value for money
-- Set business_status to "OPERATIONAL" only if verified
+2. MUST filter out ANY business marked as "Permanently Closed"
+3. MUST prioritize results from professional sources (Michelin Guide, James Beard, TripAdvisor Travelers' Choice)
+4. Set reservationRequired based on popularity (True/False)
 
 CRITICAL SCHEMA RULES (Schema Guardian):
-1. Use ONLY ISO 8601 for dates (YYYY-MM-DD). Never use DD/MM or slashes.
-2. Ensure all arrays exist, even if empty (restaurants, hotels, itinerary).
-3. 'price' fields should be numbers (estimatedCost, budgetLimit) unless explicitly marked for display.
+1. Use ONLY ISO 8601 for dates (YYYY-MM-DD).
+2. Ensure all arrays exist, even if empty.
+3. 'price' fields should be numbers. 'priceLevel' should be $, $$, $$$, $$$$.
 4. Descriptions must be in HEBREW (max 15 words). Names must be in English.
+5. Include 'googleSearchQuery': "Name City Area" for future API lookups.
 
 CRITICAL OUTPUT RULES:
 1. You MUST return ONLY valid JSON
 2. Do NOT format with markdown (no \`\`\`json blocks)
-3. Do NOT include conversational text before or after the JSON
-4. Validate your JSON before sending`;
+3. Validate your JSON before sending`;
 
 /**
  * System prompt for Data Extraction (FAST tasks)
@@ -366,7 +371,16 @@ export const generateWithFallback = async (
     // Select model and tools based on intent
     const selectedModel = intent === 'SMART' ? GOOGLE_MODELS.SMART : GOOGLE_MODELS.FAST;
     // Use modern googleSearch tool (not deprecated googleSearchRetrieval)
-    const tools = intent === 'SMART' ? [{ googleSearch: {} }] : undefined;
+    const tools = intent === 'SMART' ? [
+      {
+        googleSearchRetrieval: {
+          dynamicRetrievalConfig: {
+            mode: "MODE_DYNAMIC", // Allows model to decide when to search
+            dynamicThreshold: 0.7, // Search if confidence is strictly needed
+          },
+        },
+      },
+    ] : undefined;
 
     // Retry logic loop now just tries the selected model, or maybe fallbacks?
     // For simplicity given the requirement: Try selected, then fallback to stable.
@@ -683,6 +697,19 @@ export const extractTripFromDoc = async (fileBase64: string, mimeType: string, p
   // Note: Groq/OpenRouter might not support image/pdf inputs in this specific text-only implementation 
   // without employing Vision models explicitly. This implementation prioritizes Google for docs.
   return generateWithFallback(null, contents, { responseMimeType: "application/json" }, 'FAST');
+};
+
+/**
+ * Task 3: The "Sanity Check" Function (Preparation for Real-Data)
+ * Currently a semantic filter, effectively preparing for Google Places API ID swap.
+ */
+export const verifyPlacesWithGoogle = async (places: any[]) => {
+  // Placeholder for future Places API integration
+  // Currently, we just filter out obviously generic names
+  return places.filter(p => {
+    const genericNames = ["Restaurant", "Cafe", "Bar", "Local Restaurant", "The Restaurant"];
+    return !genericNames.includes(p.name);
+  });
 };
 
 // Export simple getter for backward compatibility
