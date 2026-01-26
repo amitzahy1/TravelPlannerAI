@@ -116,15 +116,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                 return items.sort((a, b) => b.sortKey - a.sortKey);
         }, [trip]);
 
-        const [isInlineExpanded, setIsInlineExpanded] = useState(false);
-
-        const visibleItems = useMemo(() => {
-                if (isInlineExpanded) return favorites;
-                return favorites.slice(0, 2);
-        }, [favorites, isInlineExpanded]);
-
         if (favorites.length === 0) {
-                // ... (keep existing empty state if separate, or rely on render)
                 return (
                         <div className="h-full px-2 animate-fade-in relative z-30 flex flex-col">
                                 <div className="flex items-center gap-2 mb-3 px-2 flex-shrink-0">
@@ -143,7 +135,6 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
         }
 
         const renderCompactItem = (fav: typeof favorites[0]) => {
-                // ... (keep existing renderCompactItem logic, just ensure types match)
                 const tags = [(fav.data as any).cuisine || (fav.data as any).type || '', fav.data.location];
                 const { url } = getPlaceImage(fav.data.name, fav.type as any, tags);
 
@@ -187,36 +178,32 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                         <div className={`flex items-center justify-between mb-2 px-1 pb-1 border-b border-${borderClass}-100`}>
                                 <span className={`text-[10px] font-black text-${colorClass}-400 uppercase tracking-widest flex items-center gap-1.5`}>{icon} {typeName} ({sectionFavorites.length})</span>
                         </div>
-                        <div className="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar pr-1 max-h-[180px]">
+                        <div className="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar pr-1">
                                 {sectionFavorites.length > 0 ? (
                                         (() => {
-                                                // 1. Limit Items if Collapsed (User Request: "Show only 2 minimized")
-                                                const itemsToRender = isInlineExpanded ? sectionFavorites : sectionFavorites.slice(0, 2);
+                                                // 1. ALWAYS LIMIT TO 2 ITEMS (Compact)
+                                                const itemsToRender = sectionFavorites.slice(0, 2);
 
-                                                // 2. Strict City Grouping (User Request: "Division by Trip Cities")
-                                                // Extract Trip Cities from Trip Object
+                                                // 2. Strict City Grouping Logic
                                                 const tripCities = trip.destination ? trip.destination.split(/[-–,]/).map(c => c.trim()) : [];
 
                                                 const groups: Record<string, typeof itemsToRender> = {};
 
                                                 itemsToRender.forEach(item => {
-                                                        // Priority: 1. Explicit Region (from manual add) 2. Fuzzy Location Match
                                                         const loc = (item.data.location || '').toLowerCase();
-                                                        const region = (item.data as any).region; // Explicit field if saved
+                                                        const region = (item.data as any).region;
 
-                                                        // Try to match a known Trip City
                                                         let matchedCity = tripCities.find(c =>
                                                                 (region && region.toLowerCase().includes(c.toLowerCase())) ||
                                                                 loc.includes(c.toLowerCase())
                                                         );
 
-                                                        // Fallback: If "Telavi" and trip has "Lopota", map it? (Heuristic)
+                                                        // Heuristic fallback
                                                         if (!matchedCity && loc.includes('telavi') && tripCities.some(c => c.includes('Lopota'))) {
                                                                 matchedCity = tripCities.find(c => c.includes('Lopota'));
                                                         }
 
-                                                        const groupName = matchedCity || 'כללי'; // Default to 'General' (will appear as 'General')
-
+                                                        const groupName = matchedCity || 'כללי';
                                                         if (!groups[groupName]) groups[groupName] = [];
                                                         groups[groupName].push(item);
                                                 });
@@ -243,7 +230,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
 
         return (
                 <>
-                        <div className={`px-1 animate-fade-in relative z-30 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-4 transition-all duration-300 ${isInlineExpanded ? 'h-auto shadow-xl ring-2 ring-blue-50/50' : 'h-full'}`}>
+                        <div className="px-1 animate-fade-in relative z-30 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-4 h-full">
                                 {/* Header */}
                                 <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-2">
@@ -254,7 +241,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                                         המועדפים ({favorites.length})
                                                 </h3>
                                         </div>
-                                        {/* SlideOver Toggle */}
+                                        {/* SlideOver Toggle (Top Right - Main Access to Full List) */}
                                         {(favorites.length > 4) && (
                                                 <button
                                                         onClick={() => setIsExpanded(true)}
@@ -266,30 +253,16 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                         )}
                                 </div>
                                 {/* Compact Split List - GRID LAYOUT */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0 overflow-hidden">
                                         {renderGroupedSection(favorites.filter(f => f.type === 'food'), 'food', <Utensils className="w-3 h-3" />, 'מסעדות', 'orange', 'orange', 'orange')}
                                         {renderGroupedSection(favorites.filter(f => f.type === 'attraction'), 'attraction', <Ticket className="w-3 h-3" />, 'אטרקציות', 'purple', 'purple', 'purple')}
                                 </div>
 
-                                {/* Inline Expand Button - Smart Logic */}
-                                {(favorites.filter(f => f.type === 'food').length > 3 || favorites.filter(f => f.type === 'attraction').length > 3) && (
-                                        <div className="mt-3 pt-1 text-center border-t border-slate-50">
-                                                <button
-                                                        onClick={() => setIsInlineExpanded(!isInlineExpanded)}
-                                                        className="w-full py-1.5 text-[11px] font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all flex items-center justify-center gap-1"
-                                                >
-                                                        {isInlineExpanded ? (
-                                                                <>הצג פחות <ChevronRight className="w-3 h-3 rotate-[-90deg]" /></>
-                                                        ) : (
-                                                                <>הצג הכל ({favorites.length})</>
-                                                        )}
-                                                </button>
-                                        </div>
-                                )}
+                                {/* NO BOTTOM BUTTON AS REQUESTED */}
                         </div>
 
                         {/* EXPANDED SLIDE-OVER PANEL */}
-                        < SlideOverPanel
+                        <SlideOverPanel
                                 isOpen={isExpanded}
                                 onClose={() => setIsExpanded(false)}
                                 title="כל המועדפים"
@@ -299,7 +272,6 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                 <div className="h-full flex flex-col">
                                         {/* Toolbar */}
                                         <div className="px-6 py-2 border-b border-slate-50 flex gap-2 overflow-x-auto scrollbar-hide">
-                                                {/* We can add filters here later if needed */}
                                                 <div className="text-xs font-bold text-slate-400 px-2 py-1">מציג {favorites.length} מקומות</div>
                                         </div>
 
@@ -329,14 +301,14 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                                 />
                                         </div>
                                 </div>
-                        </SlideOverPanel >
+                        </SlideOverPanel>
 
                         {/* Modals Logic */}
                         {
                                 detailItem && createPortal(
                                         <GlobalPlaceModal
                                                 item={detailItem.item}
-                                                type={detailItem.type === 'food' ? 'restaurant' : 'attraction'} // Fix type mismatch
+                                                type={detailItem.type === 'food' ? 'restaurant' : 'attraction'}
                                                 onClose={() => setDetailItem(null)}
                                                 onAddToPlan={() => {
                                                         setIsScheduling(true);
