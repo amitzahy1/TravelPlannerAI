@@ -12,7 +12,7 @@ interface TripDateSelectorProps {
         timeline?: DayPlan[];
 }
 
-const TripDateSelector: React.FC<TripDateSelectorProps> = ({
+export const TripDateSelector: React.FC<TripDateSelectorProps> = ({
         isOpen, onClose, onSelect, title = 'בחר תאריך', description, trip, timeline
 }) => {
         if (!isOpen) return null;
