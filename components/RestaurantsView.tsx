@@ -677,6 +677,7 @@ Description in Hebrew. Netural English names.`;
                                                         onSaveNote={(note) => handleUpdateRestaurant(r.id, { notes: note })}
                                                         onUpdate={(updates) => handleUpdateRestaurant(r.id, updates)}
                                                         onDelete={() => handleDeleteRestaurant(r.id)}
+                                                        onClick={() => setSelectedPlace(r)}
                                                     />
                                                 ));
                                             })()}
@@ -825,7 +826,7 @@ Description in Hebrew. Netural English names.`;
     );
 };
 
-const RestaurantRow: React.FC<{ data: Restaurant | ExtendedRestaurant, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Restaurant>) => void, onDelete: () => void }> = ({ data, onSaveNote, onUpdate, onDelete }) => {
+const RestaurantRow: React.FC<{ data: Restaurant | ExtendedRestaurant, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Restaurant>) => void, onDelete: () => void, onClick: () => void }> = ({ data, onSaveNote, onUpdate, onDelete, onClick }) => {
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
     const [isScheduling, setIsScheduling] = useState(false);
@@ -849,7 +850,7 @@ const RestaurantRow: React.FC<{ data: Restaurant | ExtendedRestaurant, onSaveNot
     return (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 hover:shadow-md transition-shadow relative group">
             <div className="flex justify-between items-start gap-3">
-                <div className="flex gap-3 items-start flex-grow min-w-0">
+                <div className="flex gap-3 items-start flex-grow min-w-0 cursor-pointer" onClick={onClick}>
                     <div className="w-16 h-16 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden relative border border-slate-200">
                         {/* Improved Image Handling */}
                         <img
