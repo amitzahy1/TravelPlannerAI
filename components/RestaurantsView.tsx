@@ -492,18 +492,22 @@ Description in Hebrew. Netural English names.`;
             }
         } else {
             // ADD Logic
-            const region = restaurant.location?.split(',')[0] || 'Unknown City';
-            let targetCatIndex = newRestaurants.findIndex(c => c.region === region && c.title === catTitle);
+            // FIX: Use catTitle (Search Context) as the region source-of-truth, ignoring raw address (e.g. Telavi -> Lopota)
+            const intendedRegion = catTitle;
+
+            // Find category matching the Trip City (Title)
+            let targetCatIndex = newRestaurants.findIndex(c => c.title === catTitle);
 
             if (targetCatIndex === -1) {
-                newRestaurants.push({ id: `cat-${Date.now()}`, title: catTitle, region: region, restaurants: [] });
+                // If category doesn't exist (shouldn't happen if trip cities initialized, but safe fallback), create it using the Intent
+                newRestaurants.push({ id: `cat-${Date.now()}`, title: catTitle, region: intendedRegion, restaurants: [] });
                 targetCatIndex = newRestaurants.length - 1;
             }
 
             newRestaurants[targetCatIndex].restaurants.push({
                 ...restaurant,
                 id: `added-${Date.now()}`,
-                region: region // Ensure city context is saved
+                region: intendedRegion // Force region to match Trip City for consistent grouping
             });
         }
 

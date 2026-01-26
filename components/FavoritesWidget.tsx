@@ -244,148 +244,107 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                 </div>
                                 {/* Compact Split List - GRID LAYOUT */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                                                                                if (!assignedCity && loc.includes('telavi') && tripCities.some(c => c.includes('Lopota'))) {
-                                                assignedCity = tripCities.find(c => c.includes('Lopota'));
-                                                                                }
-
-                                        if (assignedCity) {
-                                                                                        if (!groups[assignedCity]) groups[assignedCity] = [];
-                                        groups[assignedCity].push(item);
-                                                                                } else {
-                                                                                        const rawCity = loc.split(',')[0].trim();
-                                                                                        const exactMatch = tripCities.find(c => c.toLowerCase() === rawCity.toLowerCase());
-                                        if (exactMatch) {
-                                                                                                if (!groups[exactMatch]) groups[exactMatch] = [];
-                                        groups[exactMatch].push(item);
-                                                                                        }
-                                                                                }
-                                                                        });
-
-                                        const groupKeys = Object.keys(groups);
-                                                                        if (groupKeys.length === 0 && items.length > 0) {
-                                                                                return <div className="text-[10px] text-slate-400 p-2 italic">כל האטרקציות מחוץ לערים המוגדרות בטיול.</div>
-                                                                        }
-
-                                                                        return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([city, groupItems]) => (
-                                        <div key={city} className="mb-1">
-                                                <h5 className="text-[10px] font-bold text-slate-400 mb-1 px-1 flex items-center gap-1">
-                                                        <MapPin className="w-2.5 h-2.5" /> {city}
-                                                </h5>
-                                                <div className="space-y-2">
-                                                        {groupItems.map(renderCompactItem)}
-                                                </div>
-                                        </div>
-                                        ));
-                                                                })()
-                                        ) : (
-                                        <div className="h-full bg-slate-50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center p-4">
-                                                <span className="text-[10px] text-slate-400 font-bold">אין אטרקציות</span>
-                                        </div>
-                                                        )}
+                                        {renderGroupedSection(favorites.filter(f => f.type === 'food'), 'food', <Utensils className="w-3 h-3" />, 'מסעדות', 'orange', 'orange', 'orange')}
+                                        {renderGroupedSection(favorites.filter(f => f.type === 'attraction'), 'attraction', <Ticket className="w-3 h-3" />, 'אטרקציות', 'purple', 'purple', 'purple')}
                                 </div>
+
+                                {/* Inline Expand Button - Smart Logic */}
+                                {(favorites.filter(f => f.type === 'food').length > 3 || favorites.filter(f => f.type === 'attraction').length > 3) && (
+                                        <div className="mt-3 pt-1 text-center border-t border-slate-50">
+                                                <button
+                                                        onClick={() => setIsInlineExpanded(!isInlineExpanded)}
+                                                        className="w-full py-1.5 text-[11px] font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all flex items-center justify-center gap-1"
+                                                >
+                                                        {isInlineExpanded ? (
+                                                                <>הצג פחות <ChevronRight className="w-3 h-3 rotate-[-90deg]" /></>
+                                                        ) : (
+                                                                <>הצג הכל ({favorites.length})</>
+                                                        )}
+                                                </button>
+                                        </div>
+                                )}
                         </div>
-                </div >
 
-                        {/* Inline Expand Button - Smart Logic */ }
-        {
-                (favorites.filter(f => f.type === 'food').length > 2 || favorites.filter(f => f.type === 'attraction').length > 2) && (
-                        <div className="mt-3 pt-1 text-center border-t border-slate-50">
-                                <button
-                                        onClick={() => setIsInlineExpanded(!isInlineExpanded)}
-                                        className="w-full py-1.5 text-[11px] font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all flex items-center justify-center gap-1"
-                                >
-                                        {isInlineExpanded ? (
-                                                <>הצג פחות <ChevronRight className="w-3 h-3 rotate-[-90deg]" /></>
-                                        ) : (
-                                                <>הצג הכל ({favorites.length})</>
-                                        )}
-                                </button>
-                        </div>
-                )
-        }
-                        </div >
+                        {/* EXPANDED SLIDE-OVER PANEL */}
+                        < SlideOverPanel
+                                isOpen={isExpanded}
+                                onClose={() => setIsExpanded(false)}
+                                title="כל המועדפים"
+                                width="max-w-xl"
+                                zIndex={60}
+                        >
+                                <div className="h-full flex flex-col">
+                                        {/* Toolbar */}
+                                        <div className="px-6 py-2 border-b border-slate-50 flex gap-2 overflow-x-auto scrollbar-hide">
+                                                {/* We can add filters here later if needed */}
+                                                <div className="text-xs font-bold text-slate-400 px-2 py-1">מציג {favorites.length} מקומות</div>
+                                        </div>
 
-        {/* EXPANDED SLIDE-OVER PANEL */ }
-        < SlideOverPanel
-isOpen = { isExpanded }
-onClose = {() => setIsExpanded(false)}
-title = "כל המועדפים"
-width = "max-w-xl"
-zIndex = { 60}
-        >
-        <div className="h-full flex flex-col">
-                {/* Toolbar */}
-                <div className="px-6 py-2 border-b border-slate-50 flex gap-2 overflow-x-auto scrollbar-hide">
-                        {/* We can add filters here later if needed */}
-                        <div className="text-xs font-bold text-slate-400 px-2 py-1">מציג {favorites.length} מקומות</div>
-                </div>
-
-                {/* Split View Content */}
-                <div className="flex-1 grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 overflow-hidden bg-white">
-                        {/* Column 1: Food */}
-                        <Column
-                                favorites={favorites}
-                                type="food"
-                                title="מסעדות"
-                                icon={<Utensils className="w-3 h-3" />}
-                                iconBg="bg-orange-50"
-                                iconColor="text-orange-600"
-                                trip={trip}
-                                onSelect={(item: any, type: any) => setDetailItem({ item, type })}
-                        />
-                        {/* Column 2: Attractions */}
-                        <Column
-                                favorites={favorites}
-                                type="attraction"
-                                title="אטרקציות"
-                                icon={<Ticket className="w-3 h-3" />}
-                                iconBg="bg-purple-50"
-                                iconColor="text-purple-600"
-                                trip={trip}
-                                onSelect={(item: any, type: any) => setDetailItem({ item, type })}
-                        />
-                </div>
-        </div>
+                                        {/* Split View Content */}
+                                        <div className="flex-1 grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 overflow-hidden bg-white">
+                                                {/* Column 1: Food */}
+                                                <Column
+                                                        favorites={favorites}
+                                                        type="food"
+                                                        title="מסעדות"
+                                                        icon={<Utensils className="w-3 h-3" />}
+                                                        iconBg="bg-orange-50"
+                                                        iconColor="text-orange-600"
+                                                        trip={trip}
+                                                        onSelect={(item: any, type: any) => setDetailItem({ item, type })}
+                                                />
+                                                {/* Column 2: Attractions */}
+                                                <Column
+                                                        favorites={favorites}
+                                                        type="attraction"
+                                                        title="אטרקציות"
+                                                        icon={<Ticket className="w-3 h-3" />}
+                                                        iconBg="bg-purple-50"
+                                                        iconColor="text-purple-600"
+                                                        trip={trip}
+                                                        onSelect={(item: any, type: any) => setDetailItem({ item, type })}
+                                                />
+                                        </div>
+                                </div>
                         </SlideOverPanel >
 
-        {/* Modals Logic */ }
-{
-        detailItem && createPortal(
-                <GlobalPlaceModal
-                        item={detailItem.item}
-                        type={detailItem.type === 'food' ? 'restaurant' : 'attraction'} // Fix type mismatch
-                        onClose={() => setDetailItem(null)}
-                        onAddToPlan={() => {
-                                setIsScheduling(true);
-                        }}
-                        isAdded={detailItem.type === 'food' ? (detailItem.item as Restaurant).reservationDate !== undefined : (detailItem.item as Attraction).scheduledDate !== undefined}
-                />,
-                document.body
-        )
-}
+                        {/* Modals Logic */}
+                        {
+                                detailItem && createPortal(
+                                        <GlobalPlaceModal
+                                                item={detailItem.item}
+                                                type={detailItem.type === 'food' ? 'restaurant' : 'attraction'} // Fix type mismatch
+                                                onClose={() => setDetailItem(null)}
+                                                onAddToPlan={() => {
+                                                        setIsScheduling(true);
+                                                }}
+                                                isAdded={detailItem.type === 'food' ? (detailItem.item as Restaurant).reservationDate !== undefined : (detailItem.item as Attraction).scheduledDate !== undefined}
+                                        />,
+                                        document.body
+                                )
+                        }
 
-{
-        isScheduling && createPortal(
-                <TripDateSelector
-                        isOpen={isScheduling}
-                        onClose={() => setIsScheduling(false)}
-                        onSelect={(dateIso) => {
-                                if (detailItem) {
-                                        onSchedule(detailItem.item, dateIso, detailItem.type);
-                                        setIsScheduling(false);
-                                        setDetailItem(null);
-                                        setIsExpanded(false); // Close panel too on success
-                                }
-                        }}
-                        title="תזמון פעילות"
-                        description={`עבור: ${detailItem?.item.name || ''}`}
-                        trip={trip}
-                        timeline={timeline}
-                />,
-                document.body
-        )
-}
+                        {
+                                isScheduling && createPortal(
+                                        <TripDateSelector
+                                                isOpen={isScheduling}
+                                                onClose={() => setIsScheduling(false)}
+                                                onSelect={(dateIso) => {
+                                                        if (detailItem) {
+                                                                onSchedule(detailItem.item, dateIso, detailItem.type);
+                                                                setIsScheduling(false);
+                                                                setDetailItem(null);
+                                                                setIsExpanded(false); // Close panel too on success
+                                                        }
+                                                }}
+                                                title="תזמון פעילות"
+                                                description={`עבור: ${detailItem?.item.name || ''}`}
+                                                trip={trip}
+                                                timeline={timeline}
+                                        />,
+                                        document.body
+                                )
+                        }
                 </>
         );
 };
