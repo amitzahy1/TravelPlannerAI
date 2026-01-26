@@ -201,134 +201,135 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                         >
                                                 <ArrowUpRight className="w-4 h-4" />
                                         </button>
-                                        {/* Compact Split List - GRID LAYOUT (Side by Side) */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {/* Food Section */}
-                                                <div className="animate-fade-in flex flex-col h-full">
-                                                        <div className="flex items-center justify-between mb-2 px-1 pb-1 border-b border-orange-100">
-                                                                <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest flex items-center gap-1.5"><Utensils className="w-3 h-3" /> מסעדות ({favorites.filter(f => f.type === 'food').length})</span>
-                                                        </div>
-                                                        <div className="flex flex-col gap-2 flex-1">
-                                                                {favorites.filter(f => f.type === 'food').length > 0 ? (
-                                                                        favorites.filter(f => f.type === 'food').slice(0, isInlineExpanded ? undefined : 2).map(renderCompactItem)
-                                                                ) : (
-                                                                        <div className="h-full bg-slate-50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center p-4">
-                                                                                <span className="text-[10px] text-slate-400 font-bold">אין מסעדות</span>
-                                                                        </div>
-                                                                )}
-                                                        </div>
+                                </div>
+                                {/* Compact Split List - GRID LAYOUT (Side by Side) */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Food Section */}
+                                        <div className="animate-fade-in flex flex-col h-full">
+                                                <div className="flex items-center justify-between mb-2 px-1 pb-1 border-b border-orange-100">
+                                                        <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest flex items-center gap-1.5"><Utensils className="w-3 h-3" /> מסעדות ({favorites.filter(f => f.type === 'food').length})</span>
                                                 </div>
-
-                                                {/* Attraction Section */}
-                                                <div className="animate-fade-in flex flex-col h-full">
-                                                        <div className="flex items-center justify-between mb-2 px-1 pb-1 border-b border-purple-100">
-                                                                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1.5"><Ticket className="w-3 h-3" /> אטרקציות ({favorites.filter(f => f.type === 'attraction').length})</span>
-                                                        </div>
-                                                        <div className="flex flex-col gap-2 flex-1">
-                                                                {favorites.filter(f => f.type === 'attraction').length > 0 ? (
-                                                                        favorites.filter(f => f.type === 'attraction').slice(0, isInlineExpanded ? undefined : 2).map(renderCompactItem)
-                                                                ) : (
-                                                                        <div className="h-full bg-slate-50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center p-4">
-                                                                                <span className="text-[10px] text-slate-400 font-bold">אין אטרקציות</span>
-                                                                        </div>
-                                                                )}
-                                                        </div>
+                                                <div className="flex flex-col gap-2 flex-1">
+                                                        {favorites.filter(f => f.type === 'food').length > 0 ? (
+                                                                favorites.filter(f => f.type === 'food').slice(0, isInlineExpanded ? undefined : 2).map(renderCompactItem)
+                                                        ) : (
+                                                                <div className="h-full bg-slate-50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center p-4">
+                                                                        <span className="text-[10px] text-slate-400 font-bold">אין מסעדות</span>
+                                                                </div>
+                                                        )}
                                                 </div>
                                         </div>
 
-                                        {/* Inline Expand Button - Smart Logic */}
-                                        {(favorites.filter(f => f.type === 'food').length > 2 || favorites.filter(f => f.type === 'attraction').length > 2) && (
-                                                <div className="mt-3 pt-1 text-center border-t border-slate-50">
-                                                        <button
-                                                                onClick={() => setIsInlineExpanded(!isInlineExpanded)}
-                                                                className="w-full py-1.5 text-[11px] font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all flex items-center justify-center gap-1"
-                                                        >
-                                                                {isInlineExpanded ? (
-                                                                        <>הצג פחות <ChevronRight className="w-3 h-3 rotate-[-90deg]" /></>
-                                                                ) : (
-                                                                        <>הצג הכל ({favorites.length})</>
-                                                                )}
-                                                        </button>
+                                        {/* Attraction Section */}
+                                        <div className="animate-fade-in flex flex-col h-full">
+                                                <div className="flex items-center justify-between mb-2 px-1 pb-1 border-b border-purple-100">
+                                                        <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1.5"><Ticket className="w-3 h-3" /> אטרקציות ({favorites.filter(f => f.type === 'attraction').length})</span>
                                                 </div>
-                                        )}
+                                                <div className="flex flex-col gap-2 flex-1">
+                                                        {favorites.filter(f => f.type === 'attraction').length > 0 ? (
+                                                                favorites.filter(f => f.type === 'attraction').slice(0, isInlineExpanded ? undefined : 2).map(renderCompactItem)
+                                                        ) : (
+                                                                <div className="h-full bg-slate-50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center p-4">
+                                                                        <span className="text-[10px] text-slate-400 font-bold">אין אטרקציות</span>
+                                                                </div>
+                                                        )}
+                                                </div>
+                                        </div>
                                 </div>
 
-                                {/* EXPANDED SLIDE-OVER PANEL */}
-                                <SlideOverPanel
-                                        isOpen={isExpanded}
-                                        onClose={() => setIsExpanded(false)}
-                                        title="כל המועדפים"
-                                        width="max-w-xl"
-                                        zIndex={60}
-                                >
-                                        <div className="h-full flex flex-col">
-                                                {/* Toolbar */}
-                                                <div className="px-6 py-2 border-b border-slate-50 flex gap-2 overflow-x-auto scrollbar-hide">
-                                                        {/* We can add filters here later if needed */}
-                                                        <div className="text-xs font-bold text-slate-400 px-2 py-1">מציג {favorites.length} מקומות</div>
-                                                </div>
-
-                                                {/* Split View Content */}
-                                                <div className="flex-1 grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 overflow-hidden bg-white">
-                                                        {/* Column 1: Food */}
-                                                        <Column
-                                                                favorites={favorites}
-                                                                type="food"
-                                                                title="מסעדות"
-                                                                icon={<Utensils className="w-3 h-3" />}
-                                                                iconBg="bg-orange-50"
-                                                                iconColor="text-orange-600"
-                                                                trip={trip}
-                                                                onSelect={(item: any, type: any) => setDetailItem({ item, type })}
-                                                        />
-                                                        {/* Column 2: Attractions */}
-                                                        <Column
-                                                                favorites={favorites}
-                                                                type="attraction"
-                                                                title="אטרקציות"
-                                                                icon={<Ticket className="w-3 h-3" />}
-                                                                iconBg="bg-purple-50"
-                                                                iconColor="text-purple-600"
-                                                                trip={trip}
-                                                                onSelect={(item: any, type: any) => setDetailItem({ item, type })}
-                                                        />
-                                                </div>
+                                {/* Inline Expand Button - Smart Logic */}
+                                {(favorites.filter(f => f.type === 'food').length > 2 || favorites.filter(f => f.type === 'attraction').length > 2) && (
+                                        <div className="mt-3 pt-1 text-center border-t border-slate-50">
+                                                <button
+                                                        onClick={() => setIsInlineExpanded(!isInlineExpanded)}
+                                                        className="w-full py-1.5 text-[11px] font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all flex items-center justify-center gap-1"
+                                                >
+                                                        {isInlineExpanded ? (
+                                                                <>הצג פחות <ChevronRight className="w-3 h-3 rotate-[-90deg]" /></>
+                                                        ) : (
+                                                                <>הצג הכל ({favorites.length})</>
+                                                        )}
+                                                </button>
                                         </div>
-                                </SlideOverPanel>
-
-                                {/* Modals Logic */}
-                                {detailItem && createPortal(
-                                        <GlobalPlaceModal
-                                                item={detailItem.item}
-                                                type={detailItem.type === 'food' ? 'restaurant' : 'attraction'} // Fix type mismatch
-                                                onClose={() => setDetailItem(null)}
-                                                onAddToPlan={() => {
-                                                        setIsScheduling(true);
-                                                }}
-                                                isAdded={detailItem.type === 'food' ? (detailItem.item as Restaurant).reservationDate !== undefined : (detailItem.item as Attraction).scheduledDate !== undefined}
-                                        />,
-                                        document.body
                                 )}
+                        </div>
 
-                                {isScheduling && createPortal(
-                                        <TripDateSelector
-                                                isOpen={isScheduling}
-                                                onClose={() => setIsScheduling(false)}
-                                                onSelect={(dateIso) => {
-                                                        if (detailItem) {
-                                                                onSchedule(detailItem.item, dateIso, detailItem.type);
-                                                                setIsScheduling(false);
-                                                                setDetailItem(null);
-                                                                setIsExpanded(false); // Close panel too on success
-                                                        }
-                                                }}
-                                                title="תזמון פעילות"
-                                                description={`עבור: ${detailItem?.item.name || ''}`}
-                                                trip={trip}
-                                                timeline={timeline}
-                                        />,
-                                        document.body
-                                )}
-                        </>
-                        );
+                        {/* EXPANDED SLIDE-OVER PANEL */}
+                        <SlideOverPanel
+                                isOpen={isExpanded}
+                                onClose={() => setIsExpanded(false)}
+                                title="כל המועדפים"
+                                width="max-w-xl"
+                                zIndex={60}
+                        >
+                                <div className="h-full flex flex-col">
+                                        {/* Toolbar */}
+                                        <div className="px-6 py-2 border-b border-slate-50 flex gap-2 overflow-x-auto scrollbar-hide">
+                                                {/* We can add filters here later if needed */}
+                                                <div className="text-xs font-bold text-slate-400 px-2 py-1">מציג {favorites.length} מקומות</div>
+                                        </div>
+
+                                        {/* Split View Content */}
+                                        <div className="flex-1 grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 overflow-hidden bg-white">
+                                                {/* Column 1: Food */}
+                                                <Column
+                                                        favorites={favorites}
+                                                        type="food"
+                                                        title="מסעדות"
+                                                        icon={<Utensils className="w-3 h-3" />}
+                                                        iconBg="bg-orange-50"
+                                                        iconColor="text-orange-600"
+                                                        trip={trip}
+                                                        onSelect={(item: any, type: any) => setDetailItem({ item, type })}
+                                                />
+                                                {/* Column 2: Attractions */}
+                                                <Column
+                                                        favorites={favorites}
+                                                        type="attraction"
+                                                        title="אטרקציות"
+                                                        icon={<Ticket className="w-3 h-3" />}
+                                                        iconBg="bg-purple-50"
+                                                        iconColor="text-purple-600"
+                                                        trip={trip}
+                                                        onSelect={(item: any, type: any) => setDetailItem({ item, type })}
+                                                />
+                                        </div>
+                                </div>
+                        </SlideOverPanel>
+
+                        {/* Modals Logic */}
+                        {detailItem && createPortal(
+                                <GlobalPlaceModal
+                                        item={detailItem.item}
+                                        type={detailItem.type === 'food' ? 'restaurant' : 'attraction'} // Fix type mismatch
+                                        onClose={() => setDetailItem(null)}
+                                        onAddToPlan={() => {
+                                                setIsScheduling(true);
+                                        }}
+                                        isAdded={detailItem.type === 'food' ? (detailItem.item as Restaurant).reservationDate !== undefined : (detailItem.item as Attraction).scheduledDate !== undefined}
+                                />,
+                                document.body
+                        )}
+
+                        {isScheduling && createPortal(
+                                <TripDateSelector
+                                        isOpen={isScheduling}
+                                        onClose={() => setIsScheduling(false)}
+                                        onSelect={(dateIso) => {
+                                                if (detailItem) {
+                                                        onSchedule(detailItem.item, dateIso, detailItem.type);
+                                                        setIsScheduling(false);
+                                                        setDetailItem(null);
+                                                        setIsExpanded(false); // Close panel too on success
+                                                }
+                                        }}
+                                        title="תזמון פעילות"
+                                        description={`עבור: ${detailItem?.item.name || ''}`}
+                                        trip={trip}
+                                        timeline={timeline}
+                                />,
+                                document.body
+                        )}
+                </>
+        );
 };
