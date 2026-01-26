@@ -5,7 +5,7 @@ import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType
 import {
     Calendar, MapPin, Plane, Car, Globe,
     Hotel, Utensils, Ticket, Plus, Sparkles, X,
-    ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronRight, Clock, MoreHorizontal, RefreshCw
+    ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronRight, Clock, MoreHorizontal, RefreshCw, CheckCircle2
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR INTEGRATION REMOVED - No longer calling Google Calendar API
