@@ -373,14 +373,10 @@ export const generateWithFallback = async (
     // Select model and tools based on intent
     const selectedModel = intent === 'SMART' ? GOOGLE_MODELS.SMART : GOOGLE_MODELS.FAST;
     // Use modern googleSearch tool (not deprecated googleSearchRetrieval)
+    // Use modern googleSearch tool (not deprecated googleSearchRetrieval)
     const tools = intent === 'SMART' ? [
       {
-        googleSearchRetrieval: {
-          dynamicRetrievalConfig: {
-            mode: "MODE_DYNAMIC", // Allows model to decide when to search
-            dynamicThreshold: 0.7, // Search if confidence is strictly needed
-          },
-        },
+        googleSearch: {}
       },
     ] : undefined;
 
