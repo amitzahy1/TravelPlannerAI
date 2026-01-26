@@ -120,13 +120,40 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                         </button>
                                 </div>
 
-                                {/* Compact List */}
-                                <div className="flex flex-col gap-2.5">
-                                        {visibleItems.map(renderCompactItem)}
+                                {/* Compact Split List */}
+                                <div className="space-y-4">
+                                        {/* Food Section */}
+                                        {favorites.some(f => f.type === 'food') && (
+                                                <div className="animate-fade-in">
+                                                        <div className="flex items-center justify-between mb-1.5 px-1">
+                                                                <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest flex items-center gap-1.5"><Utensils className="w-3 h-3" /> מסעדות ({favorites.filter(f => f.type === 'food').length})</span>
+                                                        </div>
+                                                        <div className="flex flex-col gap-2">
+                                                                {favorites.filter(f => f.type === 'food').slice(0, isInlineExpanded ? undefined : 2).map(renderCompactItem)}
+                                                        </div>
+                                                </div>
+                                        )}
+
+                                        {/* Divider if both exist */}
+                                        {favorites.some(f => f.type === 'food') && favorites.some(f => f.type === 'attraction') && (
+                                                <div className="border-t border-dashed border-slate-100 my-1"></div>
+                                        )}
+
+                                        {/* Attraction Section */}
+                                        {favorites.some(f => f.type === 'attraction') && (
+                                                <div className="animate-fade-in">
+                                                        <div className="flex items-center justify-between mb-1.5 px-1">
+                                                                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1.5"><Ticket className="w-3 h-3" /> אטרקציות ({favorites.filter(f => f.type === 'attraction').length})</span>
+                                                        </div>
+                                                        <div className="flex flex-col gap-2">
+                                                                {favorites.filter(f => f.type === 'attraction').slice(0, isInlineExpanded ? undefined : 2).map(renderCompactItem)}
+                                                        </div>
+                                                </div>
+                                        )}
                                 </div>
 
-                                {/* Inline Expand Button - Only if > 2 */}
-                                {favorites.length > 2 && (
+                                {/* Inline Expand Button - Smart Logic */}
+                                {(favorites.filter(f => f.type === 'food').length > 2 || favorites.filter(f => f.type === 'attraction').length > 2) && (
                                         <div className="mt-3 pt-1 text-center border-t border-slate-50">
                                                 <button
                                                         onClick={() => setIsInlineExpanded(!isInlineExpanded)}
@@ -135,7 +162,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                                         {isInlineExpanded ? (
                                                                 <>הצג פחות <ChevronRight className="w-3 h-3 rotate-[-90deg]" /></>
                                                         ) : (
-                                                                <>+ עוד {favorites.length - 2} (הצג הכל)</>
+                                                                <>הצג הכל ({favorites.length})</>
                                                         )}
                                                 </button>
                                         </div>
