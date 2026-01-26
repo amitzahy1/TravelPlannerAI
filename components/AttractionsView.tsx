@@ -474,31 +474,45 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     {/* RECOMMENDED TAB (AI) */}
                     {activeTab === 'recommended' && (
                         <div className="animate-fade-in">
-                            {/* Header Section with City Selection */}
-                            <div className="bg-white border border-slate-100 p-4 rounded-2xl mb-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-purple-50 p-2 rounded-full"><BrainCircuit className="w-5 h-5 text-purple-600" /></div>
-                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Market Research</h3><p className="font-black text-lg text-slate-800">המלצות AI: Top Attractions</p></div>
+                            {/* Header Section with City Selection (Premium Design) */}
+                            <div className="animate-fade-in bg-white/80 backdrop-blur-lg rounded-2xl p-2 border border-slate-200/60 shadow-lg shadow-slate-100/50 mb-6 flex justify-between items-center sticky top-2 z-30">
+                                {/* Left: City Tabs (Pill Design) */}
+                                <div className="flex bg-slate-100/80 p-1 rounded-full gap-1 overflow-x-auto scrollbar-hide">
+                                    <button
+                                        onClick={() => initiateResearch(undefined)}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${(!selectedCity || selectedCity === 'all')
+                                            ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5'
+                                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                                    >
+                                        <RotateCw className={`w-3 h-3 ${loadingRecs ? 'animate-spin' : ''}`} />
+                                        {loadingRecs ? 'טוען...' : 'רענן'}
+                                    </button>
+                                    <div className="w-px bg-slate-300 mx-1 h-4 self-center" />
+
+                                    {tripCities.map(city => (
+                                        <button
+                                            key={city}
+                                            onClick={() => initiateResearch(city)}
+                                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedCity === city
+                                                ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
+                                                : 'text-slate-600 hover:bg-white hover:text-purple-600'}`
+                                            }
+                                        >
+                                            {city}
+                                        </button>
+                                    ))}
                                 </div>
 
-                                {!loadingRecs && (
-                                    <div className="flex items-center gap-2">
-                                        {tripCities.length > 1 && (
-                                            <div className="flex gap-2 bg-white/50 p-1.5 rounded-xl">
-                                                {tripCities.map(city => (
-                                                    <button
-                                                        key={city}
-                                                        onClick={() => initiateResearch(city)}
-                                                        className="text-sm font-bold px-3 py-1.5 rounded-lg hover:bg-white hover:shadow-sm text-purple-900 transition-all opacity-80 hover:opacity-100"
-                                                    >
-                                                        {city}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <button onClick={() => initiateResearch()} className="text-[10px] font-bold text-slate-500 hover:text-purple-600 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg hover:bg-purple-50 flex items-center gap-1 transition-colors"><RotateCw className="w-3 h-3" /> רענן</button>
+                                {/* Right: Premium AI Badge */}
+                                <div className="flex items-center gap-2 pl-2">
+                                    <div className="flex flex-col items-end mr-2 d-none md:flex">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Attraction Curator</span>
+                                        <span className="text-xs font-black text-slate-800">המלצות חכמות</span>
                                     </div>
-                                )}
+                                    <div className="p-2 bg-gradient-to-br from-purple-600 via-violet-600 to-fuchsia-600 rounded-xl shadow-lg shadow-purple-200 text-white animate-pulse-slow">
+                                        <BrainCircuit className="w-4 h-4" />
+                                    </div>
+                                </div>
                             </div>
 
                             {loadingRecs ? <ThinkingLoader texts={["סורק אטרקציות...", "מחפש פנינים נסתרות...", "בודק דירוגים...", "מצליב מידע עם מקומיים..."]} /> : (
