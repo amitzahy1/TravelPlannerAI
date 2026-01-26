@@ -931,8 +931,9 @@ export const ItineraryView: React.FC<{
                                     <input
                                         type="time"
                                         id="quick-time"
+                                        dir="ltr"
                                         defaultValue="10:00"
-                                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-800 w-28 text-center shadow-sm"
+                                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-800 w-36 text-center shadow-sm"
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1.5">
@@ -940,7 +941,8 @@ export const ItineraryView: React.FC<{
                                     <input
                                         type="time"
                                         id="quick-end-time"
-                                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-800 w-28 text-center placeholder:text-slate-300 shadow-sm"
+                                        dir="ltr"
+                                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-800 w-36 text-center placeholder:text-slate-300 shadow-sm"
                                     />
                                 </div>
                                 <div className="flex-1 flex flex-col gap-1.5">
