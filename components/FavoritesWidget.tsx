@@ -149,20 +149,20 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                         <div
                                 key={`${fav.type}-${fav.data.id}`}
                                 onClick={() => setDetailItem({ item: fav.data, type: fav.type })}
-                                className="flex items-center gap-3 p-2 bg-white border border-slate-100 rounded-xl hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group"
+                                className="flex items-center gap-2.5 p-1.5 bg-white border border-slate-100 rounded-lg hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group"
                         >
-                                <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 relative">
+                                <div className="w-10 h-10 rounded-md bg-slate-100 overflow-hidden flex-shrink-0 relative">
                                         <img src={url} alt={fav.data.name} className="w-full h-full object-cover" />
                                         <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                        <h4 className="text-sm font-bold text-slate-800 truncate leading-tight">{fav.data.name}</h4>
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${fav.type === 'food' ? 'bg-orange-50 text-orange-600' : 'bg-purple-50 text-purple-600'}`}>
+                                        <h4 className="text-xs font-bold text-slate-800 truncate leading-tight">{fav.data.name}</h4>
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                                <span className={`text-[9px] font-bold px-1 py-px rounded ${fav.type === 'food' ? 'bg-orange-50 text-orange-600' : 'bg-purple-50 text-purple-600'}`}>
                                                         {fav.type === 'food' ? 'אוכל' : 'אטרקציה'}
                                                 </span>
-                                                <div className="flex items-center gap-0.5 text-[10px] text-slate-400 font-medium">
-                                                        <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                                                <div className="flex items-center gap-0.5 text-[9px] text-slate-400 font-medium">
+                                                        <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
                                                         <span>{(fav.data as any).rating || (fav.data as any).googleRating || '5.0'}</span>
                                                 </div>
                                         </div>
@@ -172,9 +172,9 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                                 e.stopPropagation();
                                                 setDetailItem({ item: fav.data, type: fav.type });
                                         }}
-                                        className="p-1.5 hover:bg-slate-50 rounded-full text-slate-300 hover:text-blue-600 transition-colors"
+                                        className="p-1 hover:bg-slate-50 rounded-full text-slate-300 hover:text-blue-600 transition-colors"
                                 >
-                                        <ChevronRight className="w-4 h-4" />
+                                        <ChevronRight className="w-3.5 h-3.5" />
                                 </button>
                         </div>
                 );
