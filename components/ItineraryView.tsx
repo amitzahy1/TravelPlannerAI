@@ -733,18 +733,18 @@ export const ItineraryView: React.FC<{
                 </div>
             </div>
 
-            {/* 3. COMMAND CENTER: Tasks & Favorites (Phase 1 Titanium UX) */}
-            <div className="px-1 md:px-2 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[260px] h-auto mb-16 relative z-30 mt-6">
+            {/* 3. COMMAND CENTER: Tasks & Favorites (Fix: Remove fixed height & z-index overlap) */}
+            <div className="px-1 md:px-2 grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 relative mt-6">
                 {/* Column 1: TripAssistant */}
-                <div className="lg:col-span-1 h-full min-h-[200px]">
+                <div className="lg:col-span-1 min-h-[240px]">
                     <TripAssistant
                         trip={trip}
                         onNavigate={(tab) => console.log('Navigate to:', tab)}
                     />
                 </div>
 
-                {/* Columns 2-3: FavoritesWidget (Split-View: Food vs Attractions) */}
-                <div className="lg:col-span-2 h-full">
+                {/* Columns 2-3: FavoritesWidget */}
+                <div className="lg:col-span-2 min-h-[240px]">
                     <FavoritesWidget
                         trip={trip}
                         timeline={timeline}
