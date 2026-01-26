@@ -5,7 +5,7 @@ import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType
 import {
     Calendar, MapPin, Plane, Car, Globe,
     Hotel, Utensils, Ticket, Plus, Sparkles, X,
-    ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronRight, Clock, MoreHorizontal, RefreshCw, CheckCircle2
+    ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, Clock, MoreHorizontal, RefreshCw, CheckCircle2
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR INTEGRATION REMOVED - No longer calling Google Calendar API
@@ -778,7 +778,9 @@ export const ItineraryView: React.FC<{
                                             {/* Flow Arrow (Desktop Only) */}
                                             {!isLastDay && (
                                                 <div className="hidden xl:block absolute -left-5 top-1/2 -translate-y-1/2 z-20 text-slate-300">
-                                                    <ChevronRight className="w-6 h-6 stroke-[3] opacity-40" />
+                                                    <div className="bg-slate-100/50 p-1 rounded-full">
+                                                        <ChevronLeft className="w-5 h-5 stroke-[2.5] text-slate-400" />
+                                                    </div>
                                                 </div>
                                             )}
 
