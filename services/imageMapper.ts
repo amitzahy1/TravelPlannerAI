@@ -224,36 +224,45 @@ export function getFoodImage(name: string, description: string = "", tags: strin
 export function getAttractionImage(name: string, description: string = "", tags: string[] = []): { url: string, label: string } {
         const query = `${name} ${description} ${tags.join(' ')}`.toLowerCase();
 
-        // 1. Winery & Vineyards (High Priority for Georgia)
-        if (query.includes('buera')) return { url: 'https://images.unsplash.com/photo-1566810842055-6bf467812f2c?auto=format&fit=crop&q=80', label: '🍇 Winery' };
-        if (query.includes('wine') || query.includes('vineyard') || query.includes('cellar') || query.includes('winery') || query.includes('יקב') || query.includes('כרם'))
-                return { url: selectFromPool(name, ATTRACTION_DB.winery.generic), label: '🍇 Winery' };
+        // 1. ICONS & LANDMARKS (The Eiffel Tower Equivalent)
+        if (query.includes('landmark') || query.includes('iconic') || query.includes('tower') || query.includes('famous') || query.includes('אתרי חובה'))
+                return { url: selectFromPool(name, ATTRACTION_DB.modern.generic), label: '🗼 Iconic Landmark' };
 
-        // 2. Religion (Extended)
-        if (query.includes('temple') || query.includes('monastery') || query.includes('church') || query.includes('cathedral') || query.includes('shrine') || query.includes('chapel') || query.includes('synagogue') || query.includes('mosque') || query.includes('מנזר') || query.includes('כנסייה'))
-                return { url: selectFromPool(name, ATTRACTION_DB.religion.generic), label: '⛪ Religious Site' };
+        // 2. NATURE & VIEWS (Breath of Fresh Air)
+        if (query.includes('nature') || query.includes('park') || query.includes('garden') || query.includes('waterfall') || query.includes('cliff') || query.includes('view') || query.includes('טבע') || query.includes('נופים'))
+                return { url: selectFromPool(name, ATTRACTION_DB.nature.generic), label: '🌳 Nature & Views' };
 
-        // 3. History (Castles, Forts)
-        if (query.includes('castle') || query.includes('fort') || query.includes('citadel') || query.includes('palace') || query.includes('ruins') || query.includes('ancient') || query.includes('history') || query.includes('מבצר') || query.includes('ארמון'))
-                return { url: selectFromPool(name, ATTRACTION_DB.history.generic), label: '🏰 Historic' };
+        // 3. MUSEUMS & CULTURE (Heritage & Art)
+        if (query.includes('museum') || query.includes('art') || query.includes('gallery') || query.includes('culture') || query.includes('history') || query.includes('מוזיאון') || query.includes('תרבות'))
+                return { url: selectFromPool(name, ATTRACTION_DB.museum.generic), label: '🏛️ Culture' };
 
-        if (query.includes('museum') || query.includes('art') || query.includes('gallery') || query.includes('exhibition') || query.includes('מוזיאון'))
-                return { url: selectFromPool(name, ATTRACTION_DB.museum.generic), label: '🏛️ Museum' };
+        // 4. SHOPPING & MARKETS (Retail Therapy)
+        if (query.includes('shopping') || query.includes('mall') || query.includes('market') || query.includes('bazaar') || query.includes('store') || query.includes('קניות') || query.includes('שווקים'))
+                return { url: selectFromPool(name, ATTRACTION_DB.market.generic), label: '🛍️ Shopping' };
 
-        if (query.includes('nature') || query.includes('park') || query.includes('garden') || query.includes('forest') || query.includes('lake') || query.includes('river') || query.includes('cave') || query.includes('waterfall') || query.includes('טבע') || query.includes('אגם'))
-                return { url: selectFromPool(name, ATTRACTION_DB.nature.generic), label: '🌳 Nature' };
+        // 5. EXTREME & ACTIVITIES (Adrenaline)
+        if (query.includes('extreme') || query.includes('adventure') || query.includes('zipline') || query.includes('atv') || query.includes('rafting') || query.includes('hiking') || query.includes('אקסטרים'))
+                return { url: 'https://images.unsplash.com/photo-1533613220915-609f6b97bea0?auto=format&fit=crop&q=80', label: '🧗 Extreme' }; // Generic Adrenaline
 
-        if (query.includes('beach') || query.includes('sea') || query.includes('ocean') || query.includes('sand') || query.includes('island') || query.includes('coast') || query.includes('חוף'))
-                return { url: selectFromPool(name, ATTRACTION_DB.beach.generic), label: '🏖️ Beach' };
+        // 6. BEACHES & WATER (Sun & Sea)
+        if (query.includes('beach') || query.includes('sea') || query.includes('ocean') || query.includes('island') || query.includes('boat') || query.includes('pier') || query.includes('חופים'))
+                return { url: selectFromPool(name, ATTRACTION_DB.beach.generic), label: '🏖️ Sun & Sea' };
 
-        if (query.includes('view') || query.includes('skyline') || query.includes('observation') || query.includes('deck') || query.includes('panorama') || query.includes('תצפית'))
-                return { url: selectFromPool(name, ATTRACTION_DB.view.generic), label: '🗼 Viewpoint' };
+        // 7. FAMILY & KIDS (Kids' Joy)
+        if (query.includes('family') || query.includes('kids') || query.includes('zoo') || query.includes('aquarium') || query.includes('theme park') || query.includes('amusement') || query.includes('למשפחות'))
+                return { url: 'https://images.unsplash.com/photo-1576014131795-d4c653a992ac?auto=format&fit=crop&q=80', label: '🎡 Family Fun' }; // Generic Family
 
-        if (query.includes('market') || query.includes('bazaar') || query.includes('shopping') || query.includes('mall') || query.includes('store') || query.includes('shop') || query.includes('שוק') || query.includes('קניון'))
-                return { url: selectFromPool(name, ATTRACTION_DB.market.generic), label: '🛍️ Market' };
+        // 8. HISTORY & RELIGION (Spiritual)
+        if (query.includes('temple') || query.includes('shrine') || query.includes('church') || query.includes('mosque') || query.includes('ruins') || query.includes('religion') || query.includes('ancient') || query.includes('היסטוריה') || query.includes('דת'))
+                return { url: selectFromPool(name, ATTRACTION_DB.religion.generic), label: '🏯 Spiritual' };
 
-        if (query.includes('modern') || query.includes('skyscraper') || query.includes('building') || query.includes('city') || query.includes('tower') || query.includes('bridge') || query.includes('עיר'))
-                return { url: selectFromPool(name, ATTRACTION_DB.modern.generic), label: '🌆 Cityscape' };
+        // 9. NIGHTLIFE (Night Vibes)
+        if (query.includes('night') || query.includes('neon') || query.includes('club') || query.includes('show') || query.includes('cabaret') || query.includes('חיי לילה'))
+                return { url: selectFromPool(name, ATTRACTION_DB.modern.generic), label: '🌃 Nightlife' };
+
+        // 10. HIDDEN GEMS (Secret Spots)
+        if (query.includes('hidden') || query.includes('secret') || query.includes('alley') || query.includes('local') || query.includes('gem') || query.includes('פינות נסתרות'))
+                return { url: selectFromPool(name, ATTRACTION_DB.view.generic), label: '💎 Hidden Gem' };
 
         return { url: selectFromPool(name, ATTRACTION_DB.fallback), label: '📍 Destination' };
 }

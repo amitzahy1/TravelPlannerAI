@@ -156,28 +156,63 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         try {
             const ai = getAI();
             const target = specificCity || trip.destinationEnglish || trip.destination;
+            // --- ATTRACTION CURATOR ALGORITHM (Strict Quota System) ---
             const prompt = `
-            Act as a Local Expert Guide for ${target} (and 30km radius surroundings).
+            Role: You are the Lead Product Architect and Senior AI Engineer at Google Travel.
+            Mission: Re-engineer the Attraction Discovery Engine to implement the "Curator Algorithm" - a strict, quota-based recommendation system.
 
-            **CORE SEARCH RULE:**
-            If the specific city/village ("${target}") is small, YOU MUST SEARCH WITHIN A 30KM RADIUS to find the best spots.
-            Do not return empty results unless the entire region is empty.
+            **PART 1: THE LOGIC RULES**
+            1. **Scope Authority:** Search primarily in "${target}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 30km to find quality spots (e.g. waterfalls, nature).
+            2. **The "Power of 6":** You MUST return **EXACTLY 6** recommendations for each of the 10 categories below. No variance.
+            3. **Quality Firewall:** 
+               - REJECT: Generic playgrounds, small unremarkable city parks, administrative buildings, or "tourist traps" (souvenir shops).
+               - PRIORITIZE: "Must-See Landmarks", "Cultural Heritage", "Natural Wonders", "Unique Local Experiences".
 
-            Provide exactly 4 recommendations for each category.
+            **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
             
-            **Categories (Hebrew Titles):**
-            1. "אתרי חובה" (Must See)
-            2. "פנינים נסתרות" (Hidden Gems / Local Secrets)
-            3. "טבע ונופים" (Nature & Views)
-            4. "מוזיאונים ותרבות" (Culture & History)
-            5. "שווקים וקניות" (Shopping & Markets)
-            6. "חיי לילה ובילוי" (Nightlife)
+            1. **"אתרי חובה"** (Icons & Landmarks)
+               - Persona: The Eiffel Tower equivalent. The most famous spots.
+               - Trigger: iconic, famous, tower.
 
-            **CRITICAL RULES:**
-            1. Name MUST be in English (e.g. "Louvre Museum").
-            2. Description in Hebrew (Max 12 words).
-            3. Location must be specific (e.g. "Paris, 1st Arr").
-            4. Type MUST be one of: [Must See, Nature, Beach, Culture, Shopping, Nightlife, Temple].
+            2. **"טבע ונופים"** (Nature & Views)
+               - Persona: Breath of Fresh Air. Viewpoints, botanical gardens, waterfalls, national parks.
+               - Trigger: nature, waterfall, view.
+
+            3. **"מוזיאונים ותרבות"** (Heritage & Art)
+               - Persona: Heritage & Art. Galleries, history museums, cultural centers.
+               - Trigger: museum, art, history.
+
+            4. **"קניות ושווקים"** (Retail Therapy)
+               - Persona: Massive malls, floating markets, famous shopping streets.
+               - Trigger: shopping, market, mall.
+
+            5. **"אקסטרים ופעילויות"** (Adrenaline)
+               - Persona: Ziplines, ATV tours, surfing, water parks.
+               - Trigger: extreme, adventure, zipline.
+
+            6. **"חופים ומים"** (Sun & Sea)
+               - Persona: Best beaches, islands, boat tours, piers.
+               - Trigger: beach, sea, island.
+
+            7. **"למשפחות וילדים"** (Kids' Joy)
+               - Persona: Zoos, aquariums, large theme parks.
+               - Trigger: family, zoo, kids.
+
+            8. **"היסטוריה ודת"** (Spiritual)
+               - Persona: Temples (Wats), Shrines, Churches, Ancient Ruins.
+               - Trigger: temple, ancient, religion.
+
+            9. **"חיי לילה ואווירה"** (Night Vibes)
+               - Persona: Night markets, neon streets, light shows.
+               - Trigger: night, neon, market.
+
+            10. **"פינות נסתרות"** (Hidden Gems)
+                - Persona: Unknown alleys, local hangouts, secret viewpoints.
+                - Trigger: hidden, secret, alley.
+
+            **PART 3: DATA INTEGRITY**
+            - **CRITICAL:** Return pure JSON.
+            - **Type Mapping:** Map 'type' field to one of: [Landmark, Nature, Culture, Shopping, Extreme, Beach, Family, Spiritual, Nightlife, Hidden].
             `;
             const schema: Schema = {
                 type: Type.OBJECT,
