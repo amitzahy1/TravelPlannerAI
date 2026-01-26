@@ -12,7 +12,7 @@ interface TripDateSelectorProps {
         timeline?: DayPlan[];
 }
 
-export const TripDateSelector: React.FC<TripDateSelectorProps> = ({
+const TripDateSelector: React.FC<TripDateSelectorProps> = ({
         isOpen, onClose, onSelect, title = 'בחר תאריך', description, trip, timeline
 }) => {
         if (!isOpen) return null;
@@ -62,58 +62,53 @@ export const TripDateSelector: React.FC<TripDateSelectorProps> = ({
         }, [trip, timeline]);
 
         return (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm" onClick={onClose}>
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[320px] max-h-[70vh] flex flex-col animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                                <div className="flex justify-between items-center mb-4 px-6 pt-6 flex-shrink-0">
-                                        <div>
-                                                <h3 className="text-xl font-black text-slate-800">{title}</h3>
-                                                {description && (
-                                                        <p className="text-xs text-slate-500 font-bold mt-1">
-                                                                {description}
-                                                        </p>
-                                                )}
-                                        </div>
-                                        <button
-                                                onClick={onClose}
-                                                className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
-                                        >
-                                                <X className="w-5 h-5" />
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                                {/* Header */}
+                                <div className="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center">
+                                        <h3 className="text-sm font-black text-slate-800">{title}</h3>
+                                        <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+                                                <X className="w-4 h-4" />
                                         </button>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-2 flex-grow overflow-y-auto custom-scrollbar px-6 pb-6">
+                                {/* Description (Optional) */}
+                                {description && <div className="px-4 py-2 bg-blue-50/50 text-xs font-bold text-blue-600 border-b border-blue-50">{description}</div>}
+
+                                {/* Compact List */}
+                                <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
                                         {dates.map((day) => {
                                                 const hasEvents = day.events.length > 0;
-                                                const eventCount = day.events.length;
-
                                                 return (
                                                         <button
                                                                 key={day.dateIso}
                                                                 onClick={() => onSelect(day.dateIso)}
-                                                                className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-blue-300 hover:bg-blue-50 transition-all text-right group flex-shrink-0"
+                                                                className="w-full flex items-center gap-4 px-4 py-3 hover:bg-blue-50 border-b border-slate-50 last:border-0 transition-colors text-right group"
                                                         >
-                                                                <div className="flex items-center gap-4">
-                                                                        <div className="bg-slate-100 text-slate-600 w-10 h-10 rounded-lg flex flex-col items-center justify-center font-bold text-sm group-hover:bg-white group-hover:text-blue-600 transition-colors">
-                                                                                {day.displayDate.split(' ')[0]}
-                                                                        </div>
-                                                                        <div>
-                                                                                <span className="text-xs font-bold text-slate-400 block mb-0.5">{day.displayDayOfWeek}</span>
-                                                                                <span className="font-bold text-slate-800 block">{day.locationContext || 'יום בטיול'}</span>
-                                                                        </div>
+                                                                {/* Date Box */}
+                                                                <div className="flex flex-col items-center justify-center w-10 h-10 bg-slate-100 rounded-lg text-slate-600 group-hover:bg-white group-hover:text-blue-600 transition-colors border border-slate-100 group-hover:border-blue-200">
+                                                                        <span className="text-xs font-black leading-none">{day.displayDate.split(' ')[0]}</span>
+                                                                        <span className="text-[9px] font-bold uppercase leading-none mt-0.5">{day.displayDate.split(' ')[1]}</span>
                                                                 </div>
 
-                                                                {hasEvents ? (
-                                                                        <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded-full border border-slate-100 shadow-sm">
-                                                                                <div className="flex -space-x-1 space-x-reverse">
-                                                                                        {day.events.slice(0, 3).map((e, i) => (
-                                                                                                <div key={i} className={`w-2 h-2 rounded-full ${e.bgClass?.replace('bg-', 'bg-').split(' ')[0].replace('50', '400') || 'bg-blue-400'}`}></div>
-                                                                                        ))}
-                                                                                </div>
-                                                                                <span className="text-[10px] font-bold text-slate-400">{eventCount}</span>
+                                                                {/* Info */}
+                                                                <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-2">
+                                                                                <span className="text-xs font-black text-slate-800">{day.displayDayOfWeek}</span>
+                                                                                <span className="text-[10px] text-slate-400 truncate max-w-[150px]">{day.locationContext || 'יום בטיול'}</span>
                                                                         </div>
-                                                                ) : (
-                                                                        <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-50 opacity-0 group-hover:opacity-100 transition-all" />
-                                                                )}
+                                                                        {/* Events Dots */}
+                                                                        {hasEvents && (
+                                                                                <div className="flex items-center gap-1 mt-1.5">
+                                                                                        {day.events.slice(0, 4).map((e, i) => (
+                                                                                                <div key={i} className={`w-1.5 h-1.5 rounded-full ${e.bgClass?.replace('bg-', 'bg-').split(' ')[0].replace('50', '400') || 'bg-slate-300'}`} />
+                                                                                        ))}
+                                                                                        {day.events.length > 4 && <span className="text-[8px] text-slate-300 font-bold">+{day.events.length - 4}</span>}
+                                                                                </div>
+                                                                        )}
+                                                                </div>
+
+                                                                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transform group-hover:-translate-x-1 transition-all" />
                                                         </button>
                                                 );
                                         })}

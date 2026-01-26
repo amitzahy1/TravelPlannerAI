@@ -7,6 +7,7 @@ import {
     Hotel, Utensils, Ticket, Plus, Sparkles, X,
     ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronRight, Clock, MoreHorizontal, RefreshCw
 } from 'lucide-react';
+import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR INTEGRATION REMOVED - No longer calling Google Calendar API
 // import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '../services/calendarService';
 // CALENDAR REMOVED: import { requestAccessToken } from '../services/googleAuthService';
@@ -635,7 +636,7 @@ export const ItineraryView: React.FC<{
                                             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
                                                 {viewingCategory === 'hotels' ? 'מלונות' : viewingCategory === 'food' ? 'מסעדות מועדפות' : 'אטרקציות מועדפות'}
                                             </h3>
-                                            <div className="bg-slate-100 px-2 py-0.5 rounded text-[10px] text-slate-400 font-mono">POPUP MODE</div>
+                                            <div className="bg-slate-100 px-2 py-0.5 rounded text-[10px] text-slate-400 font-mono hidden">POPUP MODE</div>
                                             <button onClick={() => setViewingCategory(null)} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
                                                 <X className="w-4 h-4 text-slate-400" />
                                             </button>
@@ -646,64 +647,70 @@ export const ItineraryView: React.FC<{
                                             {(viewingCategory === 'hotels' ? (trip.hotels || []) :
                                                 viewingCategory === 'food' ? favoriteRestaurants :
                                                     favoriteAttractions
-                                            ).map((item: any, idx: number) => (
-                                                <div
-                                                    key={item.id || idx}
-                                                    onClick={() => {
-                                                        setViewingCategory(null);
-                                                        setScheduleItem({ item, type: viewingCategory === 'food' ? 'food' : 'attraction' });
-                                                    }}
-                                                    className="relative flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer group h-full"
-                                                >
-                                                    {/* Image Header */}
-                                                    <div className="h-32 w-full bg-slate-100 relative overflow-hidden">
-                                                        <img
-                                                            src={item.imageUrl || item.image || `https://images.unsplash.com/photo-${viewingCategory === 'hotels' ? '1566073771259-6a8506099945' : viewingCategory === 'food' ? '1517248135467-4c7edcad34c4' : '1469854523086-cc02fe5d8800'}?auto=format&fit=crop&w=400&q=80`}
-                                                            alt=""
-                                                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
-                                                        />
-                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                                            ).map((item: any, idx: number) => {
+                                                // Dynamic Image Logic
+                                                const tags = [item.cuisine || item.type || '', item.location || item.address || ''];
+                                                const { url } = getPlaceImage(item.name || '', viewingCategory === 'food' ? 'food' : viewingCategory === 'attractions' ? 'attraction' : 'hotel', tags);
 
-                                                        {/* Top Badge */}
-                                                        <div className="absolute top-2 right-2 flex gap-1">
-                                                            {(item.rating || item.googleRating) && (
-                                                                <span className="bg-white/90 backdrop-blur text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
-                                                                    {item.rating || item.googleRating}<span className="text-yellow-500">★</span>
-                                                                </span>
+                                                return (
+                                                    <div
+                                                        key={item.id || idx}
+                                                        onClick={() => {
+                                                            setViewingCategory(null);
+                                                            setScheduleItem({ item, type: viewingCategory === 'food' ? 'food' : 'attraction' });
+                                                        }}
+                                                        className="relative flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer group h-full"
+                                                    >
+                                                        {/* Image Header */}
+                                                        <div className="h-32 w-full bg-slate-100 relative overflow-hidden">
+                                                            <img
+                                                                src={item.imageUrl || item.image || url}
+                                                                alt=""
+                                                                className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                                                            />
+                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+
+                                                            {/* Top Badge */}
+                                                            <div className="absolute top-2 right-2 flex gap-1">
+                                                                {(item.rating || item.googleRating) && (
+                                                                    <span className="bg-white/90 backdrop-blur text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
+                                                                        {item.rating || item.googleRating}<span className="text-yellow-500">★</span>
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Content Body */}
+                                                        <div className="p-3 flex flex-col flex-1 gap-1">
+                                                            <h4 className="text-sm font-black text-slate-800 leading-tight line-clamp-2" dir="ltr">{item.name}</h4>
+
+                                                            <div className="flex items-start gap-1.5 text-xs text-slate-500 mt-1 line-clamp-2">
+                                                                <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                                                                <span dir="ltr">{item.address || item.location || 'Location available on map'}</span>
+                                                            </div>
+
+                                                            {/* Category Specific Info */}
+                                                            {viewingCategory === 'hotels' && (
+                                                                <div className="mt-2 pt-2 border-t border-slate-50 flex items-center justify-between text-xs">
+                                                                    <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2 py-1 rounded-md">
+                                                                        <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                                                                        <span className="font-bold">{item.checkInDate ? `${parseDateString(item.checkInDate)?.getDate()}/${parseDateString(item.checkInDate)?.getMonth()! + 1}` : '--'} - {item.checkOutDate ? `${parseDateString(item.checkOutDate)?.getDate()}/${parseDateString(item.checkOutDate)?.getMonth()! + 1}` : '--'}</span>
+                                                                    </div>
+                                                                    {item.nights && <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full">{item.nights} לילות</span>}
+                                                                </div>
+                                                            )}
+
+                                                            {(viewingCategory === 'food' || viewingCategory === 'attractions') && (
+                                                                <div className="mt-auto pt-2 flex items-center gap-2">
+                                                                    <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-md">
+                                                                        {item.cuisine || item.type || (viewingCategory === 'food' ? 'Restaurant' : 'Activity')}
+                                                                    </span>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
-
-                                                    {/* Content Body */}
-                                                    <div className="p-3 flex flex-col flex-1 gap-1">
-                                                        <h4 className="text-sm font-black text-slate-800 leading-tight line-clamp-2" dir="ltr">{item.name}</h4>
-
-                                                        <div className="flex items-start gap-1.5 text-xs text-slate-500 mt-1 line-clamp-2">
-                                                            <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                                                            <span dir="ltr">{item.address || item.location || 'Location available on map'}</span>
-                                                        </div>
-
-                                                        {/* Category Specific Info */}
-                                                        {viewingCategory === 'hotels' && (
-                                                            <div className="mt-2 pt-2 border-t border-slate-50 flex items-center justify-between text-xs">
-                                                                <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2 py-1 rounded-md">
-                                                                    <Calendar className="w-3.5 h-3.5 text-indigo-400" />
-                                                                    <span className="font-bold">{item.checkInDate ? `${parseDateString(item.checkInDate)?.getDate()}/${parseDateString(item.checkInDate)?.getMonth()! + 1}` : '--'} - {item.checkOutDate ? `${parseDateString(item.checkOutDate)?.getDate()}/${parseDateString(item.checkOutDate)?.getMonth()! + 1}` : '--'}</span>
-                                                                </div>
-                                                                {item.nights && <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full">{item.nights} לילות</span>}
-                                                            </div>
-                                                        )}
-
-                                                        {(viewingCategory === 'food' || viewingCategory === 'attractions') && (
-                                                            <div className="mt-auto pt-2 flex items-center gap-2">
-                                                                <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-md">
-                                                                    {item.cuisine || item.type || (viewingCategory === 'food' ? 'Restaurant' : 'Activity')}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
 
                                             {/* Empty State */}
                                             {((viewingCategory === 'hotels' && (trip.hotels || []).length === 0) ||
