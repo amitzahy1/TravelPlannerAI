@@ -94,11 +94,23 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                 ? getFoodImage(item.name, item.description || '', [originalTag])
                 : getAttractionImage(item.name, item.description || '', [originalTag]);
 
-        // Fix Navigation: Ensure we search in the context of the location provided
-        // If location is just "Old Tbilisi", Google might fail. We rely on the input location.
-        // We add "Restaurant" or "Attraction" to the query to narrow it down.
-        const categorySuffix = type === 'food' || type === 'restaurant' ? 'Restaurant' : 'Tourist Attraction';
-        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.name} ${item.location || ''} ${categorySuffix}`)}`;
+        // Fix Navigation: Smart Query Construction
+        const cleanLocation = (item.location || '').replace(/\(.*\)/g, '').replace(/near/i, '').trim();
+        const cleanName = item.name.replace(/\(.*\)/g, '').trim();
+
+        let query = `${cleanName} ${cleanLocation}`;
+        if (item.isHotelRestaurant || type === 'hotel' || item.name.toLowerCase().includes('hotel')) {
+                // For hotels, just searching the name + city is usually best.
+                // If name includes "Bar" or "Restaurant", Google handles "Bar at Hotel" well usually.
+                query = `${cleanName}, ${cleanLocation}`;
+        } else {
+                // For standalone, add category suffix to help context
+                const categorySuffix = type === 'food' || type === 'restaurant' ? 'Restaurant' : 'Tourist Attraction';
+                // If the name is very generic (e.g. "The Bar"), the suffix helps.
+                query = `${cleanName} ${cleanLocation} ${categorySuffix}`;
+        }
+
+        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
         return createPortal(
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>

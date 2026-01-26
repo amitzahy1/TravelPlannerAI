@@ -320,6 +320,14 @@ Description in Hebrew. Netural English names.`;
             - **ALLOWED SOURCES:** [Michelin Guide, 50 Best, TimeOut, Eater, TripAdvisor, Google Review, Local Legend, Gault & Millau].
             - **BANNED SOURCES:** Generic names like "Burger Blog", "Bar Awards", "Foodie Guy", "American Blog".
             - If no specific source exists, use "Google Review" or "Local Legend".
+
+            **PART 5: CRITICAL QUALITY RULES**
+            - **Review Check:** MUST have > 50 reviews (prefer >100). Do NOT invent places.
+            - **Location Format:** "Street, City". Do NOT include text like "(30km radius)" or "(Approx)".
+            - **Hotel Logic:** If the restaurant is inside a hotel:
+              1. Set 'isHotelRestaurant' = true.
+              2. Name format: "Restaurant Name (at Hotel Name)" or just "Restaurant Name". 
+              3. Location format: "Hotel Name, City" is acceptable if precise address unknown.
             `;
             const schema: Schema = {
                 type: Type.OBJECT,
