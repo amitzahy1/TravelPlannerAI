@@ -101,16 +101,16 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
         const [isScheduling, setIsScheduling] = useState(false);
         const [isExpanded, setIsExpanded] = useState(false); // Controls SlideOverPanel
 
-        // Collect Data
+        // Collect Data with Source Context
         const favorites = useMemo(() => {
-                const items: { data: Restaurant | Attraction, type: 'food' | 'attraction', sortKey: number }[] = [];
+                const items: { data: Restaurant | Attraction, type: 'food' | 'attraction', sortKey: number, cityGroup: string }[] = [];
 
                 trip.restaurants?.forEach(cat => cat.restaurants.forEach(r => {
-                        if (r.isFavorite) items.push({ data: r, type: 'food', sortKey: r.googleRating || 0 });
+                        if (r.isFavorite) items.push({ data: r, type: 'food', sortKey: r.googleRating || 0, cityGroup: cat.title });
                 }));
 
                 trip.attractions?.forEach(cat => cat.attractions.forEach(a => {
-                        if (a.isFavorite) items.push({ data: a, type: 'attraction', sortKey: a.rating || 0 });
+                        if (a.isFavorite) items.push({ data: a, type: 'attraction', sortKey: a.rating || 0, cityGroup: cat.title });
                 }));
 
                 return items.sort((a, b) => b.sortKey - a.sortKey);
@@ -124,6 +124,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
         }, [favorites, isInlineExpanded]);
 
         if (favorites.length === 0) {
+                // ... (keep existing empty state if separate, or rely on render)
                 return (
                         <div className="h-full px-2 animate-fade-in relative z-30 flex flex-col">
                                 <div className="flex items-center gap-2 mb-3 px-2 flex-shrink-0">
@@ -142,6 +143,7 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
         }
 
         const renderCompactItem = (fav: typeof favorites[0]) => {
+                // ... (keep existing renderCompactItem logic, just ensure types match)
                 const tags = [(fav.data as any).cuisine || (fav.data as any).type || '', fav.data.location];
                 const { url } = getPlaceImage(fav.data.name, fav.type as any, tags);
 
@@ -180,6 +182,42 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                 );
         };
 
+        const renderGroupedSection = (sectionFavorites: typeof favorites, type: 'food' | 'attraction', icon: React.ReactNode, typeName: string, colorClass: string, bgClass: string, borderClass: string) => (
+                <div className={`animate-fade-in flex flex-col h-full bg-${bgClass}-50/10 rounded-xl p-0.5 min-h-[120px]`}>
+                        <div className={`flex items-center justify-between mb-2 px-1 pb-1 border-b border-${borderClass}-100`}>
+                                <span className={`text-[10px] font-black text-${colorClass}-400 uppercase tracking-widest flex items-center gap-1.5`}>{icon} {typeName} ({sectionFavorites.length})</span>
+                        </div>
+                        <div className="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar pr-1 max-h-[220px]">
+                                {sectionFavorites.length > 0 ? (
+                                        (() => {
+                                                // Group by Source Context (cat.title)
+                                                const groups: Record<string, typeof sectionFavorites> = {};
+                                                sectionFavorites.forEach(item => {
+                                                        const groupName = item.cityGroup || 'כללי';
+                                                        if (!groups[groupName]) groups[groupName] = [];
+                                                        groups[groupName].push(item);
+                                                });
+
+                                                return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([city, items]) => (
+                                                        <div key={city} className="mb-1">
+                                                                <h5 className="text-[10px] font-bold text-slate-400 mb-1 px-1 flex items-center gap-1">
+                                                                        <MapPin className="w-2.5 h-2.5" /> {city}
+                                                                </h5>
+                                                                <div className="space-y-2">
+                                                                        {items.map(renderCompactItem)}
+                                                                </div>
+                                                        </div>
+                                                ));
+                                        })()
+                                ) : (
+                                        <div className="h-full bg-slate-50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center p-4">
+                                                <span className="text-[10px] text-slate-400 font-bold">אין {typeName}</span>
+                                        </div>
+                                )}
+                        </div>
+                </div>
+        );
+
         return (
                 <>
                         <div className={`px-1 animate-fade-in relative z-30 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-4 transition-all duration-300 ${isInlineExpanded ? 'h-auto shadow-xl ring-2 ring-blue-50/50' : 'h-full'}`}>
@@ -193,234 +231,161 @@ export const FavoritesWidget: React.FC<FavoritesWidgetProps> = ({ trip, onSchedu
                                                         המועדפים ({favorites.length})
                                                 </h3>
                                         </div>
-                                        {/* SlideOver Toggle (Show All details) */}
-                                        <button
-                                                onClick={() => setIsExpanded(true)}
-                                                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
-                                                title="פתח רשימה מלאה"
-                                        >
-                                                <ArrowUpRight className="w-4 h-4" />
-                                        </button>
+                                        {/* SlideOver Toggle */}
+                                        {(favorites.length > 4) && (
+                                                <button
+                                                        onClick={() => setIsExpanded(true)}
+                                                        className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                                                        title="פתח רשימה מלאה"
+                                                >
+                                                        <ArrowUpRight className="w-4 h-4" />
+                                                </button>
+                                        )}
                                 </div>
-                                {/* Compact Split List - GRID LAYOUT (Side by Side) */}
+                                {/* Compact Split List - GRID LAYOUT */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* Food Section */}
-                                        <div className="animate-fade-in flex flex-col h-full bg-orange-50/10 rounded-xl p-0.5 min-h-[120px]">
-                                                <div className="flex items-center justify-between mb-2 px-1 pb-1 border-b border-orange-100">
-                                                        <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest flex items-center gap-1.5"><Utensils className="w-3 h-3" /> מסעדות ({favorites.filter(f => f.type === 'food').length})</span>
-                                                </div>
-                                                <div className="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar pr-1 max-h-[220px]">
-                                                        {favorites.filter(f => f.type === 'food').length > 0 ? (
-                                                                (() => {
-                                                                        // Strict City Grouping
-                                                                        const tripCities = trip.destination ? trip.destination.split(/[-–,]/).map(c => c.trim()) : [];
-                                                                        const foodItems = favorites.filter(f => f.type === 'food');
-                                                                        const groups: Record<string, typeof foodItems> = {};
-
-                                                                        foodItems.forEach(item => {
-                                                                                // Smart Mapping: Check if item location matches any trip city
-                                                                                const loc = (item.data.location || '').toLowerCase();
-                                                                                let assignedCity = tripCities.find(c => loc.includes(c.toLowerCase()));
-
-                                                                                // If "Telavi" and trip has "Lopota", map it? (Heuristic)
-                                                                                if (!assignedCity && loc.includes('telavi') && tripCities.some(c => c.includes('Lopota'))) {
-                                                                                        assignedCity = tripCities.find(c => c.includes('Lopota'));
-                                                                                }
-
-                                                                                // Fallback: Use raw city but only if allowed? User said "Only trip cities".
-                                                                                // If we fail to map, we skip or show safely? Use assignedCity if found, else skip as per request.
-                                                                                if (assignedCity) {
-                                                                                        if (!groups[assignedCity]) groups[assignedCity] = [];
-                                                                                        groups[assignedCity].push(item);
-                                                                                }
-                                                                                // If loose matching failed, try exact first word
-                                                                                else {
-                                                                                        const rawCity = loc.split(',')[0].trim();
-                                                                                        const exactMatch = tripCities.find(c => c.toLowerCase() === rawCity.toLowerCase());
-                                                                                        if (exactMatch) {
-                                                                                                if (!groups[exactMatch]) groups[exactMatch] = [];
-                                                                                                groups[exactMatch].push(item);
-                                                                                        }
-                                                                                }
-                                                                        });
-
-                                                                        const groupKeys = Object.keys(groups);
-                                                                        if (groupKeys.length === 0 && foodItems.length > 0) {
-                                                                                // If aggressive filtering hid everything, show 'General' to prevent data loss panic
-                                                                                return <div className="text-[10px] text-slate-400 p-2 italic">כל המסעדות מחוץ לערים המוגדרות בטיול.</div>
-                                                                        }
-
-                                                                        return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([city, items]) => (
-                                                                                <div key={city} className="mb-1">
-                                                                                        <h5 className="text-[10px] font-bold text-slate-400 mb-1 px-1 flex items-center gap-1">
-                                                                                                <MapPin className="w-2.5 h-2.5" /> {city}
-                                                                                        </h5>
-                                                                                        <div className="space-y-2">
-                                                                                                {items.map(renderCompactItem)}
-                                                                                        </div>
-                                                                                </div>
-                                                                        ));
-                                                                })()
-                                                        ) : (
-                                                                <div className="h-full bg-slate-50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center p-4">
-                                                                        <span className="text-[10px] text-slate-400 font-bold">אין מסעדות</span>
-                                                                </div>
-                                                        )}
-                                                </div>
-                                        </div>
-
-                                        {/* Attraction Section */}
-                                        <div className="animate-fade-in flex flex-col h-full bg-purple-50/10 rounded-xl p-0.5 min-h-[120px]">
-                                                <div className="flex items-center justify-between mb-2 px-1 pb-1 border-b border-purple-100">
-                                                        <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1.5"><Ticket className="w-3 h-3" /> אטרקציות ({favorites.filter(f => f.type === 'attraction').length})</span>
-                                                </div>
-                                                <div className="flex flex-col gap-2 flex-1 overflow-y-auto custom-scrollbar pr-1 max-h-[220px]">
-                                                        {favorites.filter(f => f.type === 'attraction').length > 0 ? (
-                                                                (() => {
-                                                                        // Strict City Grouping
-                                                                        const tripCities = trip.destination ? trip.destination.split(/[-–,]/).map(c => c.trim()) : [];
-                                                                        const items = favorites.filter(f => f.type === 'attraction');
-                                                                        const groups: Record<string, typeof items> = {};
-
-                                                                        items.forEach(item => {
-                                                                                const loc = (item.data.location || '').toLowerCase();
-                                                                                let assignedCity = tripCities.find(c => loc.includes(c.toLowerCase()));
 
                                                                                 if (!assignedCity && loc.includes('telavi') && tripCities.some(c => c.includes('Lopota'))) {
-                                                                                        assignedCity = tripCities.find(c => c.includes('Lopota'));
+                                                assignedCity = tripCities.find(c => c.includes('Lopota'));
                                                                                 }
 
-                                                                                if (assignedCity) {
+                                        if (assignedCity) {
                                                                                         if (!groups[assignedCity]) groups[assignedCity] = [];
-                                                                                        groups[assignedCity].push(item);
+                                        groups[assignedCity].push(item);
                                                                                 } else {
                                                                                         const rawCity = loc.split(',')[0].trim();
                                                                                         const exactMatch = tripCities.find(c => c.toLowerCase() === rawCity.toLowerCase());
-                                                                                        if (exactMatch) {
+                                        if (exactMatch) {
                                                                                                 if (!groups[exactMatch]) groups[exactMatch] = [];
-                                                                                                groups[exactMatch].push(item);
+                                        groups[exactMatch].push(item);
                                                                                         }
                                                                                 }
                                                                         });
 
-                                                                        const groupKeys = Object.keys(groups);
+                                        const groupKeys = Object.keys(groups);
                                                                         if (groupKeys.length === 0 && items.length > 0) {
                                                                                 return <div className="text-[10px] text-slate-400 p-2 italic">כל האטרקציות מחוץ לערים המוגדרות בטיול.</div>
                                                                         }
 
                                                                         return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([city, groupItems]) => (
-                                                                                <div key={city} className="mb-1">
-                                                                                        <h5 className="text-[10px] font-bold text-slate-400 mb-1 px-1 flex items-center gap-1">
-                                                                                                <MapPin className="w-2.5 h-2.5" /> {city}
-                                                                                        </h5>
-                                                                                        <div className="space-y-2">
-                                                                                                {groupItems.map(renderCompactItem)}
-                                                                                        </div>
-                                                                                </div>
-                                                                        ));
-                                                                })()
-                                                        ) : (
-                                                                <div className="h-full bg-slate-50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center p-4">
-                                                                        <span className="text-[10px] text-slate-400 font-bold">אין אטרקציות</span>
-                                                                </div>
-                                                        )}
+                                        <div key={city} className="mb-1">
+                                                <h5 className="text-[10px] font-bold text-slate-400 mb-1 px-1 flex items-center gap-1">
+                                                        <MapPin className="w-2.5 h-2.5" /> {city}
+                                                </h5>
+                                                <div className="space-y-2">
+                                                        {groupItems.map(renderCompactItem)}
                                                 </div>
                                         </div>
-                                </div>
-
-                                {/* Inline Expand Button - Smart Logic */}
-                                {(favorites.filter(f => f.type === 'food').length > 2 || favorites.filter(f => f.type === 'attraction').length > 2) && (
-                                        <div className="mt-3 pt-1 text-center border-t border-slate-50">
-                                                <button
-                                                        onClick={() => setIsInlineExpanded(!isInlineExpanded)}
-                                                        className="w-full py-1.5 text-[11px] font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all flex items-center justify-center gap-1"
-                                                >
-                                                        {isInlineExpanded ? (
-                                                                <>הצג פחות <ChevronRight className="w-3 h-3 rotate-[-90deg]" /></>
-                                                        ) : (
-                                                                <>הצג הכל ({favorites.length})</>
+                                        ));
+                                                                })()
+                                        ) : (
+                                        <div className="h-full bg-slate-50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center p-4">
+                                                <span className="text-[10px] text-slate-400 font-bold">אין אטרקציות</span>
+                                        </div>
                                                         )}
-                                                </button>
-                                        </div>
-                                )}
-                        </div>
-
-                        {/* EXPANDED SLIDE-OVER PANEL */}
-                        <SlideOverPanel
-                                isOpen={isExpanded}
-                                onClose={() => setIsExpanded(false)}
-                                title="כל המועדפים"
-                                width="max-w-xl"
-                                zIndex={60}
-                        >
-                                <div className="h-full flex flex-col">
-                                        {/* Toolbar */}
-                                        <div className="px-6 py-2 border-b border-slate-50 flex gap-2 overflow-x-auto scrollbar-hide">
-                                                {/* We can add filters here later if needed */}
-                                                <div className="text-xs font-bold text-slate-400 px-2 py-1">מציג {favorites.length} מקומות</div>
-                                        </div>
-
-                                        {/* Split View Content */}
-                                        <div className="flex-1 grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 overflow-hidden bg-white">
-                                                {/* Column 1: Food */}
-                                                <Column
-                                                        favorites={favorites}
-                                                        type="food"
-                                                        title="מסעדות"
-                                                        icon={<Utensils className="w-3 h-3" />}
-                                                        iconBg="bg-orange-50"
-                                                        iconColor="text-orange-600"
-                                                        trip={trip}
-                                                        onSelect={(item: any, type: any) => setDetailItem({ item, type })}
-                                                />
-                                                {/* Column 2: Attractions */}
-                                                <Column
-                                                        favorites={favorites}
-                                                        type="attraction"
-                                                        title="אטרקציות"
-                                                        icon={<Ticket className="w-3 h-3" />}
-                                                        iconBg="bg-purple-50"
-                                                        iconColor="text-purple-600"
-                                                        trip={trip}
-                                                        onSelect={(item: any, type: any) => setDetailItem({ item, type })}
-                                                />
-                                        </div>
                                 </div>
-                        </SlideOverPanel>
+                        </div>
+                </div >
 
-                        {/* Modals Logic */}
-                        {detailItem && createPortal(
-                                <GlobalPlaceModal
-                                        item={detailItem.item}
-                                        type={detailItem.type === 'food' ? 'restaurant' : 'attraction'} // Fix type mismatch
-                                        onClose={() => setDetailItem(null)}
-                                        onAddToPlan={() => {
-                                                setIsScheduling(true);
-                                        }}
-                                        isAdded={detailItem.type === 'food' ? (detailItem.item as Restaurant).reservationDate !== undefined : (detailItem.item as Attraction).scheduledDate !== undefined}
-                                />,
-                                document.body
-                        )}
+                        {/* Inline Expand Button - Smart Logic */ }
+        {
+                (favorites.filter(f => f.type === 'food').length > 2 || favorites.filter(f => f.type === 'attraction').length > 2) && (
+                        <div className="mt-3 pt-1 text-center border-t border-slate-50">
+                                <button
+                                        onClick={() => setIsInlineExpanded(!isInlineExpanded)}
+                                        className="w-full py-1.5 text-[11px] font-bold text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all flex items-center justify-center gap-1"
+                                >
+                                        {isInlineExpanded ? (
+                                                <>הצג פחות <ChevronRight className="w-3 h-3 rotate-[-90deg]" /></>
+                                        ) : (
+                                                <>הצג הכל ({favorites.length})</>
+                                        )}
+                                </button>
+                        </div>
+                )
+        }
+                        </div >
 
-                        {isScheduling && createPortal(
-                                <TripDateSelector
-                                        isOpen={isScheduling}
-                                        onClose={() => setIsScheduling(false)}
-                                        onSelect={(dateIso) => {
-                                                if (detailItem) {
-                                                        onSchedule(detailItem.item, dateIso, detailItem.type);
-                                                        setIsScheduling(false);
-                                                        setDetailItem(null);
-                                                        setIsExpanded(false); // Close panel too on success
-                                                }
-                                        }}
-                                        title="תזמון פעילות"
-                                        description={`עבור: ${detailItem?.item.name || ''}`}
-                                        trip={trip}
-                                        timeline={timeline}
-                                />,
-                                document.body
-                        )}
+        {/* EXPANDED SLIDE-OVER PANEL */ }
+        < SlideOverPanel
+isOpen = { isExpanded }
+onClose = {() => setIsExpanded(false)}
+title = "כל המועדפים"
+width = "max-w-xl"
+zIndex = { 60}
+        >
+        <div className="h-full flex flex-col">
+                {/* Toolbar */}
+                <div className="px-6 py-2 border-b border-slate-50 flex gap-2 overflow-x-auto scrollbar-hide">
+                        {/* We can add filters here later if needed */}
+                        <div className="text-xs font-bold text-slate-400 px-2 py-1">מציג {favorites.length} מקומות</div>
+                </div>
+
+                {/* Split View Content */}
+                <div className="flex-1 grid grid-cols-2 divide-x divide-x-reverse divide-slate-100 overflow-hidden bg-white">
+                        {/* Column 1: Food */}
+                        <Column
+                                favorites={favorites}
+                                type="food"
+                                title="מסעדות"
+                                icon={<Utensils className="w-3 h-3" />}
+                                iconBg="bg-orange-50"
+                                iconColor="text-orange-600"
+                                trip={trip}
+                                onSelect={(item: any, type: any) => setDetailItem({ item, type })}
+                        />
+                        {/* Column 2: Attractions */}
+                        <Column
+                                favorites={favorites}
+                                type="attraction"
+                                title="אטרקציות"
+                                icon={<Ticket className="w-3 h-3" />}
+                                iconBg="bg-purple-50"
+                                iconColor="text-purple-600"
+                                trip={trip}
+                                onSelect={(item: any, type: any) => setDetailItem({ item, type })}
+                        />
+                </div>
+        </div>
+                        </SlideOverPanel >
+
+        {/* Modals Logic */ }
+{
+        detailItem && createPortal(
+                <GlobalPlaceModal
+                        item={detailItem.item}
+                        type={detailItem.type === 'food' ? 'restaurant' : 'attraction'} // Fix type mismatch
+                        onClose={() => setDetailItem(null)}
+                        onAddToPlan={() => {
+                                setIsScheduling(true);
+                        }}
+                        isAdded={detailItem.type === 'food' ? (detailItem.item as Restaurant).reservationDate !== undefined : (detailItem.item as Attraction).scheduledDate !== undefined}
+                />,
+                document.body
+        )
+}
+
+{
+        isScheduling && createPortal(
+                <TripDateSelector
+                        isOpen={isScheduling}
+                        onClose={() => setIsScheduling(false)}
+                        onSelect={(dateIso) => {
+                                if (detailItem) {
+                                        onSchedule(detailItem.item, dateIso, detailItem.type);
+                                        setIsScheduling(false);
+                                        setDetailItem(null);
+                                        setIsExpanded(false); // Close panel too on success
+                                }
+                        }}
+                        title="תזמון פעילות"
+                        description={`עבור: ${detailItem?.item.name || ''}`}
+                        trip={trip}
+                        timeline={timeline}
+                />,
+                document.body
+        )
+}
                 </>
         );
 };
