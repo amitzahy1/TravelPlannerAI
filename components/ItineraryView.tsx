@@ -925,34 +925,68 @@ export const ItineraryView: React.FC<{
                                 <button onClick={() => setQuickAddModal({ isOpen: false })} className="p-1.5 bg-slate-100 rounded-full hover:bg-slate-200"><X className="w-4 h-4" /></button>
                             </div>
                             <div className="flex gap-2 mb-4">
-                                <input
-                                    type="time"
-                                    id="quick-time"
-                                    defaultValue="10:00"
-                                    className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 w-28 text-center"
-                                />
-                                <input
-                                    autoFocus
-                                    id="quick-text"
-                                    placeholder="מה בתוכנית?"
-                                    className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 placeholder:text-slate-300"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            const time = (document.getElementById('quick-time') as HTMLInputElement).value;
-                                            handleManualAdd(`${time} ${e.currentTarget.value}`);
-                                        }
-                                    }}
-                                />
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] text-slate-400 font-bold mr-1">התחלה</span>
+                                    <input
+                                        type="time"
+                                        id="quick-time"
+                                        defaultValue="10:00"
+                                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 w-24 text-center"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] text-slate-400 font-bold mr-1">סיום (אופציונלי)</span>
+                                    <input
+                                        type="time"
+                                        id="quick-end-time"
+                                        className="p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 w-24 text-center placeholder:text-slate-300"
+                                    />
+                                </div>
+                                <div className="flex-1 flex flex-col gap-1">
+                                    <span className="text-[10px] text-slate-400 font-bold mr-1">תוכן</span>
+                                    <input
+                                        autoFocus
+                                        id="quick-text"
+                                        placeholder="מה בתוכנית?"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-base text-slate-800 placeholder:text-slate-300"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                const time = (document.getElementById('quick-time') as HTMLInputElement).value;
+                                                const endTime = (document.getElementById('quick-end-time') as HTMLInputElement).value;
+                                                const timeStr = endTime ? `${time}-${endTime}` : time;
+                                                handleManualAdd(`${timeStr} ${e.currentTarget.value}`);
+                                            }
+                                        }}
+                                    />
+                                </div>
                             </div>
-                            <div className="mt-2 flex flex-wrap gap-2 relative z-10">
+
+                            <button
+                                onClick={() => {
+                                    const textInput = document.getElementById('quick-text') as HTMLInputElement;
+                                    if (textInput && textInput.value) {
+                                        const time = (document.getElementById('quick-time') as HTMLInputElement).value;
+                                        const endTime = (document.getElementById('quick-end-time') as HTMLInputElement).value;
+                                        const timeStr = endTime ? `${time}-${endTime}` : time;
+                                        handleManualAdd(`${timeStr} ${textInput.value}`);
+                                    }
+                                }}
+                                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-sm shadow-md transition-all mb-4 flex items-center justify-center gap-2"
+                            >
+                                <CheckCircle2 className="w-4 h-4" /> שמור וסגור
+                            </button>
+
+                            <div className="flex flex-wrap gap-2 relative z-10 opacity-60 hover:opacity-100 transition-opacity">
                                 {['✈️ טיסה', '🏨 מלון', '🍽️ אוכל', '🎟️ אטרקציה', '🚗 נסיעה'].map(suggestion => (
                                     <button
                                         key={suggestion}
                                         onClick={() => {
                                             const time = (document.getElementById('quick-time') as HTMLInputElement).value;
-                                            handleManualAdd(`${time} ${suggestion} ב...`);
+                                            const endTime = (document.getElementById('quick-end-time') as HTMLInputElement).value;
+                                            const timeStr = endTime ? `${time}-${endTime}` : time;
+                                            handleManualAdd(`${timeStr} ${suggestion} ב...`);
                                         }}
-                                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 whitespace-nowrap transition-colors flex-grow text-center"
+                                        className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-500 whitespace-nowrap transition-colors flex-grow text-center border border-slate-100"
                                     >
                                         {suggestion}
                                     </button>
