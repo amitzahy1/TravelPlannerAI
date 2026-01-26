@@ -650,7 +650,7 @@ export const ItineraryView: React.FC<{
                                             ).map((item: any, idx: number) => {
                                                 // Dynamic Image Logic
                                                 const tags = [item.cuisine || item.type || '', item.location || item.address || ''];
-                                                const { url } = getPlaceImage(item.name || '', viewingCategory === 'food' ? 'food' : viewingCategory === 'attractions' ? 'attraction' : 'hotel', tags);
+                                                const { url } = getPlaceImage(item.name || '', viewingCategory === 'food' ? 'food' : viewingCategory === 'attractions' ? 'attraction' : 'attraction', tags);
 
                                                 return (
                                                     <div
