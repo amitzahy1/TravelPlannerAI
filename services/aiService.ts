@@ -517,7 +517,7 @@ export const ensureTripSchema = (data: any): any => {
 
 let googleClient: GoogleGenAI | null = null;
 
-const getGoogleClient = () => {
+export const getGoogleClient = () => {
   if (googleClient) return googleClient;
   const key = import.meta.env.VITE_GEMINI_API_KEY;
   if (key) {
@@ -529,6 +529,11 @@ const getGoogleClient = () => {
   }
   return googleClient;
 };
+
+/**
+ * @deprecated Use generateWithFallback directly. Kept for backward compat.
+ */
+export const getAI = getGoogleClient;
 
 // --- MAIN GENERATION ---
 
