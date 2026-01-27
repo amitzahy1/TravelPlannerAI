@@ -561,14 +561,19 @@ export const generateWithFallback = async (
   };
 
   // Select Candidate Chain based on Intent
-  // FIX: ANALYZE now prioritizes FAST models (Gemini 2.0 Flash) based on user preference
-  let candidates = (intent === 'SMART')
+  // JAN 2026 ARCHITECTURE: "Intelligence First"
+  // User explicitly requested Pro model for Files, Food, and Attractions.
+  const useSmartChain = intent === 'SMART' || intent === 'ANALYZE' || intent === 'SEARCH';
+
+  let candidates = useSmartChain
     ? [...CANDIDATES_SMART]
     : [...CANDIDATES_FAST];
 
-  // If analyzing or smart failed, allow fallback to the other chain
-  if (intent === 'ANALYZE' || intent === 'SMART') {
-    candidates = [...candidates, ...CANDIDATES_FAST, ...CANDIDATES_SMART]; // Merge both for max resilience
+  // Fallback resilience: If Smart fails, try Fast. If Fast fails, try Smart.
+  if (useSmartChain) {
+    candidates = [...candidates, ...CANDIDATES_FAST];
+  } else {
+    candidates = [...candidates, ...CANDIDATES_SMART];
   }
 
   // Remove duplicates
