@@ -392,7 +392,9 @@ const getGoogleClient = () => {
   if (key) {
     try {
       googleClient = new GoogleGenAI({ apiKey: key });
-    } catch (e) { console.error("Invalid Google Client init", e); }
+    } catch (e) {
+      console.error("Invalid Google Client init", e);
+    }
   }
   return googleClient;
 };
@@ -466,27 +468,70 @@ export const generateWithFallback = async (
   if (!clientToUse) throw new Error("Google AI Client not initialized");
 
   try {
-    const model = clientToUse.getGenerativeModel({ model: modelName });
-    const result = await model.generateContent({
-      contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
-      generationConfig: finalConfig
-    });
-    const response = await result.response;
-    return { text: response.text() };
+    // SUPPORT FOR @google/genai SDK (New)
+    // The new SDK uses client.models.generateContent directly, NOT getGenerativeModel
+    let rawText = '';
+
+    if (clientToUse.models && clientToUse.models.generateContent) {
+      console.log("[AI Service] Detected New GenAI SDK");
+      const result = await clientToUse.models.generateContent({
+        model: modelName,
+        contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
+        config: finalConfig
+      });
+      // SDK response structure handling
+      if (typeof result.text === 'function') {
+        rawText = result.text();
+      } else if (result.response && typeof result.response.text === 'function') {
+        rawText = result.response.text();
+      } else if (result.response && result.response.text) {
+        rawText = result.response.text;
+      } else {
+        // Fallback
+        rawText = result.text || result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      }
+
+    } else {
+      // FALLBACK FOR LEGACY @google/generative-ai SDK
+      console.log("[AI Service] Detected Legacy GenAI SDK");
+      const model = clientToUse.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent({
+        contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
+        generationConfig: finalConfig
+      });
+      const response = await result.response;
+      rawText = response.text();
+    }
+
+    return { text: rawText };
+
   } catch (error: any) {
     console.error(`[AI Service] Gemini 3 Error (${modelName}):`, error);
 
-    // Strict Fallback to Flash (same family) if Pro fails, OR Throw
+    // Strict Fallback logic (adapted for new SDK)
     if (modelName === GOOGLE_MODELS.SMART) {
       console.warn("[AI Service] Falling back to Gemini 3 Flash...");
       try {
-        const fallbackModel = clientToUse.getGenerativeModel({ model: GOOGLE_MODELS.FAST });
-        const fallbackResult = await fallbackModel.generateContent({
-          contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
-          generationConfig: finalConfig
-        });
-        const fallbackResponse = await fallbackResult.response;
-        return { text: fallbackResponse.text() };
+        // Retry with Flash
+        if (clientToUse.models && clientToUse.models.generateContent) {
+          const fallbackResult = await clientToUse.models.generateContent({
+            model: GOOGLE_MODELS.FAST,
+            contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
+            config: finalConfig
+          });
+          let fbText = '';
+          if (typeof fallbackResult.text === 'function') fbText = fallbackResult.text();
+          else if (fallbackResult.response) fbText = fallbackResult.response.text || fallbackResult.response.text();
+          return { text: fbText };
+        } else {
+          const fallbackModel = clientToUse.getGenerativeModel({ model: GOOGLE_MODELS.FAST });
+          const fallbackResult = await fallbackModel.generateContent({
+            contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
+            generationConfig: finalConfig
+          });
+          const fbResponse = await fallbackResult.response;
+          return { text: fbResponse.text() };
+        }
       } catch (fbError) {
         throw new Error(`AI Service Failed completely: ${fbError}`);
       }
