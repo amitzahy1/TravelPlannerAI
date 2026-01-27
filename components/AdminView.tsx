@@ -15,6 +15,7 @@ import { CalendarDatePicker } from './CalendarDatePicker';
 
 interface TripSettingsModalProps {
     data: Trip[];
+    currentTripId?: string;
     onSave: (newData: Trip[]) => void;
     onDeleteTrip: (tripId: string) => void;
     onLeaveTrip: (tripId: string) => void;
@@ -80,11 +81,23 @@ const DateInput: React.FC<{
     );
 };
 
-export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDeleteTrip, onLeaveTrip, onClose }) => {
-    const [trips, setTrips] = useState<Trip[]>(data);
-    const [activeTripId, setActiveTripId] = useState(data[0]?.id || '');
+export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripId, onSave, onDeleteTrip, onLeaveTrip, onClose }) => {
+    // Unique Trips only (Sanity check)
+    const uniqueTrips = useMemo(() => {
+        const seen = new Set();
+        return data.filter(t => {
+            if (seen.has(t.id)) return false;
+            seen.add(t.id);
+            return true;
+        });
+    }, [data]);
+
+    const [trips, setTrips] = useState<Trip[]>(uniqueTrips);
+    // Initialize with active trip from parent, or first available
+    const [activeTripId, setActiveTripId] = useState(currentTripId || uniqueTrips[0]?.id || '');
     const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai'>('overview');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
@@ -118,11 +131,12 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
 
     // Sync with parent data changes
     useEffect(() => {
-        setTrips(data);
-        if (data.length > 0 && !data.find(t => t.id === activeTripId)) {
-            setActiveTripId(data[0].id);
+        setTrips(uniqueTrips);
+        // If current active trip is gone, switch to first available
+        if (uniqueTrips.length > 0 && !uniqueTrips.find(t => t.id === activeTripId)) {
+            setActiveTripId(uniqueTrips[0].id);
         }
-    }, [data]);
+    }, [data, uniqueTrips]);
 
     // When active trip changes, sync local form state
     const activeTrip = trips.find(t => t.id === activeTripId) || trips[0];
@@ -727,7 +741,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                                 <span className="bg-sky-100 p-1.5 rounded-lg text-sky-600"><Plane className="w-4 h-4" /></span> טיסות
                                             </h3>
                                             <button
-                                                onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', from: '', to: '', date: '', departureTime: '', arrivalTime: '', airline: '', pnr: '' }] } })}
+                                                onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', fromCode: '', toCode: '', fromCity: '', toCity: '', date: '', departureTime: '', arrivalTime: '', airline: '', pnr: '', duration: '' }] } })}
                                                 className="text-xs font-bold bg-sky-50 text-sky-600 px-3 py-1.5 rounded-lg hover:bg-sky-100 transition-colors flex items-center gap-1"
                                             >
                                                 <Plus className="w-3 h-3" /> הוסף טיסה

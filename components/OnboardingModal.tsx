@@ -97,7 +97,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
             // Pre-fill form
             setFormName(result.metadata.suggestedName);
-            setFormDestination(result.metadata.destination);
+            // Fix: Use the smart route (City - City) if available, otherwise country
+            setFormDestination(result.metadata.cities && result.metadata.cities.length > 0
+                ? result.metadata.cities.join(' - ')
+                : result.metadata.destination);
+
             if (result.metadata.startDate && result.metadata.endDate) {
                 setFormDates(`${result.metadata.startDate} - ${result.metadata.endDate}`);
             } else {
@@ -148,8 +152,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                         // AI Data Structure 1: Nested segments with details (Preferred)
                         if (i.data.segments && Array.isArray(i.data.segments)) {
                             return i.data.segments.map((seg: any) => ({
-                                fromCode: seg.departure?.airport || seg.departureIata || '',
-                                toCode: seg.arrival?.airport || seg.arrivalIata || '',
+                                fromCode: seg.departure?.iata || seg.departure?.airport || seg.departureIata || '',
+                                toCode: seg.arrival?.iata || seg.arrival?.airport || seg.arrivalIata || '',
                                 date: seg.departure?.date || seg.departureDate || '',
                                 airline: seg.airline || '',
                                 flightNumber: seg.flightNumber || '',
@@ -157,7 +161,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                                 arrivalTime: seg.arrival?.displayTime || seg.display_arrival_time || seg.arrival?.date || '',
                                 fromCity: seg.departure?.city || seg.departureCity || '',
                                 toCity: seg.arrival?.city || seg.arrivalCity || '',
-                                duration: "0h"
+                                duration: seg.durationMinutes ? `${Math.floor(seg.durationMinutes / 60)}h ${seg.durationMinutes % 60}m` : (seg.duration || "0h")
                             }));
                         }
 

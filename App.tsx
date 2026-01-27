@@ -293,6 +293,7 @@ const AppContent: React.FC = () => {
           <React.Suspense fallback={null}>
             <AdminView
               data={trips}
+              currentTripId={activeTripId}
               onSave={handleSaveAllData}
               onDeleteTrip={handleDeleteTrip}
               onLeaveTrip={handleLeaveTrip}
@@ -348,6 +349,7 @@ const AppContent: React.FC = () => {
         <React.Suspense fallback={null}>
           <AdminView
             data={trips}
+            currentTripId={activeTripId}
             onSave={handleSaveAllData}
             onDeleteTrip={handleDeleteTrip}
             onLeaveTrip={handleLeaveTrip}

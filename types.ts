@@ -193,7 +193,7 @@ export interface SecureNote {
   id: string;
   title: string; // e.g. "Passport Number"
   value: string; // The secret value
-  category: 'passport' | 'insurance' | 'credit_card' | 'other';
+  category: 'passport' | 'insurance' | 'credit_card' | 'visa' | 'other';
 }
 
 export type VatStatus = 'NEED_FORM' | 'HAVE_FORM' | 'STAMPED_AT_CUSTOMS' | 'REFUNDED';
@@ -226,6 +226,7 @@ export interface SharedTripMetadata {
   createdAt: Date;
   updatedAt: Date;
   updatedBy: string;          // userId of last editor
+  role?: 'owner' | 'collaborator'; // UI helper field
 }
 
 export interface UserTripRef {
