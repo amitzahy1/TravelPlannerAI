@@ -19,6 +19,31 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
         const [activeTab, setActiveTab] = useState<TabType>('logistics');
         const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
 
+        // Date Formatter Helper
+        const formatDateTime = (isoString?: string) => {
+                if (!isoString) return 'TBD';
+                try {
+                        const date = new Date(isoString);
+                        if (isNaN(date.getTime())) return isoString; // Return original if invalid
+                        return new Intl.DateTimeFormat('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false
+                        }).format(date);
+                } catch (e) { return isoString; }
+        };
+
+        const formatDateOnly = (isoString?: string) => {
+                if (!isoString) return 'TBD';
+                try {
+                        const date = new Date(isoString);
+                        if (isNaN(date.getTime())) return isoString;
+                        return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
+                } catch (e) { return isoString; }
+        };
+
         // Memoize file URLs
         const fileUrls = useMemo(() => {
                 return files.map(f => ({ name: f.name, url: URL.createObjectURL(f) }));
@@ -89,7 +114,7 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                                                                         </div>
                                                                         <div>
                                                                                 <span className="text-xs text-slate-400 block">Time</span>
-                                                                                <span className="font-mono font-bold text-slate-700">{item.data.departureTime?.replace('T', ' ').slice(0, 16)}</span>
+                                                                                <span className="font-mono font-bold text-slate-700">{formatDateTime(item.data.departureTime)}</span>
                                                                         </div>
                                                                         <div className="col-span-2 flex items-center gap-2 bg-slate-50 p-2 rounded-lg">
                                                                                 <span className="font-bold text-lg">{item.data.from}</span>
@@ -102,16 +127,18 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                                                                 <>
                                                                         <div>
                                                                                 <span className="text-xs text-slate-400 block">Check-In</span>
-                                                                                <span className="font-bold text-slate-700">{item.data.checkIn}</span>
+                                                                                {/* FIX: Use checkInDate property and Formatter */}
+                                                                                <span className="font-bold text-slate-700">{formatDateOnly(item.data.checkInDate || item.data.checkIn)}</span>
                                                                         </div>
                                                                         <div>
                                                                                 <span className="text-xs text-slate-400 block">Check-Out</span>
-                                                                                <span className="font-bold text-slate-700">{item.data.checkOut}</span>
+                                                                                {/* FIX: Use checkOutDate property and Formatter */}
+                                                                                <span className="font-bold text-slate-700">{formatDateOnly(item.data.checkOutDate || item.data.checkOut)}</span>
                                                                         </div>
                                                                         <div className="col-span-2">
                                                                                 <span className="text-xs text-slate-400 block">Address</span>
                                                                                 <div className="flex gap-2 mt-1">
-                                                                                        <span className="text-sm text-slate-600 truncate block">{item.data.address || item.data.location || 'Unknown Location'}</span>                                                                   </div>
+                                                                                        <span className="text-sm text-slate-600 truncate block">{item.data.address || item.data.location || item.data.city || 'Unknown Location'}</span>                                                                   </div>
                                                                         </div>
                                                                 </>
                                                         )}

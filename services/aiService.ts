@@ -795,6 +795,33 @@ const ensureStagedTripSchema = (data: any): StagedTripData => {
 };
 
 /**
+ * Smart Route Derivation (Project Genesis)
+ * Scans flight segments to build a dynamic multi-city route string.
+ */
+const deriveSmartRoute = (items: any[], defaultDest: string): string => {
+  const flights = items.filter(i => i.type === 'flight' && i.data.from && i.data.to);
+  if (flights.length === 0) return defaultDest;
+
+  // Sort by time
+  const sorted = flights.sort((a, b) => new Date(a.data.departureTime).getTime() - new Date(b.data.departureTime).getTime());
+
+  // Build chain
+  const route: string[] = [];
+  if (sorted[0]) route.push(sorted[0].data.from);
+
+  sorted.forEach(f => {
+    if (route[route.length - 1] !== f.data.to) {
+      route.push(f.data.to);
+    }
+  });
+
+  // If route is just A -> B, maybe just use destination name. But if A -> B -> C, use route.
+  if (route.length > 2) return route.join(' ➝ ');
+
+  return defaultDest;
+};
+
+/**
  * Phase 1: The "Deep Understanding" Brain
  * Performs Multi-Document Reasoning to build a Staged Trip.
  */
@@ -917,6 +944,24 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
     console.error("Failed to parse Omni-Import response", e);
     console.log("❌ [AI Debug] Parsing Failure Context. Raw Text was:", textContent);
   }
+
+  // -- AUDIT MISSING FILES --
+  const usedFileIds = new Set<string>();
+  const scanCategory = (arr: any[]) => arr.forEach(item => { if (item.fileId) usedFileIds.add(item.fileId) });
+
+  scanCategory(stagedData.categories.logistics);
+  scanCategory(stagedData.categories.wallet);
+  scanCategory(stagedData.categories.experiences);
+
+  const missingFiles = processedFiles.filter(f => !usedFileIds.has(f.name));
+
+  if (missingFiles.length > 0) {
+    console.warn("⚠️ [AI Audit] The following files were NOT referenced in the output:");
+    missingFiles.forEach(f => console.warn(`   - ${f.name} (Type: ${f.mimeType})`));
+    console.warn("Try checking if these are supported file types or contain legible text.");
+  } else {
+    console.log("✨ [AI Audit] Perfect Score! All uploaded files were used.");
+  }
   console.groupEnd();
 
   // Map to TripAnalysisResult
@@ -930,10 +975,13 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
   const startDate = dateRange[0] ? dateRange[0].trim() : undefined;
   const endDate = dateRange[1] ? dateRange[1].trim() : undefined;
 
+  // Calculate Smart Destination
+  const smartDestination = deriveSmartRoute(flattenedItems, stagedData.tripMetadata.mainDestination);
+
   return {
     metadata: {
       suggestedName: stagedData.tripMetadata.suggestedName,
-      destination: stagedData.tripMetadata.mainDestination,
+      destination: smartDestination, // Use the smart route!
       startDate,
       endDate
     },
