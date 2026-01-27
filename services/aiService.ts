@@ -109,8 +109,8 @@ export const SYSTEM_PROMPT_ANALYZE_TRIP = `Role: You are the Chief Architect & P
 Core Directives:
 
 1. **Trip Metadata Extraction (CRITICAL):**
-   - Analyze the uploaded files to determine the **Main Destination**, **Trip Name** (creative guess based on location/vibe), and **Start/End Dates**.
-   - Return these in the \`tripMetadata\` object.
+   - Analyze the uploaded files to determine the **Main Destination**, **Trip Name**, and **Start/End Dates**.
+   - **Trip Name Strategy:** DO NOT Use the filename! Create a short, exciting name based on the destination and vibe (e.g., "Parisian Getaway", "Tokyo Adventure").
    - **Date Logic:** Look for Flight Tickets or Hotel Confirmations to define the Trip Date range. Do NOT use Passport expiry dates or Credit Card expiry dates for the trip dates.
    - If unsure about exact dates, make a best guess from the logistics found, or return null.
 
@@ -161,9 +161,9 @@ OUTPUT: Return ONLY valid JSON.
 
 // 1. Google Gemini Models (Direct SDK)
 const GOOGLE_MODELS = {
-  FAST: "gemini-3-flash-preview",   // User requested
-  SMART: "gemini-3-pro-preview",    // User requested
-  FALLBACK: "gemini-2.0-flash-exp"  // Updated: 2.0 > 1.5
+  FAST: "gemini-2.0-flash-exp",   // Updated to valid model
+  SMART: "gemini-2.0-flash-exp",    // Updated to valid model
+  FALLBACK: "gemini-1.5-flash"  // Stable fallback
 };
 
 // 2. Groq Models (Fast Inference Fallback)
@@ -174,7 +174,6 @@ const GROQ_MODELS = [
 
 // 3. OpenRouter Models (Universal Fallback)
 const OPENROUTER_MODELS = [
-  "google/gemini-2.0-flash-lite-preview-02-05:free",
   "google/gemini-2.0-flash-exp:free",
   "meta-llama/llama-3.3-70b-instruct:free",
   "mistralai/mistral-7b-instruct:free",
@@ -817,7 +816,7 @@ export const readFiles = async (files: File[]): Promise<ProcessedFile[]> => {
     const isTextFile = (
       mimeType === 'text/plain' ||
       mimeType === 'application/json' ||
-      mimeType === 'message/rfc822' || // Emails
+      mimeType === 'message/rfc822' || // Emails - Treat as text for reading
       file.name.endsWith('.eml') ||
       file.name.endsWith('.txt') ||
       file.name.endsWith('.md') ||
