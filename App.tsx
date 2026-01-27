@@ -155,8 +155,8 @@ const AppContent: React.FC = () => {
     const newTrips = trips.filter(t => t.id !== tripId);
     setTrips(newTrips);
 
-    if (activeTripId === tripId && newTrips.length > 0) {
-      setActiveTripId(newTrips[0].id);
+    if (activeTripId === tripId) {
+      setActiveTripId(newTrips.length > 0 ? newTrips[0].id : '');
     }
 
     try {

@@ -9,14 +9,24 @@ const STORAGE_KEY = 'travel_app_data_v1';
  */
 export const loadTripsFromLocal = (): Trip[] => {
   try {
+    const hasInitialized = localStorage.getItem('app_initialized');
     const stored = localStorage.getItem(STORAGE_KEY);
+
     if (stored) {
       return JSON.parse(stored);
+    }
+
+    // If we've never initialized, return INITIAL_DATA and mark as initialized
+    if (!hasInitialized) {
+      localStorage.setItem('app_initialized', 'true');
+      // Save INITIAL_DATA to local storage so it can be truly deleted
+      saveTripsToLocal(INITIAL_DATA);
+      return INITIAL_DATA;
     }
   } catch (e) {
     console.error("Failed to load from localStorage", e);
   }
-  return INITIAL_DATA;
+  return []; // Return empty instead of INITIAL_DATA if already initialized
 };
 
 /**
