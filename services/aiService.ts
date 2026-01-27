@@ -349,3 +349,56 @@ export const parseTripWizardInputs = async (text: string, files: File[] = []): P
 
 // ... preserve other specific prompt constants if needed
 export const SYSTEM_PROMPT = "You are a travel assistant..."; // Legacy export
+
+/**
+ * Chat with Trip Context (Chat Interface)
+ * Uses FAST Tier (Flash) as per Jan 2026 Architecture.
+ */
+export const chatWithTripContext = async (
+  message: string,
+  tripContext: any,
+  history: any[] = []
+): Promise<string> => {
+  const systemPrompt = `You are a helpful travel assistant for the trip to ${tripContext.destination}.
+  Context: ${JSON.stringify(tripContext.metadata || tripContext)}
+  Answer brief and helpful.`;
+
+  // Merge system prompt into user message for Gemini 1.5/2.0 standard Chat.
+  // This is safer than using 'system' role which some endpoints reject.
+  const userContent = `${systemPrompt}\n\nUser Question: ${message}`;
+
+  // Format history to be valid parts
+  // Assuming history is [{role, content}]
+  // generateWithFallback expects standardized input, we'll let it map.
+
+  const response = await generateWithFallback(
+    null,
+    [{ role: 'user', content: userContent }, ...history],
+    {},
+    'FAST'
+  );
+
+  return response.text;
+};
+
+/**
+ * Smart Day Planner (Itinerary)
+ * Uses SMART Tier (Pro) for complex scheduling.
+ */
+export const planFullDay = async (
+  city: string,
+  date: string,
+  preferences: string
+): Promise<any> => {
+  const prompt = `Plan a full day itinerary for ${city} on ${date}. Preferences: ${preferences}.
+  Return detailed JSON with 'morning', 'afternoon', 'evening' activities. Each activity must have 'time', 'title', 'description', 'location'.`;
+
+  const response = await generateWithFallback(
+    null,
+    [{ role: 'user', parts: [{ text: prompt }] }],
+    { responseMimeType: 'application/json' },
+    'SMART'
+  );
+
+  return JSON.parse(response.text);
+};
