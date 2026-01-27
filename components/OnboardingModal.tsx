@@ -10,14 +10,16 @@ interface OnboardingModalProps {
     onSelectTrip?: (id: string) => void;
     onCreateNew?: () => void;
     onImportTrip?: (trip: Trip) => void;
-    startOpen?: boolean;        // New: Force open (for button clicks)
-    onClose?: () => void;       // New: Notify parent
+    isOpen?: boolean;        // Controlled prop
+    onClose?: () => void;       // Notify parent
 }
 
 type ViewMode = 'UPLOAD' | 'PROCESSING' | 'REVIEW_FORM';
 
-export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], onSelectTrip, onCreateNew, onImportTrip, startOpen = false, onClose }) => {
-    const [isOpen, setIsOpen] = useState(startOpen);
+export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], onSelectTrip, onCreateNew, onImportTrip, isOpen = false, onClose }) => {
+    // We can still have internal state if we want, but for App.tsx we'll use the prop.
+    // However, the component relies on internal setIsOpen(false) in handleClose.
+    // We should call onClose instead.
 
     // Strict State Machine: FILE-FIRST FLOW (Master Prompt Requirement)
     // 1. UPLOAD: Show DropZone (Start here)
@@ -47,22 +49,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
         }
     }, [tripData]);
 
-    useEffect(() => {
-        if (startOpen) {
-            setIsOpen(true);
-            return;
-        }
-        const hasSeen = localStorage.getItem('hasSeenOnboardingV3');
-        if (!hasSeen) {
-            setIsOpen(true);
-        }
-    }, [startOpen]);
-
     const handleClose = () => {
-        setIsOpen(false);
-        if (!startOpen) { // Only set seen if it was an auto-popup? Or always?
-            localStorage.setItem('hasSeenOnboardingV3', 'true');
-        }
         if (onClose) onClose();
 
         // Reset
@@ -137,7 +124,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
         const finalMetadata = {
             suggestedName: formName,
             suggestedDates: formDates,
-            mainDestination: formDestination
+            mainDestination: formDestination,
+            cities: tripData?.metadata?.cities || []
         };
 
         // If we have raw data, use its categories, otherwise empty
@@ -154,7 +142,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
             id: crypto.randomUUID(),
             name: finalMetadata.suggestedName || "New Trip",
             dates: finalMetadata.suggestedDates || "Dates TBD",
-            destination: finalMetadata.mainDestination || "Unknown Destination",
+            destination: (finalMetadata.cities && finalMetadata.cities.length > 0)
+                ? finalMetadata.cities.join(' - ')
+                : finalMetadata.mainDestination || "Unknown Destination",
             coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
             flights: {
                 passengerName: "",
@@ -170,8 +160,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                                 date: seg.departure?.date || seg.departureDate || '',
                                 airline: seg.airline || '',
                                 flightNumber: seg.flightNumber || '',
-                                departureTime: seg.departure?.displayTime || seg.display_departure_time || seg.departure?.date || '',
-                                arrivalTime: seg.arrival?.displayTime || seg.display_arrival_time || seg.arrival?.date || '',
+                                departureTime: seg.departure?.displayTime || seg.displayDepartureTime || seg.display_departure_time || seg.departure?.date || '',
+                                arrivalTime: seg.arrival?.displayTime || seg.displayArrivalTime || seg.display_arrival_time || seg.arrival?.date || '',
                                 fromCity: seg.departure?.city || seg.departureCity || '',
                                 toCity: seg.arrival?.city || seg.arrivalCity || '',
                                 duration: seg.durationMinutes ? `${Math.floor(seg.durationMinutes / 60)}h ${seg.durationMinutes % 60}m` : (seg.duration || "0h")
@@ -442,7 +432,7 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                                                 if (item.data.segments && item.data.segments[0]) {
                                                     const seg = item.data.segments[0];
                                                     const lastSeg = item.data.segments[item.data.segments.length - 1];
-                                                    const depTime = seg.departure?.displayTime || seg.display_departure_time || 'Time TBA';
+                                                    const depTime = seg.departure?.displayTime || (seg as any).displayDepartureTime || seg.display_departure_time || 'Time TBA';
                                                     const depCity = seg.departure?.city || seg.departureCity || seg.fromCode || 'Origin';
                                                     const arrCity = lastSeg.arrival?.city || lastSeg.arrivalCity || lastSeg.toCode || 'Dest';
                                                     return `${depTime} • ${depCity} → ${arrCity}`;

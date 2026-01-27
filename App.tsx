@@ -23,6 +23,7 @@ import { AIChatOverlay } from './components/AIChatOverlay';
 
 import { initGoogleAuth } from './services/googleAuthService';
 import { Plus, Compass, Map, Globe, Sparkles } from 'lucide-react';
+import { OnboardingModal } from './components/OnboardingModal';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -51,6 +52,7 @@ const AppContent: React.FC = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [joinShareId, setJoinShareId] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Deep Link Handling
   useEffect(() => {
@@ -95,7 +97,7 @@ const AppContent: React.FC = () => {
     }
   }, [authLoading, loadUserTrips]);
 
-  const activeTrip = trips.find(t => t.id === activeTripId) || trips[0];
+  const activeTrip = trips.find(t => t.id === activeTripId) || trips[0] || null;
 
   useEffect(() => {
     if (activeTripId) {
@@ -202,10 +204,10 @@ const AppContent: React.FC = () => {
     }
   }, [user, authLoading]);
 
-  // Auto-Open Admin if no trips (User wants minimal empty state)
+  // Auto-Open Onboarding if no trips (First Time Experience)
   useEffect(() => {
     if (!isLoading && !authLoading && trips.length === 0 && !joinShareId) {
-      setShowAdmin(true);
+      setShowOnboarding(true);
     }
   }, [isLoading, authLoading, trips.length, joinShareId]);
 
@@ -299,6 +301,42 @@ const AppContent: React.FC = () => {
       >
         {renderContent()}
       </Layout>
+
+      {showOnboarding && (
+        <OnboardingModal
+          isOpen={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          onImportTrip={(newTrip) => {
+            const updatedTrips = [...trips, newTrip];
+            setTrips(updatedTrips);
+            setActiveTripId(newTrip.id);
+            saveTrips(updatedTrips, user?.uid);
+            setShowOnboarding(false);
+          }}
+          onCreateNew={() => {
+            const newTrip: Trip = {
+              id: crypto.randomUUID(),
+              name: "New Trip",
+              dates: "",
+              destination: "",
+              coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
+              flights: { passengerName: "", pnr: "", segments: [] },
+              hotels: [],
+              restaurants: [],
+              attractions: [],
+              itinerary: [],
+              documents: [],
+              secureNotes: [],
+              isShared: false
+            };
+            const updatedTrips = [...trips, newTrip];
+            setTrips(updatedTrips);
+            setActiveTripId(newTrip.id);
+            saveTrips(updatedTrips, user?.uid);
+            setShowOnboarding(false);
+          }}
+        />
+      )}
 
       {showAdmin && (
         <React.Suspense fallback={null}>

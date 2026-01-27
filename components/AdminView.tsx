@@ -118,15 +118,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short' }).format(date);
     };
 
-    // Auto-open wizard for new users (First Time Experience)
-    useEffect(() => {
-        const hasSeenWizard = localStorage.getItem('welcome_wizard_seen');
-        // Only open if: Not loading, User has NO trips, and Has NOT definitely seen/dismissed it before
-        if (!isSaving && trips.length === 0 && !hasSeenWizard) {
-            setIsWizardOpen(true);
-            localStorage.setItem('welcome_wizard_seen', 'true');
-        }
-    }, [isSaving, trips.length]);
+    // Wizard auto-open removed (handled by App.tsx for better UX)
     const importFileRef = useRef<HTMLInputElement>(null);
 
     // --- Derived State for Route Builder ---
@@ -890,7 +882,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                 {/* New File-First Onboarding Modal */}
                 {isWizardOpen && (
                     <OnboardingModal
-                        startOpen={true}
+                        isOpen={true}
                         onClose={() => setIsWizardOpen(false)}
                         onImportTrip={(newTrip) => {
                             const updatedTrips = [...trips, newTrip];

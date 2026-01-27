@@ -241,6 +241,7 @@ export interface Trip {
   name: string;
   dates: string;
   destination: string;
+  days?: number; // Total duration in days
   destinationEnglish?: string; // New field for Weather API
   coverImage: string;
   groupType?: 'family' | 'couple' | 'friends' | 'solo' | 'business';

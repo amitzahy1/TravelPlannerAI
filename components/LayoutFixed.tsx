@@ -7,7 +7,7 @@ import LoginButton from './LoginButton';
 
 interface LayoutProps {
         children: React.ReactNode;
-        activeTrip: Trip;
+        activeTrip: Trip | null;
         trips: Trip[];
         onSwitchTrip: (tripId: string) => void;
         currentTab: string;
@@ -108,7 +108,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                         onBlur={() => setTimeout(() => setIsTripMenuOpen(false), 200)}
                                                                         className="flex items-center gap-3 bg-white hover:bg-blue-50/50 text-slate-800 px-4 py-2 rounded-xl border border-slate-200 shadow-sm transition-all min-w-[220px]"
                                                                 >
-                                                                        <span className="font-black text-sm text-blue-600 truncate flex-1 text-right">{activeTrip.name}</span>
+                                                                        <span className="font-black text-sm text-blue-600 truncate flex-1 text-right">{activeTrip?.name || 'בחר טיול'}</span>
                                                                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isTripMenuOpen ? 'rotate-180' : ''}`} />
                                                                 </button>
 
@@ -154,11 +154,11 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                 <div className="flex items-center gap-3">
                                                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-100 rounded-lg shadow-sm">
                                                                 <MapPin className="w-3.5 h-3.5 text-rose-500" />
-                                                                <span className="text-xs font-bold text-slate-600">{activeTrip.destination || "לא צוין יעד"}</span>
+                                                                <span className="text-xs font-bold text-slate-600">{activeTrip?.destination || "לא צוין יעד"}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-100 rounded-lg shadow-sm">
                                                                 <Globe className="w-3.5 h-3.5 text-indigo-500" />
-                                                                <span className="text-xs font-bold text-slate-600">{activeTrip.days ? `${activeTrip.days} ימים` : "גמיש"}</span>
+                                                                <span className="text-xs font-bold text-slate-600">{activeTrip?.days ? `${activeTrip.days} ימים` : "גמיש"}</span>
                                                         </div>
                                                 </div>
 
@@ -210,10 +210,10 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                                 <button
                                                                                         key={trip.id}
                                                                                         onClick={() => { onSwitchTrip(trip.id); setIsTripMenuOpen(false); }}
-                                                                                        className={`w-full text-right px-4 py-4 rounded-xl font-bold flex items-center justify-between border ${activeTrip.id === trip.id ? 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-100 bg-white text-slate-600'}`}
+                                                                                        className={`w-full text-right px-4 py-4 rounded-xl font-bold flex items-center justify-between border ${activeTrip?.id === trip.id ? 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-100 bg-white text-slate-600'}`}
                                                                                 >
                                                                                         <span className="truncate">{trip.name}</span>
-                                                                                        {activeTrip.id === trip.id && <div className="bg-blue-600 text-white p-1 rounded-full"><Check className="w-3 h-3" /></div>}
+                                                                                        {activeTrip?.id === trip.id && <div className="bg-blue-600 text-white p-1 rounded-full"><Check className="w-3 h-3" /></div>}
                                                                                 </button>
                                                                         ))}
                                                                 </div>
@@ -261,7 +261,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
 
                         {/* Chat Assistant Window */}
                         {
-                                isChatOpen && (
+                                isChatOpen && activeTrip && (
                                         <div className="fixed bottom-40 md:bottom-28 left-6 right-6 md:right-auto md:w-96 h-[500px] max-h-[60vh] z-[60] animate-scale-in origin-bottom-left">
                                                 <TripAssistant trip={activeTrip} onClose={() => setIsChatOpen(false)} />
                                         </div>
@@ -270,7 +270,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
 
                         {/* Quick Wallet Overlay */}
                         {
-                                isWalletOpen && onUpdateTrip && (
+                                isWalletOpen && onUpdateTrip && activeTrip && (
                                         <QuickAccessWallet
                                                 trip={activeTrip}
                                                 onClose={() => setIsWalletOpen(false)}
