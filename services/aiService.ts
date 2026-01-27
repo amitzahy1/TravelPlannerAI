@@ -162,12 +162,9 @@ OUTPUT: Return ONLY valid JSON.
 // 1. Google Gemini Models (Direct SDK)
 // 1. Google Gemini Models (Direct SDK)
 const GOOGLE_MODELS = {
-  // Pro Tier: Using 1.5 Pro (Best available logic model)
-  SMART: "gemini-1.5-pro",
-  // Flash Tier: Using 2.0 Flash Exp (Best speed model)
-  FAST: "gemini-2.0-flash-exp",
-  // Fallback
-  FALLBACK: "gemini-1.5-flash"
+  SMART: "gemini-3-pro",   // Primary Intent
+  FAST: "gemini-3-flash",  // Fast Intent
+  FALLBACK: "gemini-3-flash"
 };
 
 // 2. Groq Models (Fast Inference Fallback)
@@ -184,7 +181,7 @@ const OPENROUTER_MODELS = [
   "microsoft/phi-3-mini-128k-instruct:free",
 ];
 
-export const AI_MODEL = GOOGLE_MODELS.FAST; // For display purposes
+export const AI_MODEL = GOOGLE_MODELS.SMART; // For display purposes
 
 // --- HELPERS ---
 
@@ -445,216 +442,57 @@ const getOpenRouterClient = () => {
 export type AIIntent = 'FAST' | 'SMART' | 'SEARCH' | 'ANALYZE';
 
 export const generateWithFallback = async (
-  _unused: any,
-  contents: string | any[],
-  config?: Record<string, any>,
-  intent: AIIntent = 'FAST'
+  aiClient: any,
+  input: any,
+  config: any = {},
+  intent: 'SMART' | 'FAST' | 'ANALYZE' = 'FAST'
 ) => {
-  let lastError: any = null;
+  // CRITICAL: Remove responseSchema to prevent 400 errors with Gemini 3
+  const { responseSchema, ...safeConfig } = config;
+  const finalConfig = {
+    ...safeConfig,
+    responseMimeType: 'application/json'
+  };
 
-  // 1. Google Gemini (Preferred)
-  const googleAI = getGoogleClient();
-  if (googleAI) {
-    // Strategy: Try requested model -> Fallback to Flash -> Fallback to 1.5
-    // If intent is SMART, we start with PRO. If FAST, we start with FLASH.
-    const primaryModel = intent === 'SMART' ? GOOGLE_MODELS.SMART : GOOGLE_MODELS.FAST;
-    const secondaryModel = GOOGLE_MODELS.FAST; // Always fallback to the fast 2.0 model
-    const tertiaryModel = GOOGLE_MODELS.FALLBACK; // Last resort 1.5 flash
+  const modelName = intent === 'SMART' || intent === 'ANALYZE'
+    ? GOOGLE_MODELS.SMART
+    : GOOGLE_MODELS.FAST;
 
-    // Unique list of models to try in order
-    const modelsToTry = Array.from(new Set([primaryModel, secondaryModel, tertiaryModel]));
+  console.log(`[AI Service] Using model: ${modelName}`);
 
-    const tools = intent === 'SMART' ? [{ googleSearch: {} }] : undefined;
+  // Use the getGoogleClient helper or the passed client (adapting to existing call sites)
+  const clientToUse = aiClient || getGoogleClient();
 
-    for (const model of modelsToTry) {
-      // Only use tools with the SMART model to prevent compatibility issues
-      const currentTools = (model === GOOGLE_MODELS.SMART && tools) ? tools : undefined;
+  if (!clientToUse) throw new Error("Google AI Client not initialized");
 
+  try {
+    const model = clientToUse.getGenerativeModel({ model: modelName });
+    const result = await model.generateContent({
+      contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
+      generationConfig: finalConfig
+    });
+    const response = await result.response;
+    return { text: response.text() };
+  } catch (error: any) {
+    console.error(`[AI Service] Gemini 3 Error (${modelName}):`, error);
+
+    // Strict Fallback to Flash (same family) if Pro fails, OR Throw
+    if (modelName === GOOGLE_MODELS.SMART) {
+      console.warn("[AI Service] Falling back to Gemini 3 Flash...");
       try {
-        console.log(`🤖 [Google] Trying ${model} (Intent: ${intent})...`);
-
-        const result = await withBackoff(async () => {
-          return await googleAI.models.generateContent({
-            model,
-            contents: contents as any, // Cast to verify
-            config: {
-              ...config,
-              tools: currentTools,
-              maxOutputTokens: 8192,
-            },
-          });
+        const fallbackModel = clientToUse.getGenerativeModel({ model: GOOGLE_MODELS.FAST });
+        const fallbackResult = await fallbackModel.generateContent({
+          contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
+          generationConfig: finalConfig
         });
-
-        console.log(`✅ [Google] Success: ${model}`);
-
-        // Handle SDK response variations safely
-        const safeResult = result as any;
-        let rawText = '';
-
-        if (typeof safeResult.text === 'function') {
-          rawText = safeResult.text();
-        } else if (safeResult.response && typeof safeResult.response.text === 'function') {
-          rawText = safeResult.response.text();
-        } else if (safeResult.response && safeResult.response.text) {
-          rawText = safeResult.response.text;
-        } else {
-          // Fallback for direct text property or candidates array
-          rawText = safeResult.text || safeResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        }
-
-        if (config?.responseMimeType === 'application/json') {
-          rawText = extractJSON(rawText);
-        }
-
-        return { text: rawText, candidates: [{ content: { parts: [{ text: rawText }] } }] };
-
-      } catch (error: any) {
-        console.warn(`⚠️ [Google] Failed ${model}:`, error.message || error);
-        lastError = error;
-        // Continue to next model in loop
+        const fallbackResponse = await fallbackResult.response;
+        return { text: fallbackResponse.text() };
+      } catch (fbError) {
+        throw new Error(`AI Service Failed completely: ${fbError}`);
       }
     }
+    throw error;
   }
-
-  // Fallback to other providers (OpenRouter/Groq) - typically FAST logic (no tools)
-
-  // 2. OpenRouter (Reliable Universal Fallback)
-  const routerAI = getOpenRouterClient();
-  if (routerAI) {
-    // Select appropriate system prompt based on intent
-    // Select appropriate system prompt based on intent
-    let systemPrompt = SYSTEM_PROMPT_EXTRACT;
-    if (intent === 'SMART') systemPrompt = SYSTEM_PROMPT_RESEARCH;
-    if (intent === 'SEARCH') systemPrompt = SYSTEM_PROMPT_SEARCH;
-    if (intent === 'ANALYZE') systemPrompt = SYSTEM_PROMPT_ANALYZE_TRIP;
-
-    for (const model of OPENROUTER_MODELS) {
-      try {
-        console.log(`🌐 [OpenRouter] Trying ${model}...`);
-
-        let messages: any[] = [{ role: "system", content: systemPrompt }];
-        if (typeof contents === 'string') {
-          messages.push({ role: "user", content: contents });
-        } else if (Array.isArray(contents)) {
-          contents.forEach((msg: any) => {
-            if (msg.role && msg.content) {
-              messages.push(msg);
-            } else if (msg.parts) {
-              const textPart = msg.parts.find((p: any) => p.text);
-              if (textPart) messages.push({ role: msg.role === 'model' ? 'assistant' : 'user', content: textPart.text });
-            }
-          });
-        }
-
-        const completion = await withBackoff(async () => {
-          return await routerAI.chat.completions.create({
-            model,
-            messages,
-            temperature: config?.temperature || 0.7, // Top_p handling depends on model
-          });
-        });
-
-        console.log(`✅ [OpenRouter] Success: ${model}`);
-        let text = completion.choices[0]?.message?.content || "";
-
-        if (config?.responseMimeType === 'application/json') {
-          text = extractJSON(text);
-          text = repairJSON(text);
-          if (intent === 'SMART') text = injectVerificationWarning(text);
-        }
-
-        return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
-
-      } catch (error: any) {
-        console.warn(`⚠️ [OpenRouter] Failed ${model}:`, error.message || error);
-        lastError = error;
-      }
-    }
-  }
-
-  // 3. Groq (High Speed Fallback)
-  const groqAI = getGroqClient();
-  if (groqAI) {
-    // Select appropriate system prompt based on intent
-    // Select appropriate system prompt based on intent
-    let systemPrompt = SYSTEM_PROMPT_EXTRACT;
-    if (intent === 'SMART') systemPrompt = SYSTEM_PROMPT_RESEARCH;
-    if (intent === 'SEARCH') systemPrompt = SYSTEM_PROMPT_SEARCH;
-    if (intent === 'ANALYZE') systemPrompt = SYSTEM_PROMPT_ANALYZE_TRIP;
-
-    for (const model of GROQ_MODELS) {
-      try {
-        console.log(`⚡ [Groq] Trying ${model}...`);
-
-        let messages: any[] = [{ role: "system", content: systemPrompt }];
-        if (typeof contents === 'string') {
-          messages.push({ role: "user", content: contents });
-        } else if (Array.isArray(contents)) {
-          contents.forEach((msg: any) => {
-            if (msg.role && msg.content) {
-              messages.push(msg);
-            } else if (msg.parts) {
-              const textPart = msg.parts.find((p: any) => p.text);
-              if (textPart) messages.push({ role: msg.role === 'model' ? 'assistant' : 'user', content: textPart.text });
-            }
-          });
-        }
-
-        const completion = await withBackoff(async () => {
-          return await groqAI.chat.completions.create({
-            model,
-            messages,
-            temperature: config?.temperature || 0.7,
-            response_format: config?.responseMimeType === 'application/json' ? { type: "json_object" } : undefined
-          });
-        });
-
-        console.log(`✅ [Groq] Success: ${model}`);
-        let text = completion.choices[0]?.message?.content || "";
-        if (config?.responseMimeType === 'application/json' && intent === 'SMART') {
-          text = injectVerificationWarning(text);
-        }
-        return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
-
-      } catch (error: any) {
-        console.warn(`⚠️ [Groq] Failed ${model}:`, error.message || error);
-        lastError = error;
-      }
-    }
-  }
-
-  // 4. WebLLM (Client-Side Fallback)
-  // Only tries if the engine is already initialized (user opted-in via UI) to avoid unexpected 2GB downloads
-  if (isEngineReady()) {
-    try {
-      console.log(`💻 [WebLLM] Trying local execution...`);
-      // Convert contents to simple string prompt if needed
-      let prompt = "";
-      if (typeof contents === 'string') {
-        prompt = contents;
-      } else {
-        // Naive extraction for now
-        contents.forEach((c: any) => {
-          if (c.parts) prompt += c.parts.map((p: any) => p.text).join('\n');
-          else if (c.content) prompt += c.content;
-        });
-      }
-
-      let systemPrompt = SYSTEM_PROMPT_EXTRACT;
-      if (intent === 'SMART') systemPrompt = SYSTEM_PROMPT_RESEARCH;
-      if (intent === 'SEARCH') systemPrompt = SYSTEM_PROMPT_SEARCH;
-      const text = await generateLocalContent(prompt, systemPrompt);
-      console.log(`✅ [WebLLM] Success!`);
-
-      return { text: text, candidates: [{ content: { parts: [{ text }] } }] };
-
-    } catch (error: any) {
-      console.warn(`⚠️ [WebLLM] Failed:`, error);
-      lastError = error;
-    }
-  }
-
-  throw lastError || new Error("All AI Providers failed.");
 };
 
 /**
@@ -663,6 +501,12 @@ export const generateWithFallback = async (
  */
 export const parseTripWizardInputs = async (inputs: { name: string, dates: string, destination: string, notes: string, files: any[] }) => {
   const { name, dates, destination, notes, files } = inputs;
+
+  // Filter out unsupported files (e.g. emails) to prevent 400 errors
+  const supportedFiles = files.filter(f => {
+    const isEmail = f.type === 'message/rfc822' || f.name.endsWith('.eml');
+    return !isEmail; // Only allow non-emails (PDF, Images, Text)
+  });
 
   const contentParts: any[] = [
     {

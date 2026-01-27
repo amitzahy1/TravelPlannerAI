@@ -19,7 +19,10 @@ type ViewMode = 'UPLOAD' | 'PROCESSING' | 'REVIEW_FORM';
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], onSelectTrip, onCreateNew, onImportTrip, startOpen = false, onClose }) => {
     const [isOpen, setIsOpen] = useState(startOpen);
 
-    // Strict State Machine
+    // Strict State Machine: FILE-FIRST FLOW (Master Prompt Requirement)
+    // 1. UPLOAD: Show DropZone (Start here)
+    // 2. PROCESSING: Thinking Loader
+    // 3. REVIEW_FORM: Smart Form + Staging Area
     const [mode, setMode] = useState<ViewMode>('UPLOAD');
 
     // Data State
@@ -169,8 +172,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                             <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 rounded-full"></div>
                             <Sparkles className="w-16 h-16 text-blue-600 relative z-10" />
                         </div>
-                        <h2 className="text-3xl font-black text-slate-800 mb-3 text-center">Let's build your trip</h2>
-                        <p className="text-slate-500 text-center mb-10 max-w-sm">Drop your tickets, reservations, or itinerary files here. We'll handle the rest.</p>
+                        <h2 className="text-3xl font-black text-slate-800 mb-3 text-center">Start with your files</h2>
+                        <p className="text-slate-500 text-center mb-10 max-w-sm">We'll handle the rest.</p>
 
                         <div className="w-full">
                             <MagicDropZone onFilesReady={handleFilesReady} compact={false} />
@@ -280,8 +283,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 // --- HELPER COMPONENTS ---
 
 const AIBadge = () => (
-    <div className="absolute right-2 top-2 p-1 bg-blue-50 rounded-lg animate-pulse" title="Auto-filled by AI">
-        <Sparkles className="w-4 h-4 text-blue-500" />
+    <div className="absolute right-2 top-2 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg animate-pulse flex items-center gap-1.5 shadow-sm" title="Auto-filled by AI">
+        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">AI Auto-filled</span>
     </div>
 );
 
