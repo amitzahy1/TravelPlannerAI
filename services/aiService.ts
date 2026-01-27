@@ -146,9 +146,13 @@ Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
    - YOU MUST INFER the Origin, Destination, and typical Times based on your knowledge of that flight route if not explicitly in the text.
    - EVERY segment must have: airline, flightNumber, departureCity, arrivalCity, departureDate.
 
-3. 🕒 DATES & TIMES:
+  3. 🕒 DATES & TIMES (CRITICAL):
    - 'date': ISO 8601 format (e.g., "2026-02-15T03:25:00") for DB.
-   - 'displayTime': User-friendly format (e.g., "15 Feb, 03:25"). USE THIS FORMAT EXACTLY.
+   - 'displayTime': User-friendly format (e.g., "15 Feb, 03:25").
+   - **FLIGHTS SPECIFIC**: 
+     - You MUST extract or INFER the full date (YYYY-MM-DD). 
+     - If the file says "Aug 06" and the trip is in 2026, output "2026-08-06".
+     - NEVER return null for flight dates. Look at the surrounding context (headers, other flights).
 
 3. 📂 FILE MAPPING:
    - Use 'sourceFileIds' (Array) to link multiple files to a single event.
@@ -236,21 +240,21 @@ export const analyzeReceipt = async (
   Reflects latest Gemini 3 GA release standards.
 */
 const GOOGLE_MODELS = {
-  // --- TIER 1: INTELLIGENCE (Gemini 3) ---
-  V3_PRO_STABLE: "gemini-2.0-flash-exp",     // Temporary mapping until V3 GA
-  V3_PRO_LATEST: "gemini-2.0-flash-exp",     // Production Alias
-  V3_PRO_PREV: "gemini-1.5-pro-002",       // Backup
+  // --- TIER 1: INTELLIGENCE (Smart / Pro) ---
+  V3_PRO_STABLE: "gemini-1.5-pro",           // High Intelligence
+  V3_PRO_LATEST: "gemini-1.5-pro-002",       // Latest Stable Pro
+  V3_PRO_PREV: "gemini-1.5-pro-001",       // Backup Pro
 
-  // --- TIER 2: STABILITY (Gemini 2.5) ---
-  V2_5_PRO: "gemini-1.5-pro",                // New Standard
+  // --- TIER 2: STABILITY ---
+  V2_5_PRO: "gemini-1.5-pro",
 
-  // --- TIER 3: SPEED (Gemini 3 Flash) ---
-  V3_FLASH_STABLE: "gemini-2.0-flash-exp",   // New GA
-  V3_FLASH_LATEST: "gemini-1.5-flash-latest",// Alias
+  // --- TIER 3: SPEED (Flash) ---
+  V3_FLASH_STABLE: "gemini-2.0-flash-exp",   // Fastest & Smartest Flash right now
+  V3_FLASH_LATEST: "gemini-1.5-flash",       // Reliable Flash
 
-  // --- TIER 4: SAFETY NET (Gemini 2.5/2.0) ---
-  V2_5_FLASH: "gemini-1.5-flash-002",        // New Standard
-  V2_FLASH_LEGACY: "gemini-1.5-flash"        // Deprecated (Last Resort)
+  // --- TIER 4: SAFETY NET ---
+  V2_5_FLASH: "gemini-1.5-flash-002",
+  V2_FLASH_LEGACY: "gemini-1.5-flash"
 };
 
 // Fallback Candidate Chains (Updated Jan 2026)
@@ -557,13 +561,14 @@ export const generateWithFallback = async (
   };
 
   // Select Candidate Chain based on Intent
-  let candidates = (intent === 'SMART' || intent === 'ANALYZE')
+  // FIX: ANALYZE now prioritizes FAST models (Gemini 2.0 Flash) based on user preference
+  let candidates = (intent === 'SMART')
     ? [...CANDIDATES_SMART]
     : [...CANDIDATES_FAST];
 
-  // If analyzing, we might want to prioritize speed after smart fails, so append fast candidates as last resort
-  if (intent === 'ANALYZE') {
-    candidates = [...candidates, ...CANDIDATES_FAST];
+  // If analyzing or smart failed, allow fallback to the other chain
+  if (intent === 'ANALYZE' || intent === 'SMART') {
+    candidates = [...candidates, ...CANDIDATES_FAST, ...CANDIDATES_SMART]; // Merge both for max resilience
   }
 
   // Remove duplicates

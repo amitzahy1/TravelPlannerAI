@@ -81,7 +81,8 @@ const AppContent: React.FC = () => {
       if (lastTripId && loadedTrips.find(t => t.id === lastTripId)) {
         setActiveTripId(lastTripId);
       } else if (loadedTrips.length > 0) {
-        setActiveTripId(loadedTrips[0].id);
+        // Default to the NEWEST trip (last in array) if no history
+        setActiveTripId(loadedTrips[loadedTrips.length - 1].id);
       }
     } catch (err) {
       console.error('Error loading trips:', err);
@@ -97,7 +98,7 @@ const AppContent: React.FC = () => {
     }
   }, [authLoading, loadUserTrips]);
 
-  const activeTrip = trips.find(t => t.id === activeTripId) || trips[0] || null;
+  const activeTrip = trips.find(t => t.id === activeTripId) || trips[trips.length - 1] || null;
 
   useEffect(() => {
     if (activeTripId) {
@@ -111,7 +112,8 @@ const AppContent: React.FC = () => {
       if (lastTripId && trips.find(t => t.id === lastTripId)) {
         setActiveTripId(lastTripId);
       } else {
-        setActiveTripId(trips[0].id);
+        // Default to the NEWEST trip
+        setActiveTripId(trips[trips.length - 1].id);
       }
     }
   }, [trips, activeTripId]);
