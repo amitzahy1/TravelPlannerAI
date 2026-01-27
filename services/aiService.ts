@@ -347,6 +347,34 @@ export const parseTripWizardInputs = async (text: string, files: File[] = []): P
   return JSON.parse(response.text);
 };
 
+/**
+ * Receipt Analyzer (Computer Vision)
+ * Uses SMART Tier (Pro) for accurate price extraction from messy receipts.
+ */
+export const analyzeReceipt = async (
+  base64Data: string,
+  mimeType: string,
+  mode: 'TOTAL_ONLY' | 'FULL_DETAILS' = 'TOTAL_ONLY'
+): Promise<any> => {
+  const prompt = mode === 'TOTAL_ONLY'
+    ? "Analyze this receipt image. Extract ONLY the total price and currency. Return JSON: { \"price\": number, \"currency\": string }."
+    : "Analyze this receipt. Extract items, prices, total, and date. Return detailed JSON.";
+
+  const contentParts = [
+    { text: prompt },
+    { inlineData: { mimeType, data: base64Data } }
+  ];
+
+  const response = await generateWithFallback(
+    null,
+    [{ role: 'user', parts: contentParts }],
+    { responseMimeType: 'application/json' },
+    'SMART'
+  );
+
+  return JSON.parse(response.text);
+};
+
 // ... preserve other specific prompt constants if needed
 export const SYSTEM_PROMPT = "You are a travel assistant..."; // Legacy export
 
