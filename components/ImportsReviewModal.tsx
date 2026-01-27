@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Check, Plane, Bed, AlertTriangle, FileText, ChevronRight, Calendar, MapPin, AlertCircle, Trash2, Shield, Eye, EyeOff, Utensils, Star, Ticket } from 'lucide-react';
+import { X, Check, Plane, Bed, AlertTriangle, FileText, ChevronRight, Calendar, MapPin, AlertCircle, Trash2, Shield, Eye, EyeOff, Utensils, Star, Ticket, Info } from 'lucide-react';
 import { StagedTripData, StagedLogisticsItem, StagedWalletItem, StagedExperienceItem, StagedCategories } from '../types';
+import { formatDateTime, formatDateOnly } from '../utils/dateUtils';
 
 interface ImportsReviewModalProps {
         stagedData: StagedTripData;
@@ -19,35 +20,23 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
         const [activeTab, setActiveTab] = useState<TabType>('logistics');
         const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
 
-        // Date Formatter Helper
-        const formatDateTime = (isoString?: string) => {
-                if (!isoString) return 'TBD';
-                try {
-                        const date = new Date(isoString);
-                        if (isNaN(date.getTime())) return isoString; // Return original if invalid
-                        return new Intl.DateTimeFormat('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: false
-                        }).format(date);
-                } catch (e) { return isoString; }
-        };
-
-        const formatDateOnly = (isoString?: string) => {
-                if (!isoString) return 'TBD';
-                try {
-                        const date = new Date(isoString);
-                        if (isNaN(date.getTime())) return isoString;
-                        return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
-                } catch (e) { return isoString; }
-        };
-
         // Memoize file URLs
         const fileUrls = useMemo(() => {
                 return files.map(f => ({ name: f.name, url: URL.createObjectURL(f) }));
         }, [files]);
+
+        // Calculate Missed Files with Reasons
+        const missedFilesReport = useMemo(() => {
+                const processedSet = new Set(stagedData.processedFileIds || []);
+                const aiReported = stagedData.unprocessedFiles || [];
+
+                // Files that aren't in processed list AND aren't in AI rejection report
+                const silentFailures = files
+                        .filter(f => !processedSet.has(f.name) && !aiReported.some(u => u.fileName === f.name))
+                        .map(f => ({ fileName: f.name, reason: 'Unknown / No data found' }));
+
+                return [...aiReported, ...silentFailures];
+        }, [files, stagedData.processedFileIds, stagedData.unprocessedFiles]);
 
         useEffect(() => {
                 return () => {
@@ -114,7 +103,7 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                                                                         </div>
                                                                         <div>
                                                                                 <span className="text-xs text-slate-400 block">Time</span>
-                                                                                <span className="font-mono font-bold text-slate-700">{formatDateTime(item.data.departureTime)}</span>
+                                                                                <span className="font-mono font-bold text-slate-700">{item.data.displayTime || formatDateTime(item.data.departureTime)}</span>
                                                                         </div>
                                                                         <div className="col-span-2 flex items-center gap-2 bg-slate-50 p-2 rounded-lg">
                                                                                 <span className="font-bold text-lg">{item.data.from}</span>
@@ -127,22 +116,20 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                                                                 <>
                                                                         <div>
                                                                                 <span className="text-xs text-slate-400 block">Check-In</span>
-                                                                                {/* FIX: Use checkInDate property and Formatter */}
                                                                                 <span className="font-bold text-slate-700">{formatDateOnly(item.data.checkInDate || item.data.checkIn)}</span>
                                                                         </div>
                                                                         <div>
                                                                                 <span className="text-xs text-slate-400 block">Check-Out</span>
-                                                                                {/* FIX: Use checkOutDate property and Formatter */}
                                                                                 <span className="font-bold text-slate-700">{formatDateOnly(item.data.checkOutDate || item.data.checkOut)}</span>
                                                                         </div>
-                                                                        <div className="col-span-2">
+                                                                        <div className="col-span-2 text-left">
                                                                                 <span className="text-xs text-slate-400 block">Address</span>
-                                                                                <div className="flex gap-2 mt-1">
-                                                                                        <span className="text-sm text-slate-600 truncate block">{item.data.address || item.data.location || item.data.city || 'Unknown Location'}</span>                                                                   </div>
+                                                                                <span className="text-sm text-slate-600 truncate block">{item.data.address || item.data.location || item.data.city || 'Unknown Location'}</span>
                                                                         </div>
                                                                 </>
                                                         )}
                                                 </div>
+                                                <SourceChips ids={item.sourceFileIds || (item as any).fileId ? [(item as any).fileId] : []} />
                                         </div>
                                         <button onClick={() => removeItem('logistics', idx.toString())} className="text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
                                 </div>
@@ -178,11 +165,12 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                                                 <div className="text-sm text-slate-500 mt-1 flex items-center gap-1">
                                                         <MapPin className="w-3 h-3" /> {item.data.address || 'Unknown Location'}
                                                 </div>
-                                                {item.data.reservationTime && (
+                                                {(item.data.displayTime || item.data.reservationTime) && (
                                                         <div className="text-sm font-medium text-slate-700 mt-2 bg-slate-50 inline-block px-2 py-1 rounded-md">
-                                                                {item.data.reservationTime.replace('T', ' @ ')}
+                                                                {item.data.displayTime || item.data.reservationTime?.replace('T', ' @ ')}
                                                         </div>
                                                 )}
+                                                <SourceChips ids={item.sourceFileIds || (item as any).fileId ? [(item as any).fileId] : []} />
                                         </div>
                                         <button onClick={() => removeItem('experiences', idx.toString())} className="text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
                                 </div>
@@ -239,9 +227,27 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
 
                         {/* Content Area */}
                         <div className="flex-1 overflow-y-auto p-8 max-w-5xl mx-auto w-full">
-                                <div className="mb-6">
-                                        <h2 className="text-2xl font-black text-slate-800 mb-2 capitalize">{activeTab} Review</h2>
-                                        <p className="text-slate-500">Review extracted data before creating your trip.</p>
+                                <div className="mb-6 flex justify-between items-start">
+                                        <div>
+                                                <h2 className="text-2xl font-black text-slate-800 mb-2 capitalize">{activeTab} Review</h2>
+                                                <p className="text-slate-500">Review extracted data before creating your trip.</p>
+                                        </div>
+                                        {missedFilesReport.length > 0 && (
+                                                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3 animate-bounce-subtle max-w-sm">
+                                                        <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5" />
+                                                        <div className="text-xs">
+                                                                <span className="font-bold text-amber-800">{missedFilesReport.length} files could not be fully read</span>
+                                                                <div className="mt-1 space-y-1 max-h-[60px] overflow-y-auto pr-2">
+                                                                        {missedFilesReport.map((m, i) => (
+                                                                                <div key={i} className="text-amber-600 opacity-80 flex gap-2">
+                                                                                        <span className="font-bold whitespace-nowrap">{m.fileName}:</span>
+                                                                                        <span>{m.reason}</span>
+                                                                                </div>
+                                                                        ))}
+                                                                </div>
+                                                        </div>
+                                                </div>
+                                        )}
                                 </div>
 
                                 {activeTab === 'logistics' && renderLogistics()}
@@ -265,6 +271,20 @@ const TabButton = ({ active, onClick, icon: Icon, label, count, isSecure, isNew 
                 {isNew && <span className="absolute -top-1 -right-2 bg-amber-400 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm">NEW</span>}
         </button>
 );
+
+const SourceChips: React.FC<{ ids?: string[] }> = ({ ids }) => {
+        if (!ids || ids.length === 0) return null;
+        return (
+                <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-slate-50">
+                        {ids.map((id, i) => (
+                                <span key={i} className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded flex items-center gap-1 max-w-[120px] truncate">
+                                        <FileText className="w-2 h-2 flex-shrink-0" />
+                                        {id}
+                                </span>
+                        ))}
+                </div>
+        );
+};
 
 const WalletCard: React.FC<{ item: StagedWalletItem, onRemove: () => void }> = ({ item, onRemove }) => {
         const [revealed, setRevealed] = useState(false);
@@ -292,6 +312,7 @@ const WalletCard: React.FC<{ item: StagedWalletItem, onRemove: () => void }> = (
                                 <div className="mt-3 text-xs text-slate-400 italic flex items-center gap-1">
                                         <AlertCircle className="w-3 h-3" /> {item.uiMessage || "Stored locally on device"}
                                 </div>
+                                <SourceChips ids={item.sourceFileIds || (item as any).fileId ? [(item as any).fileId] : []} />
                         </div>
                 </div>
         );

@@ -21,8 +21,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
         const user = auth.currentUser;
         const isShared = trip.isShared && trip.sharing?.shareId;
 
+        const baseUrl = window.location.origin + (import.meta.env.BASE_URL || '/');
         const shareUrl = isShared
-                ? `${window.location.origin}/#/join/${trip.sharing?.shareId}`
+                ? `${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}#/join/${trip.sharing?.shareId}`
                 : '';
 
         const handleCreateShare = async () => {

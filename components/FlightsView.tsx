@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Trip, FlightSegment } from '../types';
-import { Plane, FileText, FileImage, Download, CheckCircle2, Briefcase, UploadCloud } from 'lucide-react';
+import { Plane, FileText, FileImage, Download, Briefcase, UploadCloud } from 'lucide-react';
+import { formatDateTime, formatDateOnly } from '../utils/dateUtils';
 
 export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
   const { flights, documents } = trip;
@@ -18,7 +19,7 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
     <div key={index} className="border-b border-dashed border-gray-300 last:border-0 pb-4 mb-4 last:pb-0 last:mb-0 relative">
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-3">
-          <div className="text-xs text-gray-400 font-mono">{seg.date}</div>
+          <div className="text-xs text-gray-400 font-mono">{formatDateOnly(seg.date)}</div>
           <div className="font-bold text-sm text-blue-800 flex items-center gap-1.5">
             <img src={`https://pics.avs.io/200/200/${seg.airline.substr(0, 2)}.png`} alt={seg.airline} onError={(e) => e.currentTarget.style.display = 'none'} className="w-5 h-5 rounded-full object-cover" />
             {seg.airline}
@@ -40,7 +41,7 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
         <div className="flex-1">
           <div className="text-xl font-black text-gray-800 leading-none">{seg.fromCode}</div>
           <div className="text-xs text-gray-500 mt-0.5">{seg.fromCity}</div>
-          <div className="text-base font-bold text-gray-700 mt-1">{seg.departureTime}</div>
+          <div className="text-base font-bold text-gray-700 mt-1">{formatDateTime(seg.departureTime)}</div>
         </div>
 
         <div className="flex-1 flex flex-col items-center px-2">
@@ -51,7 +52,7 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
         <div className="flex-1 text-left">
           <div className="text-xl font-black text-gray-800 leading-none">{seg.toCode}</div>
           <div className="text-xs text-gray-500 mt-0.5">{seg.toCity}</div>
-          <div className="text-base font-bold text-gray-700 mt-1">{seg.arrivalTime}</div>
+          <div className="text-base font-bold text-gray-700 mt-1">{formatDateTime(seg.arrivalTime)}</div>
         </div>
       </div>
 

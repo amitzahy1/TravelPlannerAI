@@ -104,42 +104,57 @@ export const SYSTEM_PROMPT = SYSTEM_PROMPT_RESEARCH;
 /**
  * System Prompt for Deep Understanding (Project Genesis)
  */
-export const SYSTEM_PROMPT_ANALYZE_TRIP = `Role: You are the Chief Architect & Product Lead at Google Travel. Mission: Build the "Omni-Import Engine". This system accepts ANY travel-related file, understands its purpose, and routes it to the correct "bucket" in the application.
+/**
+ * System Prompt for Deep Understanding (Project Genesis - Phase 3)
+ */
+export const SYSTEM_PROMPT_ANALYZE_TRIP = `Role: You are the Lead AI Architect at Google Travel. 
+Mission: Upgrade the travel document analysis to provide Granular City Data and Full File Transparency.
 
-Core Directives:
+1. **Task: Multi-Source Truth**
+   - If multiple files verify the same event (e.g., Receipt + Ticket), link ALL their filenames to that single object using the "sourceFileIds" array.
+   - NO CONSOLIDATION: Each flight leg MUST be its own separate object in the "logistics" array.
 
-1. **Trip Metadata Extraction (CRITICAL):**
-   - Analyze the uploaded files to determine the **Main Destination**, **Trip Name**, and **Start/End Dates**.
-   - **Trip Name Strategy:** DO NOT Use the filename! Create a short, exciting name based on the destination and vibe (e.g., "Parisian Getaway", "Tokyo Adventure").
-   - **Date Logic:** Look for Flight Tickets or Hotel Confirmations to define the Trip Date range. Do NOT use Passport expiry dates or Credit Card expiry dates for the trip dates.
-   - If unsure about exact dates, make a best guess from the logistics found, or return null.
+2. **Task: City & Route Extraction**
+   - add "visitedDestinations" (Array of Strings) to the metadata.
+   - Extract the city/island name for EVERY stop. Look at:
+     - Flight Arrivals (e.g., CEB -> Cebu, MPH -> Boracay, MNL -> Manila).
+     - Hotel Addresses.
+     - Activity Locations.
+   - Return a unique list of specific towns/islands.
 
-2. **Total Classification:**
-   - Categorize every file into: Logistics (Flights/Hotels), Wallet (Passports/Stickts), or Experiences (Dining/Activities).
+3. **Task: The "Rejection Report"**
+   - Add a top-level array "unprocessedFiles" to the JSON.
+   - If a file was NOT used (duplicate, irrelevant, unreadable), add it here with a reason.
+   - Format: { "fileName": string, "reason": "reason why" }
 
-3. **FLIGHT EXTRACTION RULES (STRICT - FLAT LIST ONLY):**
-   - **NO CONSOLIDATION:** Do NOT create a single "flight_itinerary" item with a "segments" list.
-   - **INDIVIDUAL ITEMS:** Every single flight leg (e.g., TLV->AUH, AUH->BKK) MUST be its own separate object in the \`logistics\` array with \`type: "flight"\`.
-   - **DATA SOURCE:** Each flight item MUST use the \`fileId\` of the ACTUAL file where that leg's details were found. Do NOT reference only the first file if info exists in others.
-   - **Full Chronology:** Capture all segments: Outbound, Inbound, and Internal flights.
+4. **Task: Human-Readable Dates**
+   - Inside each item's data object, add a "displayTime" field alongside the ISO string.
+   - Format: "DD Mon, HH:mm" (e.g., "15 Feb, 03:25").
 
-4. **JSON Output Specification (Strict):** Return a StagedTripData object.
+5. **JSON Output Specification (Strict):** Return a StagedTripData object.
    {
       "tripMetadata": {
-        "suggestedName": "Tokyo Adventure",
-        "suggestedDates": "2026-05-01 - 2026-05-10",
-        "mainDestination": "Tokyo, Japan"
+        "suggestedName": "Philippine Island Hopping",
+        "suggestedDates": "2026-01-28 - 2026-02-15",
+        "mainDestination": "Philippines",
+        "visitedDestinations": ["Manila", "Boracay", "Cebu", "Bangkok"]
       },
+      "processedFileIds": ["Itinerary.pdf", "E-Receipt.pdf"],
+      "unprocessedFiles": [
+        { "fileName": "marketing.pdf", "reason": "Irrelevant marketing material" }
+      ],
       "categories": {
         "logistics": [
           {
             "type": "flight",
-            "fileId": "flight_ticket_1.pdf",
-            "confidence": 0.9,
+            "sourceFileIds": ["Itinerary.pdf", "E-Receipt.pdf"],
+            "confidence": 0.98,
             "data": { 
-               "airline": "JAL", "flightNumber": "JL002", 
-               "departureTime": "2026-05-01T10:00:00", 
-               "from": "TLV", "to": "NRT" 
+               "airline": "Cebu Pacific", 
+               "flightNumber": "5J137", 
+               "departureTime": "2026-02-04T12:00:00", 
+               "displayTime": "04 Feb, 12:00",
+               "from": "MPH", "to": "CEB" 
             }
           }
         ],
@@ -754,6 +769,7 @@ export interface TripAnalysisResult {
   metadata: {
     suggestedName: string;
     destination: string;
+    cities: string[]; // New: List of specific towns/islands visited
     startDate?: string; // YYYY-MM-DD
     endDate?: string;   // YYYY-MM-DD
   };
@@ -768,8 +784,10 @@ export interface TripAnalysisResult {
 const ensureStagedTripSchema = (data: any): StagedTripData => {
   if (!data || typeof data !== 'object') {
     return {
-      tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "" },
-      categories: { logistics: [], wallet: [], experiences: [] }
+      tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "", visitedDestinations: [] },
+      categories: { logistics: [], wallet: [], experiences: [] },
+      processedFileIds: [],
+      unprocessedFiles: []
     };
   }
 
@@ -778,33 +796,79 @@ const ensureStagedTripSchema = (data: any): StagedTripData => {
     tripMetadata: {
       suggestedName: data.tripMetadata?.suggestedName || "New Trip",
       suggestedDates: data.tripMetadata?.suggestedDates || "",
-      mainDestination: data.tripMetadata?.mainDestination || ""
+      mainDestination: data.tripMetadata?.mainDestination || "",
+      visitedDestinations: data.tripMetadata?.visitedDestinations || []
     },
     categories: {
       logistics: Array.isArray(data.categories?.logistics) ? data.categories.logistics : [],
       wallet: Array.isArray(data.categories?.wallet) ? data.categories.wallet : [],
       experiences: Array.isArray(data.categories?.experiences) ? data.categories.experiences : []
-    }
+    },
+    processedFileIds: Array.isArray(data.processedFileIds) ? data.processedFileIds : [],
+    unprocessedFiles: Array.isArray(data.unprocessedFiles) ? data.unprocessedFiles : []
   };
+};
+
+/**
+ * IATA City Mapping for Smart Route Resolution
+ */
+const IATA_CITY_MAP: Record<string, string> = {
+  'TLV': 'Tel Aviv',
+  'AUH': 'Abu Dhabi',
+  'BKK': 'Bangkok',
+  'MNL': 'Manila',
+  'MPH': 'Boracay',
+  'CEB': 'Cebu',
+  'HND': 'Tokyo',
+  'NRT': 'Tokyo',
+  'KIX': 'Osaka',
+  'ICN': 'Seoul',
+  'HKG': 'Hong Kong',
+  'DXB': 'Dubai',
+  'SIN': 'Singapore',
+  'CDG': 'Paris'
+};
+
+const resolveCityName = (code: string): string => {
+  return IATA_CITY_MAP[code] || code;
 };
 
 /**
  * Smart Route Derivation (Project Genesis)
  * Scans flight segments to build a dynamic multi-city route string.
  */
-const deriveSmartRoute = (items: any[], defaultDest: string): string => {
+const deriveSmartRoute = (items: any[], defaultDest: string): { route: string, cities: string[] } => {
   // Support both flat segments and nested flight_itinerary segments (Legacy/Safety)
   const allSegments: any[] = [];
+  const citiesSet = new Set<string>();
 
   items.forEach(item => {
     if (item.type === 'flight' && item.data.from && item.data.to) {
       allSegments.push(item.data);
+      citiesSet.add(resolveCityName(item.data.from));
+      citiesSet.add(resolveCityName(item.data.to));
     } else if (item.type === 'flight_itinerary' && Array.isArray(item.data.segments)) {
       allSegments.push(...item.data.segments);
+      item.data.segments.forEach((s: any) => {
+        citiesSet.add(resolveCityName(s.from));
+        citiesSet.add(resolveCityName(s.to));
+      });
+    } else if (item.type === 'hotel' && (item.data.address || item.data.location || item.data.name)) {
+      // Heuristic for city discovery from hotel address
+      const text = (item.data.address || item.data.location || item.data.name).toLowerCase();
+      if (text.includes('manila')) citiesSet.add('Manila');
+      if (text.includes('boracay')) citiesSet.add('Boracay');
+      if (text.includes('bangkok')) citiesSet.add('Bangkok');
+      if (text.includes('makati')) citiesSet.add('Manila');
+      if (text.includes('cebu')) citiesSet.add('Cebu');
     }
   });
 
-  if (allSegments.length === 0) return defaultDest;
+  // Clean up cities list (remove Home Base)
+  citiesSet.delete('Tel Aviv');
+  const cities = Array.from(citiesSet);
+
+  if (allSegments.length === 0) return { route: defaultDest, cities };
 
   // Sort by time
   const sorted = allSegments.sort((a, b) => {
@@ -814,19 +878,19 @@ const deriveSmartRoute = (items: any[], defaultDest: string): string => {
   });
 
   // Build chain
-  const route: string[] = [];
-  if (sorted[0]) route.push(sorted[0].from);
+  const routeParts: string[] = [];
+  if (sorted[0]) routeParts.push(resolveCityName(sorted[0].from));
 
   sorted.forEach(f => {
-    if (f.to && route[route.length - 1] !== f.to) {
-      route.push(f.to);
+    const toCity = resolveCityName(f.to);
+    if (toCity && routeParts[routeParts.length - 1] !== toCity) {
+      routeParts.push(toCity);
     }
   });
 
-  // If route is just A -> B, maybe just use destination name. But if A -> B -> C, use route.
-  if (route.length > 2) return route.join(' ➝ ');
+  const finalRoute = routeParts.length > 2 ? routeParts.join(' ➝ ') : defaultDest;
 
-  return defaultDest;
+  return { route: finalRoute, cities };
 };
 
 /**
@@ -955,17 +1019,27 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
 
   // -- AUDIT MISSING FILES --
   const usedFileIds = new Set<string>();
-  const scanCategory = (arr: any[]) => arr.forEach(item => { if (item.fileId) usedFileIds.add(item.fileId) });
+  const scanCategory = (arr: any[]) => arr.forEach(item => {
+    if (item.sourceFileIds) item.sourceFileIds.forEach((id: string) => usedFileIds.add(id));
+    else if (item.fileId) usedFileIds.add(item.fileId); // Legacy fallback
+  });
 
   scanCategory(stagedData.categories.logistics);
   scanCategory(stagedData.categories.wallet);
   scanCategory(stagedData.categories.experiences);
 
-  const missingFiles = processedFiles.filter(f => !usedFileIds.has(f.name));
+  // Use AI reported processed list if available, otherwise fallback to usedFileIds
+  const processedByAI = new Set(stagedData.processedFileIds || []);
+  const missingFiles = processedFiles.filter(f => !usedFileIds.has(f.name) && !processedByAI.has(f.name));
 
-  if (missingFiles.length > 0) {
+  if (missingFiles.length > 0 || (stagedData.unprocessedFiles && stagedData.unprocessedFiles.length > 0)) {
     console.warn("⚠️ [AI Audit] The following files were NOT referenced in the output:");
     missingFiles.forEach(f => console.warn(`   - ${f.name} (Type: ${f.mimeType})`));
+
+    // Also log AI-provided skipped files
+    if (stagedData.unprocessedFiles) {
+      stagedData.unprocessedFiles.forEach(u => console.warn(`   - AI Skipped: ${u.fileName} Reason: ${u.reason}`));
+    }
     console.warn("Try checking if these are supported file types or contain legible text.");
   } else {
     console.log("✨ [AI Audit] Perfect Score! All uploaded files were used.");
@@ -984,12 +1058,19 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
   const endDate = dateRange[1] ? dateRange[1].trim() : undefined;
 
   // Calculate Smart Destination
-  const smartDestination = deriveSmartRoute(flattenedItems, stagedData.tripMetadata.mainDestination);
+  const { route: smartRoute, cities: derivedCities } = deriveSmartRoute(flattenedItems, stagedData.tripMetadata.mainDestination);
+
+  // Merge AI suggested destinations with derived cities
+  const finalCities = Array.from(new Set([
+    ...(stagedData.tripMetadata.visitedDestinations || []),
+    ...derivedCities
+  ]));
 
   return {
     metadata: {
       suggestedName: stagedData.tripMetadata.suggestedName,
-      destination: smartDestination, // Use the smart route!
+      destination: smartRoute, // Use the smart route string
+      cities: finalCities, // Combined list
       startDate,
       endDate
     },
