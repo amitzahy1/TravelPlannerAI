@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter } from 'react-router-dom';
 import { LayoutFixed as Layout } from './components/LayoutFixed';
 import { loadTrips, saveTrips, saveSingleTrip, deleteTrip } from './services/storageService';
+import { subscribeToSharedTrip } from './services/firestoreService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Trip } from './types';
 import { LandingPage } from './components/LandingPage';
@@ -111,6 +112,18 @@ const AppContent: React.FC = () => {
       }
     }
   }, [trips, activeTripId]);
+
+  // Real-Time Sync Hook (Project Genesis 2.0)
+  useEffect(() => {
+    if (activeTrip && activeTrip.isShared && activeTrip.sharing?.shareId) {
+      console.log("🔌 Subscribing to shared trip:", activeTrip.name);
+      const unsubscribe = subscribeToSharedTrip(activeTrip.sharing.shareId, (updatedTrip) => {
+        console.log("⚡ Real-time update received for:", updatedTrip.name);
+        setTrips(prev => prev.map(t => t.id === updatedTrip.id ? { ...updatedTrip, isShared: true, sharing: activeTrip.sharing } : t));
+      });
+      return () => unsubscribe();
+    }
+  }, [activeTrip?.id, activeTrip?.isShared, activeTrip?.sharing?.shareId]);
 
   const handleUpdateActiveTrip = async (updatedTrip: Trip) => {
     const newTrips = trips.map(t => t.id === updatedTrip.id ? updatedTrip : t);

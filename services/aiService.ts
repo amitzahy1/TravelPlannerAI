@@ -833,6 +833,11 @@ const IATA_CITY_MAP: Record<string, string> = {
   'CDG': 'Paris'
 };
 
+const COUNTRIES_BLOCKLIST = new Set([
+  'THAILAND', 'PHILIPPINES', 'VIETNAM', 'JAPAN', 'ISRAEL', 'FRANCE', 'GERMANY', 'ITALY', 'SPAIN',
+  'CHINA', 'INDIA', 'USA', 'UNITED STATES', 'UK', 'UNITED KINGDOM', 'RUSSIA', 'AUSTRALIA', 'CANADA'
+]);
+
 const resolveCityName = (code: string): string => {
   return IATA_CITY_MAP[code] || code;
 };
@@ -852,10 +857,16 @@ const deriveSmartRoute = (items: any[], defaultDest: string): { route: string, c
     const normalized = text.toUpperCase().trim();
     if (IATA_CITY_MAP[normalized]) return IATA_CITY_MAP[normalized];
 
+    // Filter out Countries if they appear as "City"
+    if (COUNTRIES_BLOCKLIST.has(normalized)) return '';
+
     // Simple heuristic: If it looks like a city name (no numbers, short), use it.
     // Otherwise, for full addresses, we might need more advanced NLP, but for now:
     // We will clean it up later with the AI-provided 'uniqueCityNames' if available in the UI layer.
-    return text.split(',')[0].trim();
+    const potentialCity = text.split(',')[0].trim();
+    if (COUNTRIES_BLOCKLIST.has(potentialCity.toUpperCase())) return '';
+
+    return potentialCity;
   };
 
   items.forEach(item => {

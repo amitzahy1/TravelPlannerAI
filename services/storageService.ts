@@ -1,6 +1,6 @@
 import { Trip } from '../types';
 import { INITIAL_DATA } from '../constants';
-import { getUserTrips, saveTrip, saveAllTrips, deleteTrip as firestoreDeleteTrip, userHasTrips } from './firestoreService';
+import { getUserTrips, saveTrip, saveAllTrips, deleteTrip as firestoreDeleteTrip, userHasTrips, getUserSharedTrips, getSharedTrip, updateSharedTrip } from './firestoreService';
 
 const STORAGE_KEY = 'travel_app_data_v1';
 
@@ -72,7 +72,36 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
       return [];
     }
 
-    return await getUserTrips(userId);
+    // 1. Fetch Private Trips
+    const privateTrips = await getUserTrips(userId);
+
+    // 2. Fetch Shared Trips (Project Genesis 2.0)
+    const sharedRefs = await getUserSharedTrips(userId);
+    const sharedTripPromises = sharedRefs.map(async (ref) => {
+      const trip = await getSharedTrip(ref.sharedTripId);
+      if (trip) {
+        return {
+          ...trip,
+          isShared: true,
+          sharing: {
+            shareId: ref.sharedTripId,
+            role: ref.role,
+            // Mock metadata if missing, real sync happens in App.tsx
+            owner: 'fetched',
+            collaborators: [],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            updatedBy: 'system'
+          }
+        } as Trip;
+      }
+      return null;
+    });
+
+    const sharedTrips = (await Promise.all(sharedTripPromises)).filter((t): t is Trip => t !== null);
+
+    // 3. Merge & Dedupe (Prefer Shared version if ID conflict exists? Usually IDs are unique)
+    return [...privateTrips, ...sharedTrips];
   } catch (error) {
     console.error('Error loading trips from Firestore:', error);
     // On error, still return empty for logged-in users to prevent data leak
@@ -117,7 +146,14 @@ export const saveSingleTrip = async (trip: Trip, userId?: string): Promise<void>
   }
 
   try {
-    await saveTrip(userId, trip);
+    // Project Genesis 2.0: Shared Trip Handling
+    if (trip.isShared && trip.sharing?.shareId) {
+      // If we are the owner or an editor, we update the shared doc
+      await updateSharedTrip(userId, trip.sharing.shareId, trip);
+    } else {
+      // Standard Private Trip
+      await saveTrip(userId, trip);
+    }
   } catch (error) {
     console.error('Error saving trip to Firestore:', error);
     throw error;
