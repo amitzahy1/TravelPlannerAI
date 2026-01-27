@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter } from 'react-router-dom';
 import { LayoutFixed as Layout } from './components/LayoutFixed';
-import { loadTrips, saveTrips, saveSingleTrip, deleteTrip } from './services/storageService';
+import { loadTrips, saveTrips, saveSingleTrip, deleteTrip, leaveTrip } from './services/storageService';
 import { subscribeToSharedTrip } from './services/firestoreService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Trip } from './types';
@@ -18,6 +18,7 @@ const AdminView = React.lazy(() => import('./components/AdminView').then(module 
 const BudgetView = React.lazy(() => import('./components/BudgetView').then(module => ({ default: module.BudgetView })));
 const ShoppingView = React.lazy(() => import('./components/ShoppingView').then(module => ({ default: module.ShoppingView })));
 import { JoinTripModal } from './components/JoinTripModal';
+import { AIChatOverlay } from './components/AIChatOverlay';
 
 
 import { initGoogleAuth } from './services/googleAuthService';
@@ -171,6 +172,28 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handleLeaveTrip = async (tripId: string) => {
+    if (!activeTrip?.isShared || !activeTrip?.sharing?.shareId) return;
+
+    // Harmonious UX: Optimistic Update
+    const previousTrips = [...trips];
+    const newTrips = trips.filter(t => t.id !== tripId);
+    setTrips(newTrips);
+
+    // Switch active trip if needed
+    if (activeTripId === tripId) {
+      setActiveTripId(newTrips.length > 0 ? newTrips[0].id : '');
+    }
+
+    try {
+      await leaveTrip(tripId, activeTrip.sharing.shareId, user?.uid);
+    } catch (err) {
+      console.error('Failed to leave trip', err);
+      setTrips(previousTrips); // Revert
+      alert('שגיאה ביציאה מהטיול');
+    }
+  };
+
   // State Cleanup on Logout
   useEffect(() => {
     if (!user && !authLoading) {
@@ -272,6 +295,7 @@ const AppContent: React.FC = () => {
               data={trips}
               onSave={handleSaveAllData}
               onDeleteTrip={handleDeleteTrip}
+              onLeaveTrip={handleLeaveTrip}
               onClose={() => setShowAdmin(false)}
             />
           </React.Suspense>
@@ -326,6 +350,7 @@ const AppContent: React.FC = () => {
             data={trips}
             onSave={handleSaveAllData}
             onDeleteTrip={handleDeleteTrip}
+            onLeaveTrip={handleLeaveTrip}
             onClose={() => setShowAdmin(false)}
           />
         </React.Suspense>
@@ -346,6 +371,10 @@ const AppContent: React.FC = () => {
             window.history.replaceState(null, '', window.location.pathname);
           }}
         />
+      )}
+
+      {activeTrip && (
+        <AIChatOverlay trip={activeTrip} />
       )}
     </HashRouter>
   );

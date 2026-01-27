@@ -10,6 +10,7 @@ import {
   getDoc,
   updateDoc,
   arrayUnion,
+  arrayRemove,
   onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
@@ -223,6 +224,32 @@ export const joinSharedTrip = async (
     return data.tripData as Trip;
   } catch (error) {
     console.error('Error joining shared trip:', error);
+    throw error;
+  }
+};
+
+/**
+ * Leave a shared trip
+ */
+export const leaveSharedTrip = async (
+  userId: string,
+  shareId: string
+): Promise<void> => {
+  try {
+    const tripRef = doc(db, 'shared-trips', shareId);
+
+    // Remove user from collaborators
+    await updateDoc(tripRef, {
+      collaborators: arrayRemove(userId),
+      updatedAt: Timestamp.now()
+    });
+
+    // Remove reference for user
+    const refDoc = doc(db, USERS_COLLECTION, userId, 'shared-trip-refs', shareId);
+    await deleteDoc(refDoc);
+
+  } catch (error) {
+    console.error('Error leaving shared trip:', error);
     throw error;
   }
 };

@@ -64,16 +64,27 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     };
 
     const handleLegacyCreate = () => {
-        // "Skip" flow: Empty form
-        setMode('REVIEW_FORM');
-        setTripData({
-            metadata: { suggestedName: "", destination: "", startDate: "", endDate: "" },
-            items: [],
-            rawStagedData: {
-                tripMetadata: { suggestedName: "", suggestedDates: "", mainDestination: "" },
-                categories: { logistics: [], wallet: [], experiences: [] }
-            }
-        });
+        // "Skip" flow: Create empty trip immediately without wizard
+        if (!onImportTrip) return;
+
+        const newTrip: Trip = {
+            id: crypto.randomUUID(),
+            name: "My New Trip",
+            dates: "",
+            destination: "",
+            coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
+            flights: { passengerName: "", pnr: "", segments: [] },
+            hotels: [],
+            restaurants: [],
+            attractions: [],
+            itinerary: [],
+            documents: [],
+            secureNotes: [],
+            isShared: false
+        };
+
+        onImportTrip(newTrip);
+        handleClose();
     };
 
     const handleFilesReady = async (files: File[]) => {
@@ -211,8 +222,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6 animate-fade-in">
-            <div className={`bg-white w-full ${mode === 'REVIEW_FORM' ? 'max-w-5xl h-[90vh]' : 'max-w-lg h-auto'} transition-all duration-500 rounded-[2.5rem] shadow-2xl overflow-hidden relative border border-white/20 flex flex-col`}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6 animate-fade-in" onClick={handleClose}>
+            <div
+                className={`bg-white w-full ${mode === 'REVIEW_FORM' ? 'max-w-5xl h-[90vh]' : 'max-w-lg h-auto'} transition-all duration-500 rounded-[2.5rem] shadow-2xl overflow-hidden relative border border-white/20 flex flex-col`}
+                onClick={(e) => e.stopPropagation()}
+            >
 
                 {/* Close Button */}
                 <button onClick={handleClose} className="absolute top-6 right-6 z-30 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
@@ -233,8 +247,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                             <MagicDropZone onFilesReady={handleFilesReady} compact={false} />
                         </div>
 
-                        <button onClick={handleLegacyCreate} className="mt-8 text-sm text-slate-400 hover:text-slate-600 underline font-medium transition-colors">
-                            Continue manually without files
+                        <button onClick={handleLegacyCreate} className="mt-8 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all transform active:scale-95 flex items-center gap-2">
+                            Start Manually (Skip Upload) <ChevronRight className="w-4 h-4 ml-1" />
                         </button>
                     </div>
                 )}
@@ -367,8 +381,8 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                             const isFlight = item.type === 'flight';
                             const title = item.data.journeyTitle || (item.data.segments ? item.data.segments[0]?.airline : item.data.airline) || item.data.flightNumber || 'Transport';
                             const subText = item.data.segments
-                                ? `${item.data.segments[0]?.displayDepartureTime} • ${item.data.segments[0]?.departureCity} → ${item.data.segments[item.data.segments.length - 1]?.arrivalCity}`
-                                : `${item.data.displayTime || item.data.departureTime} • ${item.data.from} → ${item.data.to}`;
+                                ? `${item.data.segments[0]?.displayDepartureTime || 'Time TBA'} • ${item.data.segments[0]?.departureCity || item.data.segments[0]?.fromCode || 'Origin'} → ${item.data.segments[item.data.segments.length - 1]?.arrivalCity || item.data.segments[item.data.segments.length - 1]?.toCode || 'Dest'}`
+                                : `${item.data.displayTime || item.data.departureTime || 'Time TBA'} • ${item.data.from || item.data.fromCode || 'Origin'} → ${item.data.to || item.data.toCode || 'Dest'}`;
 
                             return (
                                 <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm flex items-start gap-4">

@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Trip, ShoppingItem, VatStatus } from '../types';
 import { ShoppingBag, FileText, Camera, Plus, Trash2, CheckCircle2, AlertCircle, Stamp, ArrowLeft, DollarSign, Image as ImageIcon, X, Loader2, Sparkles, UploadCloud, Search, List, Receipt, Calendar } from 'lucide-react';
-import { getAI, AI_MODEL, generateWithFallback } from '../services/aiService';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { getAI, AI_MODEL, generateWithFallback, analyzeReceipt } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 
 interface ShoppingViewProps {
@@ -26,6 +27,7 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
         vatStatus: 'NEED_FORM'
     });
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Calculate Stats
@@ -94,65 +96,51 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
         setIsFormOpen(true);
 
         try {
-            const ai = getAI();
             const reader = new FileReader();
 
             reader.onloadend = async () => {
                 const base64Data = (reader.result as string).split(',')[1];
 
-                const prompt = `Analyze this shopping receipt image. 
-                Extract: 
-                1. Store Name (shopName)
-                2. Total Price (numeric)
-                3. Currency (e.g. THB, USD)
-                4. Date (YYYY-MM-DD)
-                5. Main Item Name (or "Shopping Haul")
-                6. Is this likely eligible for VAT Refund? (boolean) - usually if over a certain amount or marked TAX FREE.
-                7. Estimated Refund Amount (approx 5-7% if eligible).
-                
-                Return JSON: { name, shopName, price, currency, purchaseDate, isVatEligible, refundAmountEstimated }`;
-
-                const response = await generateWithFallback(
-                    ai,
-                    [{
-                        role: 'user',
-                        parts: [
-                            { text: prompt },
-                            { inlineData: { mimeType: file.type, data: base64Data } }
-                        ]
-                    }],
-                    { responseMimeType: 'application/json' }
-                );
-
-                const textContent = typeof response.text === 'function' ? response.text() : response.text;
-
-                let data;
                 try {
-                    data = JSON.parse(textContent);
-                } catch (e) {
-                    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) {
-                        data = JSON.parse(jsonMatch[0]);
-                    } else {
-                        throw new Error('Could not extract JSON from response');
+                    // Use new Centralized Vision Function
+                    const response = await analyzeReceipt(base64Data, file.type, 'DETAILED_SHOPPING');
+                    const textContent = response.text;
+
+                    let data;
+                    try {
+                        data = JSON.parse(textContent);
+                    } catch (e) {
+                        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) data = JSON.parse(jsonMatch[0]);
                     }
+
+                    if (data) {
+                        setNewItem(prev => ({
+                            ...prev,
+                            name: data.shopName || data.items?.[0]?.name || prev.name,
+                            price: data.totalPrice || data.price || prev.price,
+                            currency: data.currency || prev.currency,
+                            shopName: data.shopName || prev.shopName,
+                            isVatEligible: data.isVatEligible ?? prev.isVatEligible,
+                            purchaseDate: data.purchaseDate || prev.purchaseDate,
+                            vatStatus: (data.isVatEligible || data.vatAmount > 0) ? 'NEED_FORM' : undefined
+                        }));
+                    }
+                } catch (err) {
+                    console.error("AI Analysis Failed", err);
                 }
-                setNewItem(prev => ({
-                    ...prev,
-                    ...data,
-                    receiptImageUrl: reader.result as string,
-                    vatStatus: data.isVatEligible ? 'NEED_FORM' : undefined
-                }));
+
+                setPreviewImage(reader.result as string);
                 setIsAnalyzing(false);
             };
-            reader.readAsDataURL(file);
 
+            reader.readAsDataURL(file);
         } catch (e) {
-            console.error("Receipt analysis failed", e);
-            alert("לא הצלחנו לפענח את הקבלה, נסה להזין ידנית.");
+            console.error(e);
             setIsAnalyzing(false);
         }
     };
+
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
@@ -216,16 +204,48 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
 
                 {viewMode === 'vat' && (
                     <>
-                        <div className="bg-gradient-to-br from-indigo-500 to-blue-600 text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden">
+                        {/* VAT Potential Card */}
+                        <div className="bg-gradient-to-br from-indigo-500 to-blue-600 text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden flex flex-col justify-between">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                            <div className="relative z-10 flex justify-between items-center">
+                            <div className="relative z-10 flex justify-between items-start">
                                 <div>
                                     <span className="text-indigo-100 text-xs font-bold uppercase tracking-widest">צפי החזר מס</span>
                                     <div className="text-4xl font-black mt-2">{Math.floor(potentialRefund).toLocaleString()} <span className="text-xl text-indigo-200">{trip.currency === 'USD' ? '$' : '฿'}</span></div>
                                 </div>
                                 <div className="bg-white/20 p-3 rounded-2xl"><DollarSign className="w-8 h-8 text-white" /></div>
                             </div>
+
+                            {/* Small Donut Chart for VAT vs Total */}
+                            <div className="h-32 w-full mt-4 -mb-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={[
+                                                { name: 'החזר', value: potentialRefund, color: '#a5b4fc' },
+                                                { name: 'שולם', value: totalSpent - potentialRefund, color: '#4338ca' }
+                                            ]}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={30}
+                                            outerRadius={50}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                            stroke="none"
+                                        >
+                                            <Cell key="refund" fill="#ffffff" />
+                                            <Cell key="spent" fill="rgba(255,255,255,0.2)" />
+                                        </Pie>
+                                        <Tooltip
+                                            formatter={(value: number) => `${Math.floor(value).toLocaleString()}`}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', background: 'rgba(255,255,255,0.95)', color: '#000' }}
+                                            itemStyle={{ color: '#000' }}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
+
+                        {/* Status Card */}
                         <div className={`p-6 rounded-[2rem] shadow-lg border relative overflow-hidden ${pendingForms > 0 ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}>
                             <div className="relative z-10 flex justify-between items-center h-full">
                                 <div>

@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Trip, ManualExpense, HotelBooking, Ticket } from '../types';
-import { Wallet, TrendingUp, DollarSign, PieChart, ShoppingBag, Utensils, Hotel, Ticket as TicketIcon, Plane, Plus, Trash2, X, Save, Car, Bus, ArrowRight, ChevronRight, UploadCloud, Loader2, Sparkles } from 'lucide-react';
-import { getAI, AI_MODEL, generateWithFallback } from '../services/aiService';
+import { Wallet, TrendingUp, DollarSign, PieChart as PieChartIcon, ShoppingBag, Utensils, Hotel, Ticket as TicketIcon, Plane, Plus, Trash2, X, Save, Car, Bus, ArrowRight, ChevronRight, UploadCloud, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { getAI, AI_MODEL, generateWithFallback, analyzeReceipt } from '../services/aiService';
 
 interface BudgetViewProps {
     trip: Trip;
@@ -56,8 +57,19 @@ export const BudgetView: React.FC<BudgetViewProps> = ({ trip, onUpdateTrip }) =>
 
         const total = totalHotels + totalFlights + totalAttractions + totalFood + totalShopping + totalTransport + totalOther;
 
+        const chartData = [
+            { name: 'טיסות', value: totalFlights, color: '#3b82f6' },
+            { name: 'מלונות', value: totalHotels, color: '#6366f1' },
+            { name: 'אטרקציות', value: totalAttractions, color: '#a855f7' },
+            { name: 'אוכל', value: totalFood, color: '#f97316' },
+            { name: 'קניות', value: totalShopping, color: '#ec4899' },
+            { name: 'תחבורה', value: totalTransport, color: '#10b981' },
+            { name: 'אחר', value: totalOther, color: '#6b7280' },
+        ].filter(i => i.value > 0);
+
         return {
             total,
+            chartData,
             breakdown: [
                 { id: 'flights', label: 'טיסות', amount: totalFlights, icon: Plane, color: 'bg-blue-500', isInteractive: true },
                 { id: 'hotels', label: 'מלונות', amount: totalHotels, icon: Hotel, color: 'bg-indigo-500', isInteractive: true },
@@ -97,41 +109,83 @@ export const BudgetView: React.FC<BudgetViewProps> = ({ trip, onUpdateTrip }) =>
 
     return (
         <div className="space-y-6 animate-fade-in pb-20">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="bg-green-100 p-3 rounded-2xl text-green-600">
-                    <Wallet className="w-8 h-8" />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="bg-green-100 p-3 rounded-2xl text-green-600 shadow-sm">
+                        <Wallet className="w-8 h-8" />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-black text-gray-800">ניהול תקציב</h2>
+                        <p className="text-gray-500 font-medium text-sm">מרכז את כל ההוצאות במקום אחד</p>
+                    </div>
                 </div>
-                <div>
-                    <h2 className="text-3xl font-black text-gray-800">ניהול תקציב</h2>
-                    <p className="text-gray-500 font-medium text-sm">מרכז את כל ההוצאות במקום אחד</p>
+
+                {/* Currency Selector */}
+                <div className="bg-white p-1 rounded-xl border border-gray-200 shadow-sm flex items-center gap-1">
+                    {['ILS', 'USD', 'EUR', 'THB'].map(cur => (
+                        <button
+                            key={cur}
+                            onClick={() => onUpdateTrip?.({ ...trip, currency: cur })}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${trip.currency === cur ? 'bg-gray-900 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
+                        >
+                            {cur}
+                        </button>
+                    ))}
                 </div>
             </div>
 
             {/* Total Card */}
             <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-10 -mt-10 blur-3xl"></div>
-                <div className="relative z-10 flex flex-col justify-between items-start gap-4">
+                <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                     <div>
                         <span className="text-gray-400 font-bold uppercase tracking-widest text-xs">סה"כ עלות הטיול</span>
                         <div className="text-4xl font-black mt-1 flex items-baseline gap-1">
                             {budget.total.toLocaleString()}
                             <span className="text-xl text-gray-400">{currencySymbol}</span>
                         </div>
+                        {trip.budgetLimit && (
+                            <div className="w-full mt-4">
+                                <div className="flex justify-between text-xs font-bold text-gray-400 mb-1">
+                                    <span>נוצל: {Math.round((budget.total / trip.budgetLimit) * 100)}%</span>
+                                    <span>תקרה: {trip.budgetLimit.toLocaleString()} {currencySymbol}</span>
+                                </div>
+                                <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+                                    <div
+                                        className={`h-full ${budget.total > trip.budgetLimit ? 'bg-red-500' : 'bg-green-500'} transition-all duration-1000`}
+                                        style={{ width: `${Math.min((budget.total / trip.budgetLimit) * 100, 100)}%` }}
+                                    ></div>
+                                </div>
+                                {budget.total > trip.budgetLimit && <div className="mt-2 text-red-400 text-xs font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> חריגה מהתקציב!</div>}
+                            </div>
+                        )}
                     </div>
-                    {trip.budgetLimit && (
-                        <div className="w-full">
-                            <div className="flex justify-between text-xs font-bold text-gray-400 mb-1">
-                                <span>תקציב יעד</span>
-                                <span>{trip.budgetLimit.toLocaleString()} {currencySymbol}</span>
-                            </div>
-                            <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full ${budget.total > trip.budgetLimit ? 'bg-red-500' : 'bg-green-500'}`}
-                                    style={{ width: `${Math.min((budget.total / trip.budgetLimit) * 100, 100)}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    )}
+
+                    {/* Pie Chart */}
+                    <div className="h-40 w-full flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={budget.chartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={40}
+                                    outerRadius={70}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    stroke="none"
+                                >
+                                    {budget.chartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    formatter={(value: number) => `${value.toLocaleString()}`}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
 
@@ -264,31 +318,26 @@ const CategoryDetailModal: React.FC<{
     const handleReceiptUpload = async (file: File, itemId: string) => {
         setAnalyzingId(itemId);
         try {
-            const ai = getAI();
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64Data = (reader.result as string).split(',')[1];
-                const prompt = `Extract the total price from this ${category} receipt/invoice. Return ONLY JSON: { "price": number }. Ignore currency symbols.`;
-                const response = await generateWithFallback(
-                    ai,
-                    { role: 'user', parts: [{ text: prompt }, { inlineData: { mimeType: file.type, data: base64Data } }] },
-                    { responseMimeType: 'application/json' }
-                );
-                const textContent = typeof response.text === 'function' ? response.text() : response.text;
+
+                // Use new Centralized Vision Function
+                const response = await analyzeReceipt(base64Data, file.type, 'TOTAL_ONLY');
+                const textContent = response.text;
 
                 let data;
                 try {
                     data = JSON.parse(textContent);
                 } catch (e) {
                     const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) {
-                        data = JSON.parse(jsonMatch[0]);
-                    } else {
-                        throw new Error('Could not extract JSON from response');
-                    }
+                    if (jsonMatch) data = JSON.parse(jsonMatch[0]);
                 }
-                if (data.price) {
+
+                if (data && data.price) {
                     handlePriceUpdate(itemId, data.price);
+                } else if (data && data.totalPrice) {
+                    handlePriceUpdate(itemId, data.totalPrice);
                 }
             };
             reader.readAsDataURL(file);

@@ -1,6 +1,6 @@
 import { Trip } from '../types';
 import { INITIAL_DATA } from '../constants';
-import { getUserTrips, saveTrip, saveAllTrips, deleteTrip as firestoreDeleteTrip, userHasTrips, getUserSharedTrips, getSharedTrip, updateSharedTrip } from './firestoreService';
+import { getUserTrips, saveTrip, saveAllTrips, deleteTrip as firestoreDeleteTrip, userHasTrips, getUserSharedTrips, getSharedTrip, updateSharedTrip, leaveSharedTrip } from './firestoreService';
 
 const STORAGE_KEY = 'travel_app_data_v1';
 
@@ -184,6 +184,20 @@ export const deleteTrip = async (tripId: string, userId?: string): Promise<void>
     await firestoreDeleteTrip(userId, tripId);
   } catch (error) {
     console.error('Error deleting trip from Firestore:', error);
+    throw error;
+  }
+};
+/**
+ * Leave a shared trip
+ */
+export const leaveTrip = async (tripId: string, shareId: string, userId?: string): Promise<void> => {
+  if (!userId) return;
+
+  try {
+    await leaveSharedTrip(userId, shareId);
+    console.log('✅ Left shared trip successfully');
+  } catch (error) {
+    console.error('Error leaving trip:', error);
     throw error;
   }
 };

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment } from '../types';
-import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users } from 'lucide-react';
+import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut } from 'lucide-react';
 import { getAI, AI_MODEL, generateWithFallback, extractTripFromDoc } from '../services/aiService';
 import { MagicDropZone } from './MagicDropZone';
 import { ShareModal } from './ShareModal';
@@ -17,6 +17,7 @@ interface TripSettingsModalProps {
     data: Trip[];
     onSave: (newData: Trip[]) => void;
     onDeleteTrip: (tripId: string) => void;
+    onLeaveTrip: (tripId: string) => void;
     onClose: () => void;
 }
 
@@ -79,7 +80,7 @@ const DateInput: React.FC<{
     );
 };
 
-export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDeleteTrip, onClose }) => {
+export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDeleteTrip, onLeaveTrip, onClose }) => {
     const [trips, setTrips] = useState<Trip[]>(data);
     const [activeTripId, setActiveTripId] = useState(data[0]?.id || '');
     const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -521,14 +522,18 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        if (window.confirm('האם למחוק את הטיול הזה?')) {
-                                            onDeleteTrip(t.id);
+                                        const isOwner = !t.isShared || t.sharing?.role === 'owner';
+                                        if (window.confirm(isOwner ? 'האם למחוק את הטיול הזה לצמיתות?' : 'האם לצאת מהטיול המשותף?')) {
+                                            isOwner ? onDeleteTrip(t.id) : onLeaveTrip(t.id);
                                         }
                                     }}
-                                    className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-20"
-                                    title="מחק טיול"
+                                    className={`absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-20 ${(!t.isShared || t.sharing?.role === 'owner')
+                                        ? 'text-slate-300 hover:text-red-500 hover:bg-red-50'
+                                        : 'text-slate-300 hover:text-orange-500 hover:bg-orange-50'
+                                        }`}
+                                    title={(!t.isShared || t.sharing?.role === 'owner') ? "מחק טיול" : "צא מהטיול"}
                                 >
-                                    <Trash2 className="w-4 h-4" />
+                                    {(!t.isShared || t.sharing?.role === 'owner') ? <Trash2 className="w-4 h-4" /> : <LogOut className="w-4 h-4" />}
                                 </button>
                             </div>
                         ))}
@@ -553,7 +558,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                 {/* MAIN CONTENT AREA */}
                 <div className="flex-1 flex flex-col h-full overflow-hidden bg-white">
 
-                    <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white z-10">
+                    {/* STICKY HEADER */}
+                    <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50">
                         <div className="flex items-center gap-4">
                             {/* Mobile Hamburger */}
                             <button
@@ -584,61 +590,65 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                 </button>
                             </div>
                         </div>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                        {/* Collaborator Badge (Project Genesis 2.0) */}
-                        {activeTrip?.isShared && (
-                            <div className="hidden md:flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full mr-2 animate-fade-in" title="Shared Trip">
-                                <Users className="w-3.5 h-3.5 text-indigo-600" />
-                                <span className="text-xs font-extrabold text-indigo-700">
-                                    {(activeTrip.sharing?.collaborators?.length || 0) + 1} Editors
-                                </span>
-                            </div>
-                        )}
-                        <button onClick={() => setIsShareModalOpen(true)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors md:hidden">
-                            <Share2 className="w-5 h-5 text-slate-600" />
-                        </button>
-                        <button onClick={handleSaveAndClose} className="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2">
-                            <Save className="w-4 h-4" /> שמור וסגור
-                        </button>
-                        <button onClick={onClose} className="hidden md:flex p-2 text-slate-300 hover:bg-slate-50 hover:text-slate-500 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
-                    </div>
-                </div>
 
-                {/* Content Scroll Area */}
-                <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-slate-50/50">
-                    <div className="max-w-3xl mx-auto space-y-8">
+                        <div className="flex gap-2 items-center">
+                            {/* Collaborator Badge */}
+                            {activeTrip?.isShared && (
+                                <div className="hidden md:flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full mr-2 animate-fade-in" title="Shared Trip">
+                                    <Users className="w-3.5 h-3.5 text-indigo-600" />
+                                    <span className="text-xs font-extrabold text-indigo-700">
+                                        {(activeTrip.sharing?.collaborators?.length || 0) + 1} Editors
+                                    </span>
+                                </div>
+                            )}
+                            <button onClick={() => setIsShareModalOpen(true)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors md:hidden">
+                                <Share2 className="w-5 h-5 text-slate-600" />
+                            </button>
 
-                        {/* TAB: OVERVIEW */}
-                        {activeTab === 'overview' && (
-                            <div className="space-y-6 animate-fade-in">
-                                {/* Basic Info Card */}
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                    <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                                        <span className="bg-blue-100 p-1.5 rounded-lg text-blue-600"><Layout className="w-4 h-4" /></span> פרטים כלליים
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <button
+                                onClick={handleSaveAndClose}
+                                disabled={isSaving}
+                                className={`px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 ${isSaving ? 'opacity-70 cursor-wait' : ''}`}
+                            >
+                                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                {isSaving ? 'שומר ומעבד...' : 'שמור וסגור'}
+                            </button>
+                            <button onClick={onClose} className="hidden md:flex p-2 text-slate-300 hover:bg-slate-50 hover:text-slate-500 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
+                        </div>
+                    </div>
+
+                    {/* Content Scroll Area */}
+                    <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50/50">
+                        <div className="max-w-7xl mx-auto">
+
+                            {/* TAB: OVERVIEW */}
+                            {activeTab === 'overview' && (
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-fade-in">
+
+                                    {/* Trip Name & Basic Info - Full Width/Top */}
+                                    <div className="md:col-span-12 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                                            <span className="bg-blue-100 p-1.5 rounded-lg text-blue-600"><Layout className="w-4 h-4" /></span> פרטים כלליים
+                                        </h3>
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-slate-400 uppercase">שם הטיול</label>
                                             <input
                                                 value={activeTrip?.name || ''}
                                                 onChange={e => handleUpdateTrip({ name: e.target.value })}
-                                                className="w-full text-lg font-bold bg-slate-50 border-b-2 border-slate-200 focus:border-blue-500 px-3 py-2 rounded-t-lg outline-none transition-colors"
+                                                className="w-full text-xl font-bold bg-slate-50 border-b-2 border-slate-200 focus:border-blue-500 px-4 py-3 rounded-lg outline-none transition-colors"
                                                 placeholder="למשל: טיול משפחתי לתאילנד"
                                             />
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Dates Card */}
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                    <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                                        <span className="bg-purple-100 p-1.5 rounded-lg text-purple-600"><Calendar className="w-4 h-4" /></span> תאריכים
-                                    </h3>
-                                    <div className="flex gap-4">
-                                        <div className="flex-1 space-y-1">
-                                            <label className="text-xs font-bold text-slate-400 uppercase">התחלה</label>
-                                            <div className="relative">
+                                    {/* Dates - 6 Columns */}
+                                    <div className="md:col-span-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                                        <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                                            <span className="bg-purple-100 p-1.5 rounded-lg text-purple-600"><Calendar className="w-4 h-4" /></span> תאריכים
+                                        </h3>
+                                        <div className="flex gap-4 mb-auto">
+                                            <div className="flex-1 space-y-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase">התחלה</label>
                                                 <DateInput
                                                     value={startDate}
                                                     onChange={iso => handleDateChange('start', iso)}
@@ -646,10 +656,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                                     placeholder="DD/MM/YYYY"
                                                 />
                                             </div>
-                                        </div>
-                                        <div className="flex-1 space-y-1">
-                                            <label className="text-xs font-bold text-slate-400 uppercase">סיום</label>
-                                            <div className="relative">
+                                            <div className="flex-1 space-y-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase">סיום</label>
                                                 <DateInput
                                                     value={endDate}
                                                     onChange={iso => handleDateChange('end', iso)}
@@ -658,206 +666,236 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                                 />
                                             </div>
                                         </div>
+                                        <div className="mt-4 p-3 bg-purple-50 rounded-xl text-center text-sm font-bold text-purple-700 border border-purple-100">
+                                            {startDate && endDate ? `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}` : 'טרם נבחר טווח תאריכים'}
+                                        </div>
                                     </div>
-                                    <div className="mt-4 p-3 bg-purple-50 rounded-xl text-center text-sm font-bold text-purple-700 border border-purple-100">
-                                        טווח נבחר: {startDate && endDate ? `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}` : 'טרם נבחר'}
-                                    </div>
-                                </div>
 
-                                {/* Route Card */}
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                    <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                                        <span className="bg-orange-100 p-1.5 rounded-lg text-orange-600"><MapPin className="w-4 h-4" /></span> מסלול (ערים)
-                                    </h3>
-                                    <div className="flex flex-wrap gap-2 mb-4">
-                                        {routeCities.map((city, idx) => (
-                                            <div key={idx} className="bg-white border text-sm border-slate-200 px-3 py-1.5 rounded-full font-bold text-slate-700 shadow-sm flex items-center gap-2">
-                                                {city}
-                                                <button onClick={() => removeCity(idx)} className="text-slate-300 hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <input
-                                            value={newCityInput}
-                                            onChange={e => setNewCityInput(e.target.value)}
-                                            onKeyDown={e => e.key === 'Enter' && addCity()}
-                                            className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-orange-500"
-                                            placeholder="הוסף עיר למסלול..."
-                                        />
-                                        <button onClick={addCity} className="p-3 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 font-bold"><Plus className="w-5 h-5" /></button>
-                                    </div>
-                                </div>
-
-                                {/* Danger Zone - Owner Only for Shared Trips */}
-                                {(!activeTrip?.isShared || activeTrip.sharing?.role === 'owner') && (
-                                    <div className="mt-12 p-4 bg-red-50/50 border border-red-100 rounded-2xl opacity-60 hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={(e) => handleDeleteTrip(e, activeTrip?.id || '')}
-                                            className="w-full text-red-500 font-bold text-xs flex items-center justify-center gap-2 hover:underline"
-                                        >
-                                            <Trash2 className="w-3 h-3" /> מחיקת טיול זה לצמיתות
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* TAB: LOGISTICS */}
-                        {activeTab === 'logistics' && (
-                            <div className="space-y-6 animate-fade-in">
-
-                                {/* Flights */}
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                                            <span className="bg-sky-100 p-1.5 rounded-lg text-sky-600"><Plane className="w-4 h-4" /></span> טיסות
+                                    {/* Route - 6 Columns */}
+                                    <div className="md:col-span-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                                        <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                                            <span className="bg-orange-100 p-1.5 rounded-lg text-orange-600"><MapPin className="w-4 h-4" /></span> מסלול (ערים)
                                         </h3>
-                                        <button
-                                            onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', from: '', to: '', date: '', departureTime: '', arrivalTime: '', airline: '', pnr: '' }] } })}
-                                            className="text-xs font-bold bg-sky-50 text-sky-600 px-3 py-1.5 rounded-lg hover:bg-sky-100 transition-colors"
-                                        >
-                                            + הוסף טיסה
-                                        </button>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {(activeTrip?.flights?.segments || []).map((seg, idx) => (
-                                            <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group">
-                                                <button onClick={() => handleDeleteFlightSegment(idx)} className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
-                                                <div className="flex gap-4 items-center mb-3">
-                                                    <input className="w-16 text-center font-black bg-white rounded border border-slate-200 py-1 uppercase" value={seg.fromCode} onChange={(e) => handleUpdateFlightSegment(idx, 'fromCode', e.target.value)} placeholder="TLV" />
-                                                    <Plane className="w-4 h-4 text-slate-300 rotate-90" />
-                                                    <input className="w-16 text-center font-black bg-white rounded border border-slate-200 py-1 uppercase" value={seg.toCode} onChange={(e) => handleUpdateFlightSegment(idx, 'toCode', e.target.value)} placeholder="NYC" />
-                                                    <input className="flex-1 font-medium bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-sm px-2" value={seg.flightNumber} onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)} placeholder="מספר טיסה (LY001)" />
+                                        <div className="flex flex-wrap gap-2 mb-4 min-h-[40px]">
+                                            {routeCities.map((city, idx) => (
+                                                <div key={idx} className="bg-white border text-sm border-slate-200 px-3 py-1.5 rounded-full font-bold text-slate-700 shadow-sm flex items-center gap-2 animate-scale-in">
+                                                    {city}
+                                                    <button onClick={() => removeCity(idx)} className="text-slate-300 hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
                                                 </div>
-                                                <div className="flex gap-4 text-sm">
-                                                    <DateInput className="bg-white border border-slate-200 rounded px-2 py-1" value={seg.date} onChange={(iso) => handleUpdateFlightSegment(idx, 'date', iso)} />
-                                                    <input className="w-20 bg-white border border-slate-200 rounded px-2 py-1" value={seg.departureTime} onChange={(e) => handleUpdateFlightSegment(idx, 'departureTime', e.target.value)} placeholder="המראה" />
-                                                    <input className="w-20 bg-white border border-slate-200 rounded px-2 py-1" value={seg.arrivalTime} onChange={(e) => handleUpdateFlightSegment(idx, 'arrivalTime', e.target.value)} placeholder="נחיתה" />
-                                                </div>
+                                            ))}
+                                            {routeCities.length === 0 && <span className="text-slate-400 text-sm italic py-1">עדיין לא הוגדרו יעדים...</span>}
+                                        </div>
+                                        <div className="flex gap-2 mt-auto">
+                                            <div className="relative flex-1">
+                                                <input
+                                                    value={newCityInput}
+                                                    onChange={e => setNewCityInput(e.target.value)}
+                                                    onKeyDown={e => e.key === 'Enter' && addCity()}
+                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-orange-500 pr-16"
+                                                    placeholder="הוסף עיר..."
+                                                />
                                             </div>
-                                        ))}
-                                        {(!activeTrip?.flights?.segments?.length) && <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-xl">אין טיסות ברשימה</div>}
+                                            <button onClick={addCity} className="p-3 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 font-bold transition-colors"><Plus className="w-5 h-5" /></button>
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Hotels */}
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                                            <span className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600"><Hotel className="w-4 h-4" /></span> מלונות
-                                        </h3>
-                                        <button
-                                            onClick={() => activeTrip && handleUpdateTrip({ hotels: [...activeTrip.hotels, { id: `h-${Date.now()}`, name: 'מלון חדש', address: '', checkInDate: '', checkOutDate: '', nights: 0 }] })}
-                                            className="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
-                                        >
-                                            + הוסף מלון
-                                        </button>
-                                    </div>
-                                    <div className="space-y-3">
-                                        {(activeTrip?.hotels || []).map((h, idx) => (
-                                            <div key={h.id || idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group">
-                                                <button onClick={() => handleDeleteHotel(h.id)} className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
-                                                <div className="space-y-2">
-                                                    <input className="w-full font-bold text-slate-800 bg-transparent border-b border-transparent focus:border-slate-300 outline-none" value={h.name} onChange={(e) => handleUpdateHotel(h.id, 'name', e.target.value)} placeholder="שם המלון" />
-                                                    <div className="flex items-center gap-2 text-slate-500 text-sm">
-                                                        <MapPin className="w-3.5 h-3.5" />
-                                                        <input className="flex-1 bg-transparent border-b border-transparent focus:border-slate-300 outline-none" value={h.address} onChange={(e) => handleUpdateHotel(h.id, 'address', e.target.value)} placeholder="כתובת" />
+                                    {/* Danger Zone - Full Width (Bottom) */}
+                                    {(!activeTrip?.isShared || activeTrip.sharing?.role === 'owner') && (
+                                        <div className="md:col-span-12 mt-4">
+                                            <div className="p-4 bg-red-50/50 border border-red-100 rounded-2xl opacity-60 hover:opacity-100 transition-opacity flex justify-between items-center group">
+                                                <div className="text-xs text-red-800 font-medium px-2">אזור מסוכן</div>
+                                                <button
+                                                    onClick={(e) => handleDeleteTrip(e, activeTrip?.id || '')}
+                                                    className="px-4 py-2 bg-white text-red-500 font-bold text-xs rounded-lg border border-red-100 hover:bg-red-50 hover:border-red-200 transition-all flex items-center gap-2 shadow-sm"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" /> מחיקת טיול לצמיתות
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* TAB: LOGISTICS */}
+                            {activeTab === 'logistics' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in items-start">
+
+                                    {/* Flights - Column 1 */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-full">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                                                <span className="bg-sky-100 p-1.5 rounded-lg text-sky-600"><Plane className="w-4 h-4" /></span> טיסות
+                                            </h3>
+                                            <button
+                                                onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', from: '', to: '', date: '', departureTime: '', arrivalTime: '', airline: '', pnr: '' }] } })}
+                                                className="text-xs font-bold bg-sky-50 text-sky-600 px-3 py-1.5 rounded-lg hover:bg-sky-100 transition-colors flex items-center gap-1"
+                                            >
+                                                <Plus className="w-3 h-3" /> הוסף טיסה
+                                            </button>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {(activeTrip?.flights?.segments || []).map((seg, idx) => (
+                                                <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group hover:shadow-md transition-shadow">
+                                                    <button onClick={() => handleDeleteFlightSegment(idx)} className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                                                    <div className="flex gap-3 items-center mb-3 pr-2">
+                                                        <input className="w-14 text-center font-black bg-white rounded-lg border border-slate-200 py-1.5 uppercase text-sm focus:border-sky-500 outline-none" value={seg.fromCode} onChange={(e) => handleUpdateFlightSegment(idx, 'fromCode', e.target.value)} placeholder="TLV" />
+                                                        <Plane className="w-4 h-4 text-slate-300 rotate-90 shrink-0" />
+                                                        <input className="w-14 text-center font-black bg-white rounded-lg border border-slate-200 py-1.5 uppercase text-sm focus:border-sky-500 outline-none" value={seg.toCode} onChange={(e) => handleUpdateFlightSegment(idx, 'toCode', e.target.value)} placeholder="JFK" />
+                                                        <input className="flex-1 font-medium bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-sm px-2 text-left rtl:text-right" value={seg.flightNumber} onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)} placeholder="מספר טיסה" />
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-4 mt-2">
-                                                        <div className="bg-white px-2 py-1 rounded border border-slate-200">
-                                                            <label className="text-[10px] font-bold text-slate-400 block">Check-in</label>
-                                                            <DateInput className="w-full text-xs font-bold outline-none" value={h.checkInDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkInDate', iso)} />
-                                                        </div>
-                                                        <div className="bg-white px-2 py-1 rounded border border-slate-200">
-                                                            <label className="text-[10px] font-bold text-slate-400 block">Check-out</label>
-                                                            <DateInput className="w-full text-xs font-bold outline-none" value={h.checkOutDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkOutDate', iso)} />
-                                                        </div>
+                                                    <div className="flex gap-2 text-xs">
+                                                        <DateInput className="bg-white border border-slate-200 rounded px-2 py-1.5 flex-1" value={seg.date} onChange={(iso) => handleUpdateFlightSegment(idx, 'date', iso)} placeholder="תאריך" />
+                                                        <input className="w-16 bg-white border border-slate-200 rounded px-2 py-1.5 text-center direction-ltr" value={seg.departureTime} onChange={(e) => handleUpdateFlightSegment(idx, 'departureTime', e.target.value)} placeholder="14:00" />
+                                                        <span className="self-center text-slate-300">-</span>
+                                                        <input className="w-16 bg-white border border-slate-200 rounded px-2 py-1.5 text-center direction-ltr" value={seg.arrivalTime} onChange={(e) => handleUpdateFlightSegment(idx, 'arrivalTime', e.target.value)} placeholder="19:00" />
                                                     </div>
                                                 </div>
+                                            ))}
+                                            {(!activeTrip?.flights?.segments?.length) && (
+                                                <div className="text-center py-12 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100">
+                                                    <Plane className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                                                    <div className="text-slate-400 text-sm font-medium">אין טיסות ברשימה</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Hotels - Column 2 */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-full">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                                                    <span className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600"><Hotel className="w-4 h-4" /></span> מלונות
+                                                </h3>
+                                                {/* AI Indicator for User Feedback */}
+                                                {isSaving && <span className="text-[10px] font-bold text-purple-600 animate-pulse bg-purple-50 px-2 py-0.5 rounded-full">AI Enriching...</span>}
                                             </div>
-                                        ))}
-                                        {(!activeTrip?.hotels?.length) && <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-xl">אין מלונות ברשימה</div>}
+                                            <button
+                                                onClick={() => activeTrip && handleUpdateTrip({ hotels: [...activeTrip.hotels, { id: `h-${Date.now()}`, name: 'מלון חדש', address: '', checkInDate: '', checkOutDate: '', nights: 0 }] })}
+                                                className="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                                            >
+                                                <Plus className="w-3 h-3" /> הוסף מלון
+                                            </button>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {(activeTrip?.hotels || []).map((h, idx) => (
+                                                <div key={h.id || idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group hover:shadow-md transition-shadow">
+                                                    <button onClick={() => handleDeleteHotel(h.id)} className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                                                    <div className="space-y-3">
+                                                        <input
+                                                            className="w-full font-bold text-slate-800 bg-transparent border-b border-transparent focus:border-slate-300 outline-none placeholder:font-normal"
+                                                            value={h.name}
+                                                            onChange={(e) => handleUpdateHotel(h.id, 'name', e.target.value)}
+                                                            placeholder="שם המלון..."
+                                                        />
+                                                        <div className="flex items-center gap-2 text-slate-500 text-sm bg-white p-2 rounded-lg border border-slate-100">
+                                                            <MapPin className="w-3.5 h-3.5 shrink-0" />
+                                                            <input
+                                                                className="flex-1 bg-transparent border-none outline-none text-xs w-full"
+                                                                value={h.address}
+                                                                onChange={(e) => handleUpdateHotel(h.id, 'address', e.target.value)}
+                                                                placeholder="כתובת מלאה (לחיפוש ע״י AI)"
+                                                            />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm">
+                                                                <label className="text-[10px] font-bold text-slate-400 block mb-1">Check-in</label>
+                                                                <DateInput className="w-full text-xs font-bold outline-none" value={h.checkInDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkInDate', iso)} />
+                                                            </div>
+                                                            <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm">
+                                                                <label className="text-[10px] font-bold text-slate-400 block mb-1">Check-out</label>
+                                                                <DateInput className="w-full text-xs font-bold outline-none" value={h.checkOutDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkOutDate', iso)} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {(!activeTrip?.hotels?.length) && (
+                                                <div className="text-center py-12 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100">
+                                                    <Hotel className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                                                    <div className="text-slate-400 text-sm font-medium">אין מלונות ברשימה</div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* TAB: AI MAGIC */}
-                        {activeTab === 'ai' && (
-                            <div className="space-y-6 animate-fade-in">
-                                <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl p-8 text-white text-center">
-                                    <Sparkles className="w-12 h-12 mx-auto mb-4 text-purple-200" />
-                                    <h3 className="text-2xl font-black mb-2">Magic Import</h3>
-                                    <p className="text-purple-100 mb-6 font-medium">גרור לכאן קבצי PDF של טיסות, מלונות או כרטיסים וה-AI יסדר אותם בטיול.</p>
-                                    <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-                                        <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />
+                            {/* TAB: AI MAGIC */}
+                            {activeTab === 'ai' && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl p-8 text-white text-center">
+                                        <Sparkles className="w-12 h-12 mx-auto mb-4 text-purple-200" />
+                                        <h3 className="text-2xl font-black mb-2">Magic Import</h3>
+                                        <p className="text-purple-100 mb-6 font-medium">גרור לכאן קבצי PDF של טיסות, מלונות או כרטיסים וה-AI יסדר אותם בטיול.</p>
+                                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+                                            <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
+                        </div>
                     </div>
                 </div>
+
+                {/* Modals */}
+                {isShareModalOpen && (
+                    <ShareModal
+                        trip={activeTrip}
+                        onClose={() => setIsShareModalOpen(false)}
+                        onUpdateTrip={(updatedTrip) => {
+                            const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t);
+                            setTrips(newTrips);
+                            onSave(newTrips);
+                        }}
+                    />
+                )}
+
+                {/* New File-First Onboarding Modal */}
+                {isWizardOpen && (
+                    <OnboardingModal
+                        startOpen={true}
+                        onClose={() => setIsWizardOpen(false)}
+                        onImportTrip={(newTrip) => {
+                            const updatedTrips = [...trips, newTrip];
+                            setTrips(updatedTrips);
+                            onSave(updatedTrips);
+                            setActiveTripId(newTrip.id);
+                            setIsWizardOpen(false);
+                        }}
+                        // Maintain legacy generic create support if needed, but onImportTrip handles the new flow
+                        onCreateNew={() => {
+                            // Fallback for "Manual" creation if the user clicked "Skip" in the modal
+                            // We can either let the modal handle the empty trip creation or trigger a simple default here.
+                            // The OnboardingModal's "handleLegacyCreate" logic actually calls onCreateNew if provided,
+                            // or we can make OnboardingModal return a blank trip via onImportTrip.
+                            // Current OnboardingModal implementation implementation calls onImportTrip with formatted data.
+                            const newTrip: Trip = {
+                                id: crypto.randomUUID(),
+                                name: "New Trip",
+                                dates: "",
+                                destination: "",
+                                coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
+                                flights: { passengerName: "", pnr: "", segments: [] },
+                                hotels: [],
+                                restaurants: [],
+                                attractions: [],
+                                itinerary: [],
+                                documents: [],
+                                secureNotes: [],
+                                isShared: false
+                            };
+                            const updatedTrips = [...trips, newTrip];
+                            setTrips(updatedTrips);
+                            onSave(updatedTrips);
+                            setActiveTripId(newTrip.id);
+                            setIsWizardOpen(false);
+                        }}
+                    />
+                )}
             </div>
-
-            {/* Modals */}
-            {isShareModalOpen && (
-                <ShareModal
-                    trip={activeTrip}
-                    onClose={() => setIsShareModalOpen(false)}
-                    onUpdateTrip={(updatedTrip) => {
-                        const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t);
-                        setTrips(newTrips);
-                        onSave(newTrips);
-                    }}
-                />
-            )}
-
-            {/* New File-First Onboarding Modal */}
-            {isWizardOpen && (
-                <OnboardingModal
-                    startOpen={true}
-                    onClose={() => setIsWizardOpen(false)}
-                    onImportTrip={(newTrip) => {
-                        const updatedTrips = [...trips, newTrip];
-                        setTrips(updatedTrips);
-                        onSave(updatedTrips);
-                        setActiveTripId(newTrip.id);
-                        setIsWizardOpen(false);
-                    }}
-                    // Maintain legacy generic create support if needed, but onImportTrip handles the new flow
-                    onCreateNew={() => {
-                        // Fallback for "Manual" creation if the user clicked "Skip" in the modal
-                        // We can either let the modal handle the empty trip creation or trigger a simple default here.
-                        // The OnboardingModal's "handleLegacyCreate" logic actually calls onCreateNew if provided,
-                        // or we can make OnboardingModal return a blank trip via onImportTrip.
-                        // Current OnboardingModal implementation implementation calls onImportTrip with formatted data.
-                        const newTrip: Trip = {
-                            id: crypto.randomUUID(),
-                            name: "New Trip",
-                            dates: "",
-                            destination: "",
-                            coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
-                            flights: { passengerName: "", pnr: "", segments: [] },
-                            hotels: [],
-                            restaurants: [],
-                            attractions: [],
-                            itinerary: [],
-                            documents: [],
-                            secureNotes: [],
-                            isShared: false
-                        };
-                        const updatedTrips = [...trips, newTrip];
-                        setTrips(updatedTrips);
-                        onSave(updatedTrips);
-                        setActiveTripId(newTrip.id);
-                        setIsWizardOpen(false);
-                    }}
-                />
-            )}
         </div>
-
     );
 };
 // Removed Legacy TripWizard Component

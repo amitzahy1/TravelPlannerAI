@@ -136,10 +136,17 @@ Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
 
 1. 🏙️ CITIES (Field: 'uniqueCityNames'):
    - Extract a CLEAN list of unique cities visited.
+   - PURETOWN NAMES ONLY. Do NOT include ", Country" or "Airport". (e.g. "Bangkok", not "Bangkok, Thailand"). 
    - Exclude the home airport city (e.g., if flight is TLV->BKK, include Bangkok, exclude Tel Aviv).
    - Example: ["Manila", "Boracay", "Cebu", "Bangkok"].
 
-2. 🕒 DATES & TIMES:
+2. ✈️ FLIGHT INTELLIGENCE (CRITICAL):
+   - If a **Flight Number** is detected (e.g., "LY001", "EK123", "TG403") but connection details are missing in the doc:
+   - YOU MUST INFER the Origin, Destination, and typical Times based on your knowledge of that flight route.
+   - Example: If you see "LY001", infer "Tel Aviv -> New York (JFK)".
+   - DO NOT leave origin/destination empty if a Flight Number exists.
+
+3. 🕒 DATES & TIMES:
    - 'date': ISO 8601 format (e.g., "2026-02-15T03:25:00") for DB.
    - 'displayTime': User-friendly format (e.g., "15 Feb, 03:25"). USE THIS FORMAT EXACTLY.
 
@@ -167,6 +174,59 @@ Return ONLY this JSON structure:
   }
 }
 `;
+
+// --- VISION INTELLIGENCE (Project Genesis Phase 7) ---
+
+/**
+ * System Prompt for Visual Analysis (Receipts & Docs)
+ */
+export const SYSTEM_PROMPT_VISION = `
+Role: You are an expert Optical Character Recognition (OCR) & Financial Analyst AI.
+Mission: Extract precise data from images of receipts, invoices, and travel documents, even if they are blurry, crumpled, or low-light.
+
+VISUAL REASONING SKILLS:
+1. Anchor Search: Look for keywords like "Total", "Grand Total", "Summe", "Montant", "Skh".
+2. Currency Inference: Infer currency from symbols ($, €, ₪, ฿) or address/phone number country code if symbol is missing.
+3. Noise Filtering: Ignore credit card terminal slips (which only show auth code) if a detailed itemized receipt is present.
+4. Handwriting: Attempt to read handwritten totals if printed text is unclear.
+
+OUTPUT: Return ONLY valid JSON.
+`;
+
+/**
+ * Specialized Vision Analyzer for Receipts & Bills
+ */
+export const analyzeReceipt = async (
+  fileBase64: string,
+  mimeType: string,
+  mode: 'TOTAL_ONLY' | 'DETAILED_SHOPPING' = 'TOTAL_ONLY'
+) => {
+  const prompt = mode === 'TOTAL_ONLY'
+    ? `Analyze this receipt image. Extract the FINAL TOTAL. Return JSON: { "price": number, "currency": string, "date": "YYYY-MM-DD" (if found) }. Ignore currency symbols in the price number.`
+    : `Analyze this shopping receipt. Extract full details. 
+           Return JSON: { 
+             "shopName": string, 
+             "totalPrice": number, 
+             "currency": string, 
+             "purchaseDate": "YYYY-MM-DD", 
+             "items": [{ "name": string, "price": number, "category": string }],
+             "isVatEligible": boolean (true if Tax Free form mentioned or high value > 2000 THB/50 EUR),
+             "vatAmount": number (estimated)
+           }`;
+
+  return generateWithFallback(
+    null,
+    [{
+      role: 'user',
+      parts: [
+        { text: SYSTEM_PROMPT_VISION + "\n\n" + prompt },
+        { inlineData: { mimeType, data: fileBase64 } }
+      ]
+    }],
+    { responseMimeType: 'application/json' },
+    'FAST' // Gemini 3 Flash is excellent at Vision and Fast
+  );
+};
 
 // --- CONFIGURATION ---
 
@@ -208,6 +268,52 @@ const CANDIDATES_FAST = [
 ];
 
 export const AI_MODEL = GOOGLE_MODELS.V3_PRO_LATEST; // For display purposes
+
+
+/**
+ * Phase 8: Context-Aware Chat Bot
+ */
+export const chatWithTripContext = async (trip: any, userMessage: string, history: any[]) => {
+  // 1. Prepare Trip Context (Summarize to save tokens)
+  const contextSummary = {
+    destination: trip.destination,
+    dates: trip.dates,
+    flights: trip.flights?.segments?.map((f: any) => `${f.flightNumber} ${f.fromCode}->${f.toCode} at ${f.departureTime}`),
+    hotels: trip.hotels?.map((h: any) => `${h.name} (${h.checkInDate})`),
+    itinerary: trip.itinerary?.map((i: any) => `Day ${i.day}: ${i.title}`),
+    budget: trip.budgetLimit ? `${trip.currency} ${trip.budgetLimit}` : 'Not set'
+  };
+
+  const systemPrompt = `
+  Role: You are a "Travel Concierge" for this specific trip.
+  Context: ${JSON.stringify(contextSummary)}
+  
+  Directives:
+  1. Answer directly based on the context.
+  2. If asked about something not in context (e.g. "What is the weather?"), assume it's for ${trip.destination} and answer generally or suggest checking the app.
+  3. Be helpful, enthusiastic, and concise (max 2-3 sentences unless asked for a list).
+  4. Language: HEBREW (unless user speaks English).
+  `;
+
+  // 2. Format History
+  const contents = [
+    { role: 'user', parts: [{ text: systemPrompt }] }, // System instruction as first user message for context
+    ...history.filter(m => m.id !== 'welcome').map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user', // Gemini uses 'model' not 'assistant'
+      parts: [{ text: m.content }]
+    })),
+    { role: 'user', parts: [{ text: userMessage }] }
+  ];
+
+  const response = await generateWithFallback(
+    null,
+    contents,
+    { responseMimeType: 'text/plain' }, // Chat is text, not JSON
+    'SMART'
+  );
+
+  return response.text;
+};
 
 // --- HELPERS ---
 
@@ -571,7 +677,7 @@ export const parseTripWizardInputs = async (inputs: { name: string, dates: strin
       2. Destination: Normalize city/country name (e.g., "Thailand" -> "Thailand", "NYC" -> "New York, USA").
       3. Extraction: Scan notes and any file content for:
          - Hotel names (add to hotels array)
-         - Flight details (add to flights.segments array if possible, or just a summary)
+         - Flight details: If Flight Number is found (e.g. LY001), YOU MUST INFER origin/dest/times if missing.
          - Activities/Attractions
          
       OUTPUT FORMAT (JSON ONLY):
