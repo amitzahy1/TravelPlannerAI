@@ -105,65 +105,67 @@ export const SYSTEM_PROMPT = SYSTEM_PROMPT_RESEARCH;
  * System Prompt for Deep Understanding (Project Genesis)
  */
 /**
- * System Prompt for Deep Understanding (Project Genesis - Phase 3)
+ * UPDATED SYSTEM PROMPT - "The Categorization Enforcer"
  */
-export const SYSTEM_PROMPT_ANALYZE_TRIP = `Role: You are the Lead AI Architect at Google Travel. 
-Mission: Upgrade the travel document analysis to provide Granular City Data and Full File Transparency.
+export const SYSTEM_PROMPT_ANALYZE_TRIP = `
+Role: You are the Lead Data Architect for a Travel App.
+Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
 
-1. **Task: Multi-Source Truth**
-   - If multiple files verify the same event (e.g., Receipt + Ticket), link ALL their filenames to that single object using the "sourceFileIds" array.
-   - NO CONSOLIDATION: Each flight leg MUST be its own separate object in the "logistics" array.
+--- CATEGORIZATION RULES (CRITICAL) ---
 
-2. **Task: City & Route Extraction**
-   - add "visitedDestinations" (Array of Strings) to the metadata.
-   - Extract the city/island name for EVERY stop. Look at:
-     - Flight Arrivals (e.g., CEB -> Cebu, MPH -> Boracay, MNL -> Manila).
-     - Hotel Addresses.
-     - Activity Locations.
-   - Return a unique list of specific towns/islands.
+1. 🏨 ACCOMMODATION (Must be in 'accommodation' array):
+   - Hotels, Airbnbs, Hostels, Resorts.
+   - Example: "New World Makati Hotel", "Discovery Boracay".
+   - DO NOT put these in 'experiences' or 'transport'.
 
-3. **Task: The "Rejection Report"**
-   - Add a top-level array "unprocessedFiles" to the JSON.
-   - If a file was NOT used (duplicate, irrelevant, unreadable), add it here with a reason.
-   - Format: { "fileName": string, "reason": "reason why" }
+2. ✈️ TRANSPORT (Must be in 'transport' array):
+   - Flights (Etihad, Cebu Pacific, AirAsia).
+   - Trains, Ferries, Buses, Car Rentals.
+   - Group connecting flights into a single logical "Journey" if possible, or keep separate segments.
 
-4. **Task: Human-Readable Dates**
-   - Inside each item's data object, add a "displayTime" field alongside the ISO string.
-   - Format: "DD Mon, HH:mm" (e.g., "15 Feb, 03:25").
+3. 🔒 WALLET (Must be in 'wallet' array):
+   - Entry Permits (eTravel Philippines, Thailand Arrival Card).
+   - Visas, Passports, Travel Insurance, Vaccination Certificates.
+   - ANY bureaucratic document goes here.
 
-5. **JSON Output Specification (Strict):** Return a StagedTripData object.
-   {
-      "tripMetadata": {
-        "suggestedName": "Philippine Island Hopping",
-        "suggestedDates": "2026-01-28 - 2026-02-15",
-        "mainDestination": "Philippines",
-        "visitedDestinations": ["Manila", "Boracay", "Cebu", "Bangkok"]
-      },
-      "processedFileIds": ["Itinerary.pdf", "E-Receipt.pdf"],
-      "unprocessedFiles": [
-        { "fileName": "marketing.pdf", "reason": "Irrelevant marketing material" }
-      ],
-      "categories": {
-        "logistics": [
-          {
-            "type": "flight",
-            "sourceFileIds": ["Itinerary.pdf", "E-Receipt.pdf"],
-            "confidence": 0.98,
-            "data": { 
-               "airline": "Cebu Pacific", 
-               "flightNumber": "5J137", 
-               "departureTime": "2026-02-04T12:00:00", 
-               "displayTime": "04 Feb, 12:00",
-               "from": "MPH", "to": "CEB" 
-            }
-          }
-        ],
-        "wallet": [],
-        "experiences": []
-      }
-   }
+4. ⭐ EXPERIENCES:
+   - 'dining': Restaurant reservations.
+   - 'activities': Concert tickets, Museum passes, Tours.
 
-OUTPUT: Return ONLY valid JSON.
+--- DATA EXTRACTION RULES ---
+
+1. 🏙️ CITIES (Field: 'uniqueCityNames'):
+   - Extract a CLEAN list of unique cities visited.
+   - Exclude the home airport city (e.g., if flight is TLV->BKK, include Bangkok, exclude Tel Aviv).
+   - Example: ["Manila", "Boracay", "Cebu", "Bangkok"].
+
+2. 🕒 DATES & TIMES:
+   - 'date': ISO 8601 format (e.g., "2026-02-15T03:25:00") for DB.
+   - 'displayTime': User-friendly format (e.g., "15 Feb, 03:25"). USE THIS FORMAT EXACTLY.
+
+3. 📂 FILE MAPPING:
+   - Use 'sourceFileIds' (Array) to link multiple files to a single event.
+   - If a file is a duplicate or yields no data, add it to 'unprocessedFiles' with a reason.
+
+--- OUTPUT JSON SCHEMA ---
+Return ONLY this JSON structure:
+{
+  "tripMetadata": {
+    "suggestedName": "String",
+    "suggestedDates": "YYYY-MM-DD - YYYY-MM-DD",
+    "mainDestination": "String (Country/Region)",
+    "uniqueCityNames": ["City1", "City2"]
+  },
+  "processedFileIds": ["file1.pdf", "file2.pdf"],
+  "unprocessedFiles": [{ "fileName": "x.pdf", "reason": "Duplicate" }],
+  "categories": {
+    "transport": [ { "type": "flight", "data": { ... }, "sourceFileIds": [...] } ],
+    "accommodation": [ { "type": "hotel", "data": { "hotelName": "...", "checkInDate": "...", "displayTime": "..." }, "sourceFileIds": [...] } ],
+    "wallet": [ { "type": "entry_permit", "data": { "documentName": "...", "displayTime": "..." }, "sourceFileIds": [...] } ],
+    "dining": [],
+    "activities": []
+  }
+}
 `;
 
 // --- CONFIGURATION ---
@@ -784,8 +786,8 @@ export interface TripAnalysisResult {
 const ensureStagedTripSchema = (data: any): StagedTripData => {
   if (!data || typeof data !== 'object') {
     return {
-      tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "", visitedDestinations: [] },
-      categories: { logistics: [], wallet: [], experiences: [] },
+      tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "", uniqueCityNames: [] },
+      categories: { transport: [], accommodation: [], wallet: [], dining: [], activities: [] },
       processedFileIds: [],
       unprocessedFiles: []
     };
@@ -797,12 +799,14 @@ const ensureStagedTripSchema = (data: any): StagedTripData => {
       suggestedName: data.tripMetadata?.suggestedName || "New Trip",
       suggestedDates: data.tripMetadata?.suggestedDates || "",
       mainDestination: data.tripMetadata?.mainDestination || "",
-      visitedDestinations: data.tripMetadata?.visitedDestinations || []
+      uniqueCityNames: data.tripMetadata?.uniqueCityNames || []
     },
     categories: {
-      logistics: Array.isArray(data.categories?.logistics) ? data.categories.logistics : [],
+      transport: Array.isArray(data.categories?.transport) ? data.categories.transport : [],
+      accommodation: Array.isArray(data.categories?.accommodation) ? data.categories.accommodation : [],
       wallet: Array.isArray(data.categories?.wallet) ? data.categories.wallet : [],
-      experiences: Array.isArray(data.categories?.experiences) ? data.categories.experiences : []
+      dining: Array.isArray(data.categories?.dining) ? data.categories.dining : [],
+      activities: Array.isArray(data.categories?.activities) ? data.categories.activities : []
     },
     processedFileIds: Array.isArray(data.processedFileIds) ? data.processedFileIds : [],
     unprocessedFiles: Array.isArray(data.unprocessedFiles) ? data.unprocessedFiles : []
@@ -1001,8 +1005,10 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
 
   // Default Empty Structure
   const emptyStagedData: StagedTripData = {
-    tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "" },
-    categories: { logistics: [], wallet: [], experiences: [] }
+    tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "", uniqueCityNames: [] },
+    categories: { transport: [], accommodation: [], wallet: [], dining: [], activities: [] },
+    processedFileIds: [],
+    unprocessedFiles: []
   };
 
   let stagedData: StagedTripData = emptyStagedData;
@@ -1024,9 +1030,11 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
     else if (item.fileId) usedFileIds.add(item.fileId); // Legacy fallback
   });
 
-  scanCategory(stagedData.categories.logistics);
+  scanCategory(stagedData.categories.transport);
+  scanCategory(stagedData.categories.accommodation);
   scanCategory(stagedData.categories.wallet);
-  scanCategory(stagedData.categories.experiences);
+  scanCategory(stagedData.categories.dining);
+  scanCategory(stagedData.categories.activities);
 
   // Use AI reported processed list if available, otherwise fallback to usedFileIds
   const processedByAI = new Set(stagedData.processedFileIds || []);
@@ -1048,9 +1056,11 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
 
   // Map to TripAnalysisResult
   const flattenedItems = [
-    ...stagedData.categories.logistics,
+    ...stagedData.categories.transport,
+    ...stagedData.categories.accommodation,
     ...stagedData.categories.wallet,
-    ...stagedData.categories.experiences
+    ...stagedData.categories.dining,
+    ...stagedData.categories.activities
   ];
 
   const dateRange = stagedData.tripMetadata.suggestedDates.split(' - ');
@@ -1062,7 +1072,7 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
 
   // Merge AI suggested destinations with derived cities
   const finalCities = Array.from(new Set([
-    ...(stagedData.tripMetadata.visitedDestinations || []),
+    ...(stagedData.tripMetadata.uniqueCityNames || []),
     ...derivedCities
   ]));
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sparkles, X, Check, MapPin, Calendar, Plane, Bed, Shield, Star, AlertTriangle, Trash2, Eye, EyeOff, Utensils, Ticket, AlertCircle, ChevronRight, Wand2 } from 'lucide-react';
+import { Sparkles, X, Check, MapPin, Calendar, Plane, Bed, Shield, Star, AlertTriangle, Trash2, Eye, EyeOff, Utensils, Ticket, AlertCircle, ChevronRight, Wand2, Bus } from 'lucide-react';
 import { Trip, StagedTripData, StagedWalletItem } from '../types';
 import { MagicDropZone } from './MagicDropZone';
 import { analyzeTripFiles, TripAnalysisResult } from '../services/aiService';
@@ -113,9 +113,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
         };
 
         // If we have raw data, use its categories, otherwise empty
-        const categories = tripData?.rawStagedData.categories || { logistics: [], wallet: [], experiences: [] };
+        const categories = tripData?.rawStagedData.categories || {
+            transport: [],
+            accommodation: [],
+            wallet: [],
+            dining: [],
+            activities: []
+        };
 
-        // Convert to proper Trip object (simplified mapping logic similar to previous implementation)
+        // Convert to proper Trip object
         const newTrip: Trip = {
             id: crypto.randomUUID(),
             name: finalMetadata.suggestedName || "New Trip",
@@ -125,7 +131,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
             flights: {
                 passengerName: "",
                 pnr: "",
-                segments: categories.logistics
+                segments: categories.transport
                     .filter(i => i.type === 'flight')
                     .map(i => ({
                         fromCode: i.data.from || '', toCode: i.data.to || '',
@@ -135,18 +141,48 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                         toCity: i.data.to || '', duration: "0h",
                     }))
             },
-            hotels: categories.logistics
-                .filter(i => i.type === 'hotel')
-                .map(i => ({
-                    id: i.fileId, name: i.data.name || 'Unknown Hotel',
-                    address: i.data.address || '', checkInDate: i.data.checkIn || '',
-                    checkOutDate: i.data.checkOut || '', nights: 0
-                })),
-            restaurants: [], // Simplify for now or map similarly
-            attractions: [],
+            hotels: categories.accommodation.map(i => ({
+                id: crypto.randomUUID(),
+                name: i.data.hotelName || '',
+                checkInDate: i.data.checkInDate || '',
+                checkOutDate: i.data.checkOutDate || '',
+                address: i.data.address || '',
+                confirmationCode: "",
+                roomType: "",
+                nights: 1
+            })),
+            restaurants: [{
+                id: crypto.randomUUID(),
+                title: "Imported Restaurants",
+                region: finalMetadata.mainDestination,
+                restaurants: categories.dining.map(i => ({
+                    id: crypto.randomUUID(),
+                    name: i.data.name || '',
+                    description: "Imported via AI",
+                    location: i.data.address || '',
+                    reservationTime: i.data.displayTime || '',
+                    iconType: 'ramen'
+                }))
+            }],
+            attractions: [{
+                id: crypto.randomUUID(),
+                title: "Imported Activities",
+                attractions: categories.activities.map(i => ({
+                    id: crypto.randomUUID(),
+                    name: i.data.name || '',
+                    description: "Imported via AI",
+                    location: i.data.address || '',
+                    scheduledTime: i.data.displayTime || ''
+                }))
+            }],
+            secureNotes: categories.wallet.map(i => ({
+                id: crypto.randomUUID(),
+                title: i.title || i.data.documentName || 'Document',
+                value: i.data.displayTime || 'No details', // Using displayTime as value if no secret is extracted
+                category: (i.type === 'passport' || i.type === 'visa' || i.type === 'insurance') ? i.type : 'other'
+            })),
             itinerary: [],
             documents: [],
-            secureNotes: [],
             isShared: false
         };
 
@@ -290,33 +326,48 @@ const AIBadge = () => (
 
 // Unified Review Component (Simplified from ImportsReviewModal)
 const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, files: File[] }) => {
-    const [activeTab, setActiveTab] = useState<'logistics' | 'wallet' | 'experiences'>('logistics');
-    const { logistics, wallet, experiences } = stagedData.categories;
+    const [activeTab, setActiveTab] = useState<'transport' | 'accommodation' | 'wallet' | 'experiences'>('transport');
+    const { transport, accommodation, wallet, dining, activities } = stagedData.categories;
 
     return (
         <div>
             {/* Tabs */}
-            <div className="flex items-center gap-2 mb-8 bg-slate-100/50 p-1 rounded-xl w-fit">
-                <TabButton active={activeTab === 'logistics'} onClick={() => setActiveTab('logistics')} icon={Plane} label="Itinerary" count={logistics.length} />
+            <div className="flex items-center gap-1 mb-8 bg-slate-100/50 p-1.5 rounded-2xl w-fit overflow-x-auto scrollbar-hide">
+                <TabButton active={activeTab === 'transport'} onClick={() => setActiveTab('transport')} icon={Plane} label="Transport" count={transport.length} />
+                <TabButton active={activeTab === 'accommodation'} onClick={() => setActiveTab('accommodation')} icon={Bed} label="Hotels" count={accommodation.length} />
                 <TabButton active={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} icon={Shield} label="Wallet" count={wallet.length} />
-                <TabButton active={activeTab === 'experiences'} onClick={() => setActiveTab('experiences')} icon={Star} label="Experiences" count={experiences.length} />
+                <TabButton active={activeTab === 'experiences'} onClick={() => setActiveTab('experiences')} icon={Star} label="Experiences" count={dining.length + activities.length} />
             </div>
 
             {/* Content */}
             <div className="space-y-4 animate-fade-in">
-                {activeTab === 'logistics' && (
+                {activeTab === 'transport' && (
                     <>
-                        {logistics.length === 0 && <EmptyState label="No logistics found" />}
-                        {logistics.map((item, idx) => (
+                        {transport.length === 0 && <EmptyState label="No transport found" />}
+                        {transport.map((item, idx) => (
                             <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm flex items-start gap-4">
-                                <div className={`p-3 rounded-lg ${item.type === 'flight' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
-                                    {item.type === 'flight' ? <Plane className="w-6 h-6" /> : <Bed className="w-6 h-6" />}
+                                <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                                    {item.type === 'flight' ? <Plane className="w-6 h-6" /> : <Bus className="w-6 h-6" />}
                                 </div>
                                 <div>
-                                    <div className="font-bold text-slate-800">{item.type === 'flight' ? item.data.airline : item.data.name}</div>
+                                    <div className="font-bold text-slate-800">{item.data.airline || item.data.flightNumber || 'Transport'}</div>
                                     <div className="text-sm text-slate-500">
-                                        {item.type === 'flight' ? `${item.data.from} → ${item.data.to}` : item.data.address}
+                                        {item.data.displayTime || item.data.departureTime} • {item.data.from} → {item.data.to}
                                     </div>
+                                </div>
+                            </div>
+                        ))}
+                    </>
+                )}
+                {activeTab === 'accommodation' && (
+                    <>
+                        {accommodation.length === 0 && <EmptyState label="No accommodations found" />}
+                        {accommodation.map((item, idx) => (
+                            <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm flex items-start gap-4">
+                                <div className="p-3 bg-purple-50 text-purple-600 rounded-lg"><Bed className="w-6 h-6" /></div>
+                                <div>
+                                    <div className="font-bold text-slate-800">{item.data.hotelName}</div>
+                                    <div className="text-sm text-slate-500">{item.data.displayTime} • {item.data.address}</div>
                                 </div>
                             </div>
                         ))}
@@ -338,13 +389,15 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                 )}
                 {activeTab === 'experiences' && (
                     <>
-                        {experiences.length === 0 && <EmptyState label="No experiences found" />}
-                        {experiences.map((item, idx) => (
+                        {[...dining, ...activities].length === 0 && <EmptyState label="No experiences found" />}
+                        {[...dining, ...activities].map((item, idx) => (
                             <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm flex items-center gap-4">
-                                <div className="p-3 bg-orange-50 text-orange-600 rounded-lg"><Star className="w-6 h-6" /></div>
-                                <div>
-                                    <div className="font-bold text-slate-800">{item.title || item.data.name}</div>
-                                    <div className="text-xs text-slate-400">Experience</div>
+                                <div className={`p-3 rounded-lg ${item.type === 'dining' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                    {item.type === 'dining' ? <Utensils className="w-6 h-6" /> : <Star className="w-6 h-6" />}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="font-bold text-slate-800">{item.data.name}</div>
+                                    <div className="text-xs text-slate-400 capitalize">{item.type} • {item.data.displayTime}</div>
                                 </div>
                             </div>
                         ))}

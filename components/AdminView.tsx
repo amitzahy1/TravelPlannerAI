@@ -268,7 +268,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                 'SMART'
             );
 
-            const textContent = typeof response.text === 'function' ? response.text() : response.text;
+            const textContent = response.text;
 
             let result;
             try {
@@ -311,13 +311,13 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
         onClose();
     };
 
-    const handleExportTrip = () => {
-        const dataStr = JSON.stringify(activeTrip, null, 2);
+    const handleExportData = () => {
+        const dataStr = JSON.stringify(trips, null, 2);
         const blob = new Blob([dataStr], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `trip_backup_${activeTrip.destination}_${new Date().toISOString().slice(0, 10)}.json`;
+        link.download = `trip_backup_${activeTrip?.destination || 'all'}_${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -459,13 +459,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
         const blob = new Blob([icsContent.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
         const link = document.createElement('a');
         link.href = window.URL.createObjectURL(blob);
-        link.setAttribute('download', `trip_itinerary_${activeTrip.destination}.ics`);
+        link.setAttribute('download', `trip_itinerary_${activeTrip?.destination || 'trip'}.ics`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
     const handleAiUpdate = (updatedTripData: Trip) => {
+        if (!activeTrip) return;
         const mergedTrip = {
             ...activeTrip,
             ...updatedTripData,
@@ -607,7 +608,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                             <div className="space-y-1">
                                                 <label className="text-xs font-bold text-slate-400 uppercase">שם הטיול</label>
                                                 <input
-                                                    value={activeTrip.name}
+                                                    value={activeTrip?.name || ''}
                                                     onChange={e => handleUpdateTrip({ name: e.target.value })}
                                                     className="w-full text-lg font-bold bg-slate-50 border-b-2 border-slate-200 focus:border-blue-500 px-3 py-2 rounded-t-lg outline-none transition-colors"
                                                     placeholder="למשל: טיול משפחתי לתאילנד"
@@ -678,7 +679,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                     {/* Danger Zone */}
                                     <div className="mt-12 p-4 bg-red-50/50 border border-red-100 rounded-2xl opacity-60 hover:opacity-100 transition-opacity">
                                         <button
-                                            onClick={(e) => handleDeleteTrip(e, activeTrip.id)}
+                                            onClick={(e) => handleDeleteTrip(e, activeTrip?.id || '')}
                                             className="w-full text-red-500 font-bold text-xs flex items-center justify-center gap-2 hover:underline"
                                         >
                                             <Trash2 className="w-3 h-3" /> מחיקת טיול זה לצמיתות
@@ -698,14 +699,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                                 <span className="bg-sky-100 p-1.5 rounded-lg text-sky-600"><Plane className="w-4 h-4" /></span> טיסות
                                             </h3>
                                             <button
-                                                onClick={() => handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', from: '', to: '', date: '', departureTime: '', arrivalTime: '', airline: '', pnr: '' }] } })}
+                                                onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', from: '', to: '', date: '', departureTime: '', arrivalTime: '', airline: '', pnr: '' }] } })}
                                                 className="text-xs font-bold bg-sky-50 text-sky-600 px-3 py-1.5 rounded-lg hover:bg-sky-100 transition-colors"
                                             >
                                                 + הוסף טיסה
                                             </button>
                                         </div>
                                         <div className="space-y-3">
-                                            {(activeTrip.flights?.segments || []).map((seg, idx) => (
+                                            {(activeTrip?.flights?.segments || []).map((seg, idx) => (
                                                 <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group">
                                                     <button onClick={() => handleDeleteFlightSegment(idx)} className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
                                                     <div className="flex gap-4 items-center mb-3">
@@ -721,7 +722,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                                     </div>
                                                 </div>
                                             ))}
-                                            {(!activeTrip.flights?.segments?.length) && <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-xl">אין טיסות ברשימה</div>}
+                                            {(!activeTrip?.flights?.segments?.length) && <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-xl">אין טיסות ברשימה</div>}
                                         </div>
                                     </div>
 
@@ -732,14 +733,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                                 <span className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600"><Hotel className="w-4 h-4" /></span> מלונות
                                             </h3>
                                             <button
-                                                onClick={() => handleUpdateTrip({ hotels: [...activeTrip.hotels, { id: `h-${Date.now()}`, name: 'מלון חדש', address: '', checkInDate: '', checkOutDate: '', nights: 0 }] })}
+                                                onClick={() => activeTrip && handleUpdateTrip({ hotels: [...activeTrip.hotels, { id: `h-${Date.now()}`, name: 'מלון חדש', address: '', checkInDate: '', checkOutDate: '', nights: 0 }] })}
                                                 className="text-xs font-bold bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
                                             >
                                                 + הוסף מלון
                                             </button>
                                         </div>
                                         <div className="space-y-3">
-                                            {activeTrip.hotels.map((h, idx) => (
+                                            {(activeTrip?.hotels || []).map((h, idx) => (
                                                 <div key={h.id || idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group">
                                                     <button onClick={() => handleDeleteHotel(h.id)} className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
                                                     <div className="space-y-2">
@@ -761,7 +762,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, onSave, onDe
                                                     </div>
                                                 </div>
                                             ))}
-                                            {(!activeTrip.hotels?.length) && <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-xl">אין מלונות ברשימה</div>}
+                                            {(!activeTrip?.hotels?.length) && <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-xl">אין מלונות ברשימה</div>}
                                         </div>
                                     </div>
                                 </div>

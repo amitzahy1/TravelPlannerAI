@@ -315,69 +315,70 @@ export interface TripMetadata {
   suggestedName: string;
   suggestedDates: string;
   mainDestination: string;
-  visitedDestinations?: string[]; // New: List of specific cities/islands
+  visitedDestinations?: string[]; // Legacy
+  uniqueCityNames: string[]; // List of unique cities visited (e.g. ["Manila", "Boracay"])
 }
 
-// 1. Logistics (Flights, Hotels, Transport)
-export interface StagedLogisticsItem {
-  type: 'flight' | 'hotel' | 'car_rental' | 'train' | 'other';
-  sourceFileIds: string[]; // Upgraded: Support for multiple files per item
+// 1. Transport (Flights, Trains, etc.)
+export interface StagedTransportItem {
+  type: 'flight' | 'train' | 'ferry' | 'bus' | 'car_rental' | 'other';
+  sourceFileIds: string[];
   data: {
     airline?: string;
     flightNumber?: string;
     departureTime?: string;
-    displayTime?: string; // New: AI-formatted localized time
-    arrivalTime?: string;
+    displayTime?: string;
     from?: string;
     to?: string;
-    price?: number;
-    currency?: string;
-    name?: string; // For hotels
-    checkIn?: string;
-    checkOut?: string;
+    [key: string]: any;
+  };
+  confidence: number;
+}
+
+// 2. Accommodation (Hotels, Airbnbs)
+export interface StagedAccommodationItem {
+  type: 'hotel' | 'airbnb' | 'hostel' | 'resort' | 'other';
+  sourceFileIds: string[];
+  data: {
+    hotelName: string;
+    checkInDate: string;
+    checkOutDate?: string;
+    displayTime: string;
     address?: string;
     [key: string]: any;
   };
   confidence: number;
 }
 
-// 2. Wallet (Passports, Visas, Identity)
+// 3. Wallet (Passports, Visas, Permits)
 export interface StagedWalletItem {
-  type: 'passport' | 'visa' | 'insurance' | 'id_card' | 'ticket' | 'other';
+  type: 'passport' | 'visa' | 'insurance' | 'entry_permit' | 'other';
   sourceFileIds: string[];
-  title: string;
+  title?: string;
   data: {
+    documentName?: string;
     expiryDate?: string;
-    holderName?: string;
     validUntil?: string;
+    displayTime?: string;
     [key: string]: any;
   };
   isSensitive: boolean;
-  uiMessage?: string; // e.g. "Will be encrypted"
-}
-
-// 3. Experiences (Restaurants, Attractions)
-export interface StagedExperienceItem {
-  type: 'restaurant_reservation' | 'attraction_ticket' | 'event' | 'other';
-  sourceFileIds: string[];
-  title: string;
-  data: {
-    name: string;
-    reservationTime?: string;
-    displayTime?: string;
-    entryTime?: string;
-    address?: string;
-    inferredCuisine?: string; // For restaurants
-    googleSearchQuery?: string; // For auto-mapping
-    [key: string]: any;
-  };
   uiMessage?: string;
 }
 
-export interface StagedCategories {
-  logistics: StagedLogisticsItem[];
-  wallet: StagedWalletItem[];
-  experiences: StagedExperienceItem[];
+// 4. Dining & Activities
+export interface StagedExperienceItem {
+  type: 'dining' | 'activity' | 'event' | 'other';
+  sourceFileIds: string[];
+  title?: string;
+  data: {
+    name: string;
+    reservationTime?: string;
+    displayTime: string;
+    address?: string;
+    [key: string]: any;
+  };
+  uiMessage?: string;
 }
 
 export interface UnprocessedFile {
@@ -385,9 +386,17 @@ export interface UnprocessedFile {
   reason: string;
 }
 
+export interface StagedCategories {
+  transport: StagedTransportItem[];
+  accommodation: StagedAccommodationItem[];
+  wallet: StagedWalletItem[];
+  dining: StagedExperienceItem[];
+  activities: StagedExperienceItem[];
+}
+
 export interface StagedTripData {
   tripMetadata: TripMetadata;
-  processedFileIds?: string[];
-  unprocessedFiles?: UnprocessedFile[]; // New: Detailed rejection report
+  processedFileIds: string[];
+  unprocessedFiles: UnprocessedFile[];
   categories: StagedCategories;
 }
