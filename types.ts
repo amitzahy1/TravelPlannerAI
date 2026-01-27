@@ -309,3 +309,75 @@ export interface DayPlan {
   stats: { food: number, attr: number, flight: number, travel: number, hotel: number };
   hasHotel: boolean;
 }
+
+// --- NEW: Staged Trip Data (Omni-Import System) ---
+export interface TripMetadata {
+  suggestedName: string;
+  suggestedDates: string;
+  mainDestination: string;
+}
+
+// 1. Logistics (Flights, Hotels, Transport)
+export interface StagedLogisticsItem {
+  type: 'flight' | 'hotel' | 'car_rental' | 'train' | 'other';
+  fileId: string;
+  data: {
+    airline?: string;
+    flightNumber?: string;
+    departureTime?: string;
+    arrivalTime?: string; // Add arrivalTime
+    from?: string;
+    to?: string;
+    price?: number;
+    currency?: string;
+    name?: string; // For hotels
+    checkIn?: string;
+    checkOut?: string;
+    address?: string;
+    [key: string]: any;
+  };
+  confidence: number;
+}
+
+// 2. Wallet (Passports, Visas, Identity)
+export interface StagedWalletItem {
+  type: 'passport' | 'visa' | 'insurance' | 'id_card' | 'ticket' | 'other';
+  fileId: string;
+  title: string;
+  data: {
+    expiryDate?: string;
+    holderName?: string;
+    validUntil?: string;
+    [key: string]: any;
+  };
+  isSensitive: boolean;
+  uiMessage?: string; // e.g. "Will be encrypted"
+}
+
+// 3. Experiences (Restaurants, Attractions)
+export interface StagedExperienceItem {
+  type: 'restaurant_reservation' | 'attraction_ticket' | 'event' | 'other';
+  fileId: string;
+  title: string;
+  data: {
+    name: string;
+    reservationTime?: string;
+    entryTime?: string;
+    address?: string;
+    inferredCuisine?: string; // For restaurants
+    googleSearchQuery?: string; // For auto-mapping
+    [key: string]: any;
+  };
+  uiMessage?: string;
+}
+
+export interface StagedCategories {
+  logistics: StagedLogisticsItem[];
+  wallet: StagedWalletItem[];
+  experiences: StagedExperienceItem[];
+}
+
+export interface StagedTripData {
+  tripMetadata: TripMetadata;
+  categories: StagedCategories;
+}

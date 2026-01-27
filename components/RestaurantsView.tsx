@@ -159,11 +159,16 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
         try {
             const ai = getAI();
-            const prompt = `${SYSTEM_PROMPT}
+            const prompt = `Search Query: "${textQuery}"
+            Destination Context: ${trip.destination}
+            
+            Mission: Find the best matches for this specific query.
+            - If specific name: Find it.
+            - If category: Find top rated examples.
+            - If vague ("dinner"): Recommend popular spots.
 
-Search for: "${textQuery}" in ${trip.destination}. Return 6 high quality restaurant results.
-CRITICAL: 'cuisine' field MUST be one of: [Ramen, Pizza, Burger, Sushi, Asian Fusion, Fine Dining, Cafe, Steakhouse, Seafood, Georgian, Dessert, Nightlife].
-Description in Hebrew. Netural English names.`;
+            CRITICAL: 'cuisine' field MUST be one of: [Ramen, Pizza, Burger, Sushi, Asian Fusion, Fine Dining, Cafe, Steakhouse, Seafood, Georgian, Dessert, Nightlife]. Map inferred cuisine to closest match.
+            Description in Hebrew. Names in English.`;
 
             const schema: Schema = {
                 type: Type.OBJECT,
@@ -193,7 +198,7 @@ Description in Hebrew. Netural English names.`;
                 }
             };
 
-            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SMART');
+            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SEARCH');
 
             const textContent = typeof response.text === 'function' ? response.text() : response.text;
             try {

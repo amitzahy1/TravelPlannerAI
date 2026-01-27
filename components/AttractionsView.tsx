@@ -107,7 +107,15 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setSearchResults(null);
         try {
             const ai = getAI();
-            const prompt = `${SYSTEM_PROMPT} Search for attractions in ${trip.destination} matching: "${textQuery}". CRITICAL: 'name' MUST be in English. Description in Hebrew.`;
+            const prompt = `Search Query: "${textQuery}"
+            Destination Context: ${trip.destination}
+
+            Mission: Find accurate attraction results for this query.
+            - If specific name (e.g. "Eiffel Tower"): Find it.
+            - If category (e.g. "Museums"): Find top examples.
+            - If vague ("fun for kids"): Recommend suitable spots.
+
+            CRITICAL: 'name' field must be in English. Description in Hebrew.`;
             const schema: Schema = {
                 type: Type.OBJECT,
                 properties: {
@@ -255,7 +263,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     }
                 }
             };
-            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SMART');
+            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SEARCH');
             const data = JSON.parse(typeof response.text === 'function' ? response.text() : response.text || '{}');
             if (data.categories) {
                 const processed = data.categories.map((c: any) => ({ ...c, attractions: c.attractions.map((a: any, i: number) => ({ ...a, id: `ai-attr-${c.id}-${i}`, categoryTitle: c.title })) }));

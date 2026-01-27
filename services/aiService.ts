@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import OpenAI from 'openai';
 import { generateLocalContent, isEngineReady } from "./webLlmService";
 import { getCachedResponse, cacheResponse } from "./cacheService";
+import { StagedTripData } from "../types";
 
 /**
  * System prompt for Research & Recommendations (SMART tasks)
@@ -71,9 +72,90 @@ CRITICAL OUTPUT RULES:
 4. Validate your JSON before sending`;
 
 /**
+ * System prompt for Search Agent (User Intent)
+ * Optimized for Obedience, Neutrality, and Semantic Relevance.
+ * "The Google PM Standard" - finds what asked, no snobbery.
+ */
+export const SYSTEM_PROMPT_SEARCH = `Role: You are an intelligent Search Engine Agent for a Travel App.
+
+Mission: Retrieve accurate, relevant results matching the user's specific query within the Destination.
+
+DIRECTIVES:
+1. OBEDIENCE: If the user searches for "McDonalds", return McDonalds. Do NOT filter out chains, fast food, or "low rated" places unless explicitly asked.
+2. NEUTRALITY: You are a search engine, not a food critic. Your job is to find what was asked, not what you think is "good".
+3. SEMANTIC MATCHING:
+   - Input: "Italian" -> Find Pizza, Pasta, Trattorias.
+   - Input: "Romantic" -> Find places with good ambiance, views, quiet atmosphere.
+   - Input: "Cheap eats" -> Find street food, fast food, budget friendly.
+4. FALLBACK: If an exact match isn't found, return the closest available alternative.
+
+CRITICAL SCHEMA RULES:
+1. Dates: ISO 8601 ONLY.
+2. Descriptions: HEBREW (max 15 words). Names: English.
+3. Prices: Numeric.
+
+OUTPUT: Return ONLY valid JSON.`;
+
+/**
  * Legacy system prompt for backward compatibility
  */
 export const SYSTEM_PROMPT = SYSTEM_PROMPT_RESEARCH;
+
+/**
+ * System Prompt for Deep Understanding (Project Genesis)
+ */
+export const SYSTEM_PROMPT_ANALYZE_TRIP = `Role: You are the Chief Architect & Product Lead at Google Travel. Mission: Build the "Omni-Import Engine". This system accepts ANY travel-related file, understands its purpose, and routes it to the correct "bucket" in the application.
+
+Core Directives:
+
+1. **Trip Metadata Extraction (CRITICAL):**
+   - Analyze the uploaded files to determine the **Main Destination**, **Trip Name** (creative guess based on location/vibe), and **Start/End Dates**.
+   - Return these in the \`tripMetadata\` object.
+   - **Date Logic:** Look for Flight Tickets or Hotel Confirmations to define the Trip Date range. Do NOT use Passport expiry dates or Credit Card expiry dates for the trip dates.
+   - If unsure about exact dates, make a best guess from the logistics found, or return null.
+
+2. **Total Classification:**
+   - Categorize every file into: Logistics (Flights/Hotels), Wallet (Passports/Stickts), or Experiences (Dining/Activities).
+
+3. **FLIGHT EXTRACTION RULES (CRITICAL):**
+   - **Capture EVERYTHING:** You must extract EVERY flight segment found in the files, regardless of the airline or destination.
+   - **Timeline Logic:** Do NOT look for just "Inbound" and "Outbound". Look for a SEQUENCE of flights.
+     - Example: Tel Aviv -> London (Main)
+     - Example: London -> Paris (Internal - KEEP THIS!)
+     - Example: Paris -> Tel Aviv (Main)
+   - **Flattening:** Return a single, chronological array of \`segments\` in the \`flights\` object (inside logistics item or global).
+   - **Missing Data:** If a flight is missing a PNR or price, extract it anyway with the data you have. The schedule is more important than the receipt.
+
+4. **JSON Output Specification (Strict):** Return a StagedTripData object.
+   {
+      "tripMetadata": {
+        "suggestedName": "Tokyo Adventure",
+        "suggestedDates": "2026-05-01 - 2026-05-10",
+        "mainDestination": "Tokyo, Japan"
+      },
+      "categories": {
+        "logistics": [
+          {
+            "type": "flight",
+            "fileId": "file_1",
+            "confidence": 0.9,
+            "data": { 
+               "airline": "JAL", 
+               "flightNumber": "JL002", 
+               "departureTime": "2026-05-01T10:00:00", 
+               "arrivalTime": "2026-05-01T23:00:00", 
+               "from": "TLV", 
+               "to": "NRT" 
+            }
+          }
+        ],
+        "wallet": [],
+        "experiences": []
+      }
+   }
+
+OUTPUT: Return ONLY valid JSON.
+`;
 
 // --- CONFIGURATION ---
 
@@ -357,7 +439,7 @@ const getOpenRouterClient = () => {
 
 // --- MAIN GENERATION ---
 
-export type AIIntent = 'FAST' | 'SMART';
+export type AIIntent = 'FAST' | 'SMART' | 'SEARCH' | 'ANALYZE';
 
 export const generateWithFallback = async (
   _unused: any,
@@ -371,10 +453,10 @@ export const generateWithFallback = async (
   const googleAI = getGoogleClient();
   if (googleAI) {
     // Select model and tools based on intent
-    const selectedModel = intent === 'SMART' ? GOOGLE_MODELS.SMART : GOOGLE_MODELS.FAST;
+    const selectedModel = (intent === 'SMART' || intent === 'SEARCH' || intent === 'ANALYZE') ? GOOGLE_MODELS.SMART : GOOGLE_MODELS.FAST;
     // Use modern googleSearch tool (not deprecated googleSearchRetrieval)
     // Use modern googleSearch tool (not deprecated googleSearchRetrieval)
-    const tools = intent === 'SMART' ? [
+    const tools = (intent === 'SMART' || intent === 'SEARCH') ? [
       {
         googleSearch: {}
       },
@@ -387,7 +469,7 @@ export const generateWithFallback = async (
     for (const model of modelsToTry) {
       // Don't use tools with fallback/flash unless desired (Flash supports tools too but let's keep separate)
       // Only apply tools if we are strictly using the SMART model that was requested for grounding
-      const currentTools = (model === GOOGLE_MODELS.SMART && tools) ? tools : undefined;
+      const currentTools = ((model === GOOGLE_MODELS.SMART) && tools) ? tools : undefined;
 
       try {
         console.log(`🤖 [Google] Trying ${model} (Intent: ${intent})...`);
@@ -438,7 +520,11 @@ export const generateWithFallback = async (
   const routerAI = getOpenRouterClient();
   if (routerAI) {
     // Select appropriate system prompt based on intent
-    const systemPrompt = intent === 'SMART' ? SYSTEM_PROMPT_RESEARCH : SYSTEM_PROMPT_EXTRACT;
+    // Select appropriate system prompt based on intent
+    let systemPrompt = SYSTEM_PROMPT_EXTRACT;
+    if (intent === 'SMART') systemPrompt = SYSTEM_PROMPT_RESEARCH;
+    if (intent === 'SEARCH') systemPrompt = SYSTEM_PROMPT_SEARCH;
+    if (intent === 'ANALYZE') systemPrompt = SYSTEM_PROMPT_ANALYZE_TRIP;
 
     for (const model of OPENROUTER_MODELS) {
       try {
@@ -488,7 +574,11 @@ export const generateWithFallback = async (
   const groqAI = getGroqClient();
   if (groqAI) {
     // Select appropriate system prompt based on intent
-    const systemPrompt = intent === 'SMART' ? SYSTEM_PROMPT_RESEARCH : SYSTEM_PROMPT_EXTRACT;
+    // Select appropriate system prompt based on intent
+    let systemPrompt = SYSTEM_PROMPT_EXTRACT;
+    if (intent === 'SMART') systemPrompt = SYSTEM_PROMPT_RESEARCH;
+    if (intent === 'SEARCH') systemPrompt = SYSTEM_PROMPT_SEARCH;
+    if (intent === 'ANALYZE') systemPrompt = SYSTEM_PROMPT_ANALYZE_TRIP;
 
     for (const model of GROQ_MODELS) {
       try {
@@ -548,7 +638,9 @@ export const generateWithFallback = async (
         });
       }
 
-      const systemPrompt = intent === 'SMART' ? SYSTEM_PROMPT_RESEARCH : SYSTEM_PROMPT_EXTRACT;
+      let systemPrompt = SYSTEM_PROMPT_EXTRACT;
+      if (intent === 'SMART') systemPrompt = SYSTEM_PROMPT_RESEARCH;
+      if (intent === 'SEARCH') systemPrompt = SYSTEM_PROMPT_SEARCH;
       const text = await generateLocalContent(prompt, systemPrompt);
       console.log(`✅ [WebLLM] Success!`);
 
@@ -710,5 +802,167 @@ export const verifyPlacesWithGoogle = async (places: any[]) => {
   });
 };
 
-// Export simple getter for backward compatibility
+// --- NEW PROCESSOR (Project Genesis) ---
+
+export interface ProcessedFile {
+  name: string;
+  mimeType: string;
+  data: string; // Base64 or text
+  isText: boolean;
+}
+
+export const readFiles = async (files: File[]): Promise<ProcessedFile[]> => {
+  return Promise.all(files.map(file => {
+    const mimeType = file.type || '';
+    const isTextFile = (
+      mimeType === 'text/plain' ||
+      mimeType === 'application/json' ||
+      mimeType === 'message/rfc822' || // Emails
+      file.name.endsWith('.eml') ||
+      file.name.endsWith('.txt') ||
+      file.name.endsWith('.md') ||
+      file.name.endsWith('.json')
+    );
+
+    return new Promise<ProcessedFile>((resolve) => {
+      const reader = new FileReader();
+      if (isTextFile) {
+        reader.onloadend = () => {
+          resolve({
+            data: reader.result as string,
+            mimeType: 'text/plain',
+            name: file.name,
+            isText: true
+          });
+        };
+        reader.readAsText(file);
+      } else {
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          const base64 = result.includes(',') ? result.split(',')[1] : result;
+          resolve({
+            data: base64,
+            mimeType: file.type || 'application/octet-stream',
+            name: file.name,
+            isText: false
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }));
+};
+
+/**
+ * Phase 1: The "Deep Understanding" Brain
+ * Performs Multi-Document Reasoning to build a Staged Trip.
+ */
+export const analyzeTripFiles = async (files: File[]): Promise<StagedTripData> => {
+  // 1. Process Files
+  const processedFiles = await readFiles(files);
+
+  // 2. Build Content for Gemini
+  // We prepend the system prompt as a user message since generateWithFallback handling for SMART/ANALYZE custom prompts with Google is minimal
+  const contents = [
+    { role: "user", parts: [{ text: SYSTEM_PROMPT_ANALYZE_TRIP }] },
+    { role: "user", parts: [{ text: "Here are the trip files to analyze:" }] },
+    ...processedFiles.map(f => ({
+      role: "user",
+      parts: [
+        { text: `Filename: ${f.name}` },
+        f.isText ? { text: f.data } : { inlineData: { mimeType: f.mimeType, data: f.data } }
+      ]
+    }))
+  ];
+
+  // 3. Generate Staged Trip
+  const schema = {
+    type: "OBJECT",
+    properties: {
+      tripMetadata: {
+        type: "OBJECT",
+        properties: {
+          suggestedName: { type: "STRING" },
+          suggestedDates: { type: "STRING" },
+          mainDestination: { type: "STRING" }
+        }
+      },
+      categories: {
+        type: "OBJECT",
+        properties: {
+          logistics: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                type: { type: "STRING" },
+                fileId: { type: "STRING" },
+                data: { type: "OBJECT" },
+                confidence: { type: "NUMBER" }
+              }
+            }
+          },
+          wallet: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                type: { type: "STRING" },
+                fileId: { type: "STRING" },
+                title: { type: "STRING" },
+                data: { type: "OBJECT" },
+                isSensitive: { type: "BOOLEAN" },
+                uiMessage: { type: "STRING" }
+              }
+            }
+          },
+          experiences: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                type: { type: "STRING" },
+                fileId: { type: "STRING" },
+                title: { type: "STRING" },
+                data: { type: "OBJECT" },
+                uiMessage: { type: "STRING" }
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+
+  const ai = getAI();
+  const response = await generateWithFallback(
+    ai,
+    contents,
+    {
+      responseMimeType: 'application/json',
+      responseSchema: schema,
+      temperature: 0.1
+    },
+    'ANALYZE'
+  );
+
+  const textContent = typeof response.text === 'function' ? response.text() : response.text;
+  try {
+    const data = JSON.parse(textContent);
+    return data as StagedTripData;
+  } catch (e) {
+    console.error("Failed to parse Omni-Import response", e);
+    // Fallback Empty Structure
+    return {
+      tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "" },
+      categories: {
+        logistics: [],
+        wallet: [],
+        experiences: []
+      }
+    };
+  }
+};
+
+
 export const getAI = getGoogleClient;

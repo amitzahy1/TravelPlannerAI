@@ -3,19 +3,32 @@ import { Trip } from '../types';
 import { Sparkles, Loader2, FileText, CheckCircle, AlertCircle, UploadCloud } from 'lucide-react';
 import { getAI, AI_MODEL, generateWithFallback } from '../services/aiService';
 
-interface MagicDropZoneProps {
-  activeTrip: Trip;
-  onUpdate: (updatedTrip: Trip) => void;
+export interface MagicDropZoneProps {
+  activeTrip?: Trip;
+  onUpdate?: (updatedTrip: Trip) => void;
+  onFilesReady?: (files: File[]) => void;
   compact?: boolean;
 }
 
-export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpdate, compact }) => {
+export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpdate, onFilesReady, compact }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFiles = async (files: FileList) => {
+    // 1. If parent wants raw files (for Project Genesis flow), just return them
+    if (onFilesReady) {
+      onFilesReady(Array.from(files));
+      return;
+    }
+
+    // 2. Legacy/Update Mode (requires activeTrip)
+    if (!activeTrip || !onUpdate) {
+      console.error("MagicDropZone: Missing activeTrip or onUpdate for legacy mode");
+      return;
+    }
+
     setIsProcessing(true);
     setStatus(null);
 
@@ -148,7 +161,13 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
             {compact ? (
               <div className="text-right flex-1">
                 <h3 className="text-slate-700 font-bold text-sm">גרירת קבצים חכמה (Magic Upload)</h3>
-                <p className="text-slate-400 text-xs mt-0.5">ניתוח אוטומטי של כרטיסי טיסה, אישורי מלון ומסמכים</p>
+                <p className="text-slate-500 mb-6 max-w-sm mx-auto">
+                  Drop your PDFs, Images, or Screenshots here.
+                  <br />
+                  <span className="text-xs text-slate-400 mt-2 block">
+                    Supports: Flight Tickets, Hotel Vouchers, Passports, Restaurant Reservations
+                  </span>
+                </p>
               </div>
             ) : (
               <div>
