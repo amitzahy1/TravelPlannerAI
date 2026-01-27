@@ -727,9 +727,21 @@ export const readFiles = async (files: File[]): Promise<ProcessedFile[]> => {
         reader.onloadend = () => {
           const result = reader.result as string;
           const base64 = result.includes(',') ? result.split(',')[1] : result;
+
+          // Force Mime Type by Extension if missing (Crucial for AI PDF reading)
+          let finalMime = file.type;
+          if (!finalMime || finalMime === 'application/octet-stream') {
+            if (file.name.toLowerCase().endsWith('.pdf')) finalMime = 'application/pdf';
+            else if (file.name.toLowerCase().endsWith('.png')) finalMime = 'image/png';
+            else if (file.name.toLowerCase().endsWith('.jpg')) finalMime = 'image/jpeg';
+            else if (file.name.toLowerCase().endsWith('.jpeg')) finalMime = 'image/jpeg';
+            else if (file.name.toLowerCase().endsWith('.webp')) finalMime = 'image/webp';
+          }
+          finalMime = finalMime || 'application/octet-stream';
+
           resolve({
             data: base64,
-            mimeType: file.type || 'application/octet-stream',
+            mimeType: finalMime,
             name: file.name,
             isText: false
           });
@@ -789,6 +801,14 @@ const ensureStagedTripSchema = (data: any): StagedTripData => {
 export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResult> => {
   // 1. Process Files
   const processedFiles = await readFiles(files);
+
+  console.group("🕵️‍♂️ [AI Debug] analyzing items...");
+  console.log("Files prepared for AI:", processedFiles.map(f => ({
+    name: f.name,
+    type: f.mimeType,
+    isText: f.isText,
+    dataLen: f.data.length
+  })));
 
   // 2. Build Content for Gemini
   // We prepend the system prompt as a user message since generateWithFallback handling for SMART/ANALYZE custom prompts with Google is minimal
@@ -878,6 +898,8 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
   // Fix: response.text is a string from generateWithFallback
   const textContent = response.text || '';
 
+  console.log("📝 [AI] Raw Response:", textContent);
+
   // Default Empty Structure
   const emptyStagedData: StagedTripData = {
     tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "" },
@@ -890,9 +912,12 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
     const rawData = JSON.parse(textContent);
     // CRITICAL FIX: Use specific schema validator for StagedData, NOT ensureTripSchema
     stagedData = ensureStagedTripSchema(rawData);
+    console.log("✅ [AI] Staged Data Parsed:", stagedData);
   } catch (e) {
     console.error("Failed to parse Omni-Import response", e);
+    console.log("❌ [AI Debug] Parsing Failure Context. Raw Text was:", textContent);
   }
+  console.groupEnd();
 
   // Map to TripAnalysisResult
   const flattenedItems = [
