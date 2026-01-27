@@ -10,12 +10,14 @@ interface OnboardingModalProps {
     onSelectTrip?: (id: string) => void;
     onCreateNew?: () => void;
     onImportTrip?: (trip: Trip) => void;
+    startOpen?: boolean;        // New: Force open (for button clicks)
+    onClose?: () => void;       // New: Notify parent
 }
 
 type ViewMode = 'UPLOAD' | 'PROCESSING' | 'REVIEW_FORM';
 
-export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], onSelectTrip, onCreateNew, onImportTrip }) => {
-    const [isOpen, setIsOpen] = useState(false);
+export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], onSelectTrip, onCreateNew, onImportTrip, startOpen = false, onClose }) => {
+    const [isOpen, setIsOpen] = useState(startOpen);
 
     // Strict State Machine
     const [mode, setMode] = useState<ViewMode>('UPLOAD');
@@ -30,15 +32,23 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     const [formDestination, setFormDestination] = useState("");
 
     useEffect(() => {
+        if (startOpen) {
+            setIsOpen(true);
+            return;
+        }
         const hasSeen = localStorage.getItem('hasSeenOnboardingV3');
         if (!hasSeen) {
             setIsOpen(true);
         }
-    }, []);
+    }, [startOpen]);
 
     const handleClose = () => {
         setIsOpen(false);
-        localStorage.setItem('hasSeenOnboardingV3', 'true');
+        if (!startOpen) { // Only set seen if it was an auto-popup? Or always?
+            localStorage.setItem('hasSeenOnboardingV3', 'true');
+        }
+        if (onClose) onClose();
+
         // Reset
         setTimeout(() => {
             setMode('UPLOAD');
