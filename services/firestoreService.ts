@@ -171,11 +171,30 @@ export const createSharedTrip = async (
 };
 
 /**
+ * Get a shared trip by ID (public/protected read)
+ */
+export const getSharedTrip = async (shareId: string): Promise<Trip | null> => {
+  try {
+    const tripRef = doc(db, 'shared-trips', shareId);
+    const tripSnap = await getDoc(tripRef);
+
+    if (tripSnap.exists()) {
+      return tripSnap.data().tripData as Trip;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching shared trip:', error);
+    return null;
+  }
+};
+
+/**
  * Join a shared trip via share link
  */
 export const joinSharedTrip = async (
   userId: string,
-  shareId: string
+  shareId: string,
+  userEmail?: string
 ): Promise<Trip> => {
   try {
     const tripRef = doc(db, 'shared-trips', shareId);

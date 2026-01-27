@@ -838,63 +838,85 @@ const resolveCityName = (code: string): string => {
 };
 
 /**
- * Smart Route Derivation (Project Genesis)
- * Scans flight segments to build a dynamic multi-city route string.
+ * Smart Route Derivation (Project Genesis 2.0)
+ * Builds a chronological "Event Trace" from Flights AND Hotels to determine the true route.
  */
 const deriveSmartRoute = (items: any[], defaultDest: string): { route: string, cities: string[] } => {
-  // Support both flat segments and nested flight_itinerary segments (Legacy/Safety)
-  const allSegments: any[] = [];
+  const events: { time: number; city: string; type: 'flight' | 'hotel' }[] = [];
   const citiesSet = new Set<string>();
 
+  // Helper to extract city from text using strict IATA map or heuristic
+  const extractCity = (text: string): string => {
+    if (!text) return '';
+    // Check IATA Map
+    const normalized = text.toUpperCase().trim();
+    if (IATA_CITY_MAP[normalized]) return IATA_CITY_MAP[normalized];
+
+    // Simple heuristic: If it looks like a city name (no numbers, short), use it.
+    // Otherwise, for full addresses, we might need more advanced NLP, but for now:
+    // We will clean it up later with the AI-provided 'uniqueCityNames' if available in the UI layer.
+    return text.split(',')[0].trim();
+  };
+
   items.forEach(item => {
-    if (item.type === 'flight' && item.data.from && item.data.to) {
-      allSegments.push(item.data);
-      citiesSet.add(resolveCityName(item.data.from));
-      citiesSet.add(resolveCityName(item.data.to));
-    } else if (item.type === 'flight_itinerary' && Array.isArray(item.data.segments)) {
-      allSegments.push(...item.data.segments);
-      item.data.segments.forEach((s: any) => {
-        citiesSet.add(resolveCityName(s.from));
-        citiesSet.add(resolveCityName(s.to));
-      });
-    } else if (item.type === 'hotel' && (item.data.address || item.data.location || item.data.name)) {
-      // Heuristic for city discovery from hotel address
-      const text = (item.data.address || item.data.location || item.data.name).toLowerCase();
-      if (text.includes('manila')) citiesSet.add('Manila');
-      if (text.includes('boracay')) citiesSet.add('Boracay');
-      if (text.includes('bangkok')) citiesSet.add('Bangkok');
-      if (text.includes('makati')) citiesSet.add('Manila');
-      if (text.includes('cebu')) citiesSet.add('Cebu');
+    // 1. Flights (Grouped or Single)
+    if (item.type === 'flight') {
+      if (item.data.segments && Array.isArray(item.data.segments)) {
+        item.data.segments.forEach((seg: any) => {
+          if (seg.departureCity && seg.departureDate) events.push({ time: new Date(seg.departureDate).getTime(), city: seg.departureCity, type: 'flight' });
+          if (seg.arrivalCity && seg.arrivalDate) events.push({ time: new Date(seg.arrivalDate).getTime(), city: seg.arrivalCity, type: 'flight' });
+        });
+      } else if (item.data.from && item.data.to) {
+        if (item.data.departureTime) events.push({ time: new Date(item.data.departureTime).getTime(), city: resolveCityName(item.data.from), type: 'flight' });
+        if (item.data.arrivalTime) events.push({ time: new Date(item.data.arrivalTime).getTime(), city: resolveCityName(item.data.to), type: 'flight' });
+      }
+    }
+
+    // 2. Hotels
+    if (item.type === 'hotel' && item.data.checkInDate) {
+      // Try to find city in address or name
+      let city = '';
+      const rawText = item.data.address || item.data.location || item.data.name || '';
+      if (rawText) {
+        // Basic extraction: Take the city part if comma exists, else take the whole thing if short
+        const parts = rawText.split(',');
+        city = parts.length > 1 ? parts[parts.length - 2].trim() : rawText; // e.g. "123 Main St, London, UK" -> "London"
+
+        // Very basic clean up fallback
+        if (city.length > 20) city = item.data.hotelName || 'Hotel Stay';
+      }
+
+      if (city && city !== 'Hotel Stay') {
+        events.push({ time: new Date(item.data.checkInDate).getTime(), city: city, type: 'hotel' });
+      }
     }
   });
 
-  // Clean up cities list (remove Home Base)
-  citiesSet.delete('Tel Aviv');
-  const cities = Array.from(citiesSet);
+  // Sort Chronologically
+  const sortedEvents = events.sort((a, b) => a.time - b.time);
 
-  if (allSegments.length === 0) return { route: defaultDest, cities };
-
-  // Sort by time
-  const sorted = allSegments.sort((a, b) => {
-    const timeA = new Date(a.departureTime || 0).getTime();
-    const timeB = new Date(b.departureTime || 0).getTime();
-    return timeA - timeB;
-  });
-
-  // Build chain
+  // Build Unique Route Path
   const routeParts: string[] = [];
-  if (sorted[0]) routeParts.push(resolveCityName(sorted[0].from));
 
-  sorted.forEach(f => {
-    const toCity = resolveCityName(f.to);
-    if (toCity && routeParts[routeParts.length - 1] !== toCity) {
-      routeParts.push(toCity);
+  sortedEvents.forEach(e => {
+    const city = e.city;
+    citiesSet.add(city);
+
+    // Add to route if it's new (not same as last)
+    if (routeParts.length === 0 || routeParts[routeParts.length - 1] !== city) {
+      routeParts.push(city);
     }
   });
 
-  const finalRoute = routeParts.length > 2 ? routeParts.join(' ➝ ') : defaultDest;
+  // Filter out Home Base (TLV) usually? Maybe keep it for full route context.
+  // For "Destination" field, usually we want the places visited.
+  const filteredRoute = routeParts.filter(c => c !== 'Tel Aviv' && c !== 'TLV' && c !== 'Ben Gurion');
 
-  return { route: finalRoute, cities };
+  // If no route found, use default
+  if (filteredRoute.length === 0) return { route: defaultDest, cities: Array.from(citiesSet) };
+
+  const finalRoute = filteredRoute.join(' ➝ ');
+  return { route: finalRoute, cities: Array.from(citiesSet) };
 };
 
 /**
@@ -1030,7 +1052,7 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
     else if (item.fileId) usedFileIds.add(item.fileId); // Legacy fallback
   });
 
-  scanCategory(stagedData.categories.transport);
+  scanCategory(stagedData.categories.transport); // Uses newly updated logic (implicit)
   scanCategory(stagedData.categories.accommodation);
   scanCategory(stagedData.categories.wallet);
   scanCategory(stagedData.categories.dining);

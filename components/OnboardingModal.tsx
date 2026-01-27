@@ -133,13 +133,31 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                 pnr: "",
                 segments: categories.transport
                     .filter(i => i.type === 'flight')
-                    .map(i => ({
-                        fromCode: i.data.from || '', toCode: i.data.to || '',
-                        date: i.data.departureTime || '', airline: i.data.airline || '',
-                        flightNumber: i.data.flightNumber || '', departureTime: i.data.departureTime || '',
-                        arrivalTime: i.data.arrivalTime || '', fromCity: i.data.from || '',
-                        toCity: i.data.to || '', duration: "0h",
-                    }))
+                    .flatMap(i => {
+                        // AI might return a nested 'segments' array for grouped journeys
+                        if (i.data.segments && Array.isArray(i.data.segments)) {
+                            return i.data.segments.map((seg: any) => ({
+                                fromCode: seg.departureIata || seg.departureCity || '',
+                                toCode: seg.arrivalIata || seg.arrivalCity || '',
+                                date: seg.departureDate || '',
+                                airline: seg.airline || '',
+                                flightNumber: seg.flightNumber || '',
+                                departureTime: seg.displayDepartureTime || seg.departureDate || '',
+                                arrivalTime: seg.displayArrivalTime || seg.arrivalDate || '',
+                                fromCity: seg.departureCity || '',
+                                toCity: seg.arrivalCity || '',
+                                duration: "0h"
+                            }));
+                        }
+                        // Fallback for legacy flat structure
+                        return [{
+                            fromCode: i.data.from || '', toCode: i.data.to || '',
+                            date: i.data.departureTime || '', airline: i.data.airline || '',
+                            flightNumber: i.data.flightNumber || '', departureTime: i.data.departureTime || '',
+                            arrivalTime: i.data.arrivalTime || '', fromCity: i.data.from || '',
+                            toCity: i.data.to || '', duration: "0h",
+                        }];
+                    })
             },
             hotels: categories.accommodation.map(i => ({
                 id: crypto.randomUUID(),
@@ -344,19 +362,26 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                 {activeTab === 'transport' && (
                     <>
                         {transport.length === 0 && <EmptyState label="No transport found" />}
-                        {transport.map((item, idx) => (
-                            <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm flex items-start gap-4">
-                                <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
-                                    {item.type === 'flight' ? <Plane className="w-6 h-6" /> : <Bus className="w-6 h-6" />}
-                                </div>
-                                <div>
-                                    <div className="font-bold text-slate-800">{item.data.airline || item.data.flightNumber || 'Transport'}</div>
-                                    <div className="text-sm text-slate-500">
-                                        {item.data.displayTime || item.data.departureTime} • {item.data.from} → {item.data.to}
+                        {transport.map((item, idx) => {
+                            // Helper to extract display data whether it's grouped or single
+                            const isFlight = item.type === 'flight';
+                            const title = item.data.journeyTitle || (item.data.segments ? item.data.segments[0]?.airline : item.data.airline) || item.data.flightNumber || 'Transport';
+                            const subText = item.data.segments
+                                ? `${item.data.segments[0]?.displayDepartureTime} • ${item.data.segments[0]?.departureCity} → ${item.data.segments[item.data.segments.length - 1]?.arrivalCity}`
+                                : `${item.data.displayTime || item.data.departureTime} • ${item.data.from} → ${item.data.to}`;
+
+                            return (
+                                <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm flex items-start gap-4">
+                                    <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                                        {isFlight ? <Plane className="w-6 h-6" /> : <Bus className="w-6 h-6" />}
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-slate-800">{isFlight ? `Flight: ${title}` : title}</div>
+                                        <div className="text-sm text-slate-500">{subText}</div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </>
                 )}
                 {activeTab === 'accommodation' && (

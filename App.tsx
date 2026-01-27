@@ -13,8 +13,10 @@ const AttractionsView = React.lazy(() => import('./components/AttractionsView').
 const ItineraryView = React.lazy(() => import('./components/ItineraryView').then(module => ({ default: module.ItineraryView })));
 const HotelsView = React.lazy(() => import('./components/HotelsView').then(module => ({ default: module.HotelsView })));
 const AdminView = React.lazy(() => import('./components/AdminView').then(module => ({ default: module.AdminView })));
+
 const BudgetView = React.lazy(() => import('./components/BudgetView').then(module => ({ default: module.BudgetView })));
 const ShoppingView = React.lazy(() => import('./components/ShoppingView').then(module => ({ default: module.ShoppingView })));
+import { JoinTripModal } from './components/JoinTripModal';
 
 
 import { initGoogleAuth } from './services/googleAuthService';
@@ -44,7 +46,23 @@ const AppContent: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('itinerary');
   const [showAdmin, setShowAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
   const [error, setError] = useState<string | null>(null);
+  const [joinShareId, setJoinShareId] = useState<string | null>(null);
+
+  // Deep Link Handling
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#/join/')) {
+      const shareId = hash.replace('#/join/', '');
+      if (shareId) {
+        console.log("🔗 Detected Join Link:", shareId);
+        setJoinShareId(shareId);
+        // Clean URL after detection to prevent re-triggering? maybe keep it until joined?
+        // window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+  }, []);
 
   // Load trips when user changes
   const loadUserTrips = useCallback(async () => {
@@ -298,6 +316,23 @@ const AppContent: React.FC = () => {
             onClose={() => setShowAdmin(false)}
           />
         </React.Suspense>
+      )}
+
+      {joinShareId && (
+        <JoinTripModal
+          shareId={joinShareId}
+          onClose={() => {
+            setJoinShareId(null);
+            window.history.replaceState(null, '', window.location.pathname);
+          }}
+          onJoinSuccess={(newTrip) => {
+            setJoinShareId(null);
+            setTrips(prev => [...prev, newTrip]);
+            setActiveTripId(newTrip.id);
+            saveSingleTrip(newTrip, user?.uid); // Save immediately
+            window.history.replaceState(null, '', window.location.pathname);
+          }}
+        />
       )}
     </HashRouter>
   );
