@@ -162,10 +162,10 @@ OUTPUT: Return ONLY valid JSON.
 // 1. Google Gemini Models (Direct SDK)
 // 1. Google Gemini Models (Direct SDK)
 const GOOGLE_MODELS = {
-  // The Correct, Validated IDs found by debugging:
-  SMART: "gemini-3-pro-latest",   // Primary Intent
-  FAST: "gemini-3-flash-latest",  // Fast Intent
-  FALLBACK: "gemini-2.0-flash"    // Safety Net (Just in case)
+  // Validated IDs (Gemini 3 is marketing name, API uses 2.0/Exp):
+  SMART: "gemini-2.0-pro-exp-02-05",   // The latest Pro Experience
+  FAST: "gemini-2.0-flash",            // The standard fast model
+  FALLBACK: "gemini-2.0-flash"
 };
 
 // 2. Groq Models (Fast Inference Fallback)
