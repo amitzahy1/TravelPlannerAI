@@ -13,21 +13,10 @@ import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR REMOVED: import { requestAccessToken } from '../services/googleAuthService';
 import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
-import { FavoritesWidget } from './FavoritesWidget';
-import { TripAssistant } from './TripAssistant';
 
 // --- Types ---
 // Removed to types.ts
 
-interface Insight {
-    id: string;
-    type: 'warning' | 'suggestion' | 'info';
-    title: string;
-    description: string;
-    actionLabel: string;
-    action: () => void;
-    icon: any;
-}
 
 const parseDateString = (dateStr: string): Date | null => {
     if (!dateStr) return null;
@@ -75,7 +64,6 @@ export const ItineraryView: React.FC<{
     const [selectedDayIso, setSelectedDayIso] = useState<string | null>(null);
     const [quickAddModal, setQuickAddModal] = useState<{ isOpen: boolean, targetDate?: string }>({ isOpen: false });
     const [transferModal, setTransferModal] = useState<{ date: string, defaultTime: string } | null>(null);
-    const [insights, setInsights] = useState<Insight[]>([]);
     const [isSyncing, setIsSyncing] = useState(false);
     const [externalEvents, setExternalEvents] = useState<TimelineEvent[]>([]);
     const [viewingCategory, setViewingCategory] = useState<'food' | 'attractions' | 'hotels' | null>(null);
@@ -385,27 +373,6 @@ export const ItineraryView: React.FC<{
             });
 
             setTimeline(sortedTimeline);
-
-            const newInsights: Insight[] = [];
-            trip.flights?.segments?.forEach(seg => {
-                const d = parseDateString(seg.date);
-                if (d) {
-                    const iso = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-                    const dayPlan = dayMap.get(iso);
-                    if (dayPlan && !dayPlan.events.some(e => e.type === 'travel')) {
-                        newInsights.push({
-                            id: `flight-transfer-${seg.flightNumber}`,
-                            type: 'warning',
-                            title: 'הסעה לטיסה',
-                            description: `טיסה ב-${seg.date}. האם סגרת הסעה?`,
-                            actionLabel: 'הוסף',
-                            action: () => setTransferModal({ date: seg.date, defaultTime: seg.departureTime }),
-                            icon: Car
-                        });
-                    }
-                }
-            });
-            setInsights(newInsights);
         };
 
         generateTimeline();
@@ -733,28 +700,8 @@ export const ItineraryView: React.FC<{
                 </div>
             </div>
 
-            {/* 3. COMMAND CENTER: Tasks & Favorites (Fix: Remove fixed height & z-index overlap) */}
-            <div className="px-1 md:px-2 grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 relative mt-6">
-                {/* Column 1: TripAssistant */}
-                <div className="lg:col-span-1 min-h-[240px]">
-                    <TripAssistant
-                        trip={trip}
-                        onNavigate={(tab) => console.log('Navigate to:', tab)}
-                    />
-                </div>
-
-                {/* Columns 2-3: FavoritesWidget */}
-                <div className="lg:col-span-2 min-h-[240px]">
-                    <FavoritesWidget
-                        trip={trip}
-                        timeline={timeline}
-                        onSchedule={(item, date, type) => handleScheduleFavorite(item, date, type)}
-                    />
-                </div>
-            </div>
-
-            {/* 4. MAIN CONTENT GRID (Timeline + Assistant) */}
-            <div className="px-1 md:px-1 w-full space-y-6 relative z-10">
+            {/* 3. MAIN TIMELINE (Repositioned for Density) */}
+            <div className="px-1 md:px-1 w-full space-y-6 relative z-10 -mt-2">
 
                 {/* Main Column: Timeline (Full width) */}
                 <div className="w-full space-y-6">

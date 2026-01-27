@@ -176,6 +176,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             3. **Quality Firewall:** 
                - REJECT: Generic playgrounds, small unremarkable city parks, administrative buildings, or "tourist traps" (souvenir shops).
                - PRIORITIZE: "Must-See Landmarks", "Cultural Heritage", "Natural Wonders", "Unique Local Experiences".
+            4. **Context Verification:** You are searching for "${target}". Ensure this is a real location. If misspelled, infer the correct city. If unknown, return empty.
 
             **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
             
@@ -264,14 +265,30 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 }
             };
             const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SEARCH');
-            const data = JSON.parse(typeof response.text === 'function' ? response.text() : response.text || '{}');
-            if (data.categories) {
-                const processed = data.categories.map((c: any) => ({ ...c, attractions: c.attractions.map((a: any, i: number) => ({ ...a, id: `ai-attr-${c.id}-${i}`, categoryTitle: c.title })) }));
-                setAiCategories(processed);
-                setSelectedCategory('all');
-                onUpdateTrip({ ...trip, aiAttractions: processed });
+
+            const textContent = typeof response.text === 'function' ? response.text() : response.text;
+            console.log("🔍 [AI ATTRACTIONS Raw Response]:", textContent?.substring(0, 500) + "...");
+
+            try {
+                const data = JSON.parse(textContent || '{}');
+                if (data.categories && Array.isArray(data.categories) && data.categories.length > 0) {
+                    console.log(`✅ [AI Success] Parsed ${data.categories.length} attraction categories.`);
+                    const processed = data.categories.map((c: any) => ({ ...c, attractions: c.attractions.map((a: any, i: number) => ({ ...a, id: `ai-attr-${c.id}-${i}`, categoryTitle: c.title })) }));
+                    setAiCategories(processed);
+                    setSelectedCategory('all');
+                    onUpdateTrip({ ...trip, aiAttractions: processed });
+                } else {
+                    console.warn("⚠️ [AI Warning] Response was valid JSON but contained no attraction categories.", data);
+                    setRecError('לא נמצאו אטרקציות עבור יעד זה.');
+                }
+            } catch (parseErr) {
+                console.error('❌ [AI Error] JSON Parse failed in attractions.', parseErr);
+                setRecError('שגיאה בעיבוד הנתונים. נסה שוב.');
             }
-        } catch (e: any) { setRecError(e.message); } finally { setLoadingRecs(false); }
+        } catch (e: any) {
+            console.error("❌ [AI Critical Error]:", e);
+            setRecError(e.message || 'שגיאה כללית');
+        } finally { setLoadingRecs(false); }
     };
 
     const handleToggleRec = (attraction: Attraction, catTitle: string) => {
@@ -421,15 +438,29 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     {activeTab === 'my_list' && (
                         <>
                             {attractionsData.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
-                                    <div className="w-24 h-24 bg-purple-50 rounded-full flex items-center justify-center shadow-inner">
-                                        <Ticket className="w-10 h-10 text-purple-300" />
+                                <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 animate-fade-in px-4">
+                                    <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-fuchsia-100 rounded-full flex items-center justify-center shadow-lg shadow-purple-100/50 relative">
+                                        <Sparkles className="w-10 h-10 text-purple-500 absolute top-4 right-4 animate-pulse" />
+                                        <Ticket className="w-10 h-10 text-purple-600" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <p className="text-xl font-bold text-slate-700">עדיין לא הוספת אטרקציות</p>
-                                        <p className="text-sm text-slate-500">עבור ללשונית "המלצות" והתחל לאסוף חוויות</p>
+                                    <div className="space-y-3 max-w-sm">
+                                        <h3 className="text-2xl font-black text-slate-800">מה עושים היום? ה-AI יודע!</h3>
+                                        <p className="text-sm text-slate-500 leading-relaxed">
+                                            תן למוח שלנו למצוא לך אטרקציות, פנינים נסתרות וחוויות מטורפות ב{trip.destination}.
+                                            <br />
+                                            בלי חיפושים, רק תוצאות.
+                                        </p>
                                     </div>
-                                    <button onClick={() => setActiveTab('recommended')} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl hover:scale-105 transition-all">התחל לחקור</button>
+                                    <button
+                                        onClick={() => setActiveTab('recommended')}
+                                        className="group relative overflow-hidden bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all flex items-center gap-3"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-fuchsia-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                        <span className="relative flex items-center gap-2">
+                                            <BrainCircuit className="w-5 h-5" />
+                                            מצא לי אטרקציות (AI)
+                                        </span>
+                                    </button>
                                 </div>
                             ) : (
                                 <div className="space-y-4 mt-4">

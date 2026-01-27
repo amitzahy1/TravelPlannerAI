@@ -17,6 +17,7 @@ interface TripSettingsModalProps {
     data: Trip[];
     currentTripId?: string;
     onSave: (newData: Trip[]) => void;
+    onSwitchTrip: (id: string) => void;
     onDeleteTrip: (tripId: string) => void;
     onLeaveTrip: (tripId: string) => void;
     onClose: () => void;
@@ -25,8 +26,14 @@ interface TripSettingsModalProps {
 // Helper: Convert various date formats to YYYY-MM-DD for input
 const toInputDate = (dateStr: string) => {
     if (!dateStr) return '';
-    // Already ISO YYYY-MM-DD
+    // Already ISO YYYY-MM-DD (strict)
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return dateStr;
+
+    // Handle ISO with Time (2026-01-28T19:30:00)
+    if (dateStr.includes('T')) {
+        return dateStr.split('T')[0];
+    }
+
     // Handle DD/MM/YYYY
     if (dateStr.includes('/')) {
         const parts = dateStr.split('/');
@@ -51,11 +58,12 @@ const DateInput: React.FC<{
     const [showPicker, setShowPicker] = useState(false);
 
     const displayDate = useMemo(() => {
-        if (!value) return placeholder || "בחר תאריך";
-        if (value.includes('/')) return value;
-        const [y, m, d] = value.split('-');
+        const cleanValue = value ? value.split('T')[0] : ''; // Safety clip
+        if (!cleanValue) return placeholder || "בחר תאריך";
+        if (cleanValue.includes('/')) return cleanValue;
+        const [y, m, d] = cleanValue.split('-');
         if (y && m && d && y.length === 4) return `${d}/${m}/${y}`;
-        return value;
+        return cleanValue;
     }, [value, placeholder]);
 
     return (
@@ -71,7 +79,7 @@ const DateInput: React.FC<{
 
             {showPicker && (
                 <CalendarDatePicker
-                    value={value}
+                    value={value ? value.split('T')[0] : ''}
                     title={title}
                     onChange={onChange}
                     onClose={() => setShowPicker(false)}
@@ -81,7 +89,7 @@ const DateInput: React.FC<{
     );
 };
 
-export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripId, onSave, onDeleteTrip, onLeaveTrip, onClose }) => {
+export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripId, onSave, onSwitchTrip, onDeleteTrip, onLeaveTrip, onClose }) => {
     // Unique Trips only (Sanity check)
     const uniqueTrips = useMemo(() => {
         const seen = new Set();
@@ -257,9 +265,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         setActiveTripId(newTrip.id);
         setIsWizardOpen(false);
         onSave(updatedTrips);
+        onSwitchTrip(newTrip.id); // Triggers App to switch
     };
 
     const enrichHotelsWithAI = async (currentTrip: Trip): Promise<Trip> => {
+        if (!currentTrip || !currentTrip.hotels) return currentTrip;
         const needsEnrichment = currentTrip.hotels.some(h => !h.googleMapsUrl || !h.address || h.address.length < 5);
 
         if (!needsEnrichment) return currentTrip;
@@ -351,6 +361,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                 setTrips(updatedTrips);
                 setActiveTripId(newTrip.id);
                 onSave(updatedTrips);
+                onSwitchTrip(newTrip.id);
                 alert("הטיול יובא בהצלחה!");
             } catch (err) { console.error(err); alert("שגיאה בקריאת הקובץ"); }
         };
@@ -741,7 +752,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                 <span className="bg-sky-100 p-1.5 rounded-lg text-sky-600"><Plane className="w-4 h-4" /></span> טיסות
                                             </h3>
                                             <button
-                                                onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', fromCode: '', toCode: '', fromCity: '', toCity: '', date: '', departureTime: '', arrivalTime: '', airline: '', pnr: '', duration: '' }] } })}
+                                                onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', fromCode: '', toCode: '', fromCity: '', toCity: '', date: '', departureTime: '', arrivalTime: '', airline: '', duration: '' }] } })}
                                                 className="text-xs font-bold bg-sky-50 text-sky-600 px-3 py-1.5 rounded-lg hover:bg-sky-100 transition-colors flex items-center gap-1"
                                             >
                                                 <Plus className="w-3 h-3" /> הוסף טיסה
@@ -758,10 +769,20 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                         <input className="flex-1 font-medium bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-sm px-2 text-left rtl:text-right" value={seg.flightNumber} onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)} placeholder="מספר טיסה" />
                                                     </div>
                                                     <div className="flex gap-2 text-xs">
-                                                        <DateInput className="bg-white border border-slate-200 rounded px-2 py-1.5 flex-1" value={seg.date} onChange={(iso) => handleUpdateFlightSegment(idx, 'date', iso)} placeholder="תאריך" />
-                                                        <input className="w-16 bg-white border border-slate-200 rounded px-2 py-1.5 text-center direction-ltr" value={seg.departureTime} onChange={(e) => handleUpdateFlightSegment(idx, 'departureTime', e.target.value)} placeholder="14:00" />
+                                                        <DateInput className="bg-white border border-slate-200 rounded px-2 py-1.5 flex-1" value={seg.date ? seg.date.split('T')[0] : ''} onChange={(iso) => handleUpdateFlightSegment(idx, 'date', iso)} placeholder="תאריך" />
+                                                        <input
+                                                            className="w-16 bg-white border border-slate-200 rounded px-2 py-1.5 text-center direction-ltr font-mono text-sm"
+                                                            value={seg.departureTime?.includes('T') ? seg.departureTime.split('T')[1].substring(0, 5) : (seg.departureTime?.match(/\d{1,2}:\d{2}/)?.[0] || seg.departureTime)}
+                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'departureTime', e.target.value)}
+                                                            placeholder="14:00"
+                                                        />
                                                         <span className="self-center text-slate-300">-</span>
-                                                        <input className="w-16 bg-white border border-slate-200 rounded px-2 py-1.5 text-center direction-ltr" value={seg.arrivalTime} onChange={(e) => handleUpdateFlightSegment(idx, 'arrivalTime', e.target.value)} placeholder="19:00" />
+                                                        <input
+                                                            className="w-16 bg-white border border-slate-200 rounded px-2 py-1.5 text-center direction-ltr font-mono text-sm"
+                                                            value={seg.arrivalTime?.includes('T') ? seg.arrivalTime.split('T')[1].substring(0, 5) : (seg.arrivalTime?.match(/\d{1,2}:\d{2}/)?.[0] || seg.arrivalTime)}
+                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'arrivalTime', e.target.value)}
+                                                            placeholder="19:00"
+                                                        />
                                                     </div>
                                                 </div>
                                             ))}

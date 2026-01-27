@@ -138,6 +138,7 @@ Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
    - Extract a CLEAN list of unique cities visited.
    - PURETOWN NAMES ONLY. Do NOT include ", Country" or "Airport". (e.g. "Bangkok", not "Bangkok, Thailand"). 
    - NEVER use the country name as the city (e.g. "Philippines" is NOT a city).
+   - REMOVE POSTAL CODES or numbers (e.g. "1228 Manila" -> "Manila").
    - If a place is an island (e.g. "Phuket", "Boracay"), use the Island name.
    - Exclude the home airport city (e.g., if flight is TLV->BKK, include Bangkok, exclude Tel Aviv).
    - Example: ["Manila", "Boracay", "Cebu", "Bangkok"].

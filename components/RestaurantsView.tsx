@@ -262,6 +262,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             2. **Quality > Quantity:** Return **UP TO 6** recommendations. If only 3 amazing places exist, return 3. Do NOT fill with mediocrity.
             3. **NO HALLUCINATIONS:** If a category (e.g. Ramen) has no real results in this city, return an empty list. Better empty than fake.
             4. **Quality Firewall:** STRICTLY REJECT global fast-food chains (McDonald's, Starbucks, KFC). Prioritize "Chef-Driven" and "Local Legend" spots.
+            5. **Context Verification:** You are searching for "${specificCity}". Ensure this is a real location. If the user misspelled it (e.g. "Tal Aviv"), infer the correct city ("Tel Aviv"). If the city is unknown, return empty.
 
             **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
             
@@ -375,15 +376,18 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.1 }, 'SMART');
 
             const textContent = typeof response.text === 'function' ? response.text() : response.text;
+            console.log("🔍 [AI Raw Response Preview]:", textContent?.substring(0, 500) + "...");
+
             try {
                 const data = JSON.parse(textContent || '{}');
-                if (data.categories) {
+                if (data.categories && Array.isArray(data.categories) && data.categories.length > 0) {
+                    console.log(`✅ [AI Success] Parsed ${data.categories.length} categories.`);
                     const processed = data.categories.map((c: any) => ({
                         ...c,
                         region: specificCity,
                         restaurants: c.restaurants.map((r: any, i: number) => ({
                             ...r,
-                            id: `ai - rec - ${c.id} -${i} `,
+                            id: `ai-rec-${c.id}-${i}`,
                             categoryTitle: c.title
                         }))
                     }));
@@ -391,14 +395,18 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     setAiCategories(processed);
                     setSelectedCategory('all');
                     onUpdateTrip({ ...trip, aiRestaurants: processed });
+                } else {
+                    console.warn("⚠️ [AI Warning] Response was valid JSON but contained no categories.", data);
+                    setRecError('לא נמצאו תוצאות עבור יעד זה. נסה חיפוש ידני או עיר אחרת.');
                 }
             } catch (parseError: any) {
-                console.error('❌ AI Error: JSON Parse failed in fetchRecommendations. Raw response:', textContent?.substring(0, 500));
-                setRecError('שגיאה בפרסור התוצאות. אנא נסה שנית.');
+                console.error('❌ [AI Error] JSON Parse failed in fetchRecommendations.', parseError);
+                console.error('Raw content that failed:', textContent);
+                setRecError('שגיאה בעיבוד התשובה. המודל החזיר תשובה שאינה תקינה.');
             }
         } catch (e: any) {
-            console.error("AI Error:", e);
-            setRecError('שגיאה בטעינת המלצות. אנא נסה שוב.');
+            console.error("❌ [AI Critical Error]:", e);
+            setRecError(`שגיאה בטעינה: ${e.message || 'נסה שוב'}`);
         } finally {
             setLoadingRecs(false);
         }
@@ -717,15 +725,29 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     {activeTab === 'my_list' ? (
                         <>
                             {trip.restaurants.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
-                                    <div className="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center shadow-inner">
-                                        <Utensils className="w-10 h-10 text-orange-300" />
+                                <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 animate-fade-in px-4">
+                                    <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center shadow-lg shadow-orange-100/50 relative">
+                                        <Sparkles className="w-10 h-10 text-orange-500 absolute top-4 right-4 animate-pulse" />
+                                        <Utensils className="w-10 h-10 text-orange-600" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <p className="text-xl font-bold text-slate-700">עדיין לא שמרת מסעדות</p>
-                                        <p className="text-sm text-slate-500 max-w-xs mx-auto">עבור ללשונית "מחקר שוק" והתחל לאסוף המלצות שוות</p>
+                                    <div className="space-y-3 max-w-sm">
+                                        <h3 className="text-2xl font-black text-slate-800">הרשימה שלך ריקה... בוא נמלא אותה!</h3>
+                                        <p className="text-sm text-slate-500 leading-relaxed">
+                                            ה-AI שלנו יכול לסרוק את הרשת ולמצוא עבורך את המסעדות הכי שוות ב{trip.destination}.
+                                            <br />
+                                            אל תבזבז זמן על חיפושים ידניים.
+                                        </p>
                                     </div>
-                                    <button onClick={() => setActiveTab('recommended')} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl hover:scale-105 transition-all">התחל לחקור</button>
+                                    <button
+                                        onClick={() => setActiveTab('recommended')}
+                                        className="group relative overflow-hidden bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all flex items-center gap-3"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                        <span className="relative flex items-center gap-2">
+                                            <BrainCircuit className="w-5 h-5" />
+                                            התחל מחקר שוק (AI)
+                                        </span>
+                                    </button>
                                 </div>
                             ) : (
                                 <>
