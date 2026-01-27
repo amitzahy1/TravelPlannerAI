@@ -32,6 +32,30 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
     setIsProcessing(true);
     setStatus(null);
 
+    // 1. Validation Step: Check file types immediately
+    const supportedTypes = [
+      'application/pdf',
+      'text/plain',
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'image/webp',
+      'text/csv',
+      'text/html'
+    ];
+
+    // Check for unsupported files
+    const invalidFile = Array.from(files).find(f => !supportedTypes.includes(f.type) && !f.name.endsWith('.json') && !f.name.endsWith('.md'));
+
+    if (invalidFile) {
+      setIsProcessing(false);
+      setStatus({
+        type: 'error',
+        message: `שגיאה: הקובץ "${invalidFile.name}" אינו נתמך. ניתן להעלות רק PDF, תמונות או קבצי טקסט.`
+      });
+      return; // Stop execution
+    }
+
     try {
       const ai = getAI();
       const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf', 'text/plain'];
@@ -81,8 +105,8 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
         { responseMimeType: 'application/json' }
       );
 
-      // FIX: response.text can be a function or a string depending on the provider
-      const textContent = typeof response.text === 'function' ? response.text() : response.text;
+      // FIX: response.text is a string from generateWithFallback
+      const textContent = response.text || '';
 
       // Try to extract JSON from the response (some models return text with embedded JSON)
       let updatedTrip;

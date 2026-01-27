@@ -160,10 +160,14 @@ OUTPUT: Return ONLY valid JSON.
 // --- CONFIGURATION ---
 
 // 1. Google Gemini Models (Direct SDK)
+// 1. Google Gemini Models (Direct SDK)
 const GOOGLE_MODELS = {
-  FAST: "gemini-2.0-flash-exp",   // Best for speed/cost (Extract)
-  SMART: "gemini-1.5-pro",        // Best for reasoning (Research/Analyze)
-  FALLBACK: "gemini-1.5-flash"    // Stable backup
+  // Pro Tier: Using 1.5 Pro (Best available logic model)
+  SMART: "gemini-1.5-pro",
+  // Flash Tier: Using 2.0 Flash Exp (Best speed model)
+  FAST: "gemini-2.0-flash-exp",
+  // Fallback
+  FALLBACK: "gemini-1.5-flash"
 };
 
 // 2. Groq Models (Fast Inference Fallback)
@@ -451,38 +455,31 @@ export const generateWithFallback = async (
   // 1. Google Gemini (Preferred)
   const googleAI = getGoogleClient();
   if (googleAI) {
-    // Select model and tools based on intent
-    const selectedModel = (intent === 'SMART' || intent === 'SEARCH' || intent === 'ANALYZE') ? GOOGLE_MODELS.SMART : GOOGLE_MODELS.FAST;
-    // Use modern googleSearch tool (not deprecated googleSearchRetrieval)
-    // Use modern googleSearch tool (not deprecated googleSearchRetrieval)
-    const tools = (intent === 'SMART' || intent === 'SEARCH') ? [
-      {
-        googleSearch: {}
-      },
-    ] : undefined;
+    // Strategy: Try requested model -> Fallback to Flash -> Fallback to 1.5
+    // If intent is SMART, we start with PRO. If FAST, we start with FLASH.
+    const primaryModel = intent === 'SMART' ? GOOGLE_MODELS.SMART : GOOGLE_MODELS.FAST;
+    const secondaryModel = GOOGLE_MODELS.FAST; // Always fallback to the fast 2.0 model
+    const tertiaryModel = GOOGLE_MODELS.FALLBACK; // Last resort 1.5 flash
 
-    // Retry logic loop now just tries the selected model, or maybe fallbacks?
-    // For simplicity given the requirement: Try selected, then fallback to stable.
-    const modelsToTry = [selectedModel, GOOGLE_MODELS.FALLBACK];
+    // Unique list of models to try in order
+    const modelsToTry = Array.from(new Set([primaryModel, secondaryModel, tertiaryModel]));
+
+    const tools = intent === 'SMART' ? [{ googleSearch: {} }] : undefined;
 
     for (const model of modelsToTry) {
-      // Don't use tools with fallback/flash unless desired (Flash supports tools too but let's keep separate)
-      // Only apply tools if we are strictly using the SMART model that was requested for grounding
-      const currentTools = ((model === GOOGLE_MODELS.SMART) && tools) ? tools : undefined;
+      // Only use tools with the SMART model to prevent compatibility issues
+      const currentTools = (model === GOOGLE_MODELS.SMART && tools) ? tools : undefined;
 
       try {
         console.log(`🤖 [Google] Trying ${model} (Intent: ${intent})...`);
 
-        const geminiContent = typeof contents === 'string' ? contents : contents;
-
         const result = await withBackoff(async () => {
           return await googleAI.models.generateContent({
             model,
-            contents: geminiContent,
+            contents: contents as any, // Cast to verify
             config: {
               ...config,
               tools: currentTools,
-              // Prevent JSON truncation with high token limit
               maxOutputTokens: 8192,
             },
           });
@@ -490,25 +487,31 @@ export const generateWithFallback = async (
 
         console.log(`✅ [Google] Success: ${model}`);
 
-        const safeResponse = result as any;
-        let rawText = typeof safeResponse.text === 'function' ? safeResponse.text() : safeResponse.text;
+        // Handle SDK response variations safely
+        const safeResult = result as any;
+        let rawText = '';
 
-        // Append Grounding Metadata if available (e.g. source links) ? 
-        // For now just return text. Grounding usually embeds citations in text or provides metadata.
+        if (typeof safeResult.text === 'function') {
+          rawText = safeResult.text();
+        } else if (safeResult.response && typeof safeResult.response.text === 'function') {
+          rawText = safeResult.response.text();
+        } else if (safeResult.response && safeResult.response.text) {
+          rawText = safeResult.response.text;
+        } else {
+          // Fallback for direct text property or candidates array
+          rawText = safeResult.text || safeResult.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        }
 
-        // Normalize JSON if needed
         if (config?.responseMimeType === 'application/json') {
           rawText = extractJSON(rawText);
         }
 
-        return {
-          text: rawText,
-          candidates: [{ content: { parts: [{ text: rawText }] } }]
-        };
+        return { text: rawText, candidates: [{ content: { parts: [{ text: rawText }] } }] };
 
       } catch (error: any) {
         console.warn(`⚠️ [Google] Failed ${model}:`, error.message || error);
         lastError = error;
+        // Continue to next model in loop
       }
     }
   }
@@ -684,7 +687,7 @@ export const parseTripWizardInputs = async (inputs: { name: string, dates: strin
          - Hotel names (add to hotels array)
          - Flight details (add to flights.segments array if possible, or just a summary)
          - Activities/Attractions
-
+         
       OUTPUT FORMAT (JSON ONLY):
       {
         "name": "Final Trip Name",
@@ -699,14 +702,24 @@ export const parseTripWizardInputs = async (inputs: { name: string, dates: strin
     }
   ];
 
-  // Append files
+  // רשימת סוגים מותרים בלבד לשליחה ל-API
+  const ALLOWED_MIME_TYPES = [
+    'image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif',
+    'application/pdf', 'text/plain', 'text/csv', 'text/html'
+  ];
+
+  // Append files safely
   files.forEach(f => {
     if (f.isText) {
       contentParts.push({ text: `File (${f.name}):\n${f.data}` });
-    } else if (f.mimeType && f.data) {
+    }
+    // התיקון: בדיקה שסוג הקובץ נתמך לפני השליחה
+    else if (f.mimeType && f.data && ALLOWED_MIME_TYPES.includes(f.mimeType)) {
       contentParts.push({
         inlineData: { mimeType: f.mimeType, data: f.data }
       });
+    } else {
+      console.warn(`Skipping unsupported MIME type for AI: ${f.mimeType} (${f.name})`);
     }
   });
 
@@ -945,7 +958,8 @@ export const analyzeTripFiles = async (files: File[]): Promise<StagedTripData> =
     'ANALYZE'
   );
 
-  const textContent = typeof response.text === 'function' ? response.text() : response.text;
+  // Fix: response.text is a string from generateWithFallback
+  const textContent = response.text || '';
   try {
     const data = JSON.parse(textContent);
     return data as StagedTripData;
