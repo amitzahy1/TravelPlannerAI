@@ -166,7 +166,7 @@ export const createSharedTrip = async (
 
     // [SECURE FLOW] Create Public Invite Metadata
     // This allows guests to "peek" at the trip details before having permission to read the full doc
-    const inviteRef = doc(db, 'trip-invites', shareId);
+    const inviteRef = doc(db, 'trip_invites', shareId);
     await setDoc(inviteRef, {
       shareId,
       tripName: trip.name,
@@ -187,7 +187,8 @@ export const createSharedTrip = async (
 
 /**
  * [SELF-HEALING] Ensure invite metadata exists for legacy shared trips
- * Call this when opening the Share Modal to fix "Missing Permissions" errors
+ * Call this when opening the Share Modal to fix "Missing Permissions" errors.
+ * Implements "Public Read / Auth Write" Security Pattern.
  */
 export const ensureSharedTripInvite = async (
   userId: string,
@@ -196,25 +197,34 @@ export const ensureSharedTripInvite = async (
   userEmail?: string
 ): Promise<void> => {
   try {
-    const inviteRef = doc(db, 'trip-invites', shareId);
+    // Reference strictly to 'trip_invites' collection (Public Read / Auth Write)
+    const inviteRef = doc(db, 'trip_invites', shareId);
+
+    // 1. Idempotency Check: Don't write if already exists to save costs/latency
     const snapshot = await getDoc(inviteRef);
 
     if (!snapshot.exists()) {
-      console.log(`🔧 [Self-Healing] Creating missing trip-invite for ${shareId}`);
+      console.log(`🔧 [Self-Healing] Creating missing trip-invites/${shareId}`);
+
+      // 2. Data Snapshot: Store static metadata so unauth users can preview
       await setDoc(inviteRef, {
-        shareId,
+        shareId: shareId,
+        originalTripId: trip.id || '', // Track origin
         tripName: trip.name,
         destination: trip.destination,
         dates: trip.dates,
         hostName: userEmail || 'Organizer',
-        coverImage: trip.coverImage,
+        coverImage: trip.coverImage || '',
         ownerId: userId,
-        createdAt: Timestamp.now()
+        createdAt: Timestamp.now(),
+        // Security marker
+        isPublicInvite: true
       });
     }
   } catch (error) {
-    console.error('Error ensuring trip invite:', error);
-    // Non-blocking error, just log it
+    console.warn('Silent Error ensuresTripInvite:', error);
+    // Silent fail is acceptable here as it might be a permission race, 
+    // but the Rules should fix it.
   }
 };
 
@@ -242,7 +252,7 @@ export const getSharedTrip = async (shareId: string): Promise<Trip | null> => {
  */
 export const getSharedTripInvite = async (shareId: string): Promise<TripInvite | null> => {
   try {
-    const inviteRef = doc(db, 'trip-invites', shareId);
+    const inviteRef = doc(db, 'trip_invites', shareId);
     const inviteSnap = await getDoc(inviteRef);
 
     if (inviteSnap.exists()) {

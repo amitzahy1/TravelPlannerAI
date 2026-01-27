@@ -37,10 +37,12 @@ service cloud.firestore {
     }
     
     // 4. Shared Trip Invites (SAFE METADATA ONLY)
-    match /trip-invites/{inviteId} {
+    match /trip_invites/{inviteId} {
       // Any user (even unauth) can READ the invite metadata if they have the ID
-      // This allows showing the "Join Trip?" screen before login
       allow get: if true;
+      // Owner can Create/Update/Delete (Critical for Self-Healing & New Shares)
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
     }
 
     // 5. AI Cache
