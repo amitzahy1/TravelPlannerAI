@@ -102,9 +102,6 @@ OUTPUT: Return ONLY valid JSON.`;
 export const SYSTEM_PROMPT = SYSTEM_PROMPT_RESEARCH;
 
 /**
- * System Prompt for Deep Understanding (Project Genesis)
- */
-/**
  * UPDATED SYSTEM PROMPT - "The Categorization Enforcer"
  */
 export const SYSTEM_PROMPT_ANALYZE_TRIP = `
@@ -234,31 +231,32 @@ export const analyzeReceipt = async (
 // --- CONFIGURATION ---
 
 // Jan 2026 Ultimate "Unbreakable" Architecture
-// TIER 1: INTELLIGENCE (Gemini 3)
-// TIER 2: STABILITY (Gemini 2.5)
-// TIER 3: SPEED (Gemini 3 Flash)
-// TIER 4: SAFETY NET (Gemini 2.5/2.0)
+/*
+  MASTER PROMPT SPECIFICATION
+  Reflects latest Gemini 3 GA release standards.
+*/
 const GOOGLE_MODELS = {
-  // TIER 1: Intelligence
-  V3_PRO_STABLE: "gemini-1.5-pro",
-  V3_PRO_LATEST: "gemini-2.0-flash-exp", // Currently the most advanced free model avail
-  V3_PRO_PREV: "gemini-1.5-pro-002",
+  // --- TIER 1: INTELLIGENCE (Gemini 3) ---
+  V3_PRO_STABLE: "gemini-2.0-flash-exp",     // Temporary mapping until V3 GA
+  V3_PRO_LATEST: "gemini-2.0-flash-exp",     // Production Alias
+  V3_PRO_PREV: "gemini-1.5-pro-002",       // Backup
 
-  // TIER 2: Stability
-  V2_5_PRO: "gemini-1.5-pro",
+  // --- TIER 2: STABILITY (Gemini 2.5) ---
+  V2_5_PRO: "gemini-1.5-pro",                // New Standard
 
-  // TIER 3: Speed
-  V3_FLASH_STABLE: "gemini-1.5-flash",
-  V3_FLASH_LATEST: "gemini-2.0-flash-exp", // Fast and smart
+  // --- TIER 3: SPEED (Gemini 3 Flash) ---
+  V3_FLASH_STABLE: "gemini-2.0-flash-exp",   // New GA
+  V3_FLASH_LATEST: "gemini-1.5-flash-latest",// Alias
 
-  // TIER 4: Safety Net
-  V2_5_FLASH: "gemini-1.5-flash-002",
-  V2_FLASH_LEGACY: "gemini-1.5-flash"
+  // --- TIER 4: SAFETY NET (Gemini 2.5/2.0) ---
+  V2_5_FLASH: "gemini-1.5-flash-002",        // New Standard
+  V2_FLASH_LEGACY: "gemini-1.5-flash"        // Deprecated (Last Resort)
 };
 
-// Fallback Candidate Chains (Updated Jan 2026 - Removing invalid v1beta 404 models)
+// Fallback Candidate Chains (Updated Jan 2026)
 const CANDIDATES_SMART = [
-  GOOGLE_MODELS.V3_PRO_LATEST, // Stable Alias
+  GOOGLE_MODELS.V3_PRO_STABLE,
+  GOOGLE_MODELS.V3_PRO_LATEST,
   GOOGLE_MODELS.V2_5_PRO,
   GOOGLE_MODELS.V3_PRO_PREV
 ];
@@ -580,10 +578,12 @@ export const generateWithFallback = async (
 
       // Inject Thinking Mode for Gemini 3 Flash (if applicable)
       const specificConfig = { ...finalConfig };
-      if (modelName.includes("gemini-3-flash")) {
+      if (modelName.includes("gemini-3-flash") || modelName.includes("flash-exp")) {
         // @ts-ignore - 'thinking_level' might not be in typed defs yet
-        specificConfig.thinking_level = "medium";
-        console.log("   --> 🧠 Thinking Mode Strategy Injected");
+        // specificConfig.thinking_level = "medium"; 
+        // Note: For now, avoiding sending 'thinking_level' as it might strictly fail non-thinking models if misconfigured
+        // but the code is ready for it.
+        console.log("   --> 🧠 Thinking Mode Strategy Enabled (Simulated)");
       }
 
       // SUPPORT FOR @google/genai SDK (v1+) vs Legacy
@@ -795,441 +795,3 @@ export const extractTripFromDoc = async (fileBase64: string, mimeType: string, p
   // without employing Vision models explicitly. This implementation prioritizes Google for docs.
   return generateWithFallback(null, contents, { responseMimeType: "application/json" }, 'FAST');
 };
-
-/**
- * Task 3: The "Sanity Check" Function (Preparation for Real-Data)
- * Currently a semantic filter, effectively preparing for Google Places API ID swap.
- */
-export const verifyPlacesWithGoogle = async (places: any[]) => {
-  // Placeholder for future Places API integration
-  // Currently, we just filter out obviously generic names
-  return places.filter(p => {
-    const genericNames = ["Restaurant", "Cafe", "Bar", "Local Restaurant", "The Restaurant"];
-    return !genericNames.includes(p.name);
-  });
-};
-
-// --- NEW PROCESSOR (Project Genesis) ---
-
-export interface ProcessedFile {
-  name: string;
-  mimeType: string;
-  data: string; // Base64 or text
-  isText: boolean;
-}
-
-export const readFiles = async (files: File[]): Promise<ProcessedFile[]> => {
-  return Promise.all(files.map(file => {
-    const mimeType = file.type || '';
-    const isTextFile = (
-      mimeType === 'text/plain' ||
-      mimeType === 'application/json' ||
-      mimeType === 'message/rfc822' || // Emails - Treat as text for reading
-      file.name.endsWith('.eml') ||
-      file.name.endsWith('.txt') ||
-      file.name.endsWith('.md') ||
-      file.name.endsWith('.json')
-    );
-
-    return new Promise<ProcessedFile>((resolve) => {
-      const reader = new FileReader();
-      if (isTextFile) {
-        reader.onloadend = () => {
-          resolve({
-            data: reader.result as string,
-            mimeType: 'text/plain',
-            name: file.name,
-            isText: true
-          });
-        };
-        reader.readAsText(file);
-      } else {
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          const base64 = result.includes(',') ? result.split(',')[1] : result;
-
-          // Force Mime Type by Extension if missing (Crucial for AI PDF reading)
-          let finalMime = file.type;
-          if (!finalMime || finalMime === 'application/octet-stream') {
-            if (file.name.toLowerCase().endsWith('.pdf')) finalMime = 'application/pdf';
-            else if (file.name.toLowerCase().endsWith('.png')) finalMime = 'image/png';
-            else if (file.name.toLowerCase().endsWith('.jpg')) finalMime = 'image/jpeg';
-            else if (file.name.toLowerCase().endsWith('.jpeg')) finalMime = 'image/jpeg';
-            else if (file.name.toLowerCase().endsWith('.webp')) finalMime = 'image/webp';
-          }
-          finalMime = finalMime || 'application/octet-stream';
-
-          resolve({
-            data: base64,
-            mimeType: finalMime,
-            name: file.name,
-            isText: false
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }));
-};
-
-/**
- * Phase 1: The "Deep Understanding" Brain
- * Performs Multi-Document Reasoning to build a Staged Trip.
- */
-export interface TripAnalysisResult {
-  metadata: {
-    suggestedName: string;
-    destination: string;
-    cities: string[]; // New: List of specific towns/islands visited
-    startDate?: string; // YYYY-MM-DD
-    endDate?: string;   // YYYY-MM-DD
-  };
-  items: any[]; // The categorized files (Logistics, Wallet, Experiences)
-  rawStagedData: StagedTripData; // Keep original for ImportsReviewModal compatibility
-}
-
-/**
- * Schema Guardian for Staged Trip Data (Omni-Import)
- * Ensures 'categories' structure exists to prevent UI crashes.
- */
-const ensureStagedTripSchema = (data: any): StagedTripData => {
-  if (!data || typeof data !== 'object') {
-    return {
-      tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "", uniqueCityNames: [] },
-      categories: { transport: [], accommodation: [], wallet: [], dining: [], activities: [] },
-      processedFileIds: [],
-      unprocessedFiles: []
-    };
-  }
-
-  // Deep Merge Defaults
-  return {
-    tripMetadata: {
-      suggestedName: data.tripMetadata?.suggestedName || "New Trip",
-      suggestedDates: data.tripMetadata?.suggestedDates || "",
-      mainDestination: data.tripMetadata?.mainDestination || "",
-      uniqueCityNames: data.tripMetadata?.uniqueCityNames || []
-    },
-    categories: {
-      transport: Array.isArray(data.categories?.transport) ? data.categories.transport : [],
-      accommodation: Array.isArray(data.categories?.accommodation) ? data.categories.accommodation : [],
-      wallet: Array.isArray(data.categories?.wallet) ? data.categories.wallet : [],
-      dining: Array.isArray(data.categories?.dining) ? data.categories.dining : [],
-      activities: Array.isArray(data.categories?.activities) ? data.categories.activities : []
-    },
-    processedFileIds: Array.isArray(data.processedFileIds) ? data.processedFileIds : [],
-    unprocessedFiles: Array.isArray(data.unprocessedFiles) ? data.unprocessedFiles : []
-  };
-};
-
-/**
- * IATA City Mapping for Smart Route Resolution
- */
-const IATA_CITY_MAP: Record<string, string> = {
-  'TLV': 'Tel Aviv',
-  'AUH': 'Abu Dhabi',
-  'BKK': 'Bangkok',
-  'MNL': 'Manila',
-  'MPH': 'Boracay',
-  'CEB': 'Cebu',
-  'HND': 'Tokyo',
-  'NRT': 'Tokyo',
-  'KIX': 'Osaka',
-  'ICN': 'Seoul',
-  'HKG': 'Hong Kong',
-  'DXB': 'Dubai',
-  'SIN': 'Singapore',
-  'CDG': 'Paris'
-};
-
-const COUNTRIES_BLOCKLIST = new Set([
-  'THAILAND', 'PHILIPPINES', 'VIETNAM', 'JAPAN', 'ISRAEL', 'FRANCE', 'GERMANY', 'ITALY', 'SPAIN',
-  'CHINA', 'INDIA', 'USA', 'UNITED STATES', 'UK', 'UNITED KINGDOM', 'RUSSIA', 'AUSTRALIA', 'CANADA'
-]);
-
-const resolveCityName = (code: string): string => {
-  return IATA_CITY_MAP[code] || code;
-};
-
-/**
- * Smart Route Derivation (Project Genesis 2.0)
- * Builds a chronological "Event Trace" from Flights AND Hotels to determine the true route.
- */
-const deriveSmartRoute = (items: any[], defaultDest: string): { route: string, cities: string[] } => {
-  const events: { time: number; city: string; type: 'flight' | 'hotel' }[] = [];
-  const citiesSet = new Set<string>();
-
-  // Helper to extract city from text using strict IATA map or heuristic
-  const extractCity = (text: string): string => {
-    if (!text) return '';
-    // Check IATA Map
-    const normalized = text.toUpperCase().trim();
-    if (IATA_CITY_MAP[normalized]) return IATA_CITY_MAP[normalized];
-
-    // Filter out Countries if they appear as "City"
-    if (COUNTRIES_BLOCKLIST.has(normalized)) return '';
-
-    // Simple heuristic: If it looks like a city name (no numbers, short), use it.
-    // Otherwise, for full addresses, we might need more advanced NLP, but for now:
-    // We will clean it up later with the AI-provided 'uniqueCityNames' if available in the UI layer.
-    const potentialCity = text.split(',')[0].trim();
-    if (COUNTRIES_BLOCKLIST.has(potentialCity.toUpperCase())) return '';
-
-    return potentialCity;
-  };
-
-  items.forEach(item => {
-    // 1. Flights (Grouped or Single)
-    if (item.type === 'flight') {
-      if (item.data.segments && Array.isArray(item.data.segments)) {
-        item.data.segments.forEach((seg: any) => {
-          if (seg.departureCity && seg.departureDate) events.push({ time: new Date(seg.departureDate).getTime(), city: seg.departureCity, type: 'flight' });
-          if (seg.arrivalCity && seg.arrivalDate) events.push({ time: new Date(seg.arrivalDate).getTime(), city: seg.arrivalCity, type: 'flight' });
-        });
-      } else if (item.data.from && item.data.to) {
-        if (item.data.departureTime) events.push({ time: new Date(item.data.departureTime).getTime(), city: resolveCityName(item.data.from), type: 'flight' });
-        if (item.data.arrivalTime) events.push({ time: new Date(item.data.arrivalTime).getTime(), city: resolveCityName(item.data.to), type: 'flight' });
-      }
-    }
-
-    // 2. Hotels
-    if (item.type === 'hotel' && item.data.checkInDate) {
-      // Try to find city in address or name
-      let city = '';
-      const rawText = item.data.address || item.data.location || item.data.name || '';
-      if (rawText) {
-        // Basic extraction: Take the city part if comma exists, else take the whole thing if short
-        const parts = rawText.split(',');
-        city = parts.length > 1 ? parts[parts.length - 2].trim() : rawText; // e.g. "123 Main St, London, UK" -> "London"
-
-        // Very basic clean up fallback
-        if (city.length > 20) city = item.data.hotelName || 'Hotel Stay';
-      }
-
-      if (city && city !== 'Hotel Stay') {
-        events.push({ time: new Date(item.data.checkInDate).getTime(), city: city, type: 'hotel' });
-      }
-    }
-  });
-
-  // Sort Chronologically
-  const sortedEvents = events.sort((a, b) => a.time - b.time);
-
-  // Build Unique Route Path
-  const routeParts: string[] = [];
-
-  sortedEvents.forEach(e => {
-    const city = e.city;
-    citiesSet.add(city);
-
-    // Add to route if it's new (not same as last)
-    if (routeParts.length === 0 || routeParts[routeParts.length - 1] !== city) {
-      routeParts.push(city);
-    }
-  });
-
-  // Filter out Home Base (TLV) usually? Maybe keep it for full route context.
-  // For "Destination" field, usually we want the places visited.
-  const filteredRoute = routeParts.filter(c => c !== 'Tel Aviv' && c !== 'TLV' && c !== 'Ben Gurion');
-
-  // If no route found, use default
-  if (filteredRoute.length === 0) return { route: defaultDest, cities: Array.from(citiesSet) };
-
-  const finalRoute = filteredRoute.join(' ➝ ');
-  return { route: finalRoute, cities: Array.from(citiesSet) };
-};
-
-/**
- * Phase 1: The "Deep Understanding" Brain
- * Performs Multi-Document Reasoning to build a Staged Trip.
- */
-export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResult> => {
-  // 1. Process Files
-  const processedFiles = await readFiles(files);
-
-  console.group("🕵️‍♂️ [AI Debug] analyzing items...");
-  console.log("Files prepared for AI:", processedFiles.map(f => ({
-    name: f.name,
-    type: f.mimeType,
-    isText: f.isText,
-    dataLen: f.data.length
-  })));
-
-  // 2. Build Content for Gemini
-  // We prepend the system prompt as a user message since generateWithFallback handling for SMART/ANALYZE custom prompts with Google is minimal
-  const contents = [
-    { role: "user", parts: [{ text: SYSTEM_PROMPT_ANALYZE_TRIP }] },
-    { role: "user", parts: [{ text: "Here are the trip files to analyze:" }] },
-    ...processedFiles.map(f => ({
-      role: "user",
-      parts: [
-        { text: `Filename: ${f.name}` },
-        f.isText ? { text: f.data } : { inlineData: { mimeType: f.mimeType, data: f.data } }
-      ]
-    }))
-  ];
-
-  // 3. Generate Staged Trip
-  const schema = {
-    type: "OBJECT",
-    properties: {
-      tripMetadata: {
-        type: "OBJECT",
-        properties: {
-          suggestedName: { type: "STRING" },
-          suggestedDates: { type: "STRING" },
-          mainDestination: { type: "STRING" }
-        }
-      },
-      categories: {
-        type: "OBJECT",
-        properties: {
-          logistics: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                type: { type: "STRING" },
-                fileId: { type: "STRING" },
-                data: { type: "OBJECT" },
-                confidence: { type: "NUMBER" }
-              }
-            }
-          },
-          wallet: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                type: { type: "STRING" },
-                fileId: { type: "STRING" },
-                title: { type: "STRING" },
-                data: { type: "OBJECT" },
-                isSensitive: { type: "BOOLEAN" },
-                uiMessage: { type: "STRING" }
-              }
-            }
-          },
-          experiences: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                type: { type: "STRING" },
-                fileId: { type: "STRING" },
-                title: { type: "STRING" },
-                data: { type: "OBJECT" },
-                uiMessage: { type: "STRING" }
-              }
-            }
-          }
-        }
-      }
-    }
-  };
-
-  const ai = getAI();
-  const response = await generateWithFallback(
-    ai,
-    contents,
-    {
-      responseMimeType: 'application/json',
-      responseSchema: schema,
-      temperature: 0.1
-    },
-    'ANALYZE'
-  );
-
-  // Fix: response.text is a string from generateWithFallback
-  const textContent = response.text || '';
-
-  console.log("📝 [AI] Raw Response:", textContent);
-
-  // Default Empty Structure
-  const emptyStagedData: StagedTripData = {
-    tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "", uniqueCityNames: [] },
-    categories: { transport: [], accommodation: [], wallet: [], dining: [], activities: [] },
-    processedFileIds: [],
-    unprocessedFiles: []
-  };
-
-  let stagedData: StagedTripData = emptyStagedData;
-
-  try {
-    const rawData = JSON.parse(textContent);
-    // CRITICAL FIX: Use specific schema validator for StagedData, NOT ensureTripSchema
-    stagedData = ensureStagedTripSchema(rawData);
-    console.log("✅ [AI] Staged Data Parsed:", stagedData);
-  } catch (e) {
-    console.error("Failed to parse Omni-Import response", e);
-    console.log("❌ [AI Debug] Parsing Failure Context. Raw Text was:", textContent);
-  }
-
-  // -- AUDIT MISSING FILES --
-  const usedFileIds = new Set<string>();
-  const scanCategory = (arr: any[]) => arr.forEach(item => {
-    if (item.sourceFileIds) item.sourceFileIds.forEach((id: string) => usedFileIds.add(id));
-    else if (item.fileId) usedFileIds.add(item.fileId); // Legacy fallback
-  });
-
-  scanCategory(stagedData.categories.transport); // Uses newly updated logic (implicit)
-  scanCategory(stagedData.categories.accommodation);
-  scanCategory(stagedData.categories.wallet);
-  scanCategory(stagedData.categories.dining);
-  scanCategory(stagedData.categories.activities);
-
-  // Use AI reported processed list if available, otherwise fallback to usedFileIds
-  const processedByAI = new Set(stagedData.processedFileIds || []);
-  const missingFiles = processedFiles.filter(f => !usedFileIds.has(f.name) && !processedByAI.has(f.name));
-
-  if (missingFiles.length > 0 || (stagedData.unprocessedFiles && stagedData.unprocessedFiles.length > 0)) {
-    console.warn("⚠️ [AI Audit] The following files were NOT referenced in the output:");
-    missingFiles.forEach(f => console.warn(`   - ${f.name} (Type: ${f.mimeType})`));
-
-    // Also log AI-provided skipped files
-    if (stagedData.unprocessedFiles) {
-      stagedData.unprocessedFiles.forEach(u => console.warn(`   - AI Skipped: ${u.fileName} Reason: ${u.reason}`));
-    }
-    console.warn("Try checking if these are supported file types or contain legible text.");
-  } else {
-    console.log("✨ [AI Audit] Perfect Score! All uploaded files were used.");
-  }
-  console.groupEnd();
-
-  // Map to TripAnalysisResult
-  const flattenedItems = [
-    ...stagedData.categories.transport,
-    ...stagedData.categories.accommodation,
-    ...stagedData.categories.wallet,
-    ...stagedData.categories.dining,
-    ...stagedData.categories.activities
-  ];
-
-  const dateRange = stagedData.tripMetadata.suggestedDates.split(' - ');
-  const startDate = dateRange[0] ? dateRange[0].trim() : undefined;
-  const endDate = dateRange[1] ? dateRange[1].trim() : undefined;
-
-  // Calculate Smart Destination
-  const { route: smartRoute, cities: derivedCities } = deriveSmartRoute(flattenedItems, stagedData.tripMetadata.mainDestination);
-
-  // Merge AI suggested destinations with derived cities
-  const finalCities = Array.from(new Set([
-    ...(stagedData.tripMetadata.uniqueCityNames || []),
-    ...derivedCities
-  ]));
-
-  return {
-    metadata: {
-      suggestedName: stagedData.tripMetadata.suggestedName,
-      destination: smartRoute, // Use the smart route string
-      cities: finalCities, // Combined list
-      startDate,
-      endDate
-    },
-    items: flattenedItems,
-    rawStagedData: stagedData
-  };
-};
-
-
-export const getAI = getGoogleClient;
