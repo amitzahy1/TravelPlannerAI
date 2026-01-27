@@ -214,11 +214,16 @@ const HotelCard: React.FC<{
                     <div className="flex gap-1 md:gap-2 flex-wrap">
                         <div className="bg-indigo-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded md:rounded-lg border border-indigo-100 flex items-center gap-1 md:gap-2">
                             <div className="text-[8px] md:text-[9px] text-indigo-600 font-bold uppercase">IN</div>
-                            <div className="font-bold text-slate-900 text-[10px] md:text-sm flex items-center">{data.checkInDate}</div>
+                            <div className="font-bold text-slate-900 text-[10px] md:text-sm flex items-center">{
+                                // Inline formatter for display
+                                data.checkInDate?.split('T')[0].split('-').reverse().join('/') || ''
+                            }</div>
                         </div>
                         <div className="bg-slate-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded md:rounded-lg border border-slate-200 flex items-center gap-1 md:gap-2">
                             <div className="text-[8px] md:text-[9px] text-slate-500 font-bold uppercase">OUT</div>
-                            <div className="font-bold text-slate-900 text-[10px] md:text-sm flex items-center">{data.checkOutDate}</div>
+                            <div className="font-bold text-slate-900 text-[10px] md:text-sm flex items-center">{
+                                data.checkOutDate?.split('T')[0].split('-').reverse().join('/') || ''
+                            }</div>
                         </div>
                     </div>
 
@@ -253,8 +258,10 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
 
     const formatForDisplay = (d?: string) => {
         if (!d) return "בחר תאריך";
-        if (d.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            const [y, m, day] = d.split('-');
+        // Handle YYYY-MM-DD with optional time part
+        if (d.match(/^\d{4}-\d{2}-\d{2}/)) {
+            const datePart = d.split('T')[0];
+            const [y, m, day] = datePart.split('-');
             return `${day}/${m}/${y}`;
         }
         return d;

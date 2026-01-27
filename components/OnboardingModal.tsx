@@ -145,36 +145,42 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                 segments: categories.transport
                     .filter(i => i.type === 'flight')
                     .flatMap(i => {
-                        // AI might return a nested 'segments' array for grouped journeys
+                        // AI Data Structure 1: Nested segments with details (Preferred)
                         if (i.data.segments && Array.isArray(i.data.segments)) {
                             return i.data.segments.map((seg: any) => ({
-                                fromCode: seg.departureIata || seg.departureCity || '',
-                                toCode: seg.arrivalIata || seg.arrivalCity || '',
-                                date: seg.departureDate || '',
+                                fromCode: seg.departure?.airport || seg.departureIata || '',
+                                toCode: seg.arrival?.airport || seg.arrivalIata || '',
+                                date: seg.departure?.date || seg.departureDate || '',
                                 airline: seg.airline || '',
                                 flightNumber: seg.flightNumber || '',
-                                departureTime: seg.displayDepartureTime || seg.departureDate || '',
-                                arrivalTime: seg.displayArrivalTime || seg.arrivalDate || '',
-                                fromCity: seg.departureCity || '',
-                                toCity: seg.arrivalCity || '',
+                                departureTime: seg.departure?.displayTime || seg.display_departure_time || seg.departure?.date || '',
+                                arrivalTime: seg.arrival?.displayTime || seg.display_arrival_time || seg.arrival?.date || '',
+                                fromCity: seg.departure?.city || seg.departureCity || '',
+                                toCity: seg.arrival?.city || seg.arrivalCity || '',
                                 duration: "0h"
                             }));
                         }
-                        // Fallback for legacy flat structure
+
+                        // AI Data Structure 2: Flat flight (Legacy)
                         return [{
-                            fromCode: i.data.from || '', toCode: i.data.to || '',
-                            date: i.data.departureTime || '', airline: i.data.airline || '',
-                            flightNumber: i.data.flightNumber || '', departureTime: i.data.departureTime || '',
-                            arrivalTime: i.data.arrivalTime || '', fromCity: i.data.from || '',
-                            toCity: i.data.to || '', duration: "0h",
+                            fromCode: i.data.departure?.airport || i.data.from || '',
+                            toCode: i.data.arrival?.airport || i.data.to || '',
+                            date: i.data.departure?.date || i.data.departureTime || '',
+                            airline: i.data.airline || '',
+                            flightNumber: i.data.flightNumber || '',
+                            departureTime: i.data.departure?.displayTime || i.data.departureTime || '',
+                            arrivalTime: i.data.arrival?.displayTime || i.data.arrivalTime || '',
+                            fromCity: i.data.departure?.city || i.data.from || '',
+                            toCity: i.data.arrival?.city || i.data.to || '',
+                            duration: "0h",
                         }];
                     })
             },
             hotels: categories.accommodation.map(i => ({
                 id: crypto.randomUUID(),
                 name: i.data.hotelName || '',
-                checkInDate: i.data.checkInDate || '',
-                checkOutDate: i.data.checkOutDate || '',
+                checkInDate: (i.data.checkInDate || '').split('T')[0],
+                checkOutDate: (i.data.checkOutDate || '').split('T')[0],
                 address: i.data.address || '',
                 confirmationCode: "",
                 roomType: "",
@@ -332,14 +338,17 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="p-6 border-t border-slate-100 flex justify-end gap-4 bg-white">
-                            <button onClick={handleLegacyCreate} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">
-                                Cancel
-                            </button>
-                            <button onClick={handleConfirmTrip} className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 flex items-center gap-2 transform active:scale-95 transition-all">
-                                <Check className="w-5 h-5" />
-                                Create Trip
-                            </button>
+                        <div className="p-6 border-t border-slate-100 flex justify-between items-center bg-white">
+                            <DebugToggle tripData={tripData} />
+                            <div className="flex gap-4">
+                                <button onClick={handleLegacyCreate} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">
+                                    Cancel
+                                </button>
+                                <button onClick={handleConfirmTrip} className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 flex items-center gap-2 transform active:scale-95 transition-all">
+                                    <Check className="w-5 h-5" />
+                                    Create Trip
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -391,7 +400,24 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                                     </div>
                                     <div>
                                         <div className="font-bold text-slate-800">{isFlight ? `Flight: ${title}` : title}</div>
-                                        <div className="text-sm text-slate-500">{subText}</div>
+                                        <div className="text-sm text-slate-500">
+                                            {/* Robust Rendering for both Flat and Nested structures */}
+                                            {(() => {
+                                                if (item.data.segments && item.data.segments[0]) {
+                                                    const seg = item.data.segments[0];
+                                                    const lastSeg = item.data.segments[item.data.segments.length - 1];
+                                                    const depTime = seg.departure?.displayTime || seg.display_departure_time || 'Time TBA';
+                                                    const depCity = seg.departure?.city || seg.departureCity || seg.fromCode || 'Origin';
+                                                    const arrCity = lastSeg.arrival?.city || lastSeg.arrivalCity || lastSeg.toCode || 'Dest';
+                                                    return `${depTime} • ${depCity} → ${arrCity}`;
+                                                }
+                                                // Flat Fallback
+                                                const depTime = item.data.departure?.displayTime || item.data.displayTime || item.data.departureTime || 'Time TBA';
+                                                const depCity = item.data.departure?.city || item.data.from || 'Origin';
+                                                const arrCity = item.data.arrival?.city || item.data.to || 'Dest';
+                                                return `${depTime} • ${depCity} → ${arrCity}`;
+                                            })()}
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -475,3 +501,31 @@ const EmptyState = ({ label }: { label: string }) => (
         <div className="text-slate-300 font-medium">{label}</div>
     </div>
 );
+
+const DebugToggle = ({ tripData }: { tripData: any }) => {
+    const [showDebug, setShowDebug] = useState(false);
+
+    if (!showDebug) {
+        return (
+            <button onClick={() => setShowDebug(true)} className="text-xs font-mono text-slate-300 hover:text-slate-400">
+                Show Raw Data
+            </button>
+        );
+    }
+
+    return (
+        <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-md flex items-center justify-center p-10" onClick={() => setShowDebug(false)}>
+            <div className="bg-slate-900 w-full max-w-4xl h-[80vh] rounded-2xl overflow-hidden border border-slate-700 shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="p-4 border-b border-slate-700 flex justify-between items-center">
+                    <h3 className="text-white font-mono font-bold">Raw AI Output</h3>
+                    <button onClick={() => setShowDebug(false)} className="px-3 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Close</button>
+                </div>
+                <div className="flex-1 overflow-auto p-4">
+                    <pre className="text-green-400 font-mono text-xs whitespace-pre-wrap">
+                        {JSON.stringify(tripData, null, 2)}
+                    </pre>
+                </div>
+            </div>
+        </div>
+    );
+};
