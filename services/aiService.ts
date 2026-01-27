@@ -869,7 +869,22 @@ export const readFiles = async (files: File[]): Promise<ProcessedFile[]> => {
  * Phase 1: The "Deep Understanding" Brain
  * Performs Multi-Document Reasoning to build a Staged Trip.
  */
-export const analyzeTripFiles = async (files: File[]): Promise<StagedTripData> => {
+export interface TripAnalysisResult {
+  metadata: {
+    suggestedName: string;
+    destination: string;
+    startDate?: string; // YYYY-MM-DD
+    endDate?: string;   // YYYY-MM-DD
+  };
+  items: any[]; // The categorized files (Logistics, Wallet, Experiences)
+  rawStagedData: StagedTripData; // Keep original for ImportsReviewModal compatibility
+}
+
+/**
+ * Phase 1: The "Deep Understanding" Brain
+ * Performs Multi-Document Reasoning to build a Staged Trip.
+ */
+export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResult> => {
   // 1. Process Files
   const processedFiles = await readFiles(files);
 
@@ -960,21 +975,43 @@ export const analyzeTripFiles = async (files: File[]): Promise<StagedTripData> =
 
   // Fix: response.text is a string from generateWithFallback
   const textContent = response.text || '';
+
+  // Default Empty Structure
+  const emptyStagedData: StagedTripData = {
+    tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "" },
+    categories: { logistics: [], wallet: [], experiences: [] }
+  };
+
+  let stagedData: StagedTripData = emptyStagedData;
+
   try {
-    const data = JSON.parse(textContent);
-    return data as StagedTripData;
+    const rawData = JSON.parse(textContent);
+    stagedData = ensureTripSchema(rawData) as StagedTripData;
   } catch (e) {
     console.error("Failed to parse Omni-Import response", e);
-    // Fallback Empty Structure
-    return {
-      tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "" },
-      categories: {
-        logistics: [],
-        wallet: [],
-        experiences: []
-      }
-    };
   }
+
+  // Map to TripAnalysisResult
+  const flattenedItems = [
+    ...stagedData.categories.logistics,
+    ...stagedData.categories.wallet,
+    ...stagedData.categories.experiences
+  ];
+
+  const dateRange = stagedData.tripMetadata.suggestedDates.split(' - ');
+  const startDate = dateRange[0] ? dateRange[0].trim() : undefined;
+  const endDate = dateRange[1] ? dateRange[1].trim() : undefined;
+
+  return {
+    metadata: {
+      suggestedName: stagedData.tripMetadata.suggestedName,
+      destination: stagedData.tripMetadata.mainDestination,
+      startDate,
+      endDate
+    },
+    items: flattenedItems,
+    rawStagedData: stagedData
+  };
 };
 
 
