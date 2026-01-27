@@ -241,19 +241,19 @@ export const analyzeReceipt = async (
 const GOOGLE_MODELS = {
   // TIER 1: Intelligence
   V3_PRO_STABLE: "gemini-1.5-pro",
-  V3_PRO_LATEST: "gemini-1.5-pro-latest",
-  V3_PRO_PREV: "gemini-1.5-pro",
+  V3_PRO_LATEST: "gemini-2.0-flash-exp", // Currently the most advanced free model avail
+  V3_PRO_PREV: "gemini-1.5-pro-002",
 
   // TIER 2: Stability
   V2_5_PRO: "gemini-1.5-pro",
 
   // TIER 3: Speed
   V3_FLASH_STABLE: "gemini-1.5-flash",
-  V3_FLASH_LATEST: "gemini-1.5-flash-latest",
+  V3_FLASH_LATEST: "gemini-2.0-flash-exp", // Fast and smart
 
   // TIER 4: Safety Net
-  V2_5_FLASH: "gemini-1.5-flash",
-  V2_FLASH_LEGACY: "gemini-1.0-pro"
+  V2_5_FLASH: "gemini-1.5-flash-002",
+  V2_FLASH_LEGACY: "gemini-1.5-flash"
 };
 
 // Fallback Candidate Chains (Updated Jan 2026 - Removing invalid v1beta 404 models)
