@@ -182,10 +182,9 @@ const GOOGLE_MODELS = {
   V2_FLASH_LEGACY: "gemini-2.0-flash"
 };
 
-// Fallback Candidate Chains
+// Fallback Candidate Chains (Updated Jan 2026 - Removing invalid v1beta 404 models)
 const CANDIDATES_SMART = [
-  GOOGLE_MODELS.V3_PRO_STABLE,
-  GOOGLE_MODELS.V3_PRO_LATEST,
+  GOOGLE_MODELS.V3_PRO_LATEST, // Stable Alias
   GOOGLE_MODELS.V2_5_PRO,
   GOOGLE_MODELS.V3_PRO_PREV
 ];
@@ -197,7 +196,7 @@ const CANDIDATES_FAST = [
   GOOGLE_MODELS.V2_FLASH_LEGACY
 ];
 
-export const AI_MODEL = GOOGLE_MODELS.V3_PRO_STABLE; // For display purposes
+export const AI_MODEL = GOOGLE_MODELS.V3_PRO_LATEST; // For display purposes
 
 // --- HELPERS ---
 
@@ -757,6 +756,33 @@ export interface TripAnalysisResult {
 }
 
 /**
+ * Schema Guardian for Staged Trip Data (Omni-Import)
+ * Ensures 'categories' structure exists to prevent UI crashes.
+ */
+const ensureStagedTripSchema = (data: any): StagedTripData => {
+  if (!data || typeof data !== 'object') {
+    return {
+      tripMetadata: { suggestedName: "New Trip", suggestedDates: "", mainDestination: "" },
+      categories: { logistics: [], wallet: [], experiences: [] }
+    };
+  }
+
+  // Deep Merge Defaults
+  return {
+    tripMetadata: {
+      suggestedName: data.tripMetadata?.suggestedName || "New Trip",
+      suggestedDates: data.tripMetadata?.suggestedDates || "",
+      mainDestination: data.tripMetadata?.mainDestination || ""
+    },
+    categories: {
+      logistics: Array.isArray(data.categories?.logistics) ? data.categories.logistics : [],
+      wallet: Array.isArray(data.categories?.wallet) ? data.categories.wallet : [],
+      experiences: Array.isArray(data.categories?.experiences) ? data.categories.experiences : []
+    }
+  };
+};
+
+/**
  * Phase 1: The "Deep Understanding" Brain
  * Performs Multi-Document Reasoning to build a Staged Trip.
  */
@@ -862,7 +888,8 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
 
   try {
     const rawData = JSON.parse(textContent);
-    stagedData = ensureTripSchema(rawData) as StagedTripData;
+    // CRITICAL FIX: Use specific schema validator for StagedData, NOT ensureTripSchema
+    stagedData = ensureStagedTripSchema(rawData);
   } catch (e) {
     console.error("Failed to parse Omni-Import response", e);
   }
