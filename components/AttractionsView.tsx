@@ -270,15 +270,31 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             console.log("🔍 [AI ATTRACTIONS Raw Response]:", textContent?.substring(0, 500) + "...");
 
             try {
-                const data = JSON.parse(textContent || '{}');
-                if (data.categories && Array.isArray(data.categories) && data.categories.length > 0) {
-                    console.log(`✅ [AI Success] Parsed ${data.categories.length} attraction categories.`);
-                    const processed = data.categories.map((c: any) => ({ ...c, attractions: c.attractions.map((a: any, i: number) => ({ ...a, id: `ai-attr-${c.id}-${i}`, categoryTitle: c.title })) }));
+                const rawData = JSON.parse(textContent || '{}');
+
+                // ROBUST PARSER: Handle both { categories: [...] } and direct [...] formats
+                let categoriesList = [];
+                if (rawData.categories && Array.isArray(rawData.categories)) {
+                    categoriesList = rawData.categories;
+                } else if (Array.isArray(rawData)) {
+                    categoriesList = rawData;
+                }
+
+                if (categoriesList.length > 0) {
+                    console.log(`✅ [AI Success] Parsed ${categoriesList.length} attraction categories (Format: ${Array.isArray(rawData) ? 'Direct Array' : 'Wrapped Object'})`);
+                    const processed = categoriesList.map((c: any) => ({
+                        ...c,
+                        attractions: (c.attractions || []).map((a: any, i: number) => ({
+                            ...a,
+                            id: `ai-attr-${c.id || Math.random().toString(36).substr(2, 5)}-${i}`,
+                            categoryTitle: c.title
+                        }))
+                    }));
                     setAiCategories(processed);
                     setSelectedCategory('all');
                     onUpdateTrip({ ...trip, aiAttractions: processed });
                 } else {
-                    console.warn("⚠️ [AI Warning] Response was valid JSON but contained no attraction categories.", data);
+                    console.warn("⚠️ [AI Warning] Response was valid JSON but contained no attraction results.", rawData);
                     setRecError('לא נמצאו אטרקציות עבור יעד זה.');
                 }
             } catch (parseErr) {

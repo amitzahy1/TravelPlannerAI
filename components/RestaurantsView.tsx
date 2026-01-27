@@ -379,15 +379,24 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             console.log("🔍 [AI Raw Response Preview]:", textContent?.substring(0, 500) + "...");
 
             try {
-                const data = JSON.parse(textContent || '{}');
-                if (data.categories && Array.isArray(data.categories) && data.categories.length > 0) {
-                    console.log(`✅ [AI Success] Parsed ${data.categories.length} categories.`);
-                    const processed = data.categories.map((c: any) => ({
+                const rawData = JSON.parse(textContent || '{}');
+
+                // ROBUST PARSER: Handle both { categories: [...] } and direct [...] formats
+                let categoriesList = [];
+                if (rawData.categories && Array.isArray(rawData.categories)) {
+                    categoriesList = rawData.categories;
+                } else if (Array.isArray(rawData)) {
+                    categoriesList = rawData;
+                }
+
+                if (categoriesList.length > 0) {
+                    console.log(`✅ [AI Success] Parsed ${categoriesList.length} categories (Format: ${Array.isArray(rawData) ? 'Direct Array' : 'Wrapped Object'})`);
+                    const processed = categoriesList.map((c: any) => ({
                         ...c,
                         region: specificCity,
-                        restaurants: c.restaurants.map((r: any, i: number) => ({
+                        restaurants: (c.restaurants || []).map((r: any, i: number) => ({
                             ...r,
-                            id: `ai-rec-${c.id}-${i}`,
+                            id: `ai-rec-${c.id || Math.random().toString(36).substr(2, 5)}-${i}`,
                             categoryTitle: c.title
                         }))
                     }));
@@ -396,8 +405,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     setSelectedCategory('all');
                     onUpdateTrip({ ...trip, aiRestaurants: processed });
                 } else {
-                    console.warn("⚠️ [AI Warning] Response was valid JSON but contained no categories.", data);
-                    setRecError('לא נמצאו תוצאות עבור יעד זה. נסה חיפוש ידני או עיר אחרת.');
+                    console.warn("⚠️ [AI Warning] Response was valid JSON but contained no results.", rawData);
+                    setRecError('לא נמצאו המלצות מסעדות עבור יעד זה. המודל לא הצליח לאתר תוצאות איכותיות.');
                 }
             } catch (parseError: any) {
                 console.error('❌ [AI Error] JSON Parse failed in fetchRecommendations.', parseError);

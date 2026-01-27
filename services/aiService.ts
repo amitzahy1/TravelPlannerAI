@@ -136,18 +136,18 @@ Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
 
 1. 🏙️ CITIES (Field: 'uniqueCityNames'):
    - Extract a CLEAN list of unique cities visited.
-   - PURETOWN NAMES ONLY. Do NOT include ", Country" or "Airport". (e.g. "Bangkok", not "Bangkok, Thailand"). 
+   - PURETOWN NAMES ONLY. Do NOT include ", Country" or "Airport". (e.g. "Bangkok", not "Bangkok, Thailand").
    - NEVER use the country name as the city (e.g. "Philippines" is NOT a city).
-   - REMOVE POSTAL CODES or numbers (e.g. "1228 Manila" -> "Manila").
+   - REMOVE POSTAL CODES, zip codes, or building numbers (e.g. "1228 Manila" -> "Manila", "Bangkok 10500" -> "Bangkok").
+   - PURE TEXT ONLY for 'uniqueCityNames'.
    - If a place is an island (e.g. "Phuket", "Boracay"), use the Island name.
    - Exclude the home airport city (e.g., if flight is TLV->BKK, include Bangkok, exclude Tel Aviv).
    - Example: ["Manila", "Boracay", "Cebu", "Bangkok"].
 
-2. ✈️ FLIGHT INTELLIGENCE (CRITICAL):
-   - If a **Flight Number** is detected (e.g., "LY001", "EK123", "TG403") but connection details are missing in the doc:
-   - YOU MUST INFER the Origin, Destination, and typical Times based on your knowledge of that flight route.
-   - Example: If you see "LY001", infer "Tel Aviv -> New York (JFK)".
-   - DO NOT leave origin/destination empty if a Flight Number exists.
+2. ✈️ FLIGHT INTELLIGENCE (STRICT):
+   - NO 'TBD' VALUES. If a **Flight Number** is detected (e.g., "EY598", "LY001"), you MUST provide full details for that segment.
+   - YOU MUST INFER the Origin, Destination, and typical Times based on your knowledge of that flight route if not explicitly in the text.
+   - EVERY segment must have: airline, flightNumber, departureCity, arrivalCity, departureDate.
 
 3. 🕒 DATES & TIMES:
    - 'date': ISO 8601 format (e.g., "2026-02-15T03:25:00") for DB.

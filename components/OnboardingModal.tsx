@@ -35,6 +35,19 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     const [formDestination, setFormDestination] = useState("");
 
     useEffect(() => {
+        if (tripData?.metadata) {
+            setFormName(tripData.metadata.suggestedName || '');
+            setFormDestination(cleanCityName(tripData.metadata.destination || ''));
+
+            // Format dates as "YYYY-MM-DD - YYYY-MM-DD"
+            const dates = tripData.metadata.startDate && tripData.metadata.endDate
+                ? `${tripData.metadata.startDate} - ${tripData.metadata.endDate}`
+                : tripData.metadata.startDate || '';
+            setFormDates(dates);
+        }
+    }, [tripData]);
+
+    useEffect(() => {
         if (startOpen) {
             setIsOpen(true);
             return;
@@ -289,45 +302,51 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Trip Name</label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between items-center px-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trip Name</label>
+                                            {tripData.metadata.suggestedName && <span className="text-[9px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded uppercase">AI ✨</span>}
+                                        </div>
                                         <div className="relative group">
                                             <input
                                                 value={formName}
                                                 onChange={(e) => setFormName(e.target.value)}
-                                                className="w-full bg-white border-2 border-slate-100 focus:border-blue-500 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none transition-all shadow-sm group-hover:border-slate-200"
+                                                className="w-full bg-white border-2 border-slate-100 focus:border-blue-500 rounded-2xl px-4 py-3.5 font-bold text-slate-800 outline-none transition-all shadow-sm group-hover:border-slate-200 text-sm"
                                                 placeholder="e.g. Summer in Paris"
                                             />
-                                            {tripData.metadata.suggestedName && <AIBadge />}
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Destination</label>
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between items-center px-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Destination</label>
+                                            {tripData.metadata.destination && <span className="text-[9px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded uppercase">AI ✨</span>}
+                                        </div>
                                         <div className="relative group">
-                                            <div className="absolute left-3 top-3.5 text-slate-400"><MapPin className="w-5 h-5" /></div>
+                                            <div className="absolute left-3 top-4 text-slate-400"><MapPin className="w-5 h-5" /></div>
                                             <input
                                                 value={formDestination}
                                                 onChange={(e) => setFormDestination(e.target.value)}
-                                                className="w-full bg-white border-2 border-slate-100 focus:border-blue-500 rounded-xl pl-10 pr-4 py-3 font-bold text-slate-800 outline-none transition-all shadow-sm group-hover:border-slate-200"
+                                                className="w-full bg-white border-2 border-slate-100 focus:border-blue-500 rounded-2xl pl-10 pr-4 py-3.5 font-bold text-slate-800 outline-none transition-all shadow-sm group-hover:border-slate-200 text-sm"
                                                 placeholder="City, Country"
                                             />
-                                            {tripData.metadata.destination && <AIBadge />}
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Dates</label>
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between items-center px-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dates</label>
+                                            {tripData.metadata.startDate && <span className="text-[9px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded uppercase">AI ✨</span>}
+                                        </div>
                                         <div className="relative group">
-                                            <div className="absolute left-3 top-3.5 text-slate-400"><Calendar className="w-5 h-5" /></div>
+                                            <div className="absolute left-3 top-4 text-slate-400"><Calendar className="w-5 h-5" /></div>
                                             <input
                                                 value={formDates}
                                                 onChange={(e) => setFormDates(e.target.value)}
-                                                className="w-full bg-white border-2 border-slate-100 focus:border-blue-500 rounded-xl pl-10 pr-4 py-3 font-bold text-slate-800 outline-none transition-all shadow-sm group-hover:border-slate-200"
+                                                className="w-full bg-white border-2 border-slate-100 focus:border-blue-500 rounded-2xl pl-10 pr-4 py-3.5 font-bold text-slate-800 outline-none transition-all shadow-sm group-hover:border-slate-200 text-sm"
                                                 placeholder="YYYY-MM-DD - YYYY-MM-DD"
                                             />
-                                            {tripData.metadata.startDate && <AIBadge />}
                                         </div>
                                     </div>
                                 </div>
@@ -335,9 +354,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                         </div>
 
                         {/* Staging Area: Imports Review Logic */}
-                        <div className="flex-1 overflow-y-auto bg-white p-8">
+                        <div className="flex-1 overflow-y-auto bg-slate-50/30 p-4 md:p-8">
                             <div className="max-w-4xl mx-auto">
-                                <StagedDataReview stagedData={tripData.rawStagedData} files={uploadedFiles} />
+                                <section className="mb-6">
+                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 px-1">
+                                        <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
+                                        Review Extracted Items
+                                    </h3>
+                                    <StagedDataReview stagedData={tripData.rawStagedData} files={uploadedFiles} />
+                                </section>
                             </div>
                         </div>
 
@@ -362,6 +387,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 };
 
 // --- HELPER COMPONENTS ---
+
+// Helper to clean city names (remove postal codes, building numbers)
+const cleanCityName = (city: string) => {
+    if (!city) return '';
+    // Remove digits and common postal code patterns (e.g., "Manila 1228" -> "Manila")
+    return city.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+};
 
 const AIBadge = () => (
     <div className="absolute right-2 top-2 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg animate-pulse flex items-center gap-1.5 shadow-sm" title="Auto-filled by AI">

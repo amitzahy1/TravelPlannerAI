@@ -124,7 +124,8 @@ export const ItineraryView: React.FC<{
         // Priority 3: Empty Day
         if (events.length === 0) {
             const location = trip.destinationEnglish || trip.destination.split('-')[0].trim();
-            return `יום חופשי ב${location}`;
+            // User requested ONLY city name for free days, no "Free day in..."
+            return location;
         }
 
         // Priority 4: Single Event
@@ -300,7 +301,7 @@ export const ItineraryView: React.FC<{
                         type: 'food',
                         time: res.reservationTime || '20:00',
                         title: res.name,
-                        subtitle: res.cuisine,
+                        subtitle: (res as any).categoryTitle || res.description,
                         location: res.location,
                         icon: Utensils,
                         colorClass: 'text-orange-600',
@@ -833,7 +834,17 @@ export const ItineraryView: React.FC<{
                                                 </div>
                                                 <div className="flex flex-wrap items-center gap-2 mt-1">
                                                     {event.subtitle && <span className="text-[10px] text-slate-500 truncate max-w-[150px]">{event.subtitle}</span>}
-                                                    {event.location && <span className="flex items-center text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded"><MapPin className="w-2.5 h-2.5 ml-0.5" /> {event.location}</span>}
+                                                    {event.location && (
+                                                        <a
+                                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="flex items-center text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded hover:bg-slate-100 hover:text-blue-500 transition-colors"
+                                                        >
+                                                            <MapPin className="w-2.5 h-2.5 ml-0.5" /> {event.location}
+                                                        </a>
+                                                    )}
                                                     {event.isExternal && <span className="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 rounded font-bold">G-Cal</span>}
                                                 </div>
                                             </div>
