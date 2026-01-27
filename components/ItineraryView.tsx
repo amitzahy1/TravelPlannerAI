@@ -836,7 +836,7 @@ export const ItineraryView: React.FC<{
                                                     {event.subtitle && <span className="text-[10px] text-slate-500 truncate max-w-[150px]">{event.subtitle}</span>}
                                                     {event.location && (
                                                         <a
-                                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+                                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event.title} ${event.location}`)}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             onClick={(e) => e.stopPropagation()}
