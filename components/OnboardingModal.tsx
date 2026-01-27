@@ -173,7 +173,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                             <Sparkles className="w-16 h-16 text-blue-600 relative z-10" />
                         </div>
                         <h2 className="text-3xl font-black text-slate-800 mb-3 text-center">Start with your files</h2>
-                        <p className="text-slate-500 text-center mb-10 max-w-sm">We'll handle the rest.</p>
+                        <p className="text-slate-500 text-center mb-10 max-w-sm">Drop tickets & reservations here to auto-build your trip.</p>
 
                         <div className="w-full">
                             <MagicDropZone onFilesReady={handleFilesReady} compact={false} />
@@ -284,8 +284,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
 const AIBadge = () => (
     <div className="absolute right-2 top-2 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg animate-pulse flex items-center gap-1.5 shadow-sm" title="Auto-filled by AI">
-        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">AI Auto-filled</span>
+        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">✨ Auto-filled</span>
     </div>
 );
 

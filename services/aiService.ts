@@ -162,9 +162,10 @@ OUTPUT: Return ONLY valid JSON.
 // 1. Google Gemini Models (Direct SDK)
 // 1. Google Gemini Models (Direct SDK)
 const GOOGLE_MODELS = {
-  SMART: "gemini-3-pro",   // Primary Intent
-  FAST: "gemini-3-flash",  // Fast Intent
-  FALLBACK: "gemini-3-flash"
+  // The Correct, Validated IDs found by debugging:
+  SMART: "gemini-3-pro-latest",   // Primary Intent
+  FAST: "gemini-3-flash-latest",  // Fast Intent
+  FALLBACK: "gemini-2.0-flash"    // Safety Net (Just in case)
 };
 
 // 2. Groq Models (Fast Inference Fallback)
@@ -548,9 +549,20 @@ export const parseTripWizardInputs = async (inputs: { name: string, dates: strin
   const { name, dates, destination, notes, files } = inputs;
 
   // Filter out unsupported files (e.g. emails) to prevent 400 errors
+  // Strict Allowlist: PDF, Text, Images
   const supportedFiles = files.filter(f => {
-    const isEmail = f.type === 'message/rfc822' || f.name.endsWith('.eml');
-    return !isEmail; // Only allow non-emails (PDF, Images, Text)
+    const type = f.type;
+    const name = f.name;
+    return (
+      type === 'application/pdf' ||
+      type === 'text/plain' ||
+      type.startsWith('image/') ||
+      name.endsWith('.pdf') ||
+      name.endsWith('.txt') ||
+      name.endsWith('.md') ||
+      name.endsWith('.json') ||
+      name.endsWith('.csv')
+    );
   });
 
   const contentParts: any[] = [
