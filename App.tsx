@@ -202,6 +202,13 @@ const AppContent: React.FC = () => {
     }
   }, [user, authLoading]);
 
+  // Auto-Open Admin if no trips (User wants minimal empty state)
+  useEffect(() => {
+    if (!isLoading && !authLoading && trips.length === 0 && !joinShareId) {
+      setShowAdmin(true);
+    }
+  }, [isLoading, authLoading, trips.length, joinShareId]);
+
   // STRICT RENDER GUARD
 
   // 1. Loading State
@@ -244,13 +251,6 @@ const AppContent: React.FC = () => {
       </div>
     );
   }
-
-  // Auto-Open Admin if no trips (User wants minimal empty state)
-  useEffect(() => {
-    if (!isLoading && !authLoading && trips.length === 0 && !joinShareId) {
-      setShowAdmin(true);
-    }
-  }, [isLoading, authLoading, trips.length, joinShareId]);
 
   const renderContent = () => {
     if (!activeTrip) {
