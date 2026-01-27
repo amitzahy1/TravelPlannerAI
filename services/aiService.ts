@@ -161,9 +161,9 @@ OUTPUT: Return ONLY valid JSON.
 
 // 1. Google Gemini Models (Direct SDK)
 const GOOGLE_MODELS = {
-  FAST: "gemini-2.0-flash-exp",   // Updated to valid model
-  SMART: "gemini-2.0-flash-exp",    // Updated to valid model
-  FALLBACK: "gemini-1.5-flash"  // Stable fallback
+  FAST: "gemini-2.0-flash-exp",   // Best for speed/cost (Extract)
+  SMART: "gemini-1.5-pro",        // Best for reasoning (Research/Analyze)
+  FALLBACK: "gemini-1.5-flash"    // Stable backup
 };
 
 // 2. Groq Models (Fast Inference Fallback)
