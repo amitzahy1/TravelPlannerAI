@@ -159,30 +159,45 @@ OUTPUT: Return ONLY valid JSON.
 
 // --- CONFIGURATION ---
 
-// 1. Google Gemini Models (Direct SDK)
-// 1. Google Gemini Models (Direct SDK)
+// Jan 2026 Ultimate "Unbreakable" Architecture
+// TIER 1: INTELLIGENCE (Gemini 3)
+// TIER 2: STABILITY (Gemini 2.5)
+// TIER 3: SPEED (Gemini 3 Flash)
+// TIER 4: SAFETY NET (Gemini 2.5/2.0)
 const GOOGLE_MODELS = {
-  // Validated IDs (Gemini 3 is marketing name, API uses 2.0/Exp):
-  SMART: "gemini-2.0-pro-exp-02-05",   // The latest Pro Experience
-  FAST: "gemini-2.0-flash",            // The standard fast model
-  FALLBACK: "gemini-2.0-flash"
+  // TIER 1: Intelligence
+  V3_PRO_STABLE: "gemini-3-pro",
+  V3_PRO_LATEST: "gemini-pro-latest",
+  V3_PRO_PREV: "gemini-3-pro-preview",
+
+  // TIER 2: Stability
+  V2_5_PRO: "gemini-2.5-pro",
+
+  // TIER 3: Speed
+  V3_FLASH_STABLE: "gemini-3-flash",
+  V3_FLASH_LATEST: "gemini-flash-latest",
+
+  // TIER 4: Safety Net
+  V2_5_FLASH: "gemini-2.5-flash",
+  V2_FLASH_LEGACY: "gemini-2.0-flash"
 };
 
-// 2. Groq Models (Fast Inference Fallback)
-const GROQ_MODELS = [
-  "llama-3.3-70b-versatile",
-  "llama3-70b-8192",
+// Fallback Candidate Chains
+const CANDIDATES_SMART = [
+  GOOGLE_MODELS.V3_PRO_STABLE,
+  GOOGLE_MODELS.V3_PRO_LATEST,
+  GOOGLE_MODELS.V2_5_PRO,
+  GOOGLE_MODELS.V3_PRO_PREV
 ];
 
-// 3. OpenRouter Models (Universal Fallback)
-const OPENROUTER_MODELS = [
-  "google/gemini-2.0-flash-exp:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "mistralai/mistral-7b-instruct:free",
-  "microsoft/phi-3-mini-128k-instruct:free",
+const CANDIDATES_FAST = [
+  GOOGLE_MODELS.V3_FLASH_STABLE,
+  GOOGLE_MODELS.V3_FLASH_LATEST,
+  GOOGLE_MODELS.V2_5_FLASH,
+  GOOGLE_MODELS.V2_FLASH_LEGACY
 ];
 
-export const AI_MODEL = GOOGLE_MODELS.SMART; // For display purposes
+export const AI_MODEL = GOOGLE_MODELS.V3_PRO_STABLE; // For display purposes
 
 // --- HELPERS ---
 
@@ -384,8 +399,6 @@ export const ensureTripSchema = (data: any): any => {
 // --- CLIENTS ---
 
 let googleClient: GoogleGenAI | null = null;
-let groqClient: OpenAI | null = null;
-let openRouterClient: OpenAI | null = null;
 
 const getGoogleClient = () => {
   if (googleClient) return googleClient;
@@ -400,145 +413,107 @@ const getGoogleClient = () => {
   return googleClient;
 };
 
-const getGroqClient = () => {
-  if (groqClient) return groqClient;
-  const key = import.meta.env.VITE_GROQ_API_KEY;
-  if (key) {
-    try {
-      groqClient = new OpenAI({
-        baseURL: "https://api.groq.com/openai/v1",
-        apiKey: key,
-        dangerouslyAllowBrowser: true
-      });
-      console.log("✅ Groq Client initialized successfully");
-    } catch (e) { console.error("Invalid Groq Client init", e); }
-  } else {
-    console.warn("⚠️ No VITE_GROQ_API_KEY found. Groq fallback will be skipped.");
-  }
-  return groqClient;
-};
-
-const getOpenRouterClient = () => {
-  if (openRouterClient) return openRouterClient;
-  const key = import.meta.env.VITE_OPENROUTER_API_KEY;
-  if (key) {
-    try {
-      openRouterClient = new OpenAI({
-        baseURL: "https://openrouter.ai/api/v1",
-        apiKey: key,
-        dangerouslyAllowBrowser: true,
-        // @ts-ignore
-        defaultHeaders: {
-          "HTTP-Referer": "https://travel-planner-pro.vercel.app",
-          "X-Title": "Travel Planner Pro"
-        }
-      });
-    } catch (e) { console.error("Invalid OpenRouter Client init", e); }
-  } else {
-    console.warn("⚠️ No VITE_OPENROUTER_API_KEY found. OpenRouter fallback will be skipped.");
-  }
-  return openRouterClient;
-};
-
 // --- MAIN GENERATION ---
 
 export type AIIntent = 'FAST' | 'SMART' | 'SEARCH' | 'ANALYZE';
 
+/**
+ * Jan 2026 Ultimate "Zero Downtime" Generator
+ * Iterates through a "Monster Fallback Chain" to ensure success.
+ */
 export const generateWithFallback = async (
   aiClient: any,
   input: any,
   config: any = {},
   intent: 'SMART' | 'FAST' | 'ANALYZE' = 'FAST'
 ) => {
-  // CRITICAL: Remove responseSchema to prevent 400 errors with Gemini 3
+  // CRITICAL: Remove responseSchema to prevent 400 errors with Gemini Models
   const { responseSchema, ...safeConfig } = config;
-  const finalConfig = {
+  const finalConfig: any = {
     ...safeConfig,
     responseMimeType: 'application/json'
   };
 
-  const modelName = intent === 'SMART' || intent === 'ANALYZE'
-    ? GOOGLE_MODELS.SMART
-    : GOOGLE_MODELS.FAST;
+  // Select Candidate Chain based on Intent
+  let candidates = (intent === 'SMART' || intent === 'ANALYZE')
+    ? [...CANDIDATES_SMART]
+    : [...CANDIDATES_FAST];
 
-  console.log(`[AI Service] Using model: ${modelName}`);
+  // If analyzing, we might want to prioritize speed after smart fails, so append fast candidates as last resort
+  if (intent === 'ANALYZE') {
+    candidates = [...candidates, ...CANDIDATES_FAST];
+  }
 
-  // Use the getGoogleClient helper or the passed client (adapting to existing call sites)
+  // Remove duplicates
+  candidates = Array.from(new Set(candidates));
+
+  console.log(`[AI Service] Starting Generation Chain. Candidates: ${candidates.join(' -> ')}`);
+
   const clientToUse = aiClient || getGoogleClient();
-
   if (!clientToUse) throw new Error("Google AI Client not initialized");
 
-  try {
-    // SUPPORT FOR @google/genai SDK (New)
-    // The new SDK uses client.models.generateContent directly, NOT getGenerativeModel
-    let rawText = '';
+  let lastError: any = null;
 
-    if (clientToUse.models && clientToUse.models.generateContent) {
-      console.log("[AI Service] Detected New GenAI SDK");
-      const result = await clientToUse.models.generateContent({
-        model: modelName,
-        contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
-        config: finalConfig
-      });
-      // SDK response structure handling
-      if (typeof result.text === 'function') {
-        rawText = result.text();
-      } else if (result.response && typeof result.response.text === 'function') {
-        rawText = result.response.text();
-      } else if (result.response && result.response.text) {
-        rawText = result.response.text;
+  // Iterate Strategy
+  for (const modelName of candidates) {
+    try {
+      console.log(`🤖 [AI] Trying Model: ${modelName}`);
+
+      // Inject Thinking Mode for Gemini 3 Flash (if applicable)
+      const specificConfig = { ...finalConfig };
+      if (modelName.includes("gemini-3-flash")) {
+        // @ts-ignore - 'thinking_level' might not be in typed defs yet
+        specificConfig.thinking_level = "medium";
+        console.log("   --> 🧠 Thinking Mode Strategy Injected");
+      }
+
+      // SUPPORT FOR @google/genai SDK (v1+) vs Legacy
+      let rawText = '';
+
+      if (clientToUse.models && clientToUse.models.generateContent) {
+        // New SDK
+        const result = await clientToUse.models.generateContent({
+          model: modelName,
+          contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
+          config: specificConfig
+        });
+
+        // Response Handling
+        if (typeof result.text === 'function') rawText = result.text();
+        else if (result.response && typeof result.response.text === 'function') rawText = result.response.text();
+        else if (result.response && result.response.text) rawText = result.response.text;
+        else rawText = result.text || result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
       } else {
-        // Fallback
-        rawText = result.text || result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        // Legacy SDK
+        const model = clientToUse.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent({
+          contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
+          generationConfig: specificConfig
+        });
+        const response = await result.response;
+        rawText = response.text();
       }
 
-    } else {
-      // FALLBACK FOR LEGACY @google/generative-ai SDK
-      console.log("[AI Service] Detected Legacy GenAI SDK");
-      const model = clientToUse.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent({
-        contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
-        generationConfig: finalConfig
-      });
-      const response = await result.response;
-      rawText = response.text();
-    }
+      // Success!
+      console.log(`✅ [AI] Success with ${modelName}`);
 
-    return { text: rawText };
-
-  } catch (error: any) {
-    console.error(`[AI Service] Gemini 3 Error (${modelName}):`, error);
-
-    // Strict Fallback logic (adapted for new SDK)
-    if (modelName === GOOGLE_MODELS.SMART) {
-      console.warn("[AI Service] Falling back to Gemini 3 Flash...");
-      try {
-        // Retry with Flash
-        if (clientToUse.models && clientToUse.models.generateContent) {
-          const fallbackResult = await clientToUse.models.generateContent({
-            model: GOOGLE_MODELS.FAST,
-            contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
-            config: finalConfig
-          });
-          let fbText = '';
-          if (typeof fallbackResult.text === 'function') fbText = fallbackResult.text();
-          else if (fallbackResult.response) fbText = fallbackResult.response.text || fallbackResult.response.text();
-          return { text: fbText };
-        } else {
-          const fallbackModel = clientToUse.getGenerativeModel({ model: GOOGLE_MODELS.FAST });
-          const fallbackResult = await fallbackModel.generateContent({
-            contents: Array.isArray(input) ? input : [{ role: 'user', parts: [{ text: input }] }],
-            generationConfig: finalConfig
-          });
-          const fbResponse = await fallbackResult.response;
-          return { text: fbResponse.text() };
-        }
-      } catch (fbError) {
-        throw new Error(`AI Service Failed completely: ${fbError}`);
+      // Apply JSON Cleaner (Standard Guardrail)
+      if (finalConfig.responseMimeType === 'application/json') {
+        rawText = extractJSON(rawText);
       }
+
+      return { text: rawText };
+
+    } catch (error: any) {
+      console.warn(`⚠️ [AI] Failed ${modelName}:`, error.message?.substring(0, 100));
+      lastError = error;
+      // Continue to next candidate
     }
-    throw error;
   }
+
+  // If we get here, everything failed.
+  throw new Error(`All AI Models Failed. Last error: ${lastError?.message}`);
 };
 
 /**
