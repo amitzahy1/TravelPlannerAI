@@ -36,7 +36,14 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // 4. AI Cache
+    // 4. Shared Trip Invites (SAFE METADATA ONLY)
+    match /trip-invites/{inviteId} {
+      // Any user (even unauth) can READ the invite metadata if they have the ID
+      // This allows showing the "Join Trip?" screen before login
+      allow get: if true;
+    }
+
+    // 5. AI Cache
     match /ai_cache/{hash} {
       allow read, write: if true;
     }

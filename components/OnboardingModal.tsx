@@ -155,8 +155,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                         // AI Data Structure 1: Nested segments with details (Preferred)
                         if (i.data.segments && Array.isArray(i.data.segments)) {
                             return i.data.segments.map((seg: any) => ({
-                                fromCode: seg.departure?.iata || seg.departure?.airport || seg.departureIata || '',
-                                toCode: seg.arrival?.iata || seg.arrival?.airport || seg.arrivalIata || '',
+                                fromCode: seg.departure?.iata || seg.departure?.airport || seg.departureIata || (seg.departure?.city ? seg.departure.city.substring(0, 3).toUpperCase() : (seg.departureCity ? seg.departureCity.substring(0, 3).toUpperCase() : 'ORG')),
+                                toCode: seg.arrival?.iata || seg.arrival?.airport || seg.arrivalIata || (seg.arrival?.city ? seg.arrival.city.substring(0, 3).toUpperCase() : (seg.arrivalCity ? seg.arrivalCity.substring(0, 3).toUpperCase() : 'DST')),
                                 date: seg.departure?.date || seg.departureDate || '',
                                 airline: seg.airline || '',
                                 flightNumber: seg.flightNumber || '',
@@ -170,8 +170,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
                         // AI Data Structure 2: Flat flight (Legacy)
                         return [{
-                            fromCode: i.data.departure?.airport || i.data.from || '',
-                            toCode: i.data.arrival?.airport || i.data.to || '',
+                            fromCode: i.data.departure?.airport || i.data.from || (i.data.departure?.city ? i.data.departure.city.substring(0, 3).toUpperCase() : 'ORG'),
+                            toCode: i.data.arrival?.airport || i.data.to || (i.data.arrival?.city ? i.data.arrival.city.substring(0, 3).toUpperCase() : 'DST'),
                             date: i.data.departure?.date || i.data.departureTime || '',
                             airline: i.data.airline || '',
                             flightNumber: i.data.flightNumber || '',
@@ -458,7 +458,9 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                                 <div className="p-3 bg-purple-50 text-purple-600 rounded-lg"><Bed className="w-6 h-6" /></div>
                                 <div>
                                     <div className="font-bold text-slate-800">{item.data.hotelName}</div>
-                                    <div className="text-sm text-slate-500">{item.data.displayTime} • {item.data.address}</div>
+                                    <div className="text-sm text-slate-500">
+                                        {item.data.displayTime || (item.data.displayCheckInTime ? `${item.data.displayCheckInTime} - ${item.data.displayCheckOutTime || ''}` : '')} • {item.data.address}
+                                    </div>
                                 </div>
                             </div>
                         ))}

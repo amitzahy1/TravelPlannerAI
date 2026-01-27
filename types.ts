@@ -236,6 +236,17 @@ export interface UserTripRef {
   tripName: string;           // cached trip name for display
 }
 
+export interface TripInvite {
+  shareId: string;
+  tripName: string;
+  destination: string;
+  dates: string;
+  hostName: string; // "Amit Zahy" or email
+  coverImage: string;
+  ownerId: string;
+  createdAt: Date;
+}
+
 export interface Trip {
   id: string;
   name: string;

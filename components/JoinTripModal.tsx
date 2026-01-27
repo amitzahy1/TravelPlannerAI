@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Trip } from '../types';
-import { getSharedTrip, joinSharedTrip } from '../services/firestoreService';
+import { Trip, TripInvite } from '../types';
+import { getSharedTripInvite, joinSharedTrip } from '../services/firestoreService';
 import { getAuth } from 'firebase/auth';
 import { Globe, Users, Shield, Check, X, Plane, AlertTriangle } from 'lucide-react';
 
@@ -13,7 +13,7 @@ interface JoinTripModalProps {
 export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, onClose, onJoinSuccess }) => {
         const [loading, setLoading] = useState(true);
         const [error, setError] = useState<string | null>(null);
-        const [tripPreview, setTripPreview] = useState<Trip | null>(null);
+        const [tripPreview, setTripPreview] = useState<TripInvite | null>(null);
         const [joining, setJoining] = useState(false);
 
         const auth = getAuth();
@@ -22,7 +22,7 @@ export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, onClose, 
         useEffect(() => {
                 const fetchTrip = async () => {
                         try {
-                                const trip = await getSharedTrip(shareId);
+                                const trip = await getSharedTripInvite(shareId);
                                 if (trip) {
                                         setTripPreview(trip);
                                 } else {
@@ -44,8 +44,9 @@ export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, onClose, 
 
                 setJoining(true);
                 try {
-                        await joinSharedTrip(user.uid, tripPreview.id, user.email || 'Unknown User');
-                        onJoinSuccess(tripPreview);
+                        // Use the shareId from props, not the trip internal ID!
+                        const joinedTrip = await joinSharedTrip(user.uid, shareId, user.email || 'Unknown User');
+                        onJoinSuccess(joinedTrip);
                         // The parent component should handle saving/updating current user state
                 } catch (err: any) {
                         console.error("Error joining trip:", err);
@@ -96,7 +97,7 @@ export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, onClose, 
                                                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider opacity-80 mb-1">
                                                         <Globe className="w-3 h-3" /> Shared Trip Invitation
                                                 </div>
-                                                <h2 className="text-2xl font-black leading-tight shadow-sm">{tripPreview.name}</h2>
+                                                <h2 className="text-2xl font-black leading-tight shadow-sm">{tripPreview.tripName}</h2>
                                         </div>
                                 </div>
 
@@ -118,7 +119,7 @@ export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, onClose, 
 
                                         <div className="text-center mb-8">
                                                 <p className="text-slate-600 font-medium">
-                                                        You've been invited to join <span className="font-black text-slate-800">{tripPreview.name}</span>.
+                                                        You've been invited to join <span className="font-black text-slate-800">{tripPreview.tripName}</span>.
                                                         Accepting will add this trip to your dashboard.
                                                 </p>
                                         </div>

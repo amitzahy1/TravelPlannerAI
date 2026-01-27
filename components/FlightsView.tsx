@@ -21,7 +21,7 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
         <div className="flex items-center gap-3">
           <div className="text-xs text-gray-400 font-mono">{formatDateOnly(seg.date)}</div>
           <div className="font-bold text-sm text-blue-800 flex items-center gap-1.5">
-            <img src={`https://pics.avs.io/200/200/${seg.airline.substr(0, 2)}.png`} alt={seg.airline} onError={(e) => e.currentTarget.style.display = 'none'} className="w-5 h-5 rounded-full object-cover" />
+            <img src={`https://pics.avs.io/200/200/${(seg.flightNumber?.match(/^[A-Z0-9]{2}/i)?.[0] || seg.airline.substr(0, 2)).toUpperCase()}.png`} alt={seg.airline} onError={(e) => e.currentTarget.style.display = 'none'} className="w-5 h-5 rounded-full object-cover" />
             {seg.airline}
           </div>
           <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono tracking-wider">{seg.flightNumber}</span>
@@ -39,9 +39,9 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
 
       <div className="flex items-center justify-between mb-3 px-2">
         <div className="flex-1">
-          <div className="text-xl font-black text-gray-800 leading-none">{seg.fromCode}</div>
+          <div className="text-xl font-black text-gray-800 leading-none">{seg.fromCode || (seg.fromCity ? seg.fromCity.substring(0, 3).toUpperCase() : 'ORG')}</div>
           <div className="text-xs text-gray-500 mt-0.5">{seg.fromCity}</div>
-          <div className="text-base font-bold text-gray-700 mt-1">{formatDateTime(seg.departureTime)}</div>
+          <div className="text-base font-bold text-gray-700 mt-1" dir="ltr">{formatDateTime(seg.departureTime)}</div>
         </div>
 
         <div className="flex-1 flex flex-col items-center px-2">
@@ -50,9 +50,9 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
         </div>
 
         <div className="flex-1 text-left">
-          <div className="text-xl font-black text-gray-800 leading-none">{seg.toCode}</div>
+          <div className="text-xl font-black text-gray-800 leading-none">{seg.toCode || (seg.toCity ? seg.toCity.substring(0, 3).toUpperCase() : 'DST')}</div>
           <div className="text-xs text-gray-500 mt-0.5">{seg.toCity}</div>
-          <div className="text-base font-bold text-gray-700 mt-1">{formatDateTime(seg.arrivalTime)}</div>
+          <div className="text-base font-bold text-gray-700 mt-1" dir="ltr">{formatDateTime(seg.arrivalTime)}</div>
         </div>
       </div>
 

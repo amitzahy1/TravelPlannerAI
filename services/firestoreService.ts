@@ -15,7 +15,7 @@ import {
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { Trip, SharedTripMetadata, UserTripRef } from '../types';
+import { Trip, SharedTripMetadata, UserTripRef, TripInvite } from '../types';
 import { cleanUndefined } from '../utils/cleanUndefined';
 
 // Collection paths
@@ -164,6 +164,20 @@ export const createSharedTrip = async (
     // Add reference for user
     await addUserTripRef(userId, shareId, 'owner', trip.name);
 
+    // [SECURE FLOW] Create Public Invite Metadata
+    // This allows guests to "peek" at the trip details before having permission to read the full doc
+    const inviteRef = doc(db, 'trip-invites', shareId);
+    await setDoc(inviteRef, {
+      shareId,
+      tripName: trip.name,
+      destination: trip.destination,
+      dates: trip.dates,
+      hostName: userEmail, // Or fetch display name if available
+      coverImage: trip.coverImage,
+      ownerId: userId,
+      createdAt: Timestamp.now()
+    });
+
     return shareId;
   } catch (error) {
     console.error('Error creating shared trip:', error);
@@ -185,6 +199,25 @@ export const getSharedTrip = async (shareId: string): Promise<Trip | null> => {
     return null;
   } catch (error) {
     console.error('Error fetching shared trip:', error);
+    return null;
+  }
+};
+
+/**
+ * Get shared trip INVITE metadata (Public/Auth Read)
+ * SAFE to call before joining
+ */
+export const getSharedTripInvite = async (shareId: string): Promise<TripInvite | null> => {
+  try {
+    const inviteRef = doc(db, 'trip-invites', shareId);
+    const inviteSnap = await getDoc(inviteRef);
+
+    if (inviteSnap.exists()) {
+      return inviteSnap.data() as TripInvite;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching trip invite:', error);
     return null;
   }
 };
