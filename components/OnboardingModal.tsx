@@ -162,12 +162,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                             <div className="flex flex-col items-center justify-center h-full space-y-6">
                                 <div className="w-full">
                                     <h2 className="text-2xl font-black text-slate-800 mb-2">Build Trip from Files</h2>
-                                    <p className="text-slate-500 text-sm mb-6">Drop tickets, confirmations, or invoices</p>
+                                    <p className="text-slate-500 text-sm mb-6">Start your trip by dropping your files here. We'll build the itinerary for you.</p>
                                     <MagicDropZone
                                         onFilesReady={handleFilesReady}
                                         compact={false}
                                     />
-                                    <button onClick={handleLegacyCreate} className="text-sm text-slate-400 mt-4 underline">Skip and create empty trip</button>
+                                    <button onClick={handleLegacyCreate} className="text-sm text-slate-400 mt-4 underline">Or create manually without files</button>
                                 </div>
                             </div>
                         ) : (
