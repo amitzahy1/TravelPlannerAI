@@ -640,6 +640,129 @@ export const generateWithFallback = async (
   throw new Error(`All AI Models Failed. Last error: ${lastError?.message}`);
 };
 
+// --- TYPES ---
+export interface TripAnalysisResult {
+  metadata: {
+    suggestedName: string;
+    destination: string;
+    startDate?: string;
+    endDate?: string;
+    cities: string[];
+  };
+  rawStagedData: {
+    categories: {
+      transport: any[];
+      accommodation: any[];
+      dining: any[];
+      activities: any[];
+      wallet: any[];
+    };
+  };
+}
+
+/**
+ * File Reader Helper
+ */
+const readFileAsBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      } else {
+        reject(new Error("Failed to read file"));
+      }
+    };
+    reader.onerror = reject;
+  });
+};
+
+/**
+ * Phase 1: Smart Trip Analysis (The "Magic Drop")
+ * Analyzes uploaded files and returns structured Staged Data.
+ */
+export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResult> => {
+  console.log(`[AI] Analyzing ${files.length} files...`);
+
+  // 1. Prepare Content for AI
+  const contentParts: any[] = [
+    { text: SYSTEM_PROMPT_ANALYZE_TRIP }
+  ];
+
+  // 2. Process Files
+  for (const file of files) {
+    try {
+      const base64 = await readFileAsBase64(file);
+
+      // Determine MIME type (simplify for AI compatibility)
+      let mimeType = file.type;
+      if (!mimeType) {
+        if (file.name.endsWith('.pdf')) mimeType = 'application/pdf';
+        else if (file.name.endsWith('.png')) mimeType = 'image/png';
+        else if (file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')) mimeType = 'image/jpeg';
+        else mimeType = 'text/plain';
+      }
+
+      contentParts.push({
+        inlineData: {
+          mimeType: mimeType,
+          data: base64
+        }
+      });
+      contentParts.push({ text: `\n--- END OF FILE: ${file.name} ---\n` });
+
+    } catch (e) {
+      console.warn(`[AI] Failed to read file ${file.name}`, e);
+    }
+  }
+
+  // 3. User Instruction
+  contentParts.push({
+    text: "Analyze the above files. Extract trip details into the requested JSON format. If exact dates aren't found, estimate based on flight/hotel dates."
+  });
+
+  // 4. Call AI (Use SMART/ANALYZE Intent)
+  const response = await generateWithFallback(
+    null, // use default client
+    [{ role: 'user', parts: contentParts }],
+    { responseMimeType: 'application/json' },
+    'ANALYZE'
+  );
+
+  // 5. Parse and Format
+  const raw = JSON.parse(response.text);
+
+  // Transform Dates (YYYY-MM-DD - YYYY-MM-DD -> Start/End)
+  let startDate = "";
+  let endDate = "";
+  if (raw.tripMetadata?.suggestedDates) {
+    const parts = raw.tripMetadata.suggestedDates.split(' - ');
+    if (parts.length === 2) {
+      startDate = parts[0];
+      endDate = parts[1];
+    } else {
+      startDate = raw.tripMetadata.suggestedDates; // Fallback
+    }
+  }
+
+  return {
+    metadata: {
+      suggestedName: raw.tripMetadata?.suggestedName || "New Trip",
+      destination: raw.tripMetadata?.mainDestination || "Unknown",
+      startDate,
+      endDate,
+      cities: raw.tripMetadata?.uniqueCityNames || []
+    },
+    rawStagedData: {
+      categories: raw.categories || {
+        transport: [], accommodation: [], dining: [], activities: [], wallet: []
+      }
+    }
+  };
+};
+
 /**
  * Parse inputs from Trip Wizard (Text + Files)
  * Used to normalize dates, extract details from notes/files, and build initial trip
