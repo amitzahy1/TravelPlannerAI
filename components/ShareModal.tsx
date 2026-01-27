@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trip } from '../types';
-import { createSharedTrip } from '../services/firestoreService';
+import { createSharedTrip, ensureSharedTripInvite } from '../services/firestoreService';
 import { X, Link, Copy, Check, Users, Shield, Globe, Plus } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
 
@@ -25,6 +25,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
         const shareUrl = isShared
                 ? `${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}#/join/${trip.sharing?.shareId}`
                 : '';
+
+        // [SELF-HEALING] Fix broken links for existing shared trips
+        React.useEffect(() => {
+                if (isShared && trip.sharing?.shareId && user) {
+                        ensureSharedTripInvite(user.uid, trip, trip.sharing.shareId, user.email || undefined);
+                }
+        }, [isShared, trip.sharing?.shareId, user]);
 
         const handleCreateShare = async () => {
                 if (!user || !user.email) {

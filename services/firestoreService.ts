@@ -186,6 +186,39 @@ export const createSharedTrip = async (
 };
 
 /**
+ * [SELF-HEALING] Ensure invite metadata exists for legacy shared trips
+ * Call this when opening the Share Modal to fix "Missing Permissions" errors
+ */
+export const ensureSharedTripInvite = async (
+  userId: string,
+  trip: Trip,
+  shareId: string,
+  userEmail?: string
+): Promise<void> => {
+  try {
+    const inviteRef = doc(db, 'trip-invites', shareId);
+    const snapshot = await getDoc(inviteRef);
+
+    if (!snapshot.exists()) {
+      console.log(`🔧 [Self-Healing] Creating missing trip-invite for ${shareId}`);
+      await setDoc(inviteRef, {
+        shareId,
+        tripName: trip.name,
+        destination: trip.destination,
+        dates: trip.dates,
+        hostName: userEmail || 'Organizer',
+        coverImage: trip.coverImage,
+        ownerId: userId,
+        createdAt: Timestamp.now()
+      });
+    }
+  } catch (error) {
+    console.error('Error ensuring trip invite:', error);
+    // Non-blocking error, just log it
+  }
+};
+
+/**
  * Get a shared trip by ID (public/protected read)
  */
 export const getSharedTrip = async (shareId: string): Promise<Trip | null> => {

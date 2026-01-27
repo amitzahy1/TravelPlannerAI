@@ -240,20 +240,20 @@ export const analyzeReceipt = async (
 // TIER 4: SAFETY NET (Gemini 2.5/2.0)
 const GOOGLE_MODELS = {
   // TIER 1: Intelligence
-  V3_PRO_STABLE: "gemini-3-pro",
-  V3_PRO_LATEST: "gemini-pro-latest",
-  V3_PRO_PREV: "gemini-3-pro-preview",
+  V3_PRO_STABLE: "gemini-1.5-pro",
+  V3_PRO_LATEST: "gemini-1.5-pro-latest",
+  V3_PRO_PREV: "gemini-1.5-pro",
 
   // TIER 2: Stability
-  V2_5_PRO: "gemini-2.5-pro",
+  V2_5_PRO: "gemini-1.5-pro",
 
   // TIER 3: Speed
-  V3_FLASH_STABLE: "gemini-3-flash",
-  V3_FLASH_LATEST: "gemini-flash-latest",
+  V3_FLASH_STABLE: "gemini-1.5-flash",
+  V3_FLASH_LATEST: "gemini-1.5-flash-latest",
 
   // TIER 4: Safety Net
-  V2_5_FLASH: "gemini-2.5-flash",
-  V2_FLASH_LEGACY: "gemini-2.0-flash"
+  V2_5_FLASH: "gemini-1.5-flash",
+  V2_FLASH_LEGACY: "gemini-1.0-pro"
 };
 
 // Fallback Candidate Chains (Updated Jan 2026 - Removing invalid v1beta 404 models)
@@ -544,7 +544,7 @@ export const generateWithFallback = async (
   aiClient: any,
   input: any,
   config: any = {},
-  intent: 'SMART' | 'FAST' | 'ANALYZE' = 'FAST'
+  intent: 'SMART' | 'FAST' | 'ANALYZE' | 'SEARCH' = 'FAST'
 ) => {
   // CRITICAL: Remove responseSchema to prevent 400 errors with Gemini Models
   const { responseSchema, ...safeConfig } = config;

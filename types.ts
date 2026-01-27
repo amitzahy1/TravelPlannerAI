@@ -138,6 +138,8 @@ export interface Attraction {
   recommendationSource?: string;
   isFavorite?: boolean; // New: Pin to top
   categoryTitle?: string; // New: For dynamic mapping
+  imageUrl?: string;      // Manual/AI Image
+  region?: string;        // Region/City context
 
   // Unified Engine Upgrade (Jan 2026)
   best_time_to_visit?: string; // "Sunset", "Early Morning"

@@ -58,8 +58,6 @@ const AttractionRecommendationCard: React.FC<{
             rating={rec.rating}
             attractionType={visuals.label}
             price={rec.price}
-            visualIcon={visuals.icon}
-            visualBgColor="bg-slate-50 group-hover:bg-slate-100"
             mapsUrl={mapsUrl}
             isAdded={isAdded}
             onAdd={() => onAdd(rec, rec.categoryTitle || 'תכנון טיול')}
@@ -142,7 +140,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 }
             };
             const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SMART');
-            const data = JSON.parse(typeof response.text === 'function' ? response.text() : response.text || '{}');
+            const data = JSON.parse(response.text || '{}');
             if (data.results) {
                 const valid = data.results.filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search-attr-${i}`, categoryTitle: 'תוצאות חיפוש' }));
                 setSearchResults(valid);
@@ -266,7 +264,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             };
             const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SEARCH');
 
-            const textContent = typeof response.text === 'function' ? response.text() : response.text;
+            const textContent = response.text;
             console.log("🔍 [AI ATTRACTIONS Raw Response]:", textContent?.substring(0, 500) + "...");
 
             try {
@@ -282,11 +280,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                 if (categoriesList.length > 0) {
                     console.log(`✅ [AI Success] Parsed ${categoriesList.length} attraction categories (Format: ${Array.isArray(rawData) ? 'Direct Array' : 'Wrapped Object'})`);
-                    const processed = categoriesList.map((c: any) => ({
+                    const processed = categoriesList.map((c: any, index: number) => ({
                         ...c,
+                        id: c.id || `ai-cat-${index}-${Date.now()}`,
                         attractions: (c.attractions || []).map((a: any, i: number) => ({
                             ...a,
-                            id: `ai-attr-${c.id || Math.random().toString(36).substr(2, 5)}-${i}`,
+                            id: `ai-attr-${c.id || index}-${Math.random().toString(36).substr(2, 5)}-${i}`,
                             categoryTitle: c.title
                         }))
                     }));

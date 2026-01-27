@@ -102,8 +102,8 @@ const RestaurantCard: React.FC<{
             location={rec.location}
             rating={rec.googleRating}
             cuisine={rec.cuisine || visuals.label}
-            visualIcon={visuals.icon}
-            visualBgColor="bg-orange-50 group-hover:bg-orange-100"
+            attractionType={visuals.label}
+            price={rec.price || (rec.googleRating && rec.googleRating > 4.5 ? '$$$' : '$$')}
             mapsUrl={mapsUrl}
             isAdded={isAdded}
             onAdd={() => onAdd(rec, rec.categoryTitle || 'AI')}
@@ -200,7 +200,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
             const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SEARCH');
 
-            const textContent = typeof response.text === 'function' ? response.text() : response.text;
+            const textContent = response.text;
             try {
                 const data = JSON.parse(textContent || '{}');
                 if (data.results) {
@@ -375,7 +375,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
             const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.1 }, 'SMART');
 
-            const textContent = typeof response.text === 'function' ? response.text() : response.text;
+            const textContent = response.text;
             console.log("🔍 [AI Raw Response Preview]:", textContent?.substring(0, 500) + "...");
 
             try {
@@ -391,12 +391,13 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                 if (categoriesList.length > 0) {
                     console.log(`✅ [AI Success] Parsed ${categoriesList.length} categories (Format: ${Array.isArray(rawData) ? 'Direct Array' : 'Wrapped Object'})`);
-                    const processed = categoriesList.map((c: any) => ({
+                    const processed = categoriesList.map((c: any, idx: number) => ({
                         ...c,
+                        id: c.id || `ai-food-cat-${idx}-${Date.now()}`,
                         region: specificCity,
                         restaurants: (c.restaurants || []).map((r: any, i: number) => ({
                             ...r,
-                            id: `ai-rec-${c.id || Math.random().toString(36).substr(2, 5)}-${i}`,
+                            id: `ai-rec-${c.id || idx}-${Math.random().toString(36).substr(2, 5)}-${i}`,
                             categoryTitle: c.title
                         }))
                     }));
@@ -798,10 +799,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                                     <RestaurantRow
                                                         key={r.id}
                                                         data={r}
-                                                        onSaveNote={(note) => handleUpdateRestaurant(r.id, { notes: note })}
-                                                        onUpdate={(updates) => handleUpdateRestaurant(r.id, updates)}
+                                                        onSaveNote={(n) => handleUpdateRestaurant(r.id, { notes: n })}
+                                                        onUpdate={(u) => handleUpdateRestaurant(r.id, u)}
                                                         onDelete={() => handleDeleteRestaurant(r.id)}
-                                                        onClick={() => setSelectedPlace(r)}
+                                                        onSelect={() => setSelectedPlace(r)}
                                                     />
                                                 ));
                                             })()}
@@ -811,120 +812,98 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             )}
                         </>
                     ) : (
-                        /* Recommended Tab */
                         <div className="animate-fade-in">
-                            {!loadingRecs && allAiRestaurants.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                                    <div className="bg-blue-100 p-4 rounded-full"><BrainCircuit className="w-8 h-8 text-blue-600" /></div>
-                                    <h3 className="text-xl font-black text-slate-800">
-                                        {tripCities.length > 1 ? 'באיזו עיר נתמקד?' : 'בחר עיר לחיפוש'}
-                                    </h3>
+                            {/* Header Section with City Selection (Premium Design) */}
+                            <div className="animate-fade-in bg-white/80 backdrop-blur-lg rounded-2xl p-2 border border-slate-200/60 shadow-lg shadow-slate-100/50 mb-6 flex justify-between items-center sticky top-2 z-30">
+                                {/* Left: City Tabs (Pill Design) */}
+                                <div className="flex bg-slate-100/80 p-1 rounded-full gap-1 overflow-x-auto scrollbar-hide">
+                                    <button
+                                        onClick={() => initiateResearch(undefined)}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${(!selectedCity || selectedCity === 'all')
+                                            ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5'
+                                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                                    >
+                                        <RotateCw className={`w-3 h-3 ${loadingRecs ? 'animate-spin' : ''}`} />
+                                        {loadingRecs ? 'טוען...' : 'רענן'}
+                                    </button>
+                                    <div className="w-px bg-slate-300 mx-1 h-4 self-center" />
 
-                                    {tripCities.length > 1 ? (
-                                        <div className="flex flex-wrap justify-center gap-3 max-w-md">
-                                            {tripCities.map(city => (
-                                                <button
-                                                    key={city}
-                                                    onClick={() => initiateResearch(city)}
-                                                    className="bg-white border-2 border-slate-100 text-slate-700 px-6 py-2 rounded-xl text-sm font-bold shadow-sm hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                                                >
-                                                    {city}
+                                    {tripCities.map(city => (
+                                        <button
+                                            key={city}
+                                            onClick={() => initiateResearch(city)}
+                                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedCity === city
+                                                ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
+                                                : 'text-slate-600 hover:bg-white hover:text-orange-500'}`
+                                            }
+                                        >
+                                            {city}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Right: Premium AI Badge */}
+                                <div className="flex items-center gap-2 pl-2">
+                                    <div className="flex flex-col items-end mr-2 d-none md:flex">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Food Scout</span>
+                                        <span className="text-xs font-black text-slate-800">המלצות חכמות</span>
+                                    </div>
+                                    <div className="p-2 bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 rounded-xl shadow-lg shadow-orange-200 text-white animate-pulse-slow">
+                                        <BrainCircuit className="w-4 h-4" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {loadingRecs ? <ThinkingLoader texts={["בודק את הסצנה הקולינרית...", "מחפש מנות מומלצות...", "סורק ביקורות מקומיים...", "מצליב נתוני מישלן..."]} /> : (
+                                <>
+                                    {allAiRestaurants.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                                            <div className="bg-orange-100 p-4 rounded-full"><BrainCircuit className="w-8 h-8 text-orange-600" /></div>
+                                            <h3 className="text-xl font-black text-slate-800">
+                                                {tripCities.length > 1 ? 'באיזו עיר נתמקד?' : 'בחר עיר לחיפוש'}
+                                            </h3>
+
+                                            {tripCities.length > 1 ? (
+                                                <div className="flex flex-wrap justify-center gap-3 max-w-md">
+                                                    {tripCities.map(city => (
+                                                        <button
+                                                            key={city}
+                                                            onClick={() => initiateResearch(city)}
+                                                            className="bg-white border-2 border-slate-100 text-slate-700 px-6 py-2 rounded-xl text-sm font-bold shadow-sm hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50 transition-all"
+                                                        >
+                                                            {city}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <button onClick={() => initiateResearch()} className="bg-white border-2 border-orange-500 text-orange-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-orange-50 transition-all">
+                                                    {trip.destination} - בצע מחקר שוק
                                                 </button>
-                                            ))}
+                                            )}
                                         </div>
                                     ) : (
-                                        <button onClick={() => initiateResearch()} className="bg-white border-2 border-blue-500 text-blue-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-blue-50 transition-all">
-                                            {trip.destination} - בצע מחקר שוק
-                                        </button>
-                                    )}
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="bg-white border border-slate-100 p-4 rounded-2xl mb-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-full"><BrainCircuit className="w-5 h-5 text-blue-600" /></div><div><h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Market Research</h3><p className="font-black text-lg text-slate-800">המלצות AI: Travelers' Choice</p></div></div>
-
-                                        {!loadingRecs && (
-                                            <div className="flex items-center gap-2">
-                                                {tripCities.length > 1 && (
-                                                    <div className="flex gap-2 bg-white/50 p-1.5 rounded-xl">
-                                                        {tripCities.map(city => (
-                                                            <button
-                                                                key={city}
-                                                                onClick={() => initiateResearch(city)}
-                                                                className="text-sm font-bold px-3 py-1.5 rounded-lg hover:bg-white hover:shadow-sm text-blue-900 transition-all opacity-80 hover:opacity-100"
-                                                            >
-                                                                {city}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                <button onClick={() => initiateResearch()} className="text-[10px] font-bold text-slate-500 hover:text-blue-600 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg hover:bg-blue-50 flex items-center gap-1 transition-colors"><RotateCw className="w-3 h-3" /> רענן</button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {loadingRecs ? (
-                                        <ThinkingLoader texts={[
-                                            "סורק בלוגים קולינריים...",
-                                            "מחפש המלצות אותנטיות...",
-                                            "בודק דירוגי גוגל...",
-                                            "מצליב נתונים עם מדריכי טיולים...",
-                                            "מסדר לפי קטגוריות..."
-                                        ]} />
-                                    ) : recError ? (<div className="text-center text-red-500 text-sm font-bold py-4">{recError}</div>) : (
                                         <>
-                                            {/* 1. Category Filter */}
-                                            <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide">
-                                                <div className="flex gap-2 p-1">
-                                                    <button onClick={() => setSelectedCategory('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all flex items-center gap-1 ${selectedCategory === 'all' ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}><LayoutGrid className="w-3 h-3" /> הכל</button>
-                                                    {aiCategories.map(cat => (
-                                                        <button
-                                                            key={cat.id}
-                                                            onClick={() => setSelectedCategory(cat.id)}
-                                                            className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedCategory === cat.id ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}
-                                                        >
-                                                            {displayTitle(cat.title)}
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                            <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide"><div className="flex gap-2">
+                                                <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === 'all' ? 'bg-orange-600 text-white' : 'bg-white text-slate-600'}`}>הכל</button>
+                                                {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-orange-600 text-white' : 'bg-white text-slate-600'}`}>{displayTitle(c.title)}</button>)}
+                                            </div></div>
+                                            <div className="mb-4 overflow-x-auto pb-2 flex gap-2 items-center"><span className="text-[10px] font-bold text-slate-400">הומלץ ע"י:</span>
+                                                <button onClick={() => setSelectedRater('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === 'all' ? 'bg-orange-600 text-white' : 'bg-white text-slate-600'}`}>הכל</button>
+                                                {availableRaters.map(r => <button key={r} onClick={() => setSelectedRater(r)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === r ? 'bg-orange-600 text-white' : 'bg-white text-slate-600'}`}>{r}</button>)}
                                             </div>
-
-                                            {/* 2. Rater Filter */}
-                                            <div className="mb-4 overflow-x-auto pb-2 scrollbar-hide">
-                                                <div className="flex gap-2 items-center">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">הומלץ ע"י:</span>
-                                                    <button onClick={() => setSelectedRater('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedRater === 'all' ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}>הכל</button>
-                                                    {availableRaters.map(rater => (
-                                                        <button
-                                                            key={rater}
-                                                            onClick={() => setSelectedRater(rater)}
-                                                            className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${selectedRater === rater ? 'bg-orange-600 text-white border-orange-600 shadow-md transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'} `}
-                                                        >
-                                                            {rater}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                                {filteredRestaurants.map(res => (
+                                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                                                {filteredRestaurants.map(rec => (
                                                     <RestaurantCard
-                                                        key={res.id}
-                                                        rec={res as ExtendedRestaurant}
+                                                        key={rec.id}
+                                                        rec={rec}
                                                         tripDestination={trip.destination}
                                                         tripDestinationEnglish={trip.destinationEnglish}
-                                                        isAdded={addedIds.has(res.id) || trip.restaurants.some(c => c.restaurants.some(r => r.name === res.name))}
+                                                        isAdded={addedIds.has(rec.id) || trip.restaurants.some(c => c.restaurants.some(r => r.name === rec.name))}
                                                         onAdd={handleToggleRec}
-                                                        onClick={() => setSelectedPlace(res as ExtendedRestaurant)}
+                                                        onClick={() => setSelectedPlace(rec)}
                                                     />
                                                 ))}
                                             </div>
-
-                                            {filteredRestaurants.length === 0 && (
-                                                <div className="text-center py-10 col-span-full">
-                                                    <p className="text-slate-400 font-bold">אין תוצאות בקטגוריה זו.</p>
-                                                </div>
-                                            )}
                                         </>
                                     )}
                                 </>
@@ -934,9 +913,6 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 </>
             )}
 
-            {/* City Selector Modal Removed */}
-
-            {/* Global Place Modal for Drill-down */}
             {selectedPlace && (
                 <GlobalPlaceModal
                     item={selectedPlace}
@@ -950,37 +926,40 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     );
 };
 
-const RestaurantRow: React.FC<{ data: Restaurant | ExtendedRestaurant, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Restaurant>) => void, onDelete: () => void, onClick: () => void }> = ({ data, onSaveNote, onUpdate, onDelete, onClick }) => {
+const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string) => void, onUpdate: (updates: Partial<Restaurant>) => void, onDelete: () => void, onSelect: () => void }> = ({ data, onSaveNote, onUpdate, onDelete, onSelect }) => {
+
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
-    const [isScheduling, setIsScheduling] = useState(false);
-    const [scheduleTime, setScheduleTime] = useState(data.reservationTime || '');
 
-    const handleSaveSchedule = () => { onUpdate({ reservationTime: scheduleTime }); setIsScheduling(false); };
-    const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
+    // Intelligent Mappers
+    const tags = [data.cuisine || '', data.categoryTitle || '', data.location];
+    const { url: mappedUrl, label: visualLabel } = getFoodImage(data.name || '', data.description || '', tags);
+    const visuals = getCuisineVisuals(data.cuisine || visualLabel);
 
-    // Visuals & Fallback
-    const cuisine = (data as any).cuisine || (data as any).categoryTitle || 'Restaurant';
-    const visuals = getCuisineVisuals(cuisine);
-
-    // Use intelligent image mapper
-    const { url: mappedUrl, label: visualLabel } = getFoodImage(
-        data.name || '',
-        data.description || '',
-        [cuisine, data.location || '']
-    );
+    // Fallback Image
     const imageSrc = data.imageUrl || mappedUrl;
 
+    // Toggle Heart
+    const toggleFavorite = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onUpdate({ isFavorite: !data.isFavorite });
+    };
+
+    const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
+
     return (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 hover:shadow-md transition-shadow relative group">
+        <div
+            onClick={onSelect}
+            className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 hover:shadow-md transition-shadow relative group cursor-pointer"
+        >
             <div className="flex justify-between items-start gap-3">
-                <div className="flex gap-3 items-start flex-grow min-w-0 cursor-pointer" onClick={onClick}>
+                <div className="flex gap-3 items-start flex-grow min-w-0">
+                    {/* Image Section */}
                     <div className="w-16 h-16 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden relative border border-slate-200">
-                        {/* Improved Image Handling */}
                         <img
                             src={imageSrc}
                             onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80'; // Generic Food Fallback
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=200&q=80';
                             }}
                             className="w-full h-full object-cover"
                             alt={data.name}
@@ -989,133 +968,59 @@ const RestaurantRow: React.FC<{ data: Restaurant | ExtendedRestaurant, onSaveNot
                             <span className="text-[8px] font-bold text-white block truncate">{visuals.label}</span>
                         </div>
                     </div>
+
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                             <h4 className="font-black text-slate-800 text-sm truncate">{data.name}</h4>
-                            {data.michelin && <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded-md font-bold text-center border border-red-100">MICHELIN</span>}
                         </div>
 
-                        {/* Genre / Cuisine Badge (Requested Highlight) */}
+                        {/* Genre / Badge Highlight */}
                         <div className="flex items-center gap-2 mt-1">
                             <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${visuals.gradient}`}>
                                 <span>{visuals.icon}</span>
-                                <span>{cuisine}</span>
+                                <span>{visuals.label}</span>
                             </div>
-                            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded">
-                                <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                                {data.googleRating}
-                            </div>
+                            {data.googleRating && (
+                                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded">
+                                    <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                                    {data.googleRating}
+                                </div>
+                            )}
                         </div>
 
                         <p className="text-xs text-slate-400 truncate mt-1">{data.description || data.location}</p>
                     </div>
                 </div>
+
                 <div className="flex flex-col gap-1 flex-shrink-0">
-                    {/* Heart Icon (Toggle Favorite) */}
                     <button
-                        onClick={() => onUpdate({ isFavorite: !data.isFavorite })} // Simple toggle
+                        onClick={toggleFavorite}
                         className={`p-1.5 rounded-lg transition-colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'}`}
                     >
-                        <Heart className={`w-4 h-4 ${data.isFavorite ? 'fill-current' : ''}`} />
+                        <Heart className={`w-4 h-4 ${data.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
                     </button>
-                    <button onClick={onDelete} className="p-1.5 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        className="p-1.5 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-colors"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
 
-            {/* Actions Bar */}
-            <div className="mt-3 pt-3 border-t border-slate-50 grid grid-cols-2 gap-2">
-                {!isScheduling ? (
-                    <button
-                        onClick={() => setIsScheduling(true)}
-                        className={`py-2 px-3 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all ${data.reservationDate ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-50 text-slate-500 hover:bg-orange-50 hover:text-orange-600'}`}
-                    >
-                        {data.reservationDate ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Calendar className="w-3.5 h-3.5" />}
-                        {data.reservationDate ? 'הוזמן' : 'תזמן'}
-                    </button>
-                ) : (
-                    <div className="col-span-2 bg-orange-50/50 p-2 rounded-xl border border-orange-100 animate-fade-in">
-                        <div className="flex items-center gap-2 mb-2">
-                            <button
-                                onClick={() => {
-                                    (window as any)._showRestDatePicker = true;
-                                    onUpdate({}); // Force re-render
-                                }}
-                                className="flex-1 bg-white p-2 rounded-lg border border-orange-200 text-xs font-bold flex items-center justify-between text-slate-700"
-                            >
-                                <span>{data.reservationDate || "תאריך"}</span>
-                                <Calendar className="w-3.5 h-3.5 text-orange-400" />
-                            </button>
-                            <input
-                                type="time"
-                                value={scheduleTime}
-                                onChange={(e) => setScheduleTime(e.target.value)}
-                                className="w-20 bg-white p-2 rounded-lg border border-orange-200 text-xs font-bold text-center outline-none"
-                            />
-                        </div>
-                        {
-                            (window as any)._showRestDatePicker && (
-                                <CalendarDatePicker
-                                    value={data.reservationDate || ''}
-                                    title="זיהוי הזמנה"
-                                    onChange={(iso) => {
-                                        onUpdate({ reservationDate: iso });
-                                        (window as any)._showRestDatePicker = false;
-                                    }}
-                                    onClose={() => (window as any)._showRestDatePicker = false}
-                                />
-                            )
-                        }
-                        <div className="flex gap-2">
-                            <button onClick={() => setIsScheduling(false)} className="flex-1 py-1.5 text-[10px] font-bold text-slate-400 hover:bg-slate-100 rounded-lg">ביטול</button>
-                            <button onClick={handleSaveSchedule} className="flex-1 py-1.5 text-[10px] font-bold bg-orange-500 text-white rounded-lg shadow-sm hover:bg-orange-600">שמור תזמון</button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Notes Section */}
+            {/* Inline Note (Compact) */}
+            <div className="mt-2" onClick={e => e.stopPropagation()}>
                 {isEditingNote ? (
-                    <div className="col-span-2 bg-yellow-50 p-2 rounded-xl border border-yellow-200 animate-fade-in">
-                        <textarea
-                            className="w-full bg-transparent text-xs text-slate-700 font-medium outline-none resize-none placeholder-yellow-800/40"
-                            rows={2}
-                            placeholder="כתוב הערה..."
-                            value={noteText}
-                            onChange={(e) => setNoteText(e.target.value)}
-                            autoFocus
-                        />
-                        <div className="flex justify-end gap-2 mt-2">
-                            <button onClick={() => setIsEditingNote(false)} className="text-[10px] font-bold text-slate-400 hover:text-slate-600">ביטול</button>
-                            <button onClick={saveNote} className="px-3 py-1 bg-yellow-400 text-yellow-900 rounded-lg text-[10px] font-bold hover:bg-yellow-500">שמור</button>
-                        </div>
+                    <div className="bg-yellow-50 p-2 rounded-lg border border-yellow-100 flex gap-1">
+                        <textarea className="w-full bg-transparent border-none outline-none text-[10px] text-yellow-900 resize-none" rows={1} value={noteText} onChange={e => setNoteText(e.target.value)} />
+                        <button onClick={saveNote} className="text-[10px] font-black text-yellow-700 whitespace-nowrap">שמור</button>
                     </div>
                 ) : (
-                    <button
-                        onClick={() => setIsEditingNote(true)}
-                        className={`py-2 px-3 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all ${data.notes ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : 'bg-slate-50 text-slate-500 hover:bg-yellow-50 hover:text-yellow-600'}`}
-                    >
-                        <StickyNote className="w-3.5 h-3.5" />
-                        {data.notes ? 'ערוך הערה' : 'הערה'}
-                    </button>
+                    <div onClick={() => setIsEditingNote(true)} className="text-[10px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-1.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors">
+                        {data.notes ? <><StickyNote className="w-3 h-3 text-yellow-500" /> <span className="text-yellow-900 truncate">{data.notes}</span></> : <span className="opacity-50">+ הערה</span>}
+                    </div>
                 )}
             </div>
-
-            {/* Status Chips */}
-            {(data.reservationDate || data.reservationTime || data.notes) && !isScheduling && !isEditingNote && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                    {data.reservationDate && (
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-50 text-green-700 rounded-lg text-[10px] font-bold border border-green-100">
-                            <Clock className="w-3 h-3" />
-                            {data.reservationDate.split('-').reverse().join('/')} {data.reservationTime}
-                        </div>
-                    )}
-                    {data.notes && (
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-yellow-50 text-yellow-700 rounded-lg text-[10px] font-bold border border-yellow-100 max-w-full">
-                            <StickyNote className="w-3 h-3 flex-shrink-0" />
-                            <span className="truncate">{data.notes}</span>
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
     );
 };
