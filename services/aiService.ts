@@ -117,14 +117,11 @@ Core Directives:
 2. **Total Classification:**
    - Categorize every file into: Logistics (Flights/Hotels), Wallet (Passports/Stickts), or Experiences (Dining/Activities).
 
-3. **FLIGHT EXTRACTION RULES (CRITICAL):**
-   - **Capture EVERYTHING:** You must extract EVERY flight segment found in the files, regardless of the airline or destination.
-   - **Timeline Logic:** Do NOT look for just "Inbound" and "Outbound". Look for a SEQUENCE of flights.
-     - Example: Tel Aviv -> London (Main)
-     - Example: London -> Paris (Internal - KEEP THIS!)
-     - Example: Paris -> Tel Aviv (Main)
-   - **Flattening:** Return a single, chronological array of \`segments\` in the \`flights\` object (inside logistics item or global).
-   - **Missing Data:** If a flight is missing a PNR or price, extract it anyway with the data you have. The schedule is more important than the receipt.
+3. **FLIGHT EXTRACTION RULES (STRICT - FLAT LIST ONLY):**
+   - **NO CONSOLIDATION:** Do NOT create a single "flight_itinerary" item with a "segments" list.
+   - **INDIVIDUAL ITEMS:** Every single flight leg (e.g., TLV->AUH, AUH->BKK) MUST be its own separate object in the \`logistics\` array with \`type: "flight"\`.
+   - **DATA SOURCE:** Each flight item MUST use the \`fileId\` of the ACTUAL file where that leg's details were found. Do NOT reference only the first file if info exists in others.
+   - **Full Chronology:** Capture all segments: Outbound, Inbound, and Internal flights.
 
 4. **JSON Output Specification (Strict):** Return a StagedTripData object.
    {
@@ -137,15 +134,12 @@ Core Directives:
         "logistics": [
           {
             "type": "flight",
-            "fileId": "file_1",
+            "fileId": "flight_ticket_1.pdf",
             "confidence": 0.9,
             "data": { 
-               "airline": "JAL", 
-               "flightNumber": "JL002", 
+               "airline": "JAL", "flightNumber": "JL002", 
                "departureTime": "2026-05-01T10:00:00", 
-               "arrivalTime": "2026-05-01T23:00:00", 
-               "from": "TLV", 
-               "to": "NRT" 
+               "from": "TLV", "to": "NRT" 
             }
           }
         ],
@@ -799,19 +793,33 @@ const ensureStagedTripSchema = (data: any): StagedTripData => {
  * Scans flight segments to build a dynamic multi-city route string.
  */
 const deriveSmartRoute = (items: any[], defaultDest: string): string => {
-  const flights = items.filter(i => i.type === 'flight' && i.data.from && i.data.to);
-  if (flights.length === 0) return defaultDest;
+  // Support both flat segments and nested flight_itinerary segments (Legacy/Safety)
+  const allSegments: any[] = [];
+
+  items.forEach(item => {
+    if (item.type === 'flight' && item.data.from && item.data.to) {
+      allSegments.push(item.data);
+    } else if (item.type === 'flight_itinerary' && Array.isArray(item.data.segments)) {
+      allSegments.push(...item.data.segments);
+    }
+  });
+
+  if (allSegments.length === 0) return defaultDest;
 
   // Sort by time
-  const sorted = flights.sort((a, b) => new Date(a.data.departureTime).getTime() - new Date(b.data.departureTime).getTime());
+  const sorted = allSegments.sort((a, b) => {
+    const timeA = new Date(a.departureTime || 0).getTime();
+    const timeB = new Date(b.departureTime || 0).getTime();
+    return timeA - timeB;
+  });
 
   // Build chain
   const route: string[] = [];
-  if (sorted[0]) route.push(sorted[0].data.from);
+  if (sorted[0]) route.push(sorted[0].from);
 
   sorted.forEach(f => {
-    if (route[route.length - 1] !== f.data.to) {
-      route.push(f.data.to);
+    if (f.to && route[route.length - 1] !== f.to) {
+      route.push(f.to);
     }
   });
 
