@@ -175,10 +175,8 @@ export const deleteTrip = async (tripId: string, userId?: string, shareId?: stri
       // Fallback for legacy cases or private trips
       await deleteSharedTripRef(userId, tripId);
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting trip from Firestore:', error);
-    // ZOMBIE FIX: Access denied means we probably aren't the owner or it's a ghost.
-    // We should still throw to let the UI decide, but we ensure we tried our best.
     throw error;
   }
 };

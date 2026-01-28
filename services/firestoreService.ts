@@ -14,7 +14,6 @@ import {
   onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
 import { db, auth } from './firebaseConfig';
 import { Trip, SharedTripMetadata, UserTripRef, TripInvite } from '../types';
 import { cleanUndefined } from '../utils/cleanUndefined';
@@ -87,47 +86,13 @@ export const saveAllTrips = async (userId: string, trips: Trip[]): Promise<void>
 /**
  * Delete a trip for a user
  */
-// services/firestoreService.ts (Updated with Forensic Logging)
-
 export const deleteTrip = async (userId: string, tripId: string): Promise<void> => {
-  console.group(`🗑️ START DELETING TRIP: ${tripId}`);
   try {
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
-    // userId passed from App.tsx may be sufficient, but verifying auth is safer
-
-    // 1. Attempt delete from ROOT collections (Modern Path)
-    const rootTripRef = doc(db, "trips", tripId);
-    console.log(`Checking path: trips/${tripId}`);
-
-    // Check if document exists before deleting
-    const docSnap = await getDoc(rootTripRef);
-    if (docSnap.exists()) {
-      console.log("✅ Document found in 'trips' collection. Deleting...");
-      await deleteDoc(rootTripRef);
-      console.log("✅ Deleted from 'trips' collection.");
-    } else {
-      console.warn("⚠️ Document NOT found in 'trips' collection.");
-    }
-
-    // 2. Attempt delete from USER subcollection (Legacy Path) - Just in case
-    const userTripRef = doc(db, "users", userId, "trips", tripId);
-    console.log(`Checking path: users/${userId}/trips/${tripId}`);
-    const userDocSnap = await getDoc(userTripRef);
-
-    if (userDocSnap.exists()) {
-      console.log("✅ Document found in 'users/.../trips'. Deleting...");
-      await deleteDoc(userTripRef);
-      console.log("✅ Deleted from 'users' subcollection.");
-    }
-
-    console.log("🎉 Delete operation completed successfully in Firestore.");
-    console.groupEnd();
-
+    const tripRef = doc(db, USERS_COLLECTION, userId, TRIPS_SUBCOLLECTION, tripId);
+    await deleteDoc(tripRef);
   } catch (error) {
-    console.error("❌ CRITICAL DELETE ERROR:", error);
-    console.groupEnd();
-    throw error; // Throw so UI knows we failed
+    console.error('Error deleting trip:', error);
+    throw error;
   }
 };
 

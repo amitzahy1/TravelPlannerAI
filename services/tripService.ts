@@ -112,23 +112,11 @@ export const mergeTripData = (existing: Trip, analysis: TripAnalysisResult): Tri
 
         newSegments.forEach(newSeg => {
                 // Duplicate Check: Same Flight Number AND Same Date
-                const existingIndex = uniqueSegments.findIndex(ex =>
+                const isDuplicate = existingSegments.some(ex =>
                         ex.flightNumber === newSeg.flightNumber &&
                         ex.date === newSeg.date
                 );
-
-                if (existingIndex !== -1) {
-                        // MERGE: If exists, fill in missing gaps (e.g. City Names)
-                        const existing = uniqueSegments[existingIndex];
-                        uniqueSegments[existingIndex] = {
-                                ...existing,
-                                fromCity: existing.fromCity || newSeg.fromCity,
-                                toCity: existing.toCity || newSeg.toCity,
-                                departureTime: (existing.departureTime === '00:00') ? newSeg.departureTime : existing.departureTime,
-                                arrivalTime: (existing.arrivalTime === '00:00') ? newSeg.arrivalTime : existing.arrivalTime,
-                                duration: (existing.duration === '0h') ? newSeg.duration : existing.duration
-                        };
-                } else {
+                if (!isDuplicate) {
                         uniqueSegments.push(newSeg);
                 }
         });

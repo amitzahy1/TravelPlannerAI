@@ -2,99 +2,53 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- פונקציות עזר (מונעות שכפול קוד ושגיאות) ---
-    
-    // בדיקה בטוחה אם המשתמש הוא הבעלים (בודק גם userId וגם owner)
-    function isOwner(data) {
-      return (data.userId == request.auth.uid) || (data.owner == request.auth.uid);
-    }
-
-    // בדיקה בטוחה אם המשתמש הוא שותף בטיול
-    function isCollaborator(data) {
-      return (data.collaborators is list) && (request.auth.uid in data.collaborators);
-    }
-
-    // =========================================================
-    // 0. ROOT TRIPS (התיקון הקריטי למחיקה)
-    // =========================================================
-    match /trips/{tripId} {
-      // יצירה: מותר לכל משתמש מחובר
-      allow create: if request.auth != null;
-      
-      // קריאה ועדכון: לבעלים או לשותפים
-      allow read, update: if request.auth != null && (
-        isOwner(resource.data) || isCollaborator(resource.data)
-      );
-
-      // מחיקה: התיקון הגדול!
-      // 1. resource == null: אם הטיול לא קיים (נמחק ידנית), אשר מחיקה כדי לנקות את האתר.
-      // 2. isOwner: אם הטיול קיים, רק הבעלים יכול למחוק.
-      allow delete: if request.auth != null && (
-        resource == null || isOwner(resource.data)
-      );
-    }
-
-    // =========================================================
-    // 1. PERSONAL TRIPS (Legacy - נשאר לגיבוי)
-    // =========================================================
+    // 1. Personal Trips (ללא שינוי)
     match /users/{userId}/trips/{tripId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // =========================================================
-    // 2. SHARED TRIPS (החלת אותו תיקון גם כאן)
-    // =========================================================
+    // 2. Shared Trips (התיקון הקריטי להצטרפות)
     match /shared-trips/{tripId} {
+      // יצירה: כל משתמש מחובר
       allow create: if request.auth != null;
 
-      // קריאה
+      // קריאה: הבעלים, משתתפים, או מיילים מורשים
       allow read: if request.auth != null && (
-        isOwner(resource.data) || 
-        isCollaborator(resource.data) ||
-        (resource.data.allowedEmails is list && request.auth.token.email in resource.data.allowedEmails) ||
-        request.query.limit <= 10
+        resource.data.owner == request.auth.uid ||
+        (resource.data.collaborators is list && request.auth.uid in resource.data.collaborators) ||
+        (resource.data.allowedEmails is list && request.auth.token.email in resource.data.allowedEmails)
       );
 
-      // עדכון
+      // עדכון (הצטרפות לטיול):
+      // מותר אם: אתה הבעלים, או משתתף קיים, או...
+      // *** התיקון: יש לך את ה-shareId הנכון ביד ***
       allow update: if request.auth != null && (
-        isOwner(resource.data) || 
-        isCollaborator(resource.data) ||
-        (request.resource.data.shareId == resource.data.shareId)
+        resource.data.owner == request.auth.uid ||
+        (resource.data.collaborators is list && request.auth.uid in resource.data.collaborators) ||
+        // בדיקה שה-ID שהמשתמש שולח תואם ל-ID ששמור בטיול (הוכחה שיש לו לינק)
+        (request.resource.data.shareId == resource.data.shareId) ||
+        // חריגה לטיולים ישנים: אם הטיול המקורי לא הכיל internal shareId, נאפשר הצטרפות אם יש התאמה ל-ID המסמך (אשר הוא ה-shareId)
+        (!("shareId" in resource.data) && request.resource.data.shareId == tripId)
       );
 
-      // מחיקה מתוקנת (כולל ניקוי זומבים)
-      allow delete: if request.auth != null && (
-        resource == null || isOwner(resource.data)
-      );
+      // מחיקה: רק הבעלים
+      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
 
-    // =========================================================
-    // 3. REFERENCES (ללא שינוי)
-    // =========================================================
+    // 3. References (ללא שינוי)
     match /users/{userId}/shared-trip-refs/{refId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // =========================================================
-    // 4. CACHE (ללא שינוי)
-    // =========================================================
+    // 4. Cache (ללא שינוי)
     match /ai_cache/{hash} {
       allow read, write: if true;
     }
 
-    // =========================================================
-    // 5. TRIP INVITES (החלת תיקון מחיקה גם כאן)
-    // =========================================================
+    // 5. Trip Invites (ללא שינוי - זה מעולה)
     match /trip_invites/{inviteId} {
       allow read: if true;
       allow create, update: if request.auth != null;
-      
-      // מחיקה מתוקנת
-      allow delete: if request.auth != null && (
-        resource == null ||
-        resource.data.ownerId == request.auth.uid || 
-        resource.data.hostName == request.auth.token.email
-      );
     }
 
     // חסימת ברירת מחדל

@@ -60,7 +60,7 @@ export interface HotelBooking {
   costNumeric?: number; // Actual number for calc
   imageUrl?: string;
   googleMapsUrl?: string;
-  bookingSource?: 'Booking.com' | 'Agoda' | 'Airbnb' | 'Direct' | 'Smart Search';
+  bookingSource?: 'Booking.com' | 'Agoda' | 'Airbnb' | 'Direct';
   notes?: string; // User notes
   lat?: number;
   lng?: number;
@@ -328,7 +328,6 @@ export interface DayPlan {
   events: TimelineEvent[];
   stats: { food: number, attr: number, flight: number, travel: number, hotel: number };
   hasHotel: boolean;
-  theme: import('./utils/cityColors').CityTheme;
 }
 
 // --- NEW: Staged Trip Data (Omni-Import System) ---
