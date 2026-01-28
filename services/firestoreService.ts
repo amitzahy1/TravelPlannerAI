@@ -138,7 +138,7 @@ const addUserTripRef = async (
 };
 
 /**
- * Create a shared trip
+ * Create a shared trip (Magic Link Model)
  */
 export const createSharedTrip = async (
   userId: string,
@@ -149,32 +149,31 @@ export const createSharedTrip = async (
   try {
     const shareId = generateShareId();
 
+    // 1. Create the Shared Trip Document
     const sharedTripRef = doc(db, 'shared-trips', shareId);
     await setDoc(sharedTripRef, {
       owner: userId,
       collaborators: [userId],
       allowedEmails: inviteEmail ? [userEmail, inviteEmail] : [userEmail],
-      shareId,
+      shareId: shareId, // CRITICAL: Burn shareId into the doc for Security Rules
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       updatedBy: userId,
       tripData: cleanUndefined(trip)
     });
 
-    // Add reference for user
+    // 2. Add reference for user
     await addUserTripRef(userId, shareId, 'owner', trip.name);
 
-    // [SECURE FLOW] Create Public Invite Metadata
-    // This allows guests to "peek" at the trip details before having permission to read the full doc
+    // 3. Create Public Invite Metadata (Public Read Access)
     const inviteRef = doc(db, 'trip_invites', shareId);
     await setDoc(inviteRef, {
       shareId,
-      // CRITICAL: originalTripId must match the shared trip Doc ID (which is shareId in our loop)
       originalTripId: shareId,
       tripName: trip.name,
       destination: trip.destination,
       dates: trip.dates,
-      hostName: userEmail, // Or fetch display name if available
+      hostName: userEmail,
       coverImage: trip.coverImage,
       ownerId: userId,
       createdAt: Timestamp.now()
@@ -188,99 +187,7 @@ export const createSharedTrip = async (
 };
 
 /**
- * [SELF-HEALING] Ensure invite metadata exists for legacy shared trips
- * Call this when opening the Share Modal to fix "Missing Permissions" errors.
- * Implements "Public Read / Auth Write" Security Pattern.
- */
-export const ensureSharedTripInvite = async (
-  userId: string,
-  trip: Trip,
-  shareId: string,
-  userEmail?: string
-): Promise<void> => {
-  try {
-    // Reference strictly to 'trip_invites' collection (Public Read / Auth Write)
-    const inviteRef = doc(db, 'trip_invites', shareId);
-
-    // 1. Idempotency Check: Don't write if already exists to save costs/latency
-    const snapshot = await getDoc(inviteRef);
-
-    if (!snapshot.exists()) {
-      console.log(`🔧 [Self-Healing] Creating missing trip-invites/${shareId}`);
-
-      // 2. Data Snapshot: Store static metadata so unauth users can preview
-      await setDoc(inviteRef, {
-        shareId: shareId,
-        // CRITICAL: originalTripId is the KEY to the Shared Document. In our system, that's often the shareId or the tripId depending on creation.
-        // Assuming shareId IS the doc ID for the shared trip (as per createSharedTrip).
-        originalTripId: shareId,
-        tripName: trip.name,
-        destination: trip.destination,
-        dates: trip.dates,
-        hostName: userEmail || 'Organizer',
-        coverImage: trip.coverImage || '',
-        ownerId: userId,
-        createdAt: Timestamp.now(),
-        // Security marker
-        isPublicInvite: true
-      });
-
-      // 3. CRITICAL: Ensure Main Trip Doc has the 'shareId' key (for Security Rules)
-      // This fixes legacy trips that might have been created before the "Secure Share" protocol.
-      const mainTripRef = doc(db, 'shared-trips', shareId);
-      await updateDoc(mainTripRef, {
-        shareId: shareId
-      });
-    }
-  } catch (error) {
-    console.warn('Silent Error ensuresTripInvite:', error);
-    // Silent fail is acceptable here as it might be a permission race, 
-    // but the Rules should fix it.
-  }
-};
-
-/**
- * Get a shared trip by ID (public/protected read)
- */
-export const getSharedTrip = async (shareId: string): Promise<Trip | null> => {
-  try {
-    const tripRef = doc(db, 'shared-trips', shareId);
-    const tripSnap = await getDoc(tripRef);
-
-    if (tripSnap.exists()) {
-      return tripSnap.data().tripData as Trip;
-    }
-    return null;
-  } catch (error) {
-    console.error('Error fetching shared trip:', error);
-    return null;
-  }
-};
-
-/**
- * Get shared trip INVITE metadata (Public/Auth Read)
- * SAFE to call before joining
- */
-export const getSharedTripInvite = async (shareId: string): Promise<TripInvite | null> => {
-  try {
-    const inviteRef = doc(db, 'trip_invites', shareId);
-    const inviteSnap = await getDoc(inviteRef);
-
-    if (inviteSnap.exists()) {
-      return inviteSnap.data() as TripInvite;
-    }
-    return null;
-  } catch (error) {
-    console.error('Error fetching trip invite:', error);
-    return null;
-  }
-};
-
-/**
- * Join a shared trip via share link
- */
-/**
- * Join a shared trip via share link - SECURE IMPLEMENTATION
+ * Join a shared trip (Magic Link Model)
  */
 export const joinSharedTrip = async (
   userId: string,
@@ -291,38 +198,32 @@ export const joinSharedTrip = async (
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in to join");
 
-    console.log(`🚀 [Join Process] Attempting to join trip with shareId: ${shareId}`);
-
-    // 1. Locate Original Trip via Invite
+    // 1. Locate Original Trip via Invite (Publicly accessible)
     const inviteRef = doc(db, "trip_invites", shareId);
     const inviteSnap = await getDoc(inviteRef);
 
     if (!inviteSnap.exists()) {
-      console.error(`❌ [Join Error] No invite found for shareId: ${shareId}`);
-      throw new Error("Link expired or invalid.");
+      throw new Error("קישור השיתוף אינו תקין או שפג תוקפו");
     }
 
-    const inviteData = inviteSnap.data();
-    const originalTripId = inviteData.originalTripId || shareId;
-    console.log(`📍 [Join Process] Mapping to trip document: ${originalTripId}`);
-
+    const { originalTripId } = inviteSnap.data();
     const tripRef = doc(db, "shared-trips", originalTripId);
 
     // 2. Add User to Collaborators
-    // We update the doc with common shareId proof to satisfy rules
+    // The rule (request.resource.data.shareId == resource.data.shareId) 
+    // will pass if we don't change shareId (it's unchanged in the merge)
+    // PROVIDED the doc already has a shareId.
     try {
       await updateDoc(tripRef, {
         collaborators: arrayUnion(user.uid),
-        // [SECURITY KEY PROOF]
+        // Just in case, we also explicitly provide it to fulfill strict rules on new joins
         shareId: shareId
       });
-      console.log(`✅ [Join Process] Firestore updateDoc successful`);
-    } catch (updateErr: any) {
-      console.error(`❌ [Join Error] Firestore updateDoc failed:`, updateErr.message);
-      if (updateErr.code === 'permission-denied') {
-        throw new Error("Permission denied. You may not have access to this trip anymore.");
+    } catch (err: any) {
+      if (err.code === 'permission-denied') {
+        throw new Error("אין הרשאה להצטרף. ייתכן שהבעלים ביטל את השיתוף או שמדובר בטיול ישן שיש לשתף מחדש.");
       }
-      throw updateErr;
+      throw err;
     }
 
     // 3. Create User Reference
@@ -331,13 +232,11 @@ export const joinSharedTrip = async (
       tripId: originalTripId,
       joinedAt: new Date().toISOString(),
       role: 'collaborator',
-      tripName: inviteData.tripName || 'Shared Trip'
+      tripName: inviteSnap.data().tripName || 'Shared Trip'
     });
 
     // 4. Return the Trip Data
     const updatedTripSnap = await getDoc(tripRef);
-    if (!updatedTripSnap.exists()) throw new Error("Trip document found but disappeared during join.");
-
     return updatedTripSnap.data()?.tripData as Trip;
 
   } catch (error: any) {
