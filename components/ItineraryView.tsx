@@ -285,27 +285,31 @@ export const ItineraryView: React.FC<{
                     {/* Edit Cover Button */}
                     <button onClick={handleChangeCover} className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-black/60"><Edit2 className="w-4 h-4" /></button>
 
-                    {/* STATS WIDGETS (Restored) */}
-                    <div className="absolute top-4 left-4 z-20 flex gap-2">
+                    {/* STATS WIDGETS (Interactive & Large) */}
+                    <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2 max-w-[70%]">
                         {tripStats.flights > 0 && (
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/30 backdrop-blur-md border border-white/10 rounded-full text-white text-xs font-bold">
-                                <Plane className="w-3.5 h-3.5 text-blue-400" /> {tripStats.flights}
-                            </div>
+                            <button onClick={() => onSwitchTab && onSwitchTab('flights')} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg">
+                                <Plane className="w-4 h-4 text-blue-300 transform -rotate-45" />
+                                <span className="text-sm drop-shadow-md">{tripStats.flights}</span>
+                            </button>
                         )}
                         {tripStats.hotels > 0 && (
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/30 backdrop-blur-md border border-white/10 rounded-full text-white text-xs font-bold">
-                                <Hotel className="w-3.5 h-3.5 text-indigo-400" /> {tripStats.hotels}
-                            </div>
+                            <button onClick={() => onSwitchTab && onSwitchTab('hotels')} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg">
+                                <Hotel className="w-4 h-4 text-indigo-300" />
+                                <span className="text-sm drop-shadow-md">{tripStats.hotels}</span>
+                            </button>
                         )}
                         {tripStats.attractions > 0 && (
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/30 backdrop-blur-md border border-white/10 rounded-full text-white text-xs font-bold">
-                                <Ticket className="w-3.5 h-3.5 text-purple-400" /> {tripStats.attractions}
-                            </div>
+                            <button onClick={() => onSwitchTab && onSwitchTab('attractions')} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg">
+                                <Ticket className="w-4 h-4 text-purple-300" />
+                                <span className="text-sm drop-shadow-md">{tripStats.attractions}</span>
+                            </button>
                         )}
                         {tripStats.food > 0 && (
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/30 backdrop-blur-md border border-white/10 rounded-full text-white text-xs font-bold">
-                                <Utensils className="w-3.5 h-3.5 text-orange-400" /> {tripStats.food}
-                            </div>
+                            <button onClick={() => onSwitchTab && onSwitchTab('restaurants')} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg">
+                                <Utensils className="w-4 h-4 text-orange-300" />
+                                <span className="text-sm drop-shadow-md">{tripStats.food}</span>
+                            </button>
                         )}
                     </div>
                 </div>
@@ -325,6 +329,17 @@ export const ItineraryView: React.FC<{
                         {timeline.map((day, index) => {
                             const dayNumber = index + 1;
                             const isLastDay = index === timeline.length - 1;
+
+                            // Determine Header Icon Priority
+                            // 1. Flight (Most important)
+                            // 2. Hotel (If staying/check-in)
+                            // 3. Default (Pin/Empty)
+                            const hasFlight = day.events.some(e => e.type === 'flight');
+                            const hasHotel = day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout');
+
+                            let HeaderIcon = MapPin; // Default
+                            if (hasFlight) HeaderIcon = Plane;
+                            else if (hasHotel) HeaderIcon = Hotel;
 
                             return (
                                 <div
@@ -352,9 +367,11 @@ export const ItineraryView: React.FC<{
                                                 </h3>
                                             </div>
                                         </div>
-                                        {day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout') && (
-                                            <div className={`p-1.5 rounded-lg bg-white/60 ${day.theme.icon}`}><Hotel className="w-3.5 h-3.5" /></div>
-                                        )}
+
+                                        {/* Status Icon (Top Left in RTL / Top Right visually) */}
+                                        <div className={`p-1.5 rounded-lg bg-white/60 ${day.theme.icon}`}>
+                                            <HeaderIcon className="w-3.5 h-3.5" />
+                                        </div>
                                     </div>
 
                                     {/* EVENTS LIST (Clean Rows Only) */}
