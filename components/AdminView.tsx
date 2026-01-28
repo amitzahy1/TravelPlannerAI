@@ -12,7 +12,9 @@ import { AlertTriangle, Calendar as CalIcon } from 'lucide-react';
 // import { requestAccessToken } from '../services/googleAuthService';
 // import { fetchCalendarEvents, mapEventsToTimeline } from '../services/calendarService';
 import { CalendarDatePicker } from './CalendarDatePicker';
+import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
+import { SmartHotelSearchModal } from './SmartHotelSearchModal';
 
 
 interface TripSettingsModalProps {

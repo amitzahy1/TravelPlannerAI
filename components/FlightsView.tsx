@@ -48,19 +48,21 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
       <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={() => setEditingSegment({ segment: seg, index })} className="p-1.5 text-slate-400 hover:text-blue-600 bg-white border border-slate-200 rounded-lg shadow-sm"><Edit className="w-4 h-4" /></button>
       </div>
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-3">
-          <div className="text-xs text-gray-400 font-mono">{formatDateOnly(seg.date)}</div>
-          <div className="font-bold text-sm text-blue-800 flex items-center gap-3">
-            <img src={`https://pics.avs.io/200/200/${(seg.flightNumber?.match(/^[A-Z0-9]{2}/i)?.[0] || seg.airline.substr(0, 2)).toUpperCase()}.png`} alt={seg.airline} onError={(e) => e.currentTarget.style.display = 'none'} className="w-10 h-10 rounded-full object-cover shadow-sm border border-slate-100" />
+          <div className="text-lg text-gray-400 font-mono font-bold">
+            {seg.date ? new Date(seg.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).replace(/ /g, '') : ''}
+          </div>
+          <div className="font-black text-lg text-blue-900 flex items-center gap-3">
+            <img src={`https://pics.avs.io/200/200/${(seg.flightNumber?.match(/^[A-Z0-9]{2}/i)?.[0] || seg.airline.substr(0, 2)).toUpperCase()}.png`} alt={seg.airline} onError={(e) => e.currentTarget.style.display = 'none'} className="w-12 h-12 rounded-full object-cover shadow-sm border border-slate-100" />
             {seg.airline}
           </div>
-          <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono tracking-wider">{seg.flightNumber}</span>
+          <span className="text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded font-mono tracking-wider font-bold">{seg.flightNumber}</span>
         </div>
         <div className="text-left flex items-center gap-2">
           {seg.baggage && (
-            <div className="text-[10px] bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold border border-slate-100">
-              <Briefcase className="w-2.5 h-2.5" />
+            <div className="text-xs bg-slate-50 text-slate-500 px-2 py-1 rounded flex items-center gap-1 font-bold border border-slate-100">
+              <Briefcase className="w-3 h-3" />
               {seg.baggage}
             </div>
           )}
@@ -69,30 +71,34 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
 
       <div className="flex items-center justify-between mb-3 px-2">
         <div className="flex-1">
-          <div className="text-xl font-black text-gray-800 leading-none">{seg.fromCode || (seg.fromCity ? seg.fromCity.substring(0, 3).toUpperCase() : 'ORG')}</div>
-          <div className="text-xs text-gray-500 mt-0.5">{seg.fromCity}</div>
-          <div className="mt-2 text-left">
-            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">{formatDateOnly(seg.departureTime)}</div>
-            <div className="text-2xl font-black text-blue-900 leading-none mt-0.5" dir="ltr">
+          <div className="text-4xl font-black text-gray-800 leading-none tracking-tight">{seg.fromCode || (seg.fromCity ? seg.fromCity.substring(0, 3).toUpperCase() : 'ORG')}</div>
+          <div className="text-sm text-gray-500 mt-1 font-medium">{seg.fromCity}</div>
+          <div className="mt-3 text-left">
+            <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">
+              {seg.departureTime ? new Date(seg.departureTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).replace(/ /g, '') : ''}
+            </div>
+            <div className="text-3xl font-black text-blue-900 leading-none mt-1" dir="ltr">
               {seg.departureTime?.includes('T') ? seg.departureTime.split('T')[1].substring(0, 5) : (seg.departureTime?.match(/\d{1,2}:\d{2}/)?.[0] || '00:00')}
             </div>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col items-center px-4">
-          <div className="text-[10px] text-gray-400 font-bold bg-white px-2 relative top-2 z-10 uppercase tracking-wider">
+          <div className="text-sm text-gray-500 font-bold bg-white px-3 relative top-3 z-10">
             {calculateDuration(seg.departureTime, seg.arrivalTime) || seg.duration || '0h'}
           </div>
           <div className="w-full h-px bg-gray-300 relative"></div>
-          <Plane className="w-5 h-5 text-blue-500 transform rotate-90 bg-white z-10 p-0.5 mt-[-10px]" />
+          <Plane className="w-6 h-6 text-blue-500 transform rotate-90 bg-white z-10 p-1 mt-[-12px]" />
         </div>
 
         <div className="flex-1 text-left">
-          <div className="text-xl font-black text-gray-800 leading-none">{seg.toCode || (seg.toCity ? seg.toCity.substring(0, 3).toUpperCase() : 'DST')}</div>
-          <div className="text-xs text-gray-500 mt-0.5">{seg.toCity}</div>
-          <div className="mt-2 text-left">
-            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">{formatDateOnly(seg.arrivalTime)}</div>
-            <div className="text-2xl font-black text-blue-900 leading-none mt-0.5" dir="ltr">
+          <div className="text-4xl font-black text-gray-800 leading-none tracking-tight">{seg.toCode || (seg.toCity ? seg.toCity.substring(0, 3).toUpperCase() : 'DST')}</div>
+          <div className="text-sm text-gray-500 mt-1 font-medium">{seg.toCity}</div>
+          <div className="mt-3 text-left">
+            <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">
+              {seg.arrivalTime ? new Date(seg.arrivalTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).replace(/ /g, '') : ''}
+            </div>
+            <div className="text-3xl font-black text-blue-900 leading-none mt-1" dir="ltr">
               {seg.arrivalTime?.includes('T') ? seg.arrivalTime.split('T')[1].substring(0, 5) : (seg.arrivalTime?.match(/\d{1,2}:\d{2}/)?.[0] || '00:00')}
             </div>
           </div>

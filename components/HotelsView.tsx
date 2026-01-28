@@ -3,7 +3,9 @@ import { Trip, HotelBooking } from '../types';
 import { Hotel, MapPin, Calendar, ExternalLink, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X, Save, DollarSign, Image as ImageIcon, Link as LinkIcon, Globe, Sparkles, Loader2, Navigation, Search, UploadCloud, FileText, Coffee, ShieldCheck } from 'lucide-react';
 import { getAI, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
+import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
+import { SmartHotelSearchModal } from './SmartHotelSearchModal';
 
 
 // Helper to determine placeholder image based on address
@@ -39,7 +41,7 @@ const getPlaceImage = (address: string): string => {
 export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
     const { hotels } = trip;
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isSmartAddOpen, setIsSmartAddOpen] = useState(false);
+    const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
     const [editingHotel, setEditingHotel] = useState<HotelBooking | null>(null);
     const [hotelToDelete, setHotelToDelete] = useState<string | null>(null);
 
@@ -67,10 +69,8 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
     const handleEditHotel = (hotel: HotelBooking) => { setEditingHotel(hotel); setIsModalOpen(true); };
     const handleAddNew = () => { setEditingHotel(null); setIsModalOpen(true); };
 
-    const handleSmartAdd = (hotelData: HotelBooking) => {
-        const newHotels = [...(trip.hotels || []), { ...hotelData, id: crypto.randomUUID() }];
-        onUpdateTrip({ ...trip, hotels: newHotels });
-        setIsSmartAddOpen(false);
+    const handleAddNewSmart = () => {
+        setIsSmartSearchOpen(true);
     };
 
     const handleSaveHotel = (hotelData: HotelBooking) => {
@@ -93,11 +93,8 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                             המלונות שלי
                         </h2>
                         <div className="flex gap-2 w-full md:w-auto">
-                            <button onClick={() => setIsSmartAddOpen(true)} className="flex-1 md:flex-none bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-3 py-2 md:px-5 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 md:gap-2 transition-all shadow-md hover:shadow-lg">
-                                <Sparkles className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden xs:inline">הוספה חכמה</span><span className="xs:hidden">AI</span>
-                            </button>
-                            <button onClick={handleAddNew} className="flex-1 md:flex-none bg-white text-indigo-600 border border-indigo-200 px-3 py-2 md:px-5 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 md:gap-2 transition-all hover:bg-indigo-50">
-                                <Plus className="w-4 h-4 md:w-5 md:h-5" /> ידני
+                            <button onClick={handleAddNewSmart} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all">
+                                <Plus className="w-5 h-5" /> הוסף מלון
                             </button>
                         </div>
                     </div>
@@ -125,18 +122,24 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm sm:max-w-lg justify-center">
-                        <button onClick={() => setIsSmartAddOpen(true)} className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-3 rounded-xl font-bold text-sm md:text-base shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                            <Sparkles className="w-5 h-5" /> הדבק אישור (AI)
-                        </button>
-                        <button onClick={handleAddNew} className="bg-white text-slate-600 border border-slate-200 px-5 py-3 rounded-xl font-bold text-sm md:text-base hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
-                            <Plus className="w-5 h-5" /> הוסף ידנית
+                        <button onClick={handleAddNewSmart} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-xl hover:scale-105 transition-all flex items-center gap-2">
+                            <Plus className="w-5 h-5" /> הוסף מלון ראשון
                         </button>
                     </div>
                 </div>
             )}
 
             {isModalOpen && <HotelFormModal initialData={editingHotel} onClose={() => setIsModalOpen(false)} onSave={handleSaveHotel} />}
-            {isSmartAddOpen && <SmartHotelAddModal onClose={() => setIsSmartAddOpen(false)} onSave={handleSmartAdd} />}
+            {isSmartSearchOpen && (
+                <SmartHotelSearchModal
+                    onClose={() => setIsSmartSearchOpen(false)}
+                    onSave={(newHotel) => {
+                        const newHotels = [...(trip.hotels || []), newHotel];
+                        onUpdateTrip({ ...trip, hotels: newHotels });
+                        setIsSmartSearchOpen(false);
+                    }}
+                />
+            )}
 
             <ConfirmModal
                 isOpen={!!hotelToDelete}
@@ -362,116 +365,4 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
     );
 };
 
-const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBooking) => void }> = ({ onClose, onSave }) => {
-    const [textInput, setTextInput] = useState('');
-    const [isProcessing, setIsProcessing] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const processContent = async (text: string, files?: FileList) => {
-        setIsProcessing(true);
-        try {
-            const ai = getAI();
-            const contentParts: any[] = [
-                {
-                    text: `Extract a SINGLE Hotel Booking from this content.
-                Return JSON in 'HotelBooking' format: { name, address, checkInDate (DD/MM/YYYY), checkOutDate (DD/MM/YYYY), bookingSource, price, roomType, confirmationCode, breakfastIncluded (boolean), cancellationPolicy (string) }.
-                If details are missing, omit them or guess logically.` }
-            ];
-
-            if (text) contentParts.push({ text: `Text: ${text}` });
-
-            if (files) {
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    const reader = new FileReader();
-                    const promise = new Promise<any>((resolve) => {
-                        if (file.type === 'text/plain') {
-                            reader.onload = () => resolve({ text: reader.result });
-                            reader.readAsText(file);
-                        } else {
-                            reader.onload = () => resolve({ inlineData: { mimeType: file.type, data: (reader.result as string).split(',')[1] } });
-                            reader.readAsDataURL(file);
-                        }
-                    });
-                    const part = await promise;
-                    contentParts.push(part);
-                }
-            }
-
-            const response = await generateWithFallback(
-                ai,
-                [{ role: 'user', parts: contentParts }],
-                { responseMimeType: 'application/json' }
-            );
-
-            const textContent = typeof response.text === 'function' ? response.text() : response.text;
-
-            let hotelData;
-            try {
-                hotelData = JSON.parse(textContent);
-            } catch (e) {
-                const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    hotelData = JSON.parse(jsonMatch[0]);
-                } else {
-                    throw new Error('Could not extract JSON from response');
-                }
-            }
-            onSave(hotelData);
-        } catch (e) {
-            console.error(e);
-            alert('שגיאה בפענוח הנתונים.');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col relative">
-                <div className="bg-indigo-50 p-6 border-b border-indigo-100 flex justify-between items-center"><h3 className="text-xl font-black text-indigo-900 flex items-center gap-2"><Sparkles className="w-5 h-5" /> הוספה חכמה</h3><button onClick={onClose}><X className="w-6 h-6 text-indigo-300 hover:text-indigo-600" /></button></div>
-
-                <div className="p-6 space-y-6">
-                    {isProcessing ? (
-                        <div className="py-10 text-center">
-                            <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
-                            <p className="font-bold text-slate-500">ה-AI קורא את ההזמנה שלך...</p>
-                        </div>
-                    ) : (
-                        <>
-                            <textarea
-                                className="w-full h-32 p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-indigo-500 resize-none font-medium"
-                                placeholder="הדבק כאן את תוכן המייל או הודעת האישור..."
-                                value={textInput}
-                                onChange={e => setTextInput(e.target.value)}
-                            />
-
-                            <div className="flex items-center gap-4">
-                                <div className="h-px bg-slate-200 flex-grow"></div>
-                                <span className="text-xs font-bold text-slate-400">או</span>
-                                <div className="h-px bg-slate-200 flex-grow"></div>
-                            </div>
-
-                            <div
-                                onClick={() => fileInputRef.current?.click()}
-                                className="border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-2xl p-6 flex flex-col items-center cursor-pointer hover:bg-indigo-50 transition-colors"
-                            >
-                                <UploadCloud className="w-8 h-8 text-indigo-400 mb-2" />
-                                <span className="font-bold text-indigo-700 text-sm">העלה צילום מסך או PDF</span>
-                                <input type="file" multiple className="hidden" ref={fileInputRef} onChange={e => e.target.files && processContent("", e.target.files)} />
-                            </div>
-
-                            <button
-                                onClick={() => processContent(textInput)}
-                                disabled={!textInput.trim()}
-                                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-200 hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                צור מלון
-                            </button>
-                        </>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
+// SmartHotelAddModal removed - Replaced by shared SmartHotelSearchModal
