@@ -504,7 +504,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             ...activeTrip,
             ...updatedTripData,
             documents: [...(activeTrip.documents || []), ...(updatedTripData.documents || [])].filter((v, i, a) => a.indexOf(v) === i),
-            hotels: [...(activeTrip.hotels || []), ...(updatedTripData.hotels || [])],
+            // Fix: Intelligent Merge for Hotels to prevent duplication
+            hotels: [
+                ...(activeTrip.hotels || []),
+                ...(updatedTripData.hotels || []).filter(newH => !activeTrip.hotels?.some(existingH => existingH.id === newH.id))
+            ]
         };
 
         handleUpdateTrip(mergedTrip);
@@ -514,6 +518,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
     return (
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-0 md:p-6 animate-fade-in" onClick={onClose}>
+
             <ConfirmModal
                 isOpen={!!tripToDelete}
                 title="מחיקת טיול"

@@ -49,6 +49,9 @@ const AppContent: React.FC = () => {
   const [currentTab, setCurrentTab] = useState('itinerary');
   const [showAdmin, setShowAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // Guard against race conditions during critical ops (delete/leave)
+  const [processingTripId, setProcessingTripId] = useState<string | null>(null);
+
 
   const [error, setError] = useState<string | null>(null);
   const [joinShareId, setJoinShareId] = useState<string | null>(null);
@@ -121,10 +124,12 @@ const AppContent: React.FC = () => {
   // Real-Time Sync Hook (Project Genesis 2.0)
   useEffect(() => {
     // Safety check: Ensure activeTrip actually exists in the current trips list
-    // This prevents "zombie" subscriptions to deleted trips
+    // AND is not currently being processed (deleted/left)
     const isValidTrip = trips.some(t => t.id === activeTrip?.id);
+    const isProcessing = activeTrip?.id === processingTripId;
 
-    if (activeTrip && activeTrip.isShared && activeTrip.sharing?.shareId && isValidTrip) {
+    if (activeTrip && activeTrip.isShared && activeTrip.sharing?.shareId && isValidTrip && !isProcessing) {
+
       console.log("🔌 Subscribing to shared trip:", activeTrip.name);
       const unsubscribe = subscribeToSharedTrip(activeTrip.sharing.shareId, (updatedTrip) => {
         console.log("⚡ Real-time update received for:", updatedTrip.name);
@@ -132,7 +137,8 @@ const AppContent: React.FC = () => {
       });
       return () => unsubscribe();
     }
-  }, [activeTrip?.id, activeTrip?.isShared, activeTrip?.sharing?.shareId, trips.length]); // Added trips.length as dependency to re-eval validity
+  }, [activeTrip?.id, activeTrip?.isShared, activeTrip?.sharing?.shareId, trips.length, processingTripId]); // Added trips.length as dependency to re-eval validity
+
 
 
   const handleUpdateActiveTrip = async (updatedTrip: Trip) => {
@@ -160,6 +166,8 @@ const AppContent: React.FC = () => {
     const previousTrips = [...trips];
     const previousActiveId = activeTripId;
 
+    setProcessingTripId(tripId); // 🛡️ BLOCK SUBSCRIPTIONS
+
     // Optimistic UI update
     const newTrips = trips.filter(t => t.id !== tripId);
     setTrips(newTrips);
@@ -181,11 +189,16 @@ const AppContent: React.FC = () => {
       setActiveTripId(previousActiveId);
       // Optionally show error to user
       alert('שגיאה במחיקת הטיול. נסה שוב.');
+    } finally {
+      setProcessingTripId(null); // 🔓 RELEASE GUARD
     }
   };
 
+
   const handleLeaveTrip = async (tripId: string) => {
     if (!activeTrip?.isShared || !activeTrip?.sharing?.shareId) return;
+
+    setProcessingTripId(tripId); // 🛡️ BLOCK SUBSCRIPTIONS
 
     // Harmonious UX: Optimistic Update
     const previousTrips = [...trips];
@@ -203,8 +216,11 @@ const AppContent: React.FC = () => {
       console.error('Failed to leave trip', err);
       setTrips(previousTrips); // Revert
       alert('שגיאה ביציאה מהטיול');
+    } finally {
+      setProcessingTripId(null); // 🔓 RELEASE GUARD
     }
   };
+
 
   // State Cleanup on Logout
   useEffect(() => {
