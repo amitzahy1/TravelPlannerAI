@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Trip } from '../types';
 import { Sparkles, Loader2, FileText, CheckCircle, AlertCircle, UploadCloud } from 'lucide-react';
-import { getAI, AI_MODEL, generateWithFallback } from '../services/aiService';
+import { analyzeTripFiles } from '../services/aiService';
+import { mergeTripData } from '../services/tripService';
 
 export interface MagicDropZoneProps {
   activeTrip?: Trip;
@@ -44,8 +45,10 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
       'text/html'
     ];
 
+    const fileArray = Array.from(files);
+
     // Check for unsupported files
-    const invalidFile = Array.from(files).find(f => !supportedTypes.includes(f.type) && !f.name.endsWith('.json') && !f.name.endsWith('.md'));
+    const invalidFile = fileArray.find(f => !supportedTypes.includes(f.type) && !f.name.endsWith('.json') && !f.name.endsWith('.md'));
 
     if (invalidFile) {
       setIsProcessing(false);
@@ -57,80 +60,20 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
     }
 
     try {
-      const ai = getAI();
-      const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf', 'text/plain'];
-      const textExtensions = ['.txt', '.md', '.json', '.csv'];
+      // USE CENTRALIZED AI SERVICE (Handles strict dates, deduplication within batch, and categorization)
+      const analysisResult = await analyzeTripFiles(fileArray);
 
-      const filePromises = Array.from(files).map(file => {
-        const isTextFile = allowedMimeTypes.includes(file.type) && file.type === 'text/plain' || textExtensions.some(ext => file.name.endsWith(ext));
+      // USE CENTRALIZED MERGE SERVICE (Handles deduplication against existing trip data)
+      const mergedTrip = mergeTripData(activeTrip, analysisResult);
 
-        return new Promise<{ data: string, mimeType: string, name: string, isText: boolean }>((resolve) => {
-          const reader = new FileReader();
-          if (isTextFile) {
-            reader.onloadend = () => {
-              resolve({ data: reader.result as string, mimeType: 'text/plain', name: file.name, isText: true });
-            };
-            reader.readAsText(file);
-          } else {
-            reader.onloadend = () => {
-              const base64 = (reader.result as string).split(',')[1];
-              resolve({ data: base64, mimeType: file.type, name: file.name, isText: false });
-            };
-            reader.readAsDataURL(file);
-          }
-        });
-      });
+      onUpdate(mergedTrip);
 
-      const uploadedFiles = await Promise.all(filePromises);
-
-      const contentParts: any[] = [
-        {
-          text: `You are an AI assistant for a travel app. Analyze the provided documents and update this trip object: ${JSON.stringify(activeTrip)}. 
-        Extract flights, hotels, or just add the filename to the 'documents' list. 
-        If you see text from a document, interpret it as travel details (itinerary, hotel name, flight).
-        Return ONLY a JSON object with the full updated trip.` }
-      ];
-
-      uploadedFiles.forEach(f => {
-        if (f.isText) {
-          contentParts.push({ text: `Text Document (${f.name}):\n${f.data}` });
-        } else if (allowedMimeTypes.includes(f.mimeType)) {
-          contentParts.push({ inlineData: { mimeType: f.mimeType, data: f.data } });
-        }
-      });
-
-      const response = await generateWithFallback(
-        ai,
-        [{ role: 'user', parts: contentParts }],
-        { responseMimeType: 'application/json' }
-      );
-
-      // FIX: response.text is a string from generateWithFallback
-      const textContent = response.text || '';
-
-      // Try to extract JSON from the response (some models return text with embedded JSON)
-      let updatedTrip;
-      try {
-        // Try parsing directly first
-        updatedTrip = JSON.parse(textContent);
-      } catch (e) {
-        // If direct parse fails, try to extract JSON from text
-        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          updatedTrip = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('Could not extract JSON from response');
-        }
-      }
-      const newDocNames = uploadedFiles.map(f => f.name);
-      updatedTrip.documents = Array.from(new Set([...(updatedTrip.documents || []), ...newDocNames]));
-
-      onUpdate(updatedTrip);
       setStatus({ type: 'success', message: 'המידע עובד והטיול עודכן בהצלחה!' });
       setTimeout(() => setStatus(null), 4000);
+
     } catch (error) {
       console.error("Magic Drop Error:", error);
-      setStatus({ type: 'error', message: 'אופס, קרתה שגיאה בעיבוד הקבצים. וודא ששלחת תמונות, PDF או טקסט (.txt).' });
+      setStatus({ type: 'error', message: 'אופס, קרתה שגיאה בעיבוד הקבצים. נסה שוב או בדוק את הקבצים.' });
     } finally {
       setIsProcessing(false);
       setIsDragging(false);

@@ -74,6 +74,8 @@ export interface TripAnalysisResult {
     endDate?: string;
     cities: string[];
   };
+  processedFileIds?: string[];
+  unprocessedFiles?: any[];
   rawStagedData: {
     categories: {
       transport: any[];
@@ -221,7 +223,20 @@ export const SYSTEM_PROMPT_ANALYZE_TRIP = `
 Role: You are the Lead Data Architect for a Travel App.
 Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
 
---- CATEGORIZATION RULES (CRITICAL) ---
+--- CRITICAL CONTEXT & RULES ---
+
+1. 📅 TIME TRAVEL PARADOX PREVENTER:
+   - **CURRENT YEAR: 2026**.
+   - **ASSUMPTION**: All travel is in the FUTURE (2026-2027).
+   - **MISSING YEAR**: If a document says "28 JAN" without a year, assume **2026** (or 2027 if Jan is after Dec).
+   - **⚠️ THE "1930" TRAP**: If you see "28JAN 1930", the "1930" is the **TIME (19:30)**, NOT the year 1930.
+   - **INVALID YEARS**: Do NOT output 1900-2024. Only 2025, 2026, 2027 are valid.
+
+2. 🧬 DEDUPLICATION ENGINE:
+   - **MERGE STRATEGY**: If multiple files describe the EXACT SAME event (e.g., same Airline + Flight Number + Date), generate **ONLY ONE** event in the output array.
+   - **SOURCE FILES**: List ALL file IDs that contributed to that merged event in "sourceFileIds".
+
+--- CATEGORIZATION RULES ---
 
 1. 🏨 ACCOMMODATION (Must be in 'accommodation' array):
    - Hotels, Airbnbs, Hostels, Resorts.
@@ -249,9 +264,10 @@ Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
    - Exclude the home airport city.
    - Example: ["Manila", "Boracay", "Cebu", "Bangkok"].
 
-2. 🕒 DATES & TIMES (CRITICAL):
-   - 'isoDate': STICT ISO 8601 format (YYYY-MM-DDTHH:mm:ss) for every event.
-   - 'displayTime': User-friendly format (e.g., "15 Feb, 03:25"). USE THIS FORMAT EXACTLY.
+2. 🕒 DATES & TIMES (STRICT ISO):
+   - 'isoDate': STICT ISO 8601 format (YYYY-MM-DDTHH:mm:ss).
+   - **FORCE YEAR 2026** if year is ambiguous.
+   - 'displayTime': User-friendly format (e.g., "15 Feb, 03:25").
 
 3. 📂 FILE MAPPING:
    - Use 'sourceFileIds' (Array) to link multiple files to a single event.
@@ -312,7 +328,7 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
         inlineData: { mimeType, data: base64 }
       });
     } catch (e) {
-      console.warn(`Skipping file ${file.name}`);
+      console.warn(`Skipping file ${file.name} `);
     }
   }
 
@@ -373,6 +389,9 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
       endDate,
       cities: raw.tripMetadata?.uniqueCityNames || []
     },
+    // Fix: Return processed/unprocessed files
+    processedFileIds: raw.processedFileIds || [],
+    unprocessedFiles: raw.unprocessedFiles || [],
     rawStagedData: {
       categories: raw.categories || { transport: [], accommodation: [], dining: [], activities: [], wallet: [] }
     }
@@ -380,7 +399,7 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
 };
 
 export const getDestinationRestaurants = async (destination: string, preferences?: string): Promise<any[]> => {
-  const prompt = `Find 5 top-rated restaurants in ${destination}. ${preferences || ''}. JSON output only: { "restaurants": [ { "name", "cuisine", "priceLevel", "description" } ] }`;
+  const prompt = `Find 5 top - rated restaurants in ${destination}. ${preferences || ''}. JSON output only: { "restaurants": [{ "name", "cuisine", "priceLevel", "description" }] } `;
   const response = await generateWithFallback(
     null,
     [{ role: 'user', parts: [{ text: prompt }] }],
@@ -391,7 +410,7 @@ export const getDestinationRestaurants = async (destination: string, preferences
 };
 
 export const getAttractions = async (destination: string, interests?: string): Promise<any[]> => {
-  const prompt = `Suggest 5 attractions in ${destination}. ${interests || ''}. JSON output only: { "attractions": [ { "name", "category", "description", "estimatedTime" } ] }`;
+  const prompt = `Suggest 5 attractions in ${destination}. ${interests || ''}. JSON output only: { "attractions": [{ "name", "category", "description", "estimatedTime" }] } `;
   const response = await generateWithFallback(
     null,
     [{ role: 'user', parts: [{ text: prompt }] }],
@@ -404,7 +423,7 @@ export const getAttractions = async (destination: string, interests?: string): P
 export const parseTripWizardInputs = async (text: string, files: File[] = []): Promise<any> => {
   if (files.length > 0) return analyzeTripFiles(files);
 
-  const prompt = `${SYSTEM_PROMPT_ANALYZE_TRIP}\n\nTEXT INPUT:\n${text}`;
+  const prompt = `${SYSTEM_PROMPT_ANALYZE_TRIP} \n\nTEXT INPUT: \n${text} `;
   const response = await generateWithFallback(
     null,
     [{ role: 'user', parts: [{ text: prompt }] }],
@@ -415,19 +434,19 @@ export const parseTripWizardInputs = async (text: string, files: File[] = []): P
 };
 
 export const chatWithTripContext = async (message: string, tripContext: any, history: any[] = []): Promise<string> => {
-  const systemContext = `Trip Context: ${tripContext.destination}, ${JSON.stringify(tripContext.metadata)}`;
+  const systemContext = `Trip Context: ${tripContext.destination}, ${JSON.stringify(tripContext.metadata)} `;
   // Merge system context into the latest user message or first message
   // Using FAST model for chat
 
   // History adapter
-  const contents = [...history, { role: 'user', parts: [{ text: `[System: ${systemContext}] ${message}` }] }];
+  const contents = [...history, { role: 'user', parts: [{ text: `[System: ${systemContext}] ${message} ` }] }];
 
   const response = await generateWithFallback(null, contents, {}, 'FAST');
   return response.text;
 };
 
 export const planFullDay = async (city: string, date: string, prefs: string): Promise<any> => {
-  const prompt = `Plan full day in ${city} on ${date}. Prefs: ${prefs}. JSON Output: { "morning": [], "afternoon": [], "evening": [] }`;
+  const prompt = `Plan full day in ${city} on ${date}.Prefs: ${prefs}. JSON Output: { "morning": [], "afternoon": [], "evening": [] } `;
   const response = await generateWithFallback(
     null,
     [{ role: 'user', parts: [{ text: prompt }] }],
