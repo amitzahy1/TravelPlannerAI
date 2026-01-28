@@ -185,6 +185,81 @@ export const createSharedTrip = async (
     throw error;
   }
 };
+/**
+ * [SELF-HEALING] Ensure invite metadata exists for legacy shared trips
+ * Call this when opening the Share Modal to fix "Missing Permissions" errors.
+ */
+export const ensureSharedTripInvite = async (
+  userId: string,
+  trip: Trip,
+  shareId: string,
+  userEmail?: string
+): Promise<void> => {
+  try {
+    const inviteRef = doc(db, 'trip_invites', shareId);
+    const snapshot = await getDoc(inviteRef);
+
+    if (!snapshot.exists()) {
+      console.log(`🔧 [Self-Healing] Creating missing trip-invites/${shareId}`);
+      await setDoc(inviteRef, {
+        shareId: shareId,
+        originalTripId: shareId,
+        tripName: trip.name,
+        destination: trip.destination,
+        dates: trip.dates,
+        hostName: userEmail || 'Organizer',
+        coverImage: trip.coverImage || '',
+        ownerId: userId,
+        createdAt: Timestamp.now(),
+        isPublicInvite: true
+      });
+
+      // Ensure Main Trip Doc has the 'shareId' key
+      const mainTripRef = doc(db, 'shared-trips', shareId);
+      await updateDoc(mainTripRef, {
+        shareId: shareId
+      });
+    }
+  } catch (error) {
+    console.warn('Silent Error ensuresTripInvite:', error);
+  }
+};
+
+/**
+ * Get a shared trip by ID (protected read)
+ */
+export const getSharedTrip = async (shareId: string): Promise<Trip | null> => {
+  try {
+    const tripRef = doc(db, 'shared-trips', shareId);
+    const tripSnap = await getDoc(tripRef);
+
+    if (tripSnap.exists()) {
+      return tripSnap.data().tripData as Trip;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching shared trip:', error);
+    return null;
+  }
+};
+
+/**
+ * Get shared trip INVITE metadata (Public/Auth Read)
+ */
+export const getSharedTripInvite = async (shareId: string): Promise<TripInvite | null> => {
+  try {
+    const inviteRef = doc(db, 'trip_invites', shareId);
+    const inviteSnap = await getDoc(inviteRef);
+
+    if (inviteSnap.exists()) {
+      return inviteSnap.data() as TripInvite;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching trip invite:', error);
+    return null;
+  }
+};
 
 /**
  * Join a shared trip (Magic Link Model)
