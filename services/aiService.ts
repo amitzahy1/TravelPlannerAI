@@ -13,8 +13,8 @@ const GOOGLE_MODELS = {
     // 1. The Bleeding Edge
     "gemini-3-pro-preview",
 
-    // 2. The Stable Powerhouse (Auto-points to latest 1.5)
-    "gemini-1.5-pro-latest",
+    // 2. The new Standard (2.5)
+    "gemini-2.5-pro",
 
     // 3. Specific Backup (If latest alias fails)
     "gemini-1.5-pro-002"
@@ -26,10 +26,13 @@ const GOOGLE_MODELS = {
     "gemini-3-flash-preview",
 
     // 2. Stable & Fast (High Reliability)
-    "gemini-2.0-flash-exp",
+    "gemini-2.5-flash",
 
     // 3. Veteran
-    "gemini-1.5-flash-latest"
+    "gemini-1.5-flash-latest",
+
+    // 4. Ultra Lite
+    "gemini-2.5-flash-lite"
   ]
 };
 
