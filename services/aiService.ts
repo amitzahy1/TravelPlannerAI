@@ -117,7 +117,7 @@ const readFileAsBase64 = (file: File): Promise<string> => {
  */
 export const generateWithFallback = async (
   _unused: any, // Backward compat
-  contents: any[],
+  contents: any, // Flexible input: string | string[] | Content[]
   config: any = {},
   intent: AIIntent = 'SMART'
 ): Promise<any> => {
@@ -149,27 +149,30 @@ export const generateWithFallback = async (
       // Remove rigid responseSchema to prevent 400 validation errors
       delete generationConfig.responseSchema;
 
-      // Thinking Mode Injection: REMOVED.
-      // Causes 400 Bad Request on standard Flash/Pro models.
+      // NOTE: Removed 'thinking_level' injection as it causes 400 Bad Request on standard models.
 
       const model = googleAI.getGenerativeModel({
         model: modelId,
         generationConfig
       });
 
-      // SDK Adapter: Ensure contents are in correct format
+      // SDK Adapter: Ensure contents are in correct format [ Critical Fix ]
       // API requires: { role: string, parts: { text: string }[] }[]
-      let adaptedContents = [];
+      let adaptedContents: any[] = [];
 
-      if (typeof contents === 'string') {
+      if (!contents) {
+        adaptedContents = [{ role: 'user', parts: [{ text: '' }] }];
+      } else if (typeof contents === 'string') {
         adaptedContents = [{ role: 'user', parts: [{ text: contents }] }];
       } else if (Array.isArray(contents)) {
-        if (contents.length === 0) adaptedContents = [{ role: 'user', parts: [{ text: '' }] }];
+        if (contents.length === 0) {
+          adaptedContents = [{ role: 'user', parts: [{ text: '' }] }];
+        }
         // Case 1: Array of strings ["prompt"]
         else if (typeof contents[0] === 'string') {
           adaptedContents = [{ role: 'user', parts: contents.map(t => ({ text: t })) }];
         }
-        // Case 2: Array of parts without role [{ text: '...' }]
+        // Case 2: Array of parts without role [{ text: '...' }] or [{ inlineData: ... }]
         else if (contents[0].text || contents[0].inlineData) {
           adaptedContents = [{ role: 'user', parts: contents }];
         }
@@ -181,6 +184,9 @@ export const generateWithFallback = async (
         else {
           adaptedContents = [{ role: 'user', parts: [{ text: JSON.stringify(contents) }] }];
         }
+      } else {
+        // Object fallback
+        adaptedContents = [{ role: 'user', parts: [{ text: JSON.stringify(contents) }] }];
       }
 
       const result = await model.generateContent({ contents: adaptedContents });
@@ -244,10 +250,8 @@ Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
    - Example: ["Manila", "Boracay", "Cebu", "Bangkok"].
 
 2. 🕒 DATES & TIMES (CRITICAL):
-   - 'startDate': The EARLIEST date found in any flight departure or hotel check-in.
-   - 'endDate': The LATEST date found in any flight return or hotel check-out.
-   - Format: "YYYY-MM-DD" (ISO 8601).
-   - Check all files to ensure the entire range is covered.
+   - 'isoDate': STICT ISO 8601 format (YYYY-MM-DDTHH:mm:ss) for every event.
+   - 'displayTime': User-friendly format (e.g., "15 Feb, 03:25"). USE THIS FORMAT EXACTLY.
 
 3. 📂 FILE MAPPING:
    - Use 'sourceFileIds' (Array) to link multiple files to a single event.
@@ -257,18 +261,16 @@ Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
 Return ONLY raw JSON (no markdown):
 {
   "tripMetadata": {
-    "suggestedName": "String (e.g., 'Japan - Cherry Blossom')",
-    "startDate": "YYYY-MM-DD",
-    "endDate": "YYYY-MM-DD",
-    "mainDestination": "String (Country/Region)",
-    "uniqueCityNames": ["City1", "City2"]
+    "suggestedName": "String",
+    "mainDestination": "String",
+    "uniqueCityNames": ["City1"]
   },
-  "processedFileIds": ["file1.pdf", "file2.pdf"],
-  "unprocessedFiles": [{ "fileName": "x.pdf", "reason": "Duplicate" }],
+  "processedFileIds": ["file1.pdf"],
+  "unprocessedFiles": [],
   "categories": {
-    "transport": [ { "type": "flight", "data": { "airline": "...", "displayTime": "Sun, 15 Feb 10:00" }, "sourceFileIds": [...] } ],
-    "accommodation": [ { "type": "hotel", "data": { "hotelName": "...", "checkInDate": "YYYY-MM-DD", "displayTime": "..." }, "sourceFileIds": [...] } ],
-    "wallet": [ { "type": "entry_permit", "data": { "documentName": "...", "displayTime": "..." }, "sourceFileIds": [...] } ],
+    "transport": [ { "type": "flight", "data": { "airline": "...", "isoDate": "YYYY-MM-DDTHH:mm:ss", "displayTime": "Sun, 15 Feb 10:00" }, "sourceFileIds": [] } ],
+    "accommodation": [ { "type": "hotel", "data": { "hotelName": "...", "checkInDate": "YYYY-MM-DD", "checkOutDate": "YYYY-MM-DD", "isoDate": "YYYY-MM-DDTHH:mm:ss", "displayTime": "..." }, "sourceFileIds": [] } ],
+    "wallet": [ { "type": "entry_permit", "data": { "documentName": "...", "isoDate": "YYYY-MM-DD", "displayTime": "..." }, "sourceFileIds": [] } ],
     "dining": [],
     "activities": []
   }
@@ -324,17 +326,43 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
 
   const raw = JSON.parse(response.text);
 
-  // Basic date parsing logic (Updated for Schema v2)
-  let startDate = raw.tripMetadata?.startDate || "";
-  let endDate = raw.tripMetadata?.endDate || "";
+  // 400 Bad Request Fix: DETERMINISTIC DATE CALCULATION
+  // Do not trust AI metadata. Iterate all events to find true Min/Max.
+  const allDates: number[] = [];
 
-  // Fallback for legacy generic date string
-  if ((!startDate || !endDate) && raw.tripMetadata?.suggestedDates) {
-    const parts = raw.tripMetadata.suggestedDates.split('-');
-    if (parts.length >= 2) {
-      startDate = parts[0]?.trim();
-      endDate = parts[1]?.trim();
-    }
+  const extractDates = (items: any[]) => {
+    if (!items || !Array.isArray(items)) return;
+    items.forEach(item => {
+      // Try strict fields first
+      const d = item.data?.isoDate || item.data?.checkInDate || item.data?.date;
+      if (d) {
+        const ts = new Date(d).getTime();
+        if (!isNaN(ts)) allDates.push(ts);
+      }
+      // Accommodation Check-out
+      if (item.data?.checkOutDate) {
+        const ts = new Date(item.data.checkOutDate).getTime();
+        if (!isNaN(ts)) allDates.push(ts);
+      }
+    });
+  };
+
+  extractDates(raw.categories?.transport);
+  extractDates(raw.categories?.accommodation);
+  extractDates(raw.categories?.wallet); // Visas often have dates
+
+  let startDate = "";
+  let endDate = "";
+
+  if (allDates.length > 0) {
+    // Sort and pick min/max
+    allDates.sort((a, b) => a - b);
+    startDate = new Date(allDates[0]).toISOString().split('T')[0];
+    endDate = new Date(allDates[allDates.length - 1]).toISOString().split('T')[0];
+  } else {
+    // Fallback to AI Metadata if extraction failed (unlikely)
+    startDate = raw.tripMetadata?.startDate || "";
+    endDate = raw.tripMetadata?.endDate || "";
   }
 
   return {

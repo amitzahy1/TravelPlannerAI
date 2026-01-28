@@ -12,10 +12,17 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({ value, o
         // 1. Initial Date Logic
         const parseInitialDate = (v: string): Date => {
                 if (!v) return new Date();
+                // Handle DD/MM/YYYY
                 if (v.includes('/')) {
                         const [d, m, y] = v.split('/');
                         return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
                 }
+                // Handle YYYY-MM-DD (Strict Local)
+                if (v.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        const [y, m, d] = v.split('-').map(Number);
+                        return new Date(y, m - 1, d);
+                }
+                // Fallback
                 const d = new Date(v);
                 return isNaN(d.getTime()) ? new Date() : d;
         };
@@ -46,7 +53,11 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({ value, o
         }, [viewDate]);
 
         const handleDateSelect = (d: Date) => {
-                const iso = d.toISOString().split('T')[0];
+                // FIXED: manually construct local YYYY-MM-DD to avoid Timezone offsets
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const iso = `${year}-${month}-${day}`;
                 onChange(iso);
                 onClose();
         };
@@ -89,7 +100,24 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({ value, o
                                         >
                                                 <ChevronLeft className="w-5 h-5 text-slate-400" />
                                         </button>
-                                        <span className="font-black text-slate-700">{monthName}</span>
+
+                                        <div className="flex items-center gap-2" dir="rtl">
+                                                <span className="font-black text-slate-700 text-lg">
+                                                        {viewDate.toLocaleDateString('he-IL', { month: 'long' })}
+                                                </span>
+                                                <div className="relative">
+                                                        <select
+                                                                value={viewDate.getFullYear()}
+                                                                onChange={(e) => setViewDate(new Date(parseInt(e.target.value), viewDate.getMonth(), 1))}
+                                                                className="appearance-none bg-transparent font-bold text-slate-500 cursor-pointer focus:outline-none hover:text-indigo-600 pr-4 pl-2 text-lg"
+                                                        >
+                                                                {Array.from({ length: 35 }, (_, i) => 2000 + i).map(y => (
+                                                                        <option key={y} value={y}>{y}</option>
+                                                                ))}
+                                                        </select>
+                                                </div>
+                                        </div>
+
                                         <button
                                                 onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
                                                 className="p-2 hover:bg-white rounded-xl shadow-sm transition-all"
