@@ -291,46 +291,57 @@ export const joinSharedTrip = async (
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in to join");
 
+    console.log(`🚀 [Join Process] Attempting to join trip with shareId: ${shareId}`);
+
     // 1. Locate Original Trip via Invite
     const inviteRef = doc(db, "trip_invites", shareId);
     const inviteSnap = await getDoc(inviteRef);
 
     if (!inviteSnap.exists()) {
+      console.error(`❌ [Join Error] No invite found for shareId: ${shareId}`);
       throw new Error("Link expired or invalid.");
     }
 
-    const { originalTripId } = inviteSnap.data();
-    if (!originalTripId) throw new Error("Invalid trip mapping.");
+    const inviteData = inviteSnap.data();
+    const originalTripId = inviteData.originalTripId || shareId;
+    console.log(`📍 [Join Process] Mapping to trip document: ${originalTripId}`);
 
     const tripRef = doc(db, "shared-trips", originalTripId);
 
-    // 2. Add User to Collaborators (Firestore Rules check shareId presence!)
-    await updateDoc(tripRef, {
-      collaborators: arrayUnion(user.uid),
-      // [SECURITY KEY PROOF] Explicitly sending the shareId proves we have the link/key.
-      // This satisfies the rule: request.resource.data.shareId == resource.data.shareId
-      shareId: shareId
-    });
+    // 2. Add User to Collaborators
+    // We update the doc with common shareId proof to satisfy rules
+    try {
+      await updateDoc(tripRef, {
+        collaborators: arrayUnion(user.uid),
+        // [SECURITY KEY PROOF]
+        shareId: shareId
+      });
+      console.log(`✅ [Join Process] Firestore updateDoc successful`);
+    } catch (updateErr: any) {
+      console.error(`❌ [Join Error] Firestore updateDoc failed:`, updateErr.message);
+      if (updateErr.code === 'permission-denied') {
+        throw new Error("Permission denied. You may not have access to this trip anymore.");
+      }
+      throw updateErr;
+    }
 
     // 3. Create User Reference
     await setDoc(doc(db, "users", user.uid, "shared-trip-refs", originalTripId), {
-      sharedTripId: originalTripId, // Using correct field name for our schema
-      tripId: originalTripId, // Backwards compat
+      sharedTripId: originalTripId,
+      tripId: originalTripId,
       joinedAt: new Date().toISOString(),
       role: 'collaborator',
-      tripName: inviteSnap.data().tripName || 'Shared Trip'
+      tripName: inviteData.tripName || 'Shared Trip'
     });
 
     // 4. Return the Trip Data
     const updatedTripSnap = await getDoc(tripRef);
+    if (!updatedTripSnap.exists()) throw new Error("Trip document found but disappeared during join.");
+
     return updatedTripSnap.data()?.tripData as Trip;
 
   } catch (error: any) {
     console.error("Error joining shared trip:", error);
-    // Specific permission handling
-    if (error.code === 'permission-denied') {
-      throw new Error("Permission denied. The owner may have revoked sharing.");
-    }
     throw error;
   }
 };

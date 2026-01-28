@@ -26,7 +26,9 @@ service cloud.firestore {
         resource.data.owner == request.auth.uid ||
         (resource.data.collaborators is list && request.auth.uid in resource.data.collaborators) ||
         // בדיקה שה-ID שהמשתמש שולח תואם ל-ID ששמור בטיול (הוכחה שיש לו לינק)
-        (request.resource.data.shareId == resource.data.shareId)
+        (request.resource.data.shareId == resource.data.shareId) ||
+        // חריגה לטיולים ישנים: אם הטיול המקורי לא הכיל shareId, נאפשר הצטרפות אם יש התאמה ל-ID המסמך
+        (!("shareId" in resource.data) && request.resource.data.shareId == tripId)
       );
 
       // מחיקה: רק הבעלים
