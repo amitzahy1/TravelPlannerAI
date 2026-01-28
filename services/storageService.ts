@@ -50,14 +50,10 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
   }
 
   try {
-    const hasTrips = await userHasTrips(userId);
-    if (!hasTrips) {
-      // ZOMBIE FIX: If user has no trips in DB, they have NO trips.
-      // Do NOT fallback to local storage or INITIAL_DATA.
-      // This ensures if a user deletes everything, it STAYS deleted.
-      console.log('✨ User has no trips in DB (Returning empty)');
-      return [];
-    }
+    // ZOMBIE FIX REVISED: Always attempt to load from Firestore.
+    // Do NOT return INITIAL_DATA if firebase returns empty.
+    // Just return empty array.
+
 
     // 1. Fetch Private Trips
     const privateTrips = await getUserTrips(userId);
@@ -150,7 +146,7 @@ export const saveSingleTrip = async (trip: Trip, userId?: string): Promise<void>
 /**
  * Delete a trip - uses Firestore if userId provided, otherwise updates local storage
  */
-export const deleteTrip = async (tripId: string, userId?: string): Promise<void> => {
+export const deleteTrip = async (tripId: string, userId?: string, shareId?: string): Promise<void> => {
   // Always clean up local storage first to prevent zombie data
   try {
     const local = loadTripsFromLocal();
@@ -172,9 +168,13 @@ export const deleteTrip = async (tripId: string, userId?: string): Promise<void>
     await firestoreDeleteTrip(userId, tripId);
 
     // 2. Try deleting as Shared Trip Reference (Zombie Fix)
-    // Even if it wasn't shared, this is harmless and ensures cleanup of ANY reference
-    // This is vital for the user demand "When I delete, it must be gone forever"
-    await deleteSharedTripRef(userId, tripId);
+    // CRITICAL FIX: Must use shareId if available, otherwise fallback to tripId (only works if they match)
+    if (shareId) {
+      await deleteSharedTripRef(userId, shareId);
+    } else {
+      // Fallback for legacy cases or private trips
+      await deleteSharedTripRef(userId, tripId);
+    }
   } catch (error) {
     console.error('Error deleting trip from Firestore:', error);
     throw error;

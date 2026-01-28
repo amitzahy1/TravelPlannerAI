@@ -164,7 +164,10 @@ const AppContent: React.FC = () => {
     }
 
     try {
-      await deleteTrip(tripId, user?.uid);
+      const tripToDelete = trips.find(t => t.id === tripId);
+      const shareId = tripToDelete?.isShared && tripToDelete?.sharing?.shareId ? tripToDelete.sharing.shareId : undefined;
+
+      await deleteTrip(tripId, user?.uid, shareId);
       console.log('✅ Trip deleted successfully from Firebase');
     } catch (err) {
       console.error('❌ Error deleting trip - REVERTING UI:', err);
