@@ -1,11 +1,23 @@
 import React, { useRef } from 'react';
 import { Trip, FlightSegment } from '../types';
-import { Plane, FileText, FileImage, Download, Briefcase, UploadCloud } from 'lucide-react';
+import { Plane, FileText, FileImage, Download, Briefcase, UploadCloud, Edit, X, Save } from 'lucide-react';
 import { formatDateTime, formatDateOnly } from '../utils/dateUtils';
 
 export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
   const { flights, documents } = trip;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editingSegment, setEditingSegment] = React.useState<{ segment: FlightSegment, index: number } | null>(null);
+
+  const handleUpdateSegment = (updatedSeg: FlightSegment) => {
+    if (editingSegment === null || !onUpdateTrip) return;
+    const newSegments = [...flights.segments];
+    newSegments[editingSegment.index] = updatedSeg;
+    onUpdateTrip({
+      ...trip,
+      flights: { ...flights, segments: newSegments }
+    });
+    setEditingSegment(null);
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && onUpdateTrip) {
@@ -16,7 +28,10 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
   };
 
   const renderSegment = (seg: FlightSegment, index: number) => (
-    <div key={index} className="border-b border-dashed border-gray-300 last:border-0 pb-4 mb-4 last:pb-0 last:mb-0 relative">
+    <div key={index} className="border-b border-dashed border-gray-300 last:border-0 pb-4 mb-4 last:pb-0 last:mb-0 relative group">
+      <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={() => setEditingSegment({ segment: seg, index })} className="p-1.5 text-slate-400 hover:text-blue-600 bg-white border border-slate-200 rounded-lg shadow-sm"><Edit className="w-4 h-4" /></button>
+      </div>
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-3">
           <div className="text-xs text-gray-400 font-mono">{formatDateOnly(seg.date)}</div>
@@ -164,6 +179,73 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
           </div>
         )}
       </section>
+    </div>
+  );
+};
+
+const FlightEditModal: React.FC<{
+  segment: FlightSegment,
+  onClose: () => void,
+  onSave: (seg: FlightSegment) => void
+}> = ({ segment, onClose, onSave }) => {
+  const [formData, setFormData] = React.useState<FlightSegment>(segment);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
+          <h3 className="font-black text-slate-800 flex items-center gap-2"><Plane className="w-5 h-5 text-blue-600" /> עריכת טיסה</h3>
+          <button onClick={onClose}><X className="w-6 h-6 text-slate-400" /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">מספר טיסה</label>
+              <input className="w-full p-3 bg-slate-50 rounded-xl font-mono font-bold text-sm outline-none focus:ring-2 focus:ring-blue-100" value={formData.flightNumber} onChange={e => setFormData({ ...formData, flightNumber: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">חברת תעופה</label>
+              <input className="w-full p-3 bg-slate-50 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-100" value={formData.airline} onChange={e => setFormData({ ...formData, airline: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="flex gap-2 items-end">
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">קוד מוצא</label>
+              <input className="w-full p-3 bg-slate-50 rounded-xl font-mono font-black text-lg text-center outline-none focus:ring-2 focus:ring-blue-100" value={formData.fromCode} onChange={e => setFormData({ ...formData, fromCode: e.target.value })} maxLength={3} />
+            </div>
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">עיר מוצא</label>
+              <input className="w-full p-3 bg-slate-50 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-100" value={formData.fromCity || ''} onChange={e => setFormData({ ...formData, fromCity: e.target.value })} />
+            </div>
+          </div>
+          <div className="flex gap-2 items-end">
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">קוד יעד</label>
+              <input className="w-full p-3 bg-slate-50 rounded-xl font-mono font-black text-lg text-center outline-none focus:ring-2 focus:ring-blue-100" value={formData.toCode} onChange={e => setFormData({ ...formData, toCode: e.target.value })} maxLength={3} />
+            </div>
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">עיר יעד</label>
+              <input className="w-full p-3 bg-slate-50 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-100" value={formData.toCity || ''} onChange={e => setFormData({ ...formData, toCity: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">המראה</label>
+              <input type="datetime-local" className="w-full p-3 bg-slate-50 rounded-xl font-mono font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100" value={formData.departureTime} onChange={e => setFormData({ ...formData, departureTime: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">נחיתה</label>
+              <input type="datetime-local" className="w-full p-3 bg-slate-50 rounded-xl font-mono font-bold text-xs outline-none focus:ring-2 focus:ring-blue-100" value={formData.arrivalTime} onChange={e => setFormData({ ...formData, arrivalTime: e.target.value })} />
+            </div>
+          </div>
+
+          <button onClick={() => onSave(formData)} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
+            <Save className="w-5 h-5" /> שמור שינויים
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

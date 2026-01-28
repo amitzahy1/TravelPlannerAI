@@ -795,9 +795,15 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                 <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group hover:shadow-md transition-shadow">
                                                     <button onClick={() => handleDeleteFlightSegment(idx)} className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
                                                     <div className="flex gap-3 items-center mb-3 pr-2">
-                                                        <input className="w-14 text-center font-black bg-white rounded-lg border border-slate-200 py-1.5 uppercase text-sm focus:border-sky-500 outline-none" value={seg.fromCode} onChange={(e) => handleUpdateFlightSegment(idx, 'fromCode', e.target.value)} placeholder="TLV" />
-                                                        <Plane className="w-4 h-4 text-slate-300 rotate-90 shrink-0" />
-                                                        <input className="w-14 text-center font-black bg-white rounded-lg border border-slate-200 py-1.5 uppercase text-sm focus:border-sky-500 outline-none" value={seg.toCode} onChange={(e) => handleUpdateFlightSegment(idx, 'toCode', e.target.value)} placeholder="JFK" />
+                                                        <div className="flex flex-col gap-1">
+                                                            <input className="w-14 text-center font-black bg-white rounded-lg border border-slate-200 py-1.5 uppercase text-sm focus:border-sky-500 outline-none" value={seg.fromCode} onChange={(e) => handleUpdateFlightSegment(idx, 'fromCode', e.target.value)} placeholder="TLV" />
+                                                            <input className="w-14 text-center text-[10px] bg-transparent border-0 py-0 text-slate-400 focus:text-slate-800 outline-none truncate" value={seg.fromCity || ''} onChange={(e) => handleUpdateFlightSegment(idx, 'fromCity', e.target.value)} placeholder="עיר מוצא" />
+                                                        </div>
+                                                        <Plane className="w-4 h-4 text-slate-300 rotate-90 shrink-0 mt-2" />
+                                                        <div className="flex flex-col gap-1">
+                                                            <input className="w-14 text-center font-black bg-white rounded-lg border border-slate-200 py-1.5 uppercase text-sm focus:border-sky-500 outline-none" value={seg.toCode} onChange={(e) => handleUpdateFlightSegment(idx, 'toCode', e.target.value)} placeholder="JFK" />
+                                                            <input className="w-14 text-center text-[10px] bg-transparent border-0 py-0 text-slate-400 focus:text-slate-800 outline-none truncate" value={seg.toCity || ''} onChange={(e) => handleUpdateFlightSegment(idx, 'toCity', e.target.value)} placeholder="עיר יעד" />
+                                                        </div>
                                                         <input className="flex-1 font-medium bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-sm px-2 text-left rtl:text-right" value={seg.flightNumber} onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)} placeholder="מספר טיסה" />
                                                     </div>
                                                     <div className="flex gap-2 text-xs">

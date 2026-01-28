@@ -54,6 +54,30 @@ const getDayOfWeek = (date: Date) => {
     return days[date.getDay()];
 };
 
+const getCityColor = (locationContext: string) => {
+    if (!locationContext) return 'bg-white';
+
+    // Hash function to consistenly map a city string to a color index
+    let hash = 0;
+    for (let i = 0; i < locationContext.length; i++) {
+        hash = locationContext.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    const colors = [
+        'bg-indigo-50/50 hover:bg-indigo-50', // Generic/City
+        'bg-blue-50/50 hover:bg-blue-50',     // Coastal
+        'bg-emerald-50/50 hover:bg-emerald-50', // Nature
+        'bg-purple-50/50 hover:bg-purple-50',   // Urban/Culture
+        'bg-rose-50/50 hover:bg-rose-50',       // Romantic
+        'bg-amber-50/50 hover:bg-amber-50',     // Warm/Historic
+        'bg-slate-50/50 hover:bg-slate-50',     // Modern
+        'bg-cyan-50/50 hover:bg-cyan-50'        // Fresh
+    ];
+
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+};
+
 export const ItineraryView: React.FC<{
     trip: Trip,
     onUpdateTrip: (updatedTrip: Trip) => void,
@@ -158,7 +182,11 @@ export const ItineraryView: React.FC<{
             return `יום פעילויות ב${location}`;
         }
 
-        // Default: Location name
+        // Default: Location name BUT prioritize City if Hotel is detected
+        if (day.hasHotel && location) {
+            return location;
+        }
+
         return location;
     };
 
@@ -721,7 +749,7 @@ export const ItineraryView: React.FC<{
                                         <div
                                             key={day.dateIso}
                                             onClick={() => setSelectedDayIso(day.dateIso)}
-                                            className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[220px] relative"
+                                            className={`${getCityColor(day.locationContext)} border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[220px] relative`}
                                         >
                                             {/* Flow Arrow (Desktop Only) */}
                                             {!isLastDay && (
