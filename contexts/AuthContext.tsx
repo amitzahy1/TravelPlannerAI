@@ -48,20 +48,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const signInWithGoogle = async () => {
+    console.group('🔐 Google Sign-In Debug');
     try {
+      console.log('1. Starting sign-in process...');
       setError(null);
       setLoading(true);
+
+      if (!auth) {
+        throw new Error('Firebase Auth unavailable');
+      }
+      console.log('2. Auth Service checks out:', {
+        hasAuth: !!auth,
+        params: googleProvider.getCustomParameters()
+      });
+
+      console.log('3. Awaiting Pop-up...');
       const result = await signInWithPopup(auth, googleProvider);
+      console.log('4. Pop-up Result Success!', { uid: result.user?.uid });
+
       // Save Access Token for Calendar API
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
+        console.log('5. Access Token captured');
         localStorage.setItem('google_access_token', credential.accessToken);
       }
     } catch (error: any) {
-      console.error('Sign in error:', error);
-      setError(error.message || 'Failed to sign in with Google');
+      console.error('❌ Sign In Failed:', error);
+      console.error('Error Code:', error.code);
+      console.error('Error Message:', error.message);
+
+      let cleanError = 'Failed to sign in with Google';
+      if (error.code === 'auth/popup-blocked') cleanError = 'הדפדפן חסם את הפופ-אפ. אנא אשר חלונות קופצים.';
+      if (error.code === 'auth/popup-closed-by-user') cleanError = 'חלון ההתחברות נסגר ידנית.';
+      if (error.code === 'auth/network-request-failed') cleanError = 'בעיית תקשורת. בדוק את החיבור לאינטרנט.';
+
+      setError(cleanError);
       throw error;
     } finally {
+      console.log('🏁 Sign-in process cleanup');
+      console.groupEnd();
       setLoading(false);
     }
   };
