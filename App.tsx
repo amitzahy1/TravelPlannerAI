@@ -169,6 +169,7 @@ const AppContent: React.FC = () => {
     setProcessingTripId(tripId); // 🛡️ BLOCK SUBSCRIPTIONS
 
     // Optimistic UI update
+    console.log(`[DELETE] Starting deletion for trip: ${tripId}`);
     const newTrips = trips.filter(t => t.id !== tripId);
     setTrips(newTrips);
 
@@ -181,10 +182,11 @@ const AppContent: React.FC = () => {
       const tripToDelete = previousTrips.find(t => t.id === tripId);
       const shareId = tripToDelete?.isShared && tripToDelete?.sharing?.shareId ? tripToDelete.sharing.shareId : undefined;
 
+      console.log(`[DELETE] Sending delete command to Server...`);
       await deleteTrip(tripId, user?.uid, shareId);
-      console.log('✅ Trip deleted successfully from Firebase');
+      console.log('✅ [DELETE] Server confirmed deletion success');
     } catch (err: any) {
-      console.error('❌ Error deleting trip:', err);
+      console.error('❌ [DELETE] Server returned error:', err);
       // ZOMBIE FIX: If permission denied or not found, DO NOT REVERT.
       // We assume the user wants it gone. 
       const isPermissionError = err.code === 'permission-denied' || err.message?.includes('permission');
