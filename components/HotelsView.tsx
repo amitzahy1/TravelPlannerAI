@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Trip, HotelBooking } from '../types';
 import { Hotel, MapPin, Calendar, ExternalLink, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X, Save, DollarSign, Image as ImageIcon, Link as LinkIcon, Globe, Sparkles, Loader2, Navigation, Search, UploadCloud, FileText, Coffee, ShieldCheck } from 'lucide-react';
-import { getAI, AI_MODEL, generateWithFallback } from '../services/aiService';
+import { getAI, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 
 // Helper to determine placeholder image based on address
@@ -147,7 +147,8 @@ const HotelCard: React.FC<{
         try {
             const ai = getAI();
             const prompt = `Analyze location: "${data.name}", "${data.address}". Short Hebrew "Vibe Check" (max 15 words). e.g. "מרכזי, קרוב לרכבת, אזור בילויים".`;
-            const response = await generateWithFallback(ai, prompt);
+            // Using FAST intent as requested for "Vibe"
+            const response = await generateWithFallback(ai, [prompt], {}, 'FAST');
             if (response.text) onSaveVibe(response.text);
         } catch (e) { console.error(e); } finally { setAnalyzing(false); }
     };

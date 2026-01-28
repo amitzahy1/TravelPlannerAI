@@ -14,7 +14,7 @@ import {
   onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
-import { db } from './firebaseConfig';
+import { db, auth } from './firebaseConfig';
 import { Trip, SharedTripMetadata, UserTripRef, TripInvite } from '../types';
 import { cleanUndefined } from '../utils/cleanUndefined';
 
@@ -169,6 +169,8 @@ export const createSharedTrip = async (
     const inviteRef = doc(db, 'trip_invites', shareId);
     await setDoc(inviteRef, {
       shareId,
+      // CRITICAL: originalTripId must match the shared trip Doc ID (which is shareId in our loop)
+      originalTripId: shareId,
       tripName: trip.name,
       destination: trip.destination,
       dates: trip.dates,
@@ -209,7 +211,9 @@ export const ensureSharedTripInvite = async (
       // 2. Data Snapshot: Store static metadata so unauth users can preview
       await setDoc(inviteRef, {
         shareId: shareId,
-        originalTripId: trip.id || '', // Track origin
+        // CRITICAL: originalTripId is the KEY to the Shared Document. In our system, that's often the shareId or the tripId depending on creation.
+        // Assuming shareId IS the doc ID for the shared trip (as per createSharedTrip).
+        originalTripId: shareId,
         tripName: trip.name,
         destination: trip.destination,
         dates: trip.dates,
@@ -219,6 +223,13 @@ export const ensureSharedTripInvite = async (
         createdAt: Timestamp.now(),
         // Security marker
         isPublicInvite: true
+      });
+
+      // 3. CRITICAL: Ensure Main Trip Doc has the 'shareId' key (for Security Rules)
+      // This fixes legacy trips that might have been created before the "Secure Share" protocol.
+      const mainTripRef = doc(db, 'shared-trips', shareId);
+      await updateDoc(mainTripRef, {
+        shareId: shareId
       });
     }
   } catch (error) {
@@ -268,38 +279,58 @@ export const getSharedTripInvite = async (shareId: string): Promise<TripInvite |
 /**
  * Join a shared trip via share link
  */
+/**
+ * Join a shared trip via share link - SECURE IMPLEMENTATION
+ */
 export const joinSharedTrip = async (
   userId: string,
   shareId: string,
   userEmail?: string
 ): Promise<Trip> => {
   try {
-    const tripRef = doc(db, 'shared-trips', shareId);
-    const tripSnap = await getDoc(tripRef);
+    const user = auth.currentUser;
+    if (!user) throw new Error("Must be logged in to join");
 
-    if (!tripSnap.exists()) {
-      throw new Error('Shared trip not found');
+    // 1. Locate Original Trip via Invite
+    const inviteRef = doc(db, "trip_invites", shareId);
+    const inviteSnap = await getDoc(inviteRef);
+
+    if (!inviteSnap.exists()) {
+      throw new Error("Link expired or invalid.");
     }
 
-    const data = tripSnap.data();
+    const { originalTripId } = inviteSnap.data();
+    if (!originalTripId) throw new Error("Invalid trip mapping.");
 
-    // Check if already a collaborator
-    if (data.collaborators.includes(userId)) {
-      return data.tripData as Trip;
-    }
+    const tripRef = doc(db, "shared-trips", originalTripId);
 
-    // Add user to collaborators
+    // 2. Add User to Collaborators (Firestore Rules check shareId presence!)
     await updateDoc(tripRef, {
-      collaborators: arrayUnion(userId),
-      updatedAt: Timestamp.now()
+      collaborators: arrayUnion(user.uid),
+      // [SECURITY KEY PROOF] Explicitly sending the shareId proves we have the link/key.
+      // This satisfies the rule: request.resource.data.shareId == resource.data.shareId
+      shareId: shareId
     });
 
-    // Add reference for user
-    await addUserTripRef(userId, shareId, 'collaborator', data.tripData.name);
+    // 3. Create User Reference
+    await setDoc(doc(db, "users", user.uid, "shared-trip-refs", originalTripId), {
+      sharedTripId: originalTripId, // Using correct field name for our schema
+      tripId: originalTripId, // Backwards compat
+      joinedAt: new Date().toISOString(),
+      role: 'collaborator',
+      tripName: inviteSnap.data().tripName || 'Shared Trip'
+    });
 
-    return data.tripData as Trip;
-  } catch (error) {
-    console.error('Error joining shared trip:', error);
+    // 4. Return the Trip Data
+    const updatedTripSnap = await getDoc(tripRef);
+    return updatedTripSnap.data()?.tripData as Trip;
+
+  } catch (error: any) {
+    console.error("Error joining shared trip:", error);
+    // Specific permission handling
+    if (error.code === 'permission-denied') {
+      throw new Error("Permission denied. The owner may have revoked sharing.");
+    }
     throw error;
   }
 };
@@ -393,5 +424,18 @@ export const getUserSharedTrips = async (userId: string): Promise<UserTripRef[]>
   } catch (error) {
     console.error('Error getting shared trip refs:', error);
     return [];
+  }
+};
+
+/**
+ * Delete shared trip reference (Clean up for Zombie Trip Fix)
+ */
+export const deleteSharedTripRef = async (userId: string, shareId: string): Promise<void> => {
+  try {
+    const refDoc = doc(db, USERS_COLLECTION, userId, 'shared-trip-refs', shareId);
+    await deleteDoc(refDoc);
+    console.log(`🧹 Deleted shared trip ref: ${shareId}`);
+  } catch (error) {
+    console.warn('Error deleting shared trip ref (might not exist):', error);
   }
 };

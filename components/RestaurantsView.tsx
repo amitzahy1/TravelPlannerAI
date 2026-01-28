@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Trip, Restaurant, RestaurantIconType, RestaurantCategory } from '../types';
 import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel, Heart } from 'lucide-react';
-import { Type, Schema } from "@google/genai";
+// cleaned imports
 import { getFoodImage } from '../services/imageMapper';
-import { getAI, AI_MODEL, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
+import { getAI, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
 import { ThinkingLoader } from './ThinkingLoader';
@@ -168,37 +168,13 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             - If vague ("dinner"): Recommend popular spots.
 
             CRITICAL: 'cuisine' field MUST be one of: [Ramen, Pizza, Burger, Sushi, Asian Fusion, Fine Dining, Cafe, Steakhouse, Seafood, Georgian, Dessert, Nightlife]. Map inferred cuisine to closest match.
-            Description in Hebrew. Names in English.`;
+            Description in Hebrew. Names in English.
+            
+            OUTPUT JSON ONLY:
+            { "results": [ { "name", "nameEnglish", "description", "location", "googleRating", "cuisine", "iconType", "isHotelRestaurant", "recommendationSource", "googleMapsUrl", "business_status", "verification_needed" } ] }`;
 
-            const schema: Schema = {
-                type: Type.OBJECT,
-                properties: {
-                    results: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                name: { type: Type.STRING },
-                                nameEnglish: { type: Type.STRING },
-                                description: { type: Type.STRING },
-                                location: { type: Type.STRING },
-                                googleRating: { type: Type.NUMBER },
-                                reviewCount: { type: Type.NUMBER },
-                                cuisine: { type: Type.STRING },
-                                iconType: { type: Type.STRING },
-                                isHotelRestaurant: { type: Type.BOOLEAN },
-                                recommendationSource: { type: Type.STRING },
-                                googleMapsUrl: { type: Type.STRING },
-                                business_status: { type: Type.STRING },
-                                verification_needed: { type: Type.BOOLEAN }
-                            },
-                            required: ["name", "description", "location"]
-                        }
-                    }
-                }
-            };
-
-            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SEARCH');
+            // Removed Schema enforcement to match Pro Enforcer pattern
+            const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
 
             const textContent = response.text;
             try {
@@ -209,12 +185,6 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         .filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL')
                         .map((r: any, i: number) => ({ ...r, id: `search-res-${i}`, categoryTitle: 'תוצאות חיפוש' }));
                     setSearchResults(validResults);
-
-                    // Log filtered count
-                    const filtered = data.results.length - validResults.length;
-                    if (filtered > 0) {
-                        console.log(`✅ Filtered ${filtered} closed business(es) from search results`);
-                    }
 
                     // Save custom category (Task 3)
                     if (textQuery.trim() && validResults.length > 0) {
@@ -336,44 +306,24 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             - **Location Format:** "Street, City". Do NOT include text like "(30km radius)" or "(Approx)".
             - **Hotel Logic (Naming):** If restaurant is inside a hotel, set 'isHotelRestaurant' = true and use "Name (at Hotel)" format.
             `;
-            const schema: Schema = {
-                type: Type.OBJECT,
-                properties: {
-                    categories: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                id: { type: Type.STRING },
-                                title: { type: Type.STRING },
-                                restaurants: {
-                                    type: Type.ARRAY,
-                                    items: {
-                                        type: Type.OBJECT,
-                                        properties: {
-                                            name: { type: Type.STRING },
-                                            nameEnglish: { type: Type.STRING },
-                                            description: { type: Type.STRING },
-                                            location: { type: Type.STRING },
-                                            cuisine: { type: Type.STRING },
-                                            googleRating: { type: Type.NUMBER },
-                                            reviewCount: { type: Type.NUMBER },
-                                            recommendationSource: { type: Type.STRING },
-                                            isHotelRestaurant: { type: Type.BOOLEAN },
-                                            iconType: { type: Type.STRING },
-                                            googleMapsUrl: { type: Type.STRING }
-                                        },
-                                        required: ["name", "nameEnglish", "description", "location", "isHotelRestaurant", "recommendationSource", "cuisine"]
-                                    }
-                                }
-                            },
-                            required: ["id", "title", "restaurants"]
-                        }
-                    }
-                }
-            };
 
-            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.1 }, 'SMART');
+            // Replaced Schema with Prompt Instruction for standard SDK
+            const promptWithJsonInstruction = prompt + `
+            
+            OUTPUT JSON ONLY (Strict Format):
+            {
+              "categories": [
+                {
+                  "id": "string",
+                  "title": "string",
+                  "restaurants": [
+                    { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl" }
+                  ]
+                }
+              ]
+            }`;
+
+            const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SMART');
 
             const textContent = response.text;
             console.log("🔍 [AI Raw Response Preview]:", textContent?.substring(0, 500) + "...");

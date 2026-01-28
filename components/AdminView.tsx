@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment } from '../types';
 import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut } from 'lucide-react';
-import { getAI, AI_MODEL, generateWithFallback, extractTripFromDoc } from '../services/aiService';
+import { getAI, generateWithFallback } from '../services/aiService';
 import { MagicDropZone } from './MagicDropZone';
 import { ShareModal } from './ShareModal';
 import { OnboardingModal } from './OnboardingModal';
@@ -280,7 +280,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
             const response = await generateWithFallback(
                 ai,
-                prompt,
+                [prompt],
                 { responseMimeType: 'application/json' },
                 'SMART'
             );

@@ -1,6 +1,6 @@
 import { Trip } from '../types';
 import { INITIAL_DATA } from '../constants';
-import { getUserTrips, saveTrip, saveAllTrips, deleteTrip as firestoreDeleteTrip, userHasTrips, getUserSharedTrips, getSharedTrip, updateSharedTrip, leaveSharedTrip } from './firestoreService';
+import { getUserTrips, saveTrip, saveAllTrips, deleteTrip as firestoreDeleteTrip, deleteSharedTripRef, userHasTrips, getUserSharedTrips, getSharedTrip, updateSharedTrip, leaveSharedTrip } from './firestoreService';
 
 const STORAGE_KEY = 'travel_app_data_v1';
 
@@ -52,33 +52,10 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
   try {
     const hasTrips = await userHasTrips(userId);
     if (!hasTrips) {
-      /* AUTO-MIGRATION DISABLED TO PREVENT ZOMBIE TRIPS
-         If the user has deleted all trips, we do NOT want to re-import from local storage.
-      
-      // First time user - check if they have local data to migrate
-      const localTrips = loadTripsFromLocal();
-
-      // Only migrate if:
-      // 1. They have local trips
-      // 2. The trips are NOT the INITIAL_DATA (check by ID)
-      const initialDataIds = INITIAL_DATA.map(t => t.id);
-      const hasRealLocalData = localTrips.length > 0 &&
-        !localTrips.every(t => initialDataIds.includes(t.id));
-
-      if (hasRealLocalData) {
-        // Filter out any INITIAL_DATA entries before migration
-        const userTrips = localTrips.filter(t => !initialDataIds.includes(t.id));
-        if (userTrips.length > 0) {
-          await saveAllTrips(userId, userTrips);
-          // Clear local storage after migration
-          localStorage.removeItem(STORAGE_KEY);
-          return userTrips;
-        }
-      }
-      */
-
-      // NEW USER OR DELETED ALL TRIPS: Return empty array.
-      console.log('✨ User has no trips in DB (starting fresh)');
+      // ZOMBIE FIX: If user has no trips in DB, they have NO trips.
+      // Do NOT fallback to local storage or INITIAL_DATA.
+      // This ensures if a user deletes everything, it STAYS deleted.
+      console.log('✨ User has no trips in DB (Returning empty)');
       return [];
     }
 
@@ -191,12 +168,19 @@ export const deleteTrip = async (tripId: string, userId?: string): Promise<void>
   }
 
   try {
+    // 1. Try deleting as Private Trip
     await firestoreDeleteTrip(userId, tripId);
+
+    // 2. Try deleting as Shared Trip Reference (Zombie Fix)
+    // Even if it wasn't shared, this is harmless and ensures cleanup of ANY reference
+    // This is vital for the user demand "When I delete, it must be gone forever"
+    await deleteSharedTripRef(userId, tripId);
   } catch (error) {
     console.error('Error deleting trip from Firestore:', error);
     throw error;
   }
 };
+
 /**
  * Leave a shared trip
  */

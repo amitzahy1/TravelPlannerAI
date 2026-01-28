@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Trip, Attraction, AttractionCategory } from '../types';
 import { MapPin, Ticket, Star, Landmark, Sparkles, Filter, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid } from 'lucide-react';
-import { Type, Schema } from "@google/genai";
+// cleaned imports
 import { getAttractionImage } from '../services/imageMapper';
 import { getAI, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
@@ -113,36 +113,14 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             - If category (e.g. "Museums"): Find top examples.
             - If vague ("fun for kids"): Recommend suitable spots.
 
-            CRITICAL: 'name' field must be in English. Description in Hebrew.`;
-            const schema: Schema = {
-                type: Type.OBJECT,
-                properties: {
-                    results: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                name: { type: Type.STRING },
-                                description: { type: Type.STRING },
-                                location: { type: Type.STRING },
-                                rating: { type: Type.NUMBER },
-                                reviewCount: { type: Type.NUMBER },
-                                type: { type: Type.STRING },
-                                price: { type: Type.STRING },
-                                recommendationSource: { type: Type.STRING },
-                                googleMapsUrl: { type: Type.STRING },
-                                business_status: { type: Type.STRING },
-                                verification_needed: { type: Type.BOOLEAN }
-                            },
-                            required: ["name", "description", "location"]
-                        }
-                    }
-                }
-            };
-            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SMART');
+            CRITICAL: 'name' field must be in English. Description in Hebrew.
+             OUTPUT JSON ONLY:
+            { "results": [{ "name", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl", "business_status", "verification_needed" }] } `;
+
+            const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SMART');
             const data = JSON.parse(response.text || '{}');
             if (data.results) {
-                const valid = data.results.filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search-attr-${i}`, categoryTitle: 'תוצאות חיפוש' }));
+                const valid = data.results.filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search - attr - ${i} `, categoryTitle: 'תוצאות חיפוש' }));
                 setSearchResults(valid);
                 if (textQuery.trim()) {
                     const current = trip.customAttractionCategories || [];
@@ -165,104 +143,97 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             // --- ATTRACTION CURATOR ALGORITHM (Strict Quota System) ---
             const prompt = `
             Role: You are the Lead Product Architect and Senior AI Engineer at Google Travel.
-            Mission: Re-engineer the Attraction Discovery Engine to implement the "Curator Algorithm" - a strict, quota-based recommendation system.
+                Mission: Re - engineer the Attraction Discovery Engine to implement the "Curator Algorithm" - a strict, quota - based recommendation system.
 
-            **PART 1: THE LOGIC RULES**
-            1. **Scope Authority:** Search primarily in "${target}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 20km to find quality spots (e.g. waterfalls, nature).
-            2. **Quality > Quantity:** Return **UP TO 6** recommendations. If only 3 amazing places exist, return 3. Do NOT fill with mediocrity.
-            3. **NO HALLUCINATIONS:** If a category has no real results in this area, return an empty list. Better empty than fake.
-            3. **Quality Firewall:** 
-               - REJECT: Generic playgrounds, small unremarkable city parks, administrative buildings, or "tourist traps" (souvenir shops).
+            ** PART 1: THE LOGIC RULES **
+                1. ** Scope Authority:** Search primarily in "${target}".IF(and only if) the city is small / village, AUTOMATICALLY expand radius to 20km to find quality spots(e.g.waterfalls, nature).
+            2. ** Quality > Quantity:** Return ** UP TO 6 ** recommendations.If only 3 amazing places exist, return 3. Do NOT fill with mediocrity.
+            3. ** NO HALLUCINATIONS:** If a category has no real results in this area, return an empty list.Better empty than fake.
+            3. ** Quality Firewall:**
+                - REJECT: Generic playgrounds, small unremarkable city parks, administrative buildings, or "tourist traps"(souvenir shops).
                - PRIORITIZE: "Must-See Landmarks", "Cultural Heritage", "Natural Wonders", "Unique Local Experiences".
-            4. **Context Verification:** You are searching for "${target}". Ensure this is a real location. If misspelled, infer the correct city. If unknown, return empty.
+            4. ** Context Verification:** You are searching for "${target}".Ensure this is a real location.If misspelled, infer the correct city.If unknown, return empty.
 
-            **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
-            
-            1. **"אתרי חובה"** (Icons & Landmarks)
-               - Hebrew Title: "אתרי חובה"
-               - Persona: The Eiffel Tower equivalent. The most famous spots.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "אתרי חובה".
+            ** PART 2: THE "PERFECT DEFINITION MATRIX"(Output strictly these 10 categories):**
 
-            2. **"טבע ונופים"** (Nature & Views)
-               - Hebrew Title: "טבע ונופים"
-               - Persona: Breath of Fresh Air. Viewpoints, botanical gardens, waterfalls.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "טבע ונופים".
+                1. ** "אתרי חובה" ** (Icons & Landmarks)
+                - Hebrew Title: "אתרי חובה"
+                    - Persona: The Eiffel Tower equivalent.The most famous spots.
+               - Multi - Lingual Rule: The JSON 'title' field MUST be "אתרי חובה".
 
-            3. **"מוזיאונים ותרבות"** (Heritage & Art)
-               - Hebrew Title: "מוזיאונים ותרבות"
-               - Persona: Heritage & Art. Galleries, history museums.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "מוזיאונים ותרבות".
+            2. ** "טבע ונופים" ** (Nature & Views)
+                - Hebrew Title: "טבע ונופים"
+                    - Persona: Breath of Fresh Air.Viewpoints, botanical gardens, waterfalls.
+               - Multi - Lingual Rule: The JSON 'title' field MUST be "טבע ונופים".
 
-            4. **"קניות ושווקים"** (Retail Therapy)
-               - Hebrew Title: "קניות ושווקים"
-               - Persona: Malls, floating markets, shopping streets.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "קניות ושווקים".
+            3. ** "מוזיאונים ותרבות" ** (Heritage & Art)
+                - Hebrew Title: "מוזיאונים ותרבות"
+                    - Persona: Heritage & Art.Galleries, history museums.
+               - Multi - Lingual Rule: The JSON 'title' field MUST be "מוזיאונים ותרבות".
 
-            5. **"אקסטרים ופעילויות"** (Adrenaline)
-               - Hebrew Title: "אקסטרים ופעילויות"
-               - Persona: Ziplines, ATV tours, surfing.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "אקסטרים ופעילויות".
+            4. ** "קניות ושווקים" ** (Retail Therapy)
+            - Hebrew Title: "קניות ושווקים"
+                - Persona: Malls, floating markets, shopping streets.
+               - Multi - Lingual Rule: The JSON 'title' field MUST be "קניות ושווקים".
 
-            6. **"חופים ומים"** (Sun & Sea)
-               - Hebrew Title: "חופים ומים"
-               - Persona: Beaches, islands, boat tours.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "חופים ומים".
+            5. ** "אקסטרים ופעילויות" ** (Adrenaline)
+                - Hebrew Title: "אקסטרים ופעילויות"
+                    - Persona: Ziplines, ATV tours, surfing.
+               - Multi - Lingual Rule: The JSON 'title' field MUST be "אקסטרים ופעילויות".
 
-            7. **"למשפחות וילדים"** (Kids' Joy)
-               - Hebrew Title: "למשפחות וילדים"
-               - Persona: Zoos, aquariums, theme parks.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "למשפחות וילדים".
+            6. ** "חופים ומים" ** (Sun & Sea)
+                - Hebrew Title: "חופים ומים"
+                    - Persona: Beaches, islands, boat tours.
+               - Multi - Lingual Rule: The JSON 'title' field MUST be "חופים ומים".
 
-            8. **"היסטוריה ודת"** (Spiritual)
-               - Hebrew Title: "היסטוריה ודת"
-               - Persona: Temples, Shrines, Churches.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "היסטוריה ודת".
+            7. ** "למשפחות וילדים" ** (Kids' Joy)
+                - Hebrew Title: "למשפחות וילדים"
+                    - Persona: Zoos, aquariums, theme parks.
+               - Multi - Lingual Rule: The JSON 'title' field MUST be "למשפחות וילדים".
 
-            9. **"חיי לילה ואווירה"** (Night Vibes)
-               - Hebrew Title: "חיי לילה ואווירה"
-               - Persona: Night markets, neon streets, light shows.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "חיי לילה ואווירה".
+            8. ** "היסטוריה ודת" ** (Spiritual)
+                - Hebrew Title: "היסטוריה ודת"
+                    - Persona: Temples, Shrines, Churches.
+               - Multi - Lingual Rule: The JSON 'title' field MUST be "היסטוריה ודת".
 
-            10. **"פינות נסתרות"** (Hidden Gems)
-                - Hebrew Title: "פינות נסתרות"
+            9. ** "חיי לילה ואווירה" ** (Night Vibes)
+            - Hebrew Title: "חיי לילה ואווירה"
+                - Persona: Night markets, neon streets, light shows.
+               - Multi - Lingual Rule: The JSON 'title' field MUST be "חיי לילה ואווירה".
+
+            10. ** "פינות נסתרות" ** (Hidden Gems)
+            - Hebrew Title: "פינות נסתרות"
                 - Persona: Unknown alleys, local hangouts.
-                - Multi-Lingual Rule: The JSON 'title' field MUST be "פינות נסתרות".
+                - Multi - Lingual Rule: The JSON 'title' field MUST be "פינות נסתרות".
 
-            **PART 3: DATA INTEGRITY**
-            - **CRITICAL:** Return pure JSON.
-            - **Titles:** The 'title' field in the JSON categories MUST be the Hebrew string.
-            - **Type Mapping:** Map 'type' field to one of: [Landmark, Nature, Culture, Shopping, Extreme, Beach, Family, Spiritual, Nightlife, Hidden].
+            ** PART 3: DATA INTEGRITY **
+            - ** CRITICAL:** Return pure JSON.
+            - ** Titles:** The 'title' field in the JSON categories MUST be the Hebrew string.
+            - ** Type Mapping:** Map 'type' field to one of: [Landmark, Nature, Culture, Shopping, Extreme, Beach, Family, Spiritual, Nightlife, Hidden].
             
-            **PART 4: AUTHORITY SOURCES ONLY**
-            - The 'recommendationSource' field must be a REAL authority.
-            - **ALLOWED:** [UNESCO, TripAdvisor, Lonely Planet, Atlas Obscura, TimeOut, Google Review, Local Legend].
-            - **BANNED:** Generic names.
+            ** PART 4: AUTHORITY SOURCES ONLY **
+                - The 'recommendationSource' field must be a REAL authority.
+            - ** ALLOWED:** [UNESCO, TripAdvisor, Lonely Planet, Atlas Obscura, TimeOut, Google Review, Local Legend].
+            - ** BANNED:** Generic names.
             `;
-            const schema: Schema = {
-                type: Type.OBJECT,
-                properties: {
-                    categories: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                id: { type: Type.STRING },
-                                title: { type: Type.STRING },
-                                attractions: {
-                                    type: Type.ARRAY,
-                                    items: {
-                                        type: Type.OBJECT,
-                                        properties: { name: { type: Type.STRING }, description: { type: Type.STRING }, location: { type: Type.STRING }, rating: { type: Type.NUMBER }, type: { type: Type.STRING }, price: { type: Type.STRING }, recommendationSource: { type: Type.STRING } },
-                                        required: ["name", "description", "location", "recommendationSource"]
-                                    }
-                                }
-                            },
-                            required: ["id", "title", "attractions"]
-                        }
+
+            // Replaced Schema with Prompt Instruction for standard SDK
+            const promptWithJsonInstruction = prompt + `
+            
+            OUTPUT JSON ONLY(Strict Format):
+            {
+                "categories": [
+                    {
+                        "id": "string",
+                        "title": "string",
+                        "attractions": [
+                            { "name", "description", "location", "rating", "type", "price", "recommendationSource" }
+                        ]
                     }
-                }
-            };
-            const response = await generateWithFallback(ai, prompt, { responseMimeType: 'application/json', responseSchema: schema }, 'SEARCH');
+                ]
+            } `;
+
+            const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json' }, 'SEARCH');
 
             const textContent = response.text;
             console.log("🔍 [AI ATTRACTIONS Raw Response]:", textContent?.substring(0, 500) + "...");
@@ -279,13 +250,13 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 }
 
                 if (categoriesList.length > 0) {
-                    console.log(`✅ [AI Success] Parsed ${categoriesList.length} attraction categories (Format: ${Array.isArray(rawData) ? 'Direct Array' : 'Wrapped Object'})`);
+                    console.log(`✅[AI Success] Parsed ${categoriesList.length} attraction categories(Format: ${Array.isArray(rawData) ? 'Direct Array' : 'Wrapped Object'})`);
                     const processed = categoriesList.map((c: any, index: number) => ({
                         ...c,
-                        id: c.id || `ai-cat-${index}-${Date.now()}`,
+                        id: c.id || `ai - cat - ${index} -${Date.now()} `,
                         attractions: (c.attractions || []).map((a: any, i: number) => ({
                             ...a,
-                            id: `ai-attr-${c.id || index}-${Math.random().toString(36).substr(2, 5)}-${i}`,
+                            id: `ai - attr - ${c.id || index} -${Math.random().toString(36).substr(2, 5)} -${i} `,
                             categoryTitle: c.title
                         }))
                     }));
@@ -320,8 +291,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         } else {
             const region = attraction.location?.split(',')[0] || 'Unknown City';
             let targetIdx = newAttractions.findIndex(c => c.title === catTitle);
-            if (targetIdx === -1) { newAttractions.push({ id: `cat-attr-${Date.now()}`, title: catTitle, attractions: [] }); targetIdx = newAttractions.length - 1; }
-            newAttractions[targetIdx].attractions.push({ ...attraction, id: `added-${Date.now()}`, region: region });
+            if (targetIdx === -1) { newAttractions.push({ id: `cat - attr - ${Date.now()} `, title: catTitle, attractions: [] }); targetIdx = newAttractions.length - 1; }
+            newAttractions[targetIdx].attractions.push({ ...attraction, id: `added - ${Date.now()} `, region: region });
         }
         onUpdateTrip({ ...trip, attractions: newAttractions });
         setAddedIds(prev => { const next = new Set(prev); if (existingCatIndex !== -1) next.delete(attraction.id); else next.add(attraction.id); return next; });
@@ -423,8 +394,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
             {/* Tabs */}
             <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-2">
-                <button onClick={() => setActiveTab('my_list')} className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
-                <button onClick={() => setActiveTab('recommended')} className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
+                <button onClick={() => setActiveTab('my_list')} className={`flex - 1 py - 2.5 rounded - xl text - sm font - bold flex items - center justify - center gap - 2 transition - all ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'} `}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
+                <button onClick={() => setActiveTab('recommended')} className={`flex - 1 py - 2.5 rounded - xl text - sm font - bold flex items - center justify - center gap - 2 transition - all ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'} `}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
             </div>
 
             {/* City Filter Bar */}
@@ -434,7 +405,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         <button
                             key={city}
                             onClick={() => setSelectedCity(city)}
-                            className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                            className={`px - 4 py - 2 rounded - full text - xs font - black transition - all border ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'} `}
                         >
                             {city}
                         </button>
@@ -534,11 +505,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                 <div className="flex bg-slate-100/80 p-1 rounded-full gap-1 overflow-x-auto scrollbar-hide">
                                     <button
                                         onClick={() => initiateResearch(undefined)}
-                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${(!selectedCity || selectedCity === 'all')
-                                            ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5'
-                                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                                        className={`px - 4 py - 1.5 rounded - full text - xs font - bold transition - all whitespace - nowrap flex items - center gap - 1.5 ${(!selectedCity || selectedCity === 'all')
+                                                ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5'
+                                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                                            } `}
                                     >
-                                        <RotateCw className={`w-3 h-3 ${loadingRecs ? 'animate-spin' : ''}`} />
+                                        <RotateCw className={`w - 3 h - 3 ${loadingRecs ? 'animate-spin' : ''} `} />
                                         {loadingRecs ? 'טוען...' : 'רענן'}
                                     </button>
                                     <div className="w-px bg-slate-300 mx-1 h-4 self-center" />
@@ -547,9 +519,10 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                         <button
                                             key={city}
                                             onClick={() => initiateResearch(city)}
-                                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedCity === city
-                                                ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
-                                                : 'text-slate-600 hover:bg-white hover:text-purple-600'}`
+                                            className={`px - 4 py - 1.5 rounded - full text - xs font - bold transition - all whitespace - nowrap ${selectedCity === city
+                                                    ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
+                                                    : 'text-slate-600 hover:bg-white hover:text-purple-600'
+                                                } `
                                             }
                                         >
                                             {city}
@@ -599,12 +572,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                     ) : (
                                         <>
                                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide"><div className="flex gap-2">
-                                                <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === 'all' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>הכל</button>
-                                                {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>{displayTitle(c.title)}</button>)}
+                                                <button onClick={() => setSelectedCategory('all')} className={`px - 4 py - 2 rounded - full text - xs font - bold border ${selectedCategory === 'all' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'} `}>הכל</button>
+                                                {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px - 4 py - 2 rounded - full text - xs font - bold border ${selectedCategory === c.id ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'} `}>{displayTitle(c.title)}</button>)}
                                             </div></div>
                                             <div className="mb-4 overflow-x-auto pb-2 flex gap-2 items-center"><span className="text-[10px] font-bold text-slate-400">הומלץ ע"י:</span>
-                                                <button onClick={() => setSelectedRater('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === 'all' ? 'bg-purple-600 text-white' : 'bg-white state-slate-600'}`}>הכל</button>
-                                                {availableRaters.map(r => <button key={r} onClick={() => setSelectedRater(r)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === r ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>{r}</button>)}
+                                                <button onClick={() => setSelectedRater('all')} className={`px - 4 py - 2 rounded - full text - xs font - bold border ${selectedRater === 'all' ? 'bg-purple-600 text-white' : 'bg-white state-slate-600'} `}>הכל</button>
+                                                {availableRaters.map(r => <button key={r} onClick={() => setSelectedRater(r)} className={`px - 4 py - 2 rounded - full text - xs font - bold border ${selectedRater === r ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'} `}>{r}</button>)}
                                             </div>
                                             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                                                 {filteredRecommendations.map(rec => <AttractionRecommendationCard key={rec.id} rec={rec} tripDestination={trip.destination} isAdded={addedIds.has(rec.id) || trip.attractions.some(c => c.attractions.some(a => a.name === rec.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(rec)} />)}
@@ -691,7 +664,7 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
 
                         {/* Genre / Badge Highlight */}
                         <div className="flex items-center gap-2 mt-1">
-                            <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${visuals.gradient}`}>
+                            <div className={`text - [10px] font - bold px - 1.5 py - 0.5 rounded flex items - center gap - 1 ${visuals.gradient} `}>
                                 <span>{visuals.icon}</span>
                                 <span>{visuals.label}</span>
                             </div>
@@ -711,10 +684,10 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
                     {/* Heart Icon Toggle */}
                     <button
                         onClick={toggleFavorite}
-                        className={`p-1.5 rounded-lg transition-colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'}`}
+                        className={`p - 1.5 rounded - lg transition - colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'} `}
                     >
                         {/* Using Star as Heart for consistency if needed, but Heart is better. Restaurants uses Heart now? Yes. */}
-                        <Star className={`w-4 h-4 ${data.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+                        <Star className={`w - 4 h - 4 ${data.isFavorite ? 'fill-red-500 text-red-500' : ''} `} />
                         {/* Note: I'm using Star here because the user might have said 'duplicate design' but let's check imports. I'll use Heart if I import it, or Star if that's what was used. RestaurantsView used Heart. */}
                     </button>
                     <button

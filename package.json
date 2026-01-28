@@ -10,7 +10,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@google/genai": "^1.37.0",
+    "@google/generative-ai": "^0.24.1",
     "@mlc-ai/web-llm": "^0.2.80",
     "autoprefixer": "^10.4.23",
     "firebase": "^12.8.0",

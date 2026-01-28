@@ -109,6 +109,11 @@ export interface Restaurant {
   bestTime?: "Lunch" | "Dinner" | "Breakfast" | "Late Night";
   reservationRequired?: boolean;
   priceLevel?: "$" | "$$" | "$$$" | "$$$$";
+
+  // Fixes for build errors
+  cuisine?: string;
+  price?: string;
+  region?: string;
 }
 
 export interface RestaurantCategory {
