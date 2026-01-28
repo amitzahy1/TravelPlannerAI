@@ -17,7 +17,7 @@ const GOOGLE_MODELS = {
     "gemini-2.5-pro",
 
     // 3. Specific Backup (If latest alias fails)
-    "gemini-1.5-pro-002"
+    "gemini-1.5-pro-latest",
   ],
 
   // --- TIER 2: Speed & Chat (Fast Conversations & Vibe Checks) ---
@@ -28,11 +28,11 @@ const GOOGLE_MODELS = {
     // 2. Stable & Fast (High Reliability)
     "gemini-2.5-flash",
 
-    // 3. Veteran
-    "gemini-1.5-flash-latest",
+    // 3. Ultra Lite (New addition)
+    "gemini-2.5-flash-lite",
 
-    // 4. Ultra Lite
-    "gemini-2.5-flash-lite"
+    // 4. Veteran (Fallback)
+    "gemini-1.5-flash-latest"
   ]
 };
 
