@@ -1,77 +1,33 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { HashRouter } from 'react-router-dom';
-import { LayoutFixed as Layout } from './components/LayoutFixed';
-import { loadTrips, saveTrips, saveSingleTrip, deleteTrip, leaveTrip } from './services/storageService';
-import { subscribeToSharedTrip } from './services/firestoreService';
-import { collection, query, where, onSnapshot, Unsubscribe } from 'firebase/firestore'; // New imports
-import { db } from './services/firebaseConfig';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { Trip } from './types';
+import React, { useState, useEffect } from 'react';
+import { Layout } from './components/Layout';
 import { LandingPage } from './components/LandingPage';
-import { UnifiedMapView } from './components/UnifiedMapView'; // Keep generic map eager or lazy? usually lazy if big.
-// Lazy Load Heavy Views
-const FlightsView = React.lazy(() => import('./components/FlightsView').then(module => ({ default: module.FlightsView })));
-const RestaurantsView = React.lazy(() => import('./components/RestaurantsView').then(module => ({ default: module.RestaurantsView })));
-const AttractionsView = React.lazy(() => import('./components/AttractionsView').then(module => ({ default: module.AttractionsView })));
-const ItineraryView = React.lazy(() => import('./components/ItineraryView').then(module => ({ default: module.ItineraryView })));
-const HotelsView = React.lazy(() => import('./components/HotelsView').then(module => ({ default: module.HotelsView })));
-const AdminView = React.lazy(() => import('./components/AdminView').then(module => ({ default: module.AdminView })));
+import { useAuth } from './contexts/AuthContext';
+import { Trip } from './types';
+import { collection, query, where, onSnapshot, Unsubscribe, or, and } from 'firebase/firestore';
+import { db } from './services/firebaseConfig';
+import { saveTrip, deleteTrip } from './services/firestoreService';
+import { TripAssistant } from './components/TripAssistant';
+import { analyzeTripFiles } from './services/aiService';
+import { mapAnalysisToTrip } from './services/tripService';
 
-const BudgetView = React.lazy(() => import('./components/BudgetView').then(module => ({ default: module.BudgetView })));
-const ShoppingView = React.lazy(() => import('./components/ShoppingView').then(module => ({ default: module.ShoppingView })));
-import { JoinTripModal } from './components/JoinTripModal';
-import { AIChatOverlay } from './components/AIChatOverlay';
+// Helper to strip heavy data (PDFs/Images) before caching
+const compressForCache = (trips: Trip[]) => {
+  return trips.map(t => ({
+    ...t,
+    documents: [], // Remove heavy base64 strings
+    flights: { ...t.flights, segments: t.flights?.segments || [] },
+    itinerary: t.itinerary || []
+  }));
+};
 
-
-import { initGoogleAuth } from './services/googleAuthService';
-import { Plus, Compass, Map, Globe, Sparkles } from 'lucide-react';
-import { OnboardingModal } from './components/OnboardingModal';
-
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-
-const AppContent: React.FC = () => {
-  const { user, signIn, loading: authLoading } = useAuth();
-
-  /* 
-  useEffect(() => {
-    if (CLIENT_ID && !authLoading) {
-      const interval = setInterval(() => {
-        // @ts-ignore
-        if (window.google) {
-          initGoogleAuth(CLIENT_ID);
-          clearInterval(interval);
-        }
-      }, 500);
-    }
-  }, [authLoading]);
-  */
-
+function App() {
+  const { user, loading } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [activeTripId, setActiveTripId] = useState<string>('');
-  const [currentTab, setCurrentTab] = useState('itinerary');
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  // Guard against race conditions during critical ops (delete/leave)
-  const [processingTripId, setProcessingTripId] = useState<string | null>(null);
-
-
-  const [error, setError] = useState<string | null>(null);
-  const [joinShareId, setJoinShareId] = useState<string | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-
-  // Deep Link Handling
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.startsWith('#/join/')) {
-      const shareId = hash.replace('#/join/', '');
-      if (shareId) {
-        console.log("🔗 Detected Join Link:", shareId);
-        setJoinShareId(shareId);
-        // Clean URL after detection to prevent re-triggering? maybe keep it until joined?
-        // window.history.replaceState(null, '', window.location.pathname);
-      }
-    }
-  }, []);
+  const [activeTripId, setActiveTripId] = useState<string | null>(null);
+  const [generatedTrip, setGeneratedTrip] = useState<Trip | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  // Add explicit loading state for data sync
+  const [isDataSyncing, setIsDataSyncing] = useState(true);
 
   // Safe Storage Helper
   const safeSetItem = (key: string, value: any) => {
@@ -80,8 +36,6 @@ const AppContent: React.FC = () => {
     } catch (e: any) {
       if (e.name === 'QuotaExceededError' || e.code === 22) {
         console.warn("⚠️ LocalStorage Quota Exceeded. Clearing old cache...");
-        // Emergency cleanup: Clear everything except critical auth/settings if needed
-        // For now, just try to remove the heavy trips list and save empty or minimal
         try {
           localStorage.removeItem(key);
           console.log("🧹 Cleared heavy key to make space");
@@ -92,46 +46,46 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Helper to strip heavy data (PDFs/Images) before caching
-  const compressForCache = (trips: Trip[]) => {
-    return trips.map(t => ({
-      ...t,
-      // Remove heavy base64 strings if they exist in documents
-      documents: [],
-      // Keep everything else, but ensure we don't store megabytes of data
-      flights: { ...t.flights, segments: t.flights?.segments || [] },
-      itinerary: t.itinerary || []
-    }));
-  };
-
+  // Load Trips Logic - With "Zombie Protection" & Sharing Support
   useEffect(() => {
     let unsubscribe: Unsubscribe | null = null;
 
     const loadTrips = async () => {
-      if (!user) {
-        setTrips([]);
-        setIsLoading(false); // Fix 1: Stop loading if no user
-        return;
-      }
-
-      // 1. Load from cache (Safe Load)
+      // 1. Load from cache first (Fast UI)
       try {
         const cached = localStorage.getItem("cachedTrips");
         if (cached) {
-          setTrips(JSON.parse(cached));
-          console.log("💾 Loaded lightweight trips from cache");
-          setIsLoading(false); // Fix 2: Stop loading immediately if cache exists
+          const parsed = JSON.parse(cached);
+          if (parsed.length > 0) {
+            setTrips(parsed);
+            console.log("💾 Loaded lightweight trips from cache");
+            setIsDataSyncing(false); // Show cached data immediately
+          }
         }
       } catch (e) {
         console.warn("Cache corrupted, clearing");
         localStorage.removeItem("cachedTrips");
       }
 
+      if (!user) {
+        if (!loading) {
+          setTrips([]);
+          setIsDataSyncing(false);
+        }
+        return;
+      }
+
       // 2. Subscribe to Firestore (Source of Truth)
       try {
+        console.log(`🔌 Subscribing to trips for user: ${user.uid}`);
+
+        // QUERY UPGRADE: Support both OWNED trips and SHARED trips
         const q = query(
           collection(db, "trips"),
-          where("userId", "==", user.uid)
+          or(
+            where("userId", "==", user.uid),
+            where("sharing.collaborators", "array-contains", user.uid)
+          )
         );
 
         unsubscribe = onSnapshot(q, (snapshot) => {
@@ -142,30 +96,26 @@ const AppContent: React.FC = () => {
 
           console.log(`🔥 Firestore Update: ${freshTrips.length} trips.`);
 
-          // Update State Logic
-          setTrips(prev => {
-            // Smart merge if needed, but for now simple replacement works best for deletes
-            return freshTrips;
-          });
-          setIsLoading(false); // Fix 3: Stop loading after server update
+          setTrips(freshTrips);
+          setIsDataSyncing(false);
 
-          // 3. Save to Cache (COMPRESSED!)
+          // 3. Save to Cache (Safe Mode)
           try {
-            // *** THE FIX: Remove heavy files before saving ***
             const safeData = compressForCache(freshTrips);
             localStorage.setItem("cachedTrips", JSON.stringify(safeData));
           } catch (error: any) {
-            console.error("⚠️ Cache Error:", error);
-            // If quota still exceeded, clear it completely to allow app to function
             if (error.name === 'QuotaExceededError' || error.code === 22) {
+              console.warn("⚠️ LocalStorage full. Clearing to save new state.");
               localStorage.clear();
+              // Try one more time strictly for this payload
+              try { localStorage.setItem("cachedTrips", JSON.stringify(compressForCache(freshTrips))); } catch (e) { }
             }
           }
         });
 
       } catch (error) {
         console.error("Error setting up trips listener:", error);
-        setIsLoading(false); // Final safety net
+        setIsDataSyncing(false);
       }
     };
 
@@ -174,353 +124,141 @@ const AppContent: React.FC = () => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [user]);
+  }, [user, loading]);
 
-  const activeTrip = trips.find(t => t.id === activeTripId) || trips[trips.length - 1] || null;
-
-  useEffect(() => {
-    if (activeTripId) {
-      localStorage.setItem('lastTripId', activeTripId);
+  const handleAnalysisResult = async (analysis: any) => {
+    if (!user) {
+      alert("נא להתחבר כדי לשמור את הטיול");
+      return;
     }
-  }, [activeTripId]);
 
-  useEffect(() => {
-    if (trips.length > 0 && !trips.find(t => t.id === activeTripId)) {
-      const lastTripId = localStorage.getItem('lastTripId');
-      if (lastTripId && trips.find(t => t.id === lastTripId)) {
-        setActiveTripId(lastTripId);
-      } else {
-        // Default to the NEWEST trip
-        setActiveTripId(trips[trips.length - 1].id);
-      }
-    }
-  }, [trips, activeTripId]);
-
-  // Real-Time Sync Hook (Project Genesis 2.0)
-  useEffect(() => {
-    // Safety check: Ensure activeTrip actually exists in the current trips list
-    // AND is not currently being processed (deleted/left)
-    const isValidTrip = trips.some(t => t.id === activeTrip?.id);
-    const isProcessing = activeTrip?.id === processingTripId;
-
-    if (activeTrip && activeTrip.isShared && activeTrip.sharing?.shareId && isValidTrip && !isProcessing) {
-
-      console.log("🔌 Subscribing to shared trip:", activeTrip.name);
-      const unsubscribe = subscribeToSharedTrip(activeTrip.sharing.shareId, (updatedTrip) => {
-        console.log("⚡ Real-time update received for:", updatedTrip.name);
-        // Optimistically update the trip in the list
-        setTrips(prev => {
-          const updated = prev.map(t => t.id === updatedTrip.id ? { ...updatedTrip, isShared: true, sharing: activeTrip.sharing } : t);
-          // Sync to local storage quietly
-          safeSetItem('travel_app_data_v1', updated);
-          return updated;
-        });
-      });
-      return () => unsubscribe();
-    }
-  }, [activeTrip?.id, activeTrip?.isShared, activeTrip?.sharing?.shareId, trips.length, processingTripId]);
-
-
-
-  const handleUpdateActiveTrip = async (updatedTrip: Trip) => {
-    const newTrips = trips.map(t => t.id === updatedTrip.id ? updatedTrip : t);
-    setTrips(newTrips);
-
+    setIsProcessing(true);
     try {
-      await saveSingleTrip(updatedTrip, user?.uid);
-    } catch (err) {
-      console.error('Error saving trip:', err);
+      console.log("🛠️ Mapping AI result to Trip object...");
+      const newTrip = mapAnalysisToTrip(analysis);
+
+      // Critical: Ensure User ID is attached
+      newTrip.userId = user.uid;
+      if (!newTrip.id) newTrip.id = crypto.randomUUID();
+
+      console.log("💾 Saving trip to Firestore...", newTrip.id);
+      await saveTrip(newTrip);
+
+      setGeneratedTrip(newTrip);
+      // Note: onSnapshot will catch the new trip automatically
+
+    } catch (error) {
+      console.error("❌ Error saving generated trip:", error);
+      alert("שגיאה בשמירת הטיול");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const handleSaveAllData = async (newTrips: Trip[]) => {
-    setTrips(newTrips);
-    try {
-      await saveTrips(newTrips, user?.uid);
-    } catch (err) {
-      console.error('Error saving all trips:', err);
+  const handleSaveGeneratedTrip = () => {
+    if (generatedTrip) {
+      setActiveTripId(generatedTrip.id);
+      setGeneratedTrip(null);
     }
   };
 
-  // App.tsx logic update for Zombie Trip Fix
+  // Track processing to prevent race conditions
+  const [processingTripId, setProcessingTripId] = useState<string | null>(null);
 
   const handleDeleteTrip = async (tripId: string) => {
-    if (!confirm("Are you sure you want to delete this trip? This cannot be undone.")) return;
+    if (!window.confirm("למחוק את הטיול לצמיתות?")) return;
 
-    // Store previous state for rollback
-    const previousTrips = [...trips];
+    // Optimistic Update (Immediate UI response)
+    const prevTrips = [...trips];
     const previousActiveId = activeTripId;
 
-    setProcessingTripId(tripId); // 🛡️ BLOCK SUBSCRIPTIONS
-
-    // 1. Optimistic UI update
-    console.log(`[DELETE] Starting deletion for trip: ${tripId}`);
+    // Store new state locally
     const newTripsList = trips.filter(t => t.id !== tripId);
     setTrips(newTripsList);
 
-    // If active trip is deleted, switch to empty or first available
     if (activeTripId === tripId) {
-      setActiveTripId(newTripsList.length > 0 ? newTripsList[0].id : '');
-      // Explicit cleanup of active trip pointers
-      localStorage.removeItem("activeTripId");
-      localStorage.removeItem("lastTripId");
+      setActiveTripId(newTripsList.length > 0 ? newTripsList[0].id : null);
     }
 
+    setProcessingTripId(tripId);
+
     try {
-      const tripToDelete = previousTrips.find(t => t.id === tripId);
-      const shareId = tripToDelete?.isShared && tripToDelete?.sharing?.shareId ? tripToDelete.sharing.shareId : undefined;
+      await deleteTrip(tripId);
 
-      // 2. Execute Server Deletion
-      console.log(`[DELETE] Sending delete command to Server...`);
-      // We pass user?.uid because deleteTrip requires it.
-      await deleteTrip(tripId, user?.uid, shareId);
-      console.log('✅ [DELETE] Server confirmed deletion success');
-
-      // 3. Critical LocalStorage Cleanup (The Zombie Fix)
-      // Use the CORRECT key 'travel_app_data_v1'
-      safeSetItem('travel_app_data_v1', newTripsList);
-
-      // Cleanup specific trip cache if it exists (generic cleanup)
+      // Update persistent cache immediately to prevent zombie return on refresh
+      safeSetItem('cachedTrips', compressForCache(newTripsList));
       localStorage.removeItem(`trip_${tripId}`);
 
     } catch (err: any) {
-      console.error('❌ [DELETE] Server returned error:', err);
+      console.error("Delete failed:", err);
 
-      // ZOMBIE FIX: Access Denied / Not Found = Treat as Success (don't revert)
+      // ZOMBIE FIX: If server says "not found" or "permission denied", treat as deleted locally
       const isPermissionError = err.code === 'permission-denied' || err.message?.includes('permission');
       const isNotFoundError = err.code === 'not-found' || err.message?.includes('not found');
 
       if (isPermissionError || isNotFoundError) {
         console.log('🧹 Force cleaning zombie trip from local state despite server error');
-        safeSetItem('travel_app_data_v1', newTripsList);
+        safeSetItem('cachedTrips', compressForCache(newTripsList));
+        setProcessingTripId(null);
         return;
       }
 
-      // Rollback for genuine errors
-      console.error("Failed to delete trip, rolling back:", err);
-      alert("Failed to delete trip from server. Please check your internet connection.");
-      setTrips(previousTrips);
+      alert("מחיקה נכשלה");
+      setTrips(prevTrips); // Rollback
       setActiveTripId(previousActiveId);
-
     } finally {
-      setProcessingTripId(null); // 🔓 RELEASE GUARD
+      setProcessingTripId(null);
     }
   };
 
+  if (loading) return <div className="h-screen flex items-center justify-center">טוען...</div>;
 
-  const handleLeaveTrip = async (tripId: string) => {
-    if (!activeTrip?.isShared || !activeTrip?.sharing?.shareId) return;
-
-    setProcessingTripId(tripId); // 🛡️ BLOCK SUBSCRIPTIONS
-
-    // Harmonious UX: Optimistic Update
-    const previousTrips = [...trips];
-    const newTrips = trips.filter(t => t.id !== tripId);
-    setTrips(newTrips);
-
-    // Switch active trip if needed
-    if (activeTripId === tripId) {
-      setActiveTripId(newTrips.length > 0 ? newTrips[0].id : '');
-    }
-
-    try {
-      await leaveTrip(tripId, activeTrip.sharing.shareId, user?.uid);
-    } catch (err) {
-      console.error('Failed to leave trip', err);
-      setTrips(previousTrips); // Revert
-      alert('שגיאה ביציאה מהטיול');
-    } finally {
-      setProcessingTripId(null); // 🔓 RELEASE GUARD
-    }
-  };
-
-
-  // State Cleanup on Logout
-  useEffect(() => {
-    if (!user && !authLoading) {
-      setTrips([]);
-      setActiveTripId('');
-    }
-  }, [user, authLoading]);
-
-  // Auto-Open Onboarding if no trips (First Time Experience)
-  useEffect(() => {
-    if (!isLoading && !authLoading && trips.length === 0 && !joinShareId) {
-      setShowOnboarding(true);
-    }
-  }, [isLoading, authLoading, trips.length, joinShareId]);
-
-  // STRICT RENDER GUARD
-
-  // 1. Loading State
-  if (authLoading) {
+  if (!user || (!activeTripId && !generatedTrip)) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4 bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <span className="text-slate-500 font-medium animate-pulse">Loading Profile...</span>
-      </div>
-    );
-  }
-
-  // 2. Not Logged In (Landing Page)
-  if (!user) {
-    // Premium Landing Page
-    return <LandingPage onLogin={signIn} />;
-  }
-
-  // 3. Logged In (Loading Data)
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <span className="text-gray-500 font-medium">טוען את הטיולים שלך...</span>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <div className="text-red-500 text-lg font-bold">{error}</div>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
-        >
-          נסה שוב
-        </button>
-      </div>
-    );
-  }
-
-  const renderContent = () => {
-    if (!activeTrip) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full text-slate-400">
-          <p>בחר טיול מהתפריט או צור טיול חדש</p>
-        </div>
-      );
-    }
-
-    return (
-      <React.Suspense fallback={
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <span className="text-sm text-slate-400 mt-2">טוען רכיב...</span>
-        </div>
-      }>
-        {(() => {
-          switch (currentTab) {
-            case 'flights': return <FlightsView trip={activeTrip} />;
-            case 'restaurants': return <RestaurantsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-            case 'attractions': return <AttractionsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-            case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} onSwitchTab={setCurrentTab} />;
-            case 'hotels': return <HotelsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-            case 'map_full': return <UnifiedMapView trip={activeTrip} title="מפת הטיול המלאה" />;
-            case 'budget': return <BudgetView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-            case 'shopping': return <ShoppingView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-            default: return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} onSwitchTab={setCurrentTab} />;
-          }
-        })()}
-      </React.Suspense>
-    );
-  };
-
-  return (
-    <HashRouter>
-      <Layout
-        activeTrip={activeTrip}
-        trips={trips}
-        onSwitchTrip={setActiveTripId}
-        currentTab={currentTab}
-        onSwitchTab={setCurrentTab}
-        onOpenAdmin={() => setShowAdmin(true)}
-        onUpdateTrip={handleUpdateActiveTrip}
-        onDeleteTrip={handleDeleteTrip}
-      >
-        {renderContent()}
-      </Layout>
-
-      {showOnboarding && (
-        <OnboardingModal
-          isOpen={showOnboarding}
-          onClose={() => setShowOnboarding(false)}
-          onImportTrip={(newTrip) => {
-            const updatedTrips = [...trips, newTrip];
-            setTrips(updatedTrips);
-            setActiveTripId(newTrip.id);
-            saveTrips(updatedTrips, user?.uid);
-            setShowOnboarding(false);
-          }}
-          onCreateNew={() => {
-            const newTrip: Trip = {
-              id: crypto.randomUUID(),
-              name: "New Trip",
-              dates: "",
-              destination: "",
-              coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
-              flights: { passengerName: "", pnr: "", segments: [] },
-              hotels: [],
-              restaurants: [],
-              attractions: [],
-              itinerary: [],
-              documents: [],
-              secureNotes: [],
-              isShared: false
-            };
-            const updatedTrips = [...trips, newTrip];
-            setTrips(updatedTrips);
-            setActiveTripId(newTrip.id);
-            saveTrips(updatedTrips, user?.uid);
-            setShowOnboarding(false);
-          }}
+      <>
+        <LandingPage
+          onLogin={() => { }}
+          onTripGenerated={handleAnalysisResult}
+          isProcessing={isProcessing}
+          user={user}
+          existingTrips={trips}
+          onSelectTrip={setActiveTripId}
+          onDeleteTrip={handleDeleteTrip}
         />
-      )}
-
-      {showAdmin && (
-        <React.Suspense fallback={null}>
-          <AdminView
-            data={trips}
-            currentTripId={activeTripId}
-            onSave={handleSaveAllData}
-            onSwitchTrip={setActiveTripId}
-            onDeleteTrip={handleDeleteTrip}
-            onLeaveTrip={handleLeaveTrip}
-            onClose={() => setShowAdmin(false)}
+        {generatedTrip && (
+          <TripAssistant
+            trip={generatedTrip}
+            onSave={handleSaveGeneratedTrip}
+            onClose={() => setGeneratedTrip(null)}
+            isInitialView={true}
           />
-        </React.Suspense>
-      )}
+        )}
+      </>
+    );
+  }
 
-      {joinShareId && (
-        <JoinTripModal
-          shareId={joinShareId}
-          onClose={() => {
-            setJoinShareId(null);
-            window.history.replaceState(null, '', window.location.pathname);
+  const activeTrip = trips.find(t => t.id === activeTripId) || generatedTrip;
+
+  return (
+    <Layout
+      activeTripId={activeTripId}
+      trips={trips}
+      onSwitchTrip={setActiveTripId}
+      onNewTrip={() => setActiveTripId(null)}
+    >
+      {activeTrip && (
+        <TripAssistant
+          trip={activeTrip}
+          onSave={async (updatedTrip) => {
+            // Optimistic update
+            setTrips(prev => prev.map(t => t.id === updatedTrip.id ? updatedTrip : t));
+            await saveTrip(updatedTrip);
           }}
-          onJoinSuccess={(newTrip) => {
-            setJoinShareId(null);
-            setTrips(prev => [...prev, newTrip]);
-            setActiveTripId(newTrip.id);
-            saveSingleTrip(newTrip, user?.uid); // Save immediately
-            window.history.replaceState(null, '', window.location.pathname);
-          }}
+          onClose={() => setActiveTripId(null)}
         />
       )}
-
-      {activeTrip && (
-        <AIChatOverlay trip={activeTrip} />
-      )}
-    </HashRouter>
+    </Layout>
   );
-};
-
-const App: React.FC = () => {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
-};
+}
 
 export default App;
