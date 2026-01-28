@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Sparkles, Calendar, Map, CheckCircle2, ArrowRight } from 'lucide-react';
-import { LoginButton } from './LoginButton';
 
 interface LandingPageProps {
         onLogin: () => void;
@@ -90,9 +89,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                                 <p className="text-slate-500">Join thousands of travelers planning smarter.</p>
                                         </div>
 
-                                        <div className="w-full flex justify-center">
-                                                <LoginButton />
-                                        </div>
+                                        <button
+                                                onClick={onLogin}
+                                                className="w-full flex items-center justify-center gap-4 py-4 px-6 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-indigo-200 hover:-translate-y-1 transition-all group"
+                                        >
+                                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-6 h-6" alt="G" />
+                                                <span className="font-bold text-slate-700 text-lg group-hover:text-indigo-600 transition-colors">Continue with Google</span>
+                                        </button>
 
                                         <p className="text-center text-xs text-slate-400 mt-8 leading-relaxed">
                                                 By joining, you agree to our Terms of Service.<br />

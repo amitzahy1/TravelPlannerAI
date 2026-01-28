@@ -2,89 +2,94 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for safe ownership checks
+    // --- פונקציות עזר (מונעות שכפול קוד ושגיאות) ---
+    
+    // בדיקה בטוחה אם המשתמש הוא הבעלים (בודק גם userId וגם owner)
     function isOwner(data) {
-      return (data.keys().hasAll(['userId']) && data.userId == request.auth.uid) ||
-             (data.keys().hasAll(['owner']) && data.owner == request.auth.uid);
+      return (data.userId == request.auth.uid) || (data.owner == request.auth.uid);
     }
 
-    // Helper function for safe collaborator checks
+    // בדיקה בטוחה אם המשתמש הוא שותף בטיול
     function isCollaborator(data) {
-      return data.keys().hasAll(['collaborators']) && 
-             (data.collaborators is list) && 
-             (request.auth.uid in data.collaborators);
+      return (data.collaborators is list) && (request.auth.uid in data.collaborators);
     }
 
     // =========================================================
-    // 0. ROOT TRIPS - The Major Fix
+    // 0. ROOT TRIPS (התיקון הקריטי למחיקה)
     // =========================================================
     match /trips/{tripId} {
-      // Create: Must be authenticated
+      // יצירה: מותר לכל משתמש מחובר
       allow create: if request.auth != null;
       
-      // Read: Owner or Collaborator
-      allow read: if request.auth != null && (
+      // קריאה ועדכון: לבעלים או לשותפים
+      allow read, update: if request.auth != null && (
         isOwner(resource.data) || isCollaborator(resource.data)
       );
 
-      // Update: Owner or Collaborator
-      allow update: if request.auth != null && (
-        isOwner(resource.data) || isCollaborator(resource.data)
-      );
-
-      // Delete: The Critical Fix!
-      // 1. If document doesn't exist (resource == null) -> Allow (prevents UI errors on ghost deletes)
-      // 2. Otherwise -> Only Owner can delete
+      // מחיקה: התיקון הגדול!
+      // 1. resource == null: אם הטיול לא קיים (נמחק ידנית), אשר מחיקה כדי לנקות את האתר.
+      // 2. isOwner: אם הטיול קיים, רק הבעלים יכול למחוק.
       allow delete: if request.auth != null && (
         resource == null || isOwner(resource.data)
       );
     }
 
     // =========================================================
-    // 2. SHARED TRIPS (Listener Permission Fix)
-    // =========================================================
-    match /shared-trips/{tripId} {
-      allow create: if request.auth != null;
-
-      // Read Fix: Use helpers to check fields safely
-      allow read: if request.auth != null && (
-        isOwner(resource.data) || 
-        isCollaborator(resource.data) ||
-        (resource.data.keys().hasAll(['allowedEmails']) && resource.data.allowedEmails is list && request.auth.token.email in resource.data.allowedEmails) ||
-        request.query.limit <= 10
-      );
-
-      allow update: if request.auth != null && (
-        isOwner(resource.data) || 
-        isCollaborator(resource.data) ||
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['collaborators'])) // Join permission
-      );
-
-      // Allow delete if owner OR if already gone (ghost fix)
-      allow delete: if request.auth != null && (resource == null || isOwner(resource.data));
-    }
-
-    // =========================================================
-    // 3. PERSONAL TRIPS (Legacy)
+    // 1. PERSONAL TRIPS (Legacy - נשאר לגיבוי)
     // =========================================================
     match /users/{userId}/trips/{tripId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // =========================================================
-    // 4. SYSTEM & CACHE
+    // 2. SHARED TRIPS (החלת אותו תיקון גם כאן)
+    // =========================================================
+    match /shared-trips/{tripId} {
+      allow create: if request.auth != null;
+
+      // קריאה
+      allow read: if request.auth != null && (
+        isOwner(resource.data) || 
+        isCollaborator(resource.data) ||
+        (resource.data.allowedEmails is list && request.auth.token.email in resource.data.allowedEmails) ||
+        request.query.limit <= 10
+      );
+
+      // עדכון
+      allow update: if request.auth != null && (
+        isOwner(resource.data) || 
+        isCollaborator(resource.data) ||
+        (request.resource.data.shareId == resource.data.shareId)
+      );
+
+      // מחיקה מתוקנת (כולל ניקוי זומבים)
+      allow delete: if request.auth != null && (
+        resource == null || isOwner(resource.data)
+      );
+    }
+
+    // =========================================================
+    // 3. REFERENCES (ללא שינוי)
     // =========================================================
     match /users/{userId}/shared-trip-refs/{refId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // =========================================================
+    // 4. CACHE (ללא שינוי)
+    // =========================================================
     match /ai_cache/{hash} {
       allow read, write: if true;
     }
 
+    // =========================================================
+    // 5. TRIP INVITES (החלת תיקון מחיקה גם כאן)
+    // =========================================================
     match /trip_invites/{inviteId} {
       allow read: if true;
       allow create, update: if request.auth != null;
+      
+      // מחיקה מתוקנת
       allow delete: if request.auth != null && (
         resource == null ||
         resource.data.ownerId == request.auth.uid || 
@@ -92,6 +97,7 @@ service cloud.firestore {
       );
     }
 
+    // חסימת ברירת מחדל
     match /{document=**} {
       allow read, write: if false;
     }
