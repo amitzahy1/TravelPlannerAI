@@ -51,7 +51,7 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
 
         {/* 1. Airline Info */}
         <div className="flex items-center gap-3 w-full md:w-1/4">
-          <img src={`https://pics.avs.io/200/200/${(seg.flightNumber?.match(/^[A-Z0-9]{2}/i)?.[0] || seg.airline.substring(0, 2)).toUpperCase()}.png`} alt={seg.airline} onError={(e) => e.currentTarget.style.display = 'none'} className="w-8 h-8 rounded-full object-cover border border-slate-100" />
+          <img src={`https://pics.avs.io/200/200/${(seg.flightNumber?.match(/^[A-Z0-9]{2}/i)?.[0] || seg.airline.substring(0, 2)).toUpperCase()}.png`} alt={seg.airline} onError={(e) => e.currentTarget.style.display = 'none'} className="w-11 h-11 rounded-full object-cover border border-slate-100" />
           <div className="flex flex-col text-left">
             <span className="text-sm font-bold text-slate-800">{seg.airline}</span>
             <span className="text-xs text-slate-400 font-mono">{seg.flightNumber}</span>
@@ -95,7 +95,7 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
 
         {/* 3. Date & Badge */}
         <div className="w-full md:w-1/6 text-right flex flex-col items-end">
-          <span className="text-xs font-bold text-slate-600">
+          <span className="text-base font-bold text-slate-800">
             {seg.date ? new Date(seg.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : ''}
           </span>
           {seg.baggage && (
@@ -119,11 +119,9 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
             <div className="bg-blue-900 px-6 py-4 flex justify-between items-center text-white">
               <div>
-                <div className="text-sm opacity-80">שם הנוסע</div>
                 <div className="font-bold text-lg">{flights.passengerName}</div>
               </div>
               <div className="text-left">
-                <div className="text-sm opacity-80">קוד הזמנה</div>
                 <div className="font-mono text-xl tracking-widest">{flights.pnr}</div>
               </div>
             </div>
