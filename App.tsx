@@ -172,22 +172,42 @@ const AppContent: React.FC = () => {
     const newTrips = trips.filter(t => t.id !== tripId);
     setTrips(newTrips);
 
+    // If active trip is deleted, switch
     if (activeTripId === tripId) {
       setActiveTripId(newTrips.length > 0 ? newTrips[0].id : '');
     }
 
     try {
-      const tripToDelete = trips.find(t => t.id === tripId);
+      const tripToDelete = previousTrips.find(t => t.id === tripId);
       const shareId = tripToDelete?.isShared && tripToDelete?.sharing?.shareId ? tripToDelete.sharing.shareId : undefined;
 
       await deleteTrip(tripId, user?.uid, shareId);
       console.log('✅ Trip deleted successfully from Firebase');
-    } catch (err) {
-      console.error('❌ Error deleting trip - REVERTING UI:', err);
-      // CRITICAL: Revert UI to prevent zombie data
+    } catch (err: any) {
+      console.error('❌ Error deleting trip:', err);
+      // ZOMBIE FIX: If permission denied or not found, DO NOT REVERT.
+      // We assume the user wants it gone. 
+      const isPermissionError = err.code === 'permission-denied' || err.message?.includes('permission');
+      const isNotFoundError = err.code === 'not-found' || err.message?.includes('not found');
+
+      if (isPermissionError || isNotFoundError) {
+        console.log('🧹 Force cleaning zombie trip from local state despite server error');
+        // Ensure it's gone from local storage too
+        try {
+          const localKey = 'travel_app_data_v1';
+          const stored = localStorage.getItem(localKey);
+          if (stored) {
+            const localTrips = JSON.parse(stored) as Trip[];
+            const filtered = localTrips.filter(t => t.id !== tripId);
+            localStorage.setItem(localKey, JSON.stringify(filtered));
+          }
+        } catch (e) { console.error("Local storage clean failed", e); }
+        return;
+      }
+
+      // Only revert for genuine network/unknown errors where data might still be safe on server
       setTrips(previousTrips);
       setActiveTripId(previousActiveId);
-      // Optionally show error to user
       alert('שגיאה במחיקת הטיול. נסה שוב.');
     } finally {
       setProcessingTripId(null); // 🔓 RELEASE GUARD

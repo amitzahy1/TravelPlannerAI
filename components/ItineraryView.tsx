@@ -297,7 +297,20 @@ export const ItineraryView: React.FC<{
                                 plan.hasHotel = true;
                             }
                             if (!plan.locationContext || plan.locationContext === 'טיסה') {
-                                plan.locationContext = city;
+                                // IMPROVED CITY EXTRACTION
+                                // If city is "Station 1", try to look deeper or use hotel name if needed. 
+                                // Ideally, we want "Boracay" or "Manila".
+                                // Heuristic: If address splits to > 1 part, take the LAST part (usually Country) or 2nd to last (City). 
+                                // BUT, 'hotel.address' often is "Street, City, Country".
+                                const parts = (hotel.address || '').split(',').map(p => p.trim());
+                                let bestCityCandidate = parts[0];
+                                if (parts.length >= 2) {
+                                    // Check for keywords like "Station" (Boracay thing)
+                                    if (bestCityCandidate.includes('Station')) {
+                                        bestCityCandidate = parts.find(p => p.includes('Boracay') || p.includes('Manila') || p.includes('Cebu') || p.includes('Bangkok') || p.includes('Phuket')) || parts[1];
+                                    }
+                                }
+                                plan.locationContext = bestCityCandidate || hotel.name;
                             }
                             const isCheckInDay = current.getTime() === start.getTime();
                             if (!isCheckInDay && !isCheckOutDay) {

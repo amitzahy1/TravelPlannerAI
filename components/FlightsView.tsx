@@ -8,6 +8,22 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingSegment, setEditingSegment] = React.useState<{ segment: FlightSegment, index: number } | null>(null);
 
+  const calculateDuration = (start?: string, end?: string) => {
+    if (!start || !end) return null;
+    try {
+      const startTime = new Date(start).getTime();
+      const endTime = new Date(end).getTime();
+      if (isNaN(startTime) || isNaN(endTime)) return null;
+
+      const diffMs = endTime - startTime;
+      if (diffMs < 0) return null; // Invalid
+
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      return `${hours}h ${minutes}m`;
+    } catch (e) { return null; }
+  };
+
   const handleUpdateSegment = (updatedSeg: FlightSegment) => {
     if (editingSegment === null || !onUpdateTrip) return;
     const newSegments = [...flights.segments];
@@ -42,7 +58,6 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
           <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono tracking-wider">{seg.flightNumber}</span>
         </div>
         <div className="text-left flex items-center gap-2">
-          <span className="text-xs text-gray-400">משך: {seg.duration}</span>
           {seg.baggage && (
             <div className="text-[10px] bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold border border-slate-100">
               <Briefcase className="w-2.5 h-2.5" />
@@ -56,18 +71,31 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
         <div className="flex-1">
           <div className="text-xl font-black text-gray-800 leading-none">{seg.fromCode || (seg.fromCity ? seg.fromCity.substring(0, 3).toUpperCase() : 'ORG')}</div>
           <div className="text-xs text-gray-500 mt-0.5">{seg.fromCity}</div>
-          <div className="text-base font-bold text-gray-700 mt-1" dir="ltr">{formatDateTime(seg.departureTime)}</div>
+          <div className="mt-2 text-left">
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">{formatDateOnly(seg.departureTime)}</div>
+            <div className="text-2xl font-black text-blue-900 leading-none mt-0.5" dir="ltr">
+              {seg.departureTime?.includes('T') ? seg.departureTime.split('T')[1].substring(0, 5) : (seg.departureTime?.match(/\d{1,2}:\d{2}/)?.[0] || '00:00')}
+            </div>
+          </div>
         </div>
 
-        <div className="flex-1 flex flex-col items-center px-2">
-          <div className="w-full h-px bg-gray-200 relative top-2.5"></div>
-          <Plane className="w-5 h-5 text-blue-400 transform rotate-180 bg-white z-10 p-0.5" />
+        <div className="flex-1 flex flex-col items-center px-4">
+          <div className="text-[10px] text-gray-400 font-bold bg-white px-2 relative top-2 z-10 uppercase tracking-wider">
+            {calculateDuration(seg.departureTime, seg.arrivalTime) || seg.duration || '0h'}
+          </div>
+          <div className="w-full h-px bg-gray-300 relative"></div>
+          <Plane className="w-5 h-5 text-blue-500 transform rotate-90 bg-white z-10 p-0.5 mt-[-10px]" />
         </div>
 
         <div className="flex-1 text-left">
           <div className="text-xl font-black text-gray-800 leading-none">{seg.toCode || (seg.toCity ? seg.toCity.substring(0, 3).toUpperCase() : 'DST')}</div>
           <div className="text-xs text-gray-500 mt-0.5">{seg.toCity}</div>
-          <div className="text-base font-bold text-gray-700 mt-1" dir="ltr">{formatDateTime(seg.arrivalTime)}</div>
+          <div className="mt-2 text-left">
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">{formatDateOnly(seg.arrivalTime)}</div>
+            <div className="text-2xl font-black text-blue-900 leading-none mt-0.5" dir="ltr">
+              {seg.arrivalTime?.includes('T') ? seg.arrivalTime.split('T')[1].substring(0, 5) : (seg.arrivalTime?.match(/\d{1,2}:\d{2}/)?.[0] || '00:00')}
+            </div>
+          </div>
         </div>
       </div>
 

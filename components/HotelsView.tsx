@@ -179,9 +179,9 @@ const HotelCard: React.FC<{
 
     return (
         <div className="bg-white rounded-xl md:rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-row group relative h-28 md:h-[200px]">
-            <div className="absolute top-1.5 left-1.5 md:top-2 md:left-2 z-20 flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={onEdit} className="bg-white/90 p-1 md:p-1.5 rounded-md md:rounded-lg text-slate-600 hover:text-blue-600 shadow-md backdrop-blur-sm"><Edit className="w-3 h-3 md:w-3.5 md:h-3.5" /></button>
-                <button onClick={onDelete} className="bg-white/90 p-1 md:p-1.5 rounded-md md:rounded-lg text-slate-600 hover:text-red-600 shadow-md backdrop-blur-sm"><Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" /></button>
+            <div className="absolute top-1.5 left-1.5 md:top-2 md:left-2 z-20 flex gap-1">
+                <button onClick={(e) => { e.stopPropagation(); onEdit() }} className="bg-white/90 p-1.5 rounded-lg text-slate-600 hover:text-blue-600 shadow-md backdrop-blur-sm border border-slate-100"><Edit className="w-3.5 h-3.5" /></button>
+                <button onClick={(e) => { e.stopPropagation(); onDelete() }} className="bg-white/90 p-1.5 rounded-lg text-slate-600 hover:text-red-600 shadow-md backdrop-blur-sm border border-slate-100"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
 
             {/* Image Section - Compact Square on Mobile */}
