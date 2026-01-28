@@ -51,11 +51,22 @@ export const ItineraryView: React.FC<{
     // Title Generation Logic
     const generateDayTitle = (day: DayPlan, trip: Trip, dayIndex: number, totalDays: number): string => {
         const events = day.events;
-        const flightEvent = events.find(e => e.type === 'flight');
-        if (flightEvent) {
-            const destMatch = flightEvent.title?.match(/טיסה ל(.+)/);
-            return destMatch && destMatch[1] ? `טיסה ל${destMatch[1]}` : 'יום טיסה';
+        const flightEvents = events.filter(e => e.type === 'flight');
+
+        if (flightEvents.length > 0) {
+            // Collect all unique destinations
+            const destinations = new Set<string>();
+            flightEvents.forEach(f => {
+                const destMatch = f.title?.match(/טיסה ל(.+)/);
+                if (destMatch && destMatch[1]) destinations.add(destMatch[1].trim());
+            });
+
+            if (destinations.size > 0) {
+                return `טיסה ל${Array.from(destinations).join(', ')}`;
+            }
+            return 'יום טיסה';
         }
+
         const hotelCheckin = events.find(e => e.type === 'hotel_checkin');
         if (hotelCheckin) {
             const hotelMatch = hotelCheckin.title?.match(/Check-in: (.+)/);
@@ -252,6 +263,15 @@ export const ItineraryView: React.FC<{
         if (url) onUpdateTrip({ ...trip, coverImage: url });
     };
 
+    // --- Stats Calculation ---
+    const tripStats = useMemo(() => {
+        const flights = trip.flights?.segments?.length || 0;
+        const hotels = trip.hotels?.length || 0;
+        const attractions = trip.attractions?.reduce((acc, cat) => acc + cat.attractions.length, 0) || 0;
+        const food = trip.restaurants?.reduce((acc, cat) => acc + cat.restaurants.length, 0) || 0;
+        return { flights, hotels, attractions, food };
+    }, [trip]);
+
     const activeDay = useMemo(() => timeline.find(d => d.dateIso === selectedDayIso), [timeline, selectedDayIso]);
 
     return (
@@ -261,7 +281,33 @@ export const ItineraryView: React.FC<{
                 <div className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-xl z-0">
                     <img src={trip.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80'} className="w-full h-full object-cover" alt="Cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
-                    <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20"><Edit2 className="w-4 h-4" /></button>
+
+                    {/* Edit Cover Button */}
+                    <button onClick={handleChangeCover} className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-black/60"><Edit2 className="w-4 h-4" /></button>
+
+                    {/* STATS WIDGETS (Restored) */}
+                    <div className="absolute top-4 left-4 z-20 flex gap-2">
+                        {tripStats.flights > 0 && (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/30 backdrop-blur-md border border-white/10 rounded-full text-white text-xs font-bold">
+                                <Plane className="w-3.5 h-3.5 text-blue-400" /> {tripStats.flights}
+                            </div>
+                        )}
+                        {tripStats.hotels > 0 && (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/30 backdrop-blur-md border border-white/10 rounded-full text-white text-xs font-bold">
+                                <Hotel className="w-3.5 h-3.5 text-indigo-400" /> {tripStats.hotels}
+                            </div>
+                        )}
+                        {tripStats.attractions > 0 && (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/30 backdrop-blur-md border border-white/10 rounded-full text-white text-xs font-bold">
+                                <Ticket className="w-3.5 h-3.5 text-purple-400" /> {tripStats.attractions}
+                            </div>
+                        )}
+                        {tripStats.food > 0 && (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/30 backdrop-blur-md border border-white/10 rounded-full text-white text-xs font-bold">
+                                <Utensils className="w-3.5 h-3.5 text-orange-400" /> {tripStats.food}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="absolute inset-0 z-10 flex flex-col justify-end p-6 pointer-events-none">
                     <div className="space-y-1 max-w-xl pointer-events-auto text-white">
