@@ -76,15 +76,7 @@ export interface TripAnalysisResult {
   };
   processedFileIds?: string[];
   unprocessedFiles?: any[];
-  rawStagedData: {
-    categories: {
-      transport: any[];
-      accommodation: any[];
-      dining: any[];
-      activities: any[];
-      wallet: any[];
-    };
-  };
+  rawStagedData: StagedTripData;
 }
 
 // --- HELPER FUNCTIONS ---
@@ -332,21 +324,21 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
 
   let raw;
   try {
-      raw = JSON.parse(cleanJSON(response.text));
-      
-      // Flight specific check
-      if (raw.categories?.transport) {
-          console.table(raw.categories.transport.map((t: any) => ({
-              airline: t.data.airline,
-              rawDep: t.data.departure?.rawDateText, // What the model saw
-              isoDep: t.data.departure?.isoDate,     // What the model decided
-              rawArr: t.data.arrival?.rawDateText
-          })));
-      }
+    raw = JSON.parse(cleanJSON(response.text));
+
+    // Flight specific check
+    if (raw.categories?.transport) {
+      console.table(raw.categories.transport.map((t: any) => ({
+        airline: t.data.airline,
+        rawDep: t.data.departure?.rawDateText, // What the model saw
+        isoDep: t.data.departure?.isoDate,     // What the model decided
+        rawArr: t.data.arrival?.rawDateText
+      })));
+    }
   } catch (e) {
-      console.error("❌ [JSON Parse Error]:", e);
-      console.log("Bad JSON Content:", response.text);
-      throw e;
+    console.error("❌ [JSON Parse Error]:", e);
+    console.log("Bad JSON Content:", response.text);
+    throw e;
   }
   // --- LOGGING UPGRADE END ---
 
@@ -374,9 +366,9 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
   };
 
   const allDates: number[] = [
-      ...extractDates(raw.categories?.transport),
-      ...extractDates(raw.categories?.accommodation),
-      ...extractDates(raw.categories?.wallet)
+    ...extractDates(raw.categories?.transport),
+    ...extractDates(raw.categories?.accommodation),
+    ...extractDates(raw.categories?.wallet)
   ];
 
   let startDate = "";
@@ -405,6 +397,9 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
     processedFileIds: raw.processedFileIds || [],
     unprocessedFiles: raw.unprocessedFiles || [],
     rawStagedData: {
+      tripMetadata: raw.tripMetadata,
+      processedFileIds: raw.processedFileIds || [],
+      unprocessedFiles: raw.unprocessedFiles || [],
       categories: raw.categories || { transport: [], accommodation: [], dining: [], activities: [], wallet: [] }
     }
   };

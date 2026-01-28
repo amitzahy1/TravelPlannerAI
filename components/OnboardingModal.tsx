@@ -3,6 +3,7 @@ import { Sparkles, X, Check, MapPin, Calendar, Plane, Bed, Shield, Star, AlertTr
 import { Trip, StagedTripData, StagedWalletItem } from '../types';
 import { MagicDropZone } from './MagicDropZone';
 import { analyzeTripFiles, TripAnalysisResult } from '../services/aiService';
+import { mapAnalysisToTrip } from '../services/tripService';
 import { ThinkingLoader } from './ThinkingLoader';
 
 interface OnboardingModalProps {
@@ -137,6 +138,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
             activities: []
         };
 
+        // Use centralized mapping logic to ensure consistent behavior with tripService
+        const partialTrip = mapAnalysisToTrip(tripData);
+
         // Convert to proper Trip object
         const newTrip: Trip = {
             id: crypto.randomUUID(),
@@ -146,53 +150,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                 ? finalMetadata.cities.join(' - ')
                 : finalMetadata.mainDestination || "Unknown Destination",
             coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
-            flights: {
-                passengerName: "",
-                pnr: "",
-                segments: categories.transport
-                    .filter(i => i.type === 'flight')
-                    .flatMap(i => {
-                        // AI Data Structure 1: Nested segments with details (Preferred)
-                        if (i.data.segments && Array.isArray(i.data.segments)) {
-                            return i.data.segments.map((seg: any) => ({
-                                fromCode: seg.departure?.iata || seg.departure?.airport || seg.departureIata || (seg.departure?.city ? seg.departure.city.substring(0, 3).toUpperCase() : (seg.departureCity ? seg.departureCity.substring(0, 3).toUpperCase() : 'ORG')),
-                                toCode: seg.arrival?.iata || seg.arrival?.airport || seg.arrivalIata || (seg.arrival?.city ? seg.arrival.city.substring(0, 3).toUpperCase() : (seg.arrivalCity ? seg.arrivalCity.substring(0, 3).toUpperCase() : 'DST')),
-                                date: seg.departure?.date || seg.departureDate || '',
-                                airline: seg.airline || '',
-                                flightNumber: seg.flightNumber || '',
-                                departureTime: seg.departure?.displayTime || seg.displayDepartureTime || seg.display_departure_time || seg.departure?.date || '',
-                                arrivalTime: seg.arrival?.displayTime || seg.displayArrivalTime || seg.display_arrival_time || seg.arrival?.date || '',
-                                fromCity: seg.departure?.city || seg.departureCity || '',
-                                toCity: seg.arrival?.city || seg.arrivalCity || '',
-                                duration: seg.durationMinutes ? `${Math.floor(seg.durationMinutes / 60)}h ${seg.durationMinutes % 60}m` : (seg.duration || "0h")
-                            }));
-                        }
+            flights: partialTrip.flights || { passengerName: "", pnr: "", segments: [] },
+            hotels: partialTrip.hotels || [],
+            secureNotes: partialTrip.secureNotes || [],
 
-                        // AI Data Structure 2: Flat flight (Legacy)
-                        return [{
-                            fromCode: i.data.departure?.airport || i.data.from || (i.data.departure?.city ? i.data.departure.city.substring(0, 3).toUpperCase() : 'ORG'),
-                            toCode: i.data.arrival?.airport || i.data.to || (i.data.arrival?.city ? i.data.arrival.city.substring(0, 3).toUpperCase() : 'DST'),
-                            date: i.data.departure?.date || i.data.departureTime || '',
-                            airline: i.data.airline || '',
-                            flightNumber: i.data.flightNumber || '',
-                            departureTime: i.data.departure?.displayTime || i.data.departureTime || '',
-                            arrivalTime: i.data.arrival?.displayTime || i.data.arrivalTime || '',
-                            fromCity: i.data.departure?.city || i.data.from || '',
-                            toCity: i.data.arrival?.city || i.data.to || '',
-                            duration: "0h",
-                        }];
-                    })
-            },
-            hotels: categories.accommodation.map(i => ({
-                id: crypto.randomUUID(),
-                name: i.data.hotelName || '',
-                checkInDate: (i.data.checkInDate || '').split('T')[0],
-                checkOutDate: (i.data.checkOutDate || '').split('T')[0],
-                address: i.data.address || '',
-                confirmationCode: "",
-                roomType: "",
-                nights: 1
-            })),
+            // Keeping Restaurant/Attractions manual mapping for now as they are not returned by mapAnalysisToTrip yet
             restaurants: [{
                 id: crypto.randomUUID(),
                 title: "Imported Restaurants",
@@ -217,12 +179,6 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                     scheduledTime: i.data.displayTime || ''
                 }))
             }],
-            secureNotes: categories.wallet.map(i => ({
-                id: crypto.randomUUID(),
-                title: i.title || i.data.documentName || 'Document',
-                value: i.data.displayTime || 'No details', // Using displayTime as value if no secret is extracted
-                category: (i.type === 'passport' || i.type === 'visa' || i.type === 'insurance') ? i.type : 'other'
-            })),
             itinerary: [],
             documents: [],
             isShared: false
