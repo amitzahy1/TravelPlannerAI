@@ -71,89 +71,59 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
-  // Load trips with Real-Time Priority (Post-Mortem Step 3)
-  useEffect(() => {
-    let unsubscribe: import('firebase/firestore').Unsubscribe | null = null;
-    const STORAGE_KEY = 'travel_app_data_v1';
-
-    const loadTripsRealtime = async () => {
-      if (!user) {
-        setTrips([]);
-        return;
-      }
-      setIsLoading(true);
-
-      // 1. Fast Load from Cache (so user sees something)
-      const cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) {
+  // Safe Storage Helper
+  const safeSetItem = (key: string, value: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e: any) {
+      if (e.name === 'QuotaExceededError' || e.code === 22) {
+        console.warn("⚠️ LocalStorage Quota Exceeded. Clearing old cache...");
+        // Emergency cleanup: Clear everything except critical auth/settings if needed
+        // For now, just try to remove the heavy trips list and save empty or minimal
         try {
-          const parsed = JSON.parse(cached);
-          console.log("💾 Loaded from cache:", parsed.length);
-          setTrips(parsed);
-
-          // Persistence Logic: Load last used trip from cache
-          const lastTripId = localStorage.getItem('lastTripId');
-          if (lastTripId && parsed.find((t: Trip) => t.id === lastTripId)) {
-            setActiveTripId(lastTripId);
-          } else if (parsed.length > 0 && !activeTripId) {
-            setActiveTripId(parsed[Math.max(0, parsed.length - 1)].id);
-          }
-
-        } catch (e) { console.error("Cache parse error", e); }
+          localStorage.removeItem(key);
+          console.log("🧹 Cleared heavy key to make space");
+        } catch (err) { console.error("Failed to clear space", err); }
+      } else {
+        console.warn("LocalStorage Write Failed", e);
       }
+    }
+  };
 
-      // 2. Subscribe to Valid Truth from Server
-      try {
-        const { getFirestore, collection, query, where, onSnapshot, orderBy } = await import('firebase/firestore');
-        const db = (await import('./services/firebaseConfig')).db;
+  // 1. Load trips when user changes (Restored & Enhanced)
+  const loadUserTrips = useCallback(async () => {
+    if (!user) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Load from server (Hybrid: Firestore + Shared Refs)
+      const loadedTrips = await loadTrips(user.uid);
+      setTrips(loadedTrips);
 
-        const q = query(
-          collection(db, "users", user.uid, "trips"), // Use user subcollection as primary source for now
-          // If using root 'trips' collection, query needs: where("userId", "==", user.uid)
-          orderBy('updatedAt', 'desc')
-        );
+      // Update Cache Safely
+      safeSetItem('travel_app_data_v1', loadedTrips);
 
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          const freshTrips = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Trip[];
-
-          console.log("🔥 Firestore Realtime Update: ", freshTrips.length, " trips found.");
-          setTrips(freshTrips);
-          setIsLoading(false);
-
-          // Update Cache
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(freshTrips));
-        }, (err) => {
-          console.error("Firestore subscription error:", err);
-          setIsLoading(false);
-        });
-
-      } catch (error) {
-        console.error("Error setting up trips listener:", error);
-        setIsLoading(false);
+      // Persistence Logic: Load last used trip
+      const lastTripId = localStorage.getItem('lastTripId');
+      if (lastTripId && loadedTrips.find(t => t.id === lastTripId)) {
+        setActiveTripId(lastTripId);
+      } else if (loadedTrips.length > 0) {
+        setActiveTripId(loadedTrips[loadedTrips.length - 1].id);
       }
-    };
-
-    loadTripsRealtime();
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    } catch (err) {
+      console.error('Error loading trips:', err);
+      setError('שגיאה בטעינת הנתונים. אנא נסה שוב.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [user]);
 
-  // Keep loadUserTrips as a manual refresh fallback if needed (or remove if fully replaced)
-  const loadUserTrips = useCallback(async () => {
-    // Legacy load, kept/noop for now to satisfy dependencies
-    console.log("Manual refresh triggered");
-  }, []);
-
+  // Initial Load Effect
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && user) {
       loadUserTrips();
     }
-  }, [authLoading, loadUserTrips]);
+  }, [authLoading, user, loadUserTrips]);
 
   const activeTrip = trips.find(t => t.id === activeTripId) || trips[trips.length - 1] || null;
 
@@ -187,11 +157,17 @@ const AppContent: React.FC = () => {
       console.log("🔌 Subscribing to shared trip:", activeTrip.name);
       const unsubscribe = subscribeToSharedTrip(activeTrip.sharing.shareId, (updatedTrip) => {
         console.log("⚡ Real-time update received for:", updatedTrip.name);
-        setTrips(prev => prev.map(t => t.id === updatedTrip.id ? { ...updatedTrip, isShared: true, sharing: activeTrip.sharing } : t));
+        // Optimistically update the trip in the list
+        setTrips(prev => {
+          const updated = prev.map(t => t.id === updatedTrip.id ? { ...updatedTrip, isShared: true, sharing: activeTrip.sharing } : t);
+          // Sync to local storage quietly
+          safeSetItem('travel_app_data_v1', updated);
+          return updated;
+        });
       });
       return () => unsubscribe();
     }
-  }, [activeTrip?.id, activeTrip?.isShared, activeTrip?.sharing?.shareId, trips.length, processingTripId]); // Added trips.length as dependency to re-eval validity
+  }, [activeTrip?.id, activeTrip?.isShared, activeTrip?.sharing?.shareId, trips.length, processingTripId]);
 
 
 
@@ -251,8 +227,7 @@ const AppContent: React.FC = () => {
 
       // 3. Critical LocalStorage Cleanup (The Zombie Fix)
       // Use the CORRECT key 'travel_app_data_v1'
-      const STORAGE_KEY = 'travel_app_data_v1';
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newTripsList));
+      safeSetItem('travel_app_data_v1', newTripsList);
 
       // Cleanup specific trip cache if it exists (generic cleanup)
       localStorage.removeItem(`trip_${tripId}`);
@@ -266,8 +241,7 @@ const AppContent: React.FC = () => {
 
       if (isPermissionError || isNotFoundError) {
         console.log('🧹 Force cleaning zombie trip from local state despite server error');
-        const STORAGE_KEY = 'travel_app_data_v1';
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newTripsList));
+        safeSetItem('travel_app_data_v1', newTripsList);
         return;
       }
 

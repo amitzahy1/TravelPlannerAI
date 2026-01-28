@@ -13,7 +13,7 @@ import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR REMOVED: import { requestAccessToken } from '../services/googleAuthService';
 import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
-import { getCityColorClass } from '../utils/cityColors';
+import { getCityTheme } from '../utils/cityColors';
 
 // --- Types ---
 // Removed to types.ts
@@ -96,77 +96,33 @@ export const ItineraryView: React.FC<{
     // Generate context-aware day title based on events (Task 6)
     const generateDayTitle = (day: DayPlan, trip: Trip, dayIndex: number, totalDays: number): string => {
         const events = day.events;
-
-        // Priority 1: Flight Day
         const flightEvent = events.find(e => e.type === 'flight');
         if (flightEvent) {
-            // Check if it's the last flight (return flight)
             const isLastDay = dayIndex === totalDays - 1 || dayIndex === totalDays - 2;
-            if (isLastDay) {
-                return 'טיסה חזרה';
-            }
-            // Extract destination from flight title
+            if (isLastDay) return 'טיסה חזרה';
             const destMatch = flightEvent.title?.match(/טיסה ל(.+)/);
-            if (destMatch && destMatch[1]) {
-                return `טיסה ל${destMatch[1]}`;
-            }
-            return 'טיסה';
+            return destMatch && destMatch[1] ? `טיסה ל${destMatch[1]}` : 'טיסה';
         }
-
-        // Priority 2: Hotel Check-in Day
         const hotelCheckin = events.find(e => e.type === 'hotel_checkin');
         if (hotelCheckin) {
-            // Extract hotel name from "Check-in: Hotel Name"
             const hotelMatch = hotelCheckin.title?.match(/Check-in: (.+)/);
-            if (hotelMatch && hotelMatch[1]) {
-                return `מלון ${hotelMatch[1]}`;
-            }
-            return day.hasHotel ? `צ'ק-אין` : 'מלון';
+            return hotelMatch && hotelMatch[1] ? `מלון ${hotelMatch[1]}` : (day.hasHotel ? `צ'ק-אין` : 'מלון');
         }
+        // Use context as fallback
+        if (events.length === 0) return day.locationContext;
 
-        // Priority 3: Empty Day
-        if (events.length === 0) {
-            const location = trip.destinationEnglish || trip.destination.split('-')[0].trim();
-            // User requested ONLY city name for free days, no "Free day in..."
-            return location;
-        }
-
-        // Priority 4: Single Event
         if (events.length === 1) {
-            const event = events[0];
-            if (event.type === 'travel') return 'הסעה';
-            if (event.type === 'hotel_stay') return 'מלון';
+            if (events[0].type === 'travel') return 'הסעה';
             // Use the event title if it's descriptive
-            if (event.title && event.title.length < 30) {
-                return event.title;
-            }
+            return events[0].title.length < 30 ? events[0].title : events[0].title.substring(0, 30) + '...';
         }
-
-        // Priority 5: Multiple Events - Analyze dominant type
         const stats = {
             food: events.filter(e => e.type === 'food').length,
-            attractions: events.filter(e => e.type === 'attraction').length,
-            activities: events.filter(e => e.type === 'activity').length,
+            attractions: events.filter(e => e.type === 'attraction').length
         };
-
-        const location = trip.destinationEnglish || trip.destination.split('-')[0].trim();
-
-        if (stats.attractions >= 2) {
-            return `סיורים ב${location}`;
-        }
-        if (stats.food >= 2) {
-            return `אוכל ב${location}`;
-        }
-        if (events.length >= 3) {
-            return `יום פעילויות ב${location}`;
-        }
-
-        // Default: Location name BUT prioritize City if Hotel is detected
-        if (day.hasHotel && location) {
-            return location;
-        }
-
-        return location;
+        if (stats.attractions >= 2) return `סיורים ב${day.locationContext}`;
+        if (stats.food >= 2) return `אוכל ב${day.locationContext}`;
+        return day.locationContext;
     };
 
     useEffect(() => {
@@ -178,20 +134,18 @@ export const ItineraryView: React.FC<{
             endDate.setHours(12, 0, 0, 0);
 
             if (trip.dates) {
-                // Trip dates might be "DD/MM/YYYY - DD/MM/YYYY" OR "08 Aug 2026 - ..." OR ISO
                 const rangeParts = trip.dates.split(' - ').map(s => s.trim());
                 if (rangeParts.length === 2) {
                     const s = parseDateString(rangeParts[0]);
                     const e = parseDateString(rangeParts[1]);
-                    if (s && e) {
-                        startDate = s;
-                        endDate = e;
-                    }
+                    if (s && e) { startDate = s; endDate = e; }
                 }
             }
 
             const dayMap = new Map<string, DayPlan>();
             const loopDate = new Date(startDate);
+            // Default theme placeholder
+            const defaultTheme = getCityTheme('');
 
             while (loopDate <= endDate) {
                 const isoDate = `${loopDate.getFullYear()}-${(loopDate.getMonth() + 1).toString().padStart(2, '0')}-${loopDate.getDate().toString().padStart(2, '0')}`;
@@ -202,7 +156,8 @@ export const ItineraryView: React.FC<{
                     locationContext: '',
                     events: [],
                     stats: { food: 0, attr: 0, flight: 0, travel: 0, hotel: 0 },
-                    hasHotel: false
+                    hasHotel: false,
+                    theme: defaultTheme // Init with default
                 });
                 loopDate.setDate(loopDate.getDate() + 1);
             }
@@ -211,90 +166,34 @@ export const ItineraryView: React.FC<{
                 const d = parseDateString(dateStr);
                 if (!d) return;
                 const isoKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-
-                if (!dayMap.has(isoKey)) {
-                    // Try to generate days if out of range, or just skip
-                    return;
-                }
-                dayMap.get(isoKey)?.events.push(event);
+                if (dayMap.has(isoKey)) dayMap.get(isoKey)?.events.push(event);
             };
 
-            // --- Ingest Trip Structure ---
+            // --- Ingest Data ---
             trip.flights?.segments?.forEach(seg => {
                 addToDay(seg.date, {
-                    id: `flight-dep-${seg.flightNumber}`,
-                    type: 'flight',
-                    time: seg.departureTime,
-                    title: `טיסה ל${seg.toCity || seg.toCode || 'יעד'}`,
-                    subtitle: `המראה: ${seg.airline} ${seg.flightNumber}`,
-                    location: `${seg.fromCode} ➔ ${seg.toCode}`,
-                    icon: Plane,
-                    colorClass: 'text-blue-600',
-                    bgClass: 'bg-blue-50 border-blue-100'
+                    id: `flight-dep-${seg.flightNumber}`, type: 'flight', time: seg.departureTime,
+                    title: `טיסה ל${seg.toCity || seg.toCode || 'יעד'}`, subtitle: `${seg.airline} ${seg.flightNumber}`,
+                    location: `${seg.fromCode} ➔ ${seg.toCode}`, icon: Plane, colorClass: 'text-blue-600', bgClass: 'bg-blue-50'
                 });
             });
 
             trip.hotels?.forEach(hotel => {
-                const mapsUrl = hotel.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.name + " " + hotel.address)}`;
-
                 addToDay(hotel.checkInDate, {
-                    id: `hotel-in-${hotel.id}`,
-                    type: 'hotel_checkin',
-                    time: '14:00',
-                    title: `Check-in: ${hotel.name}`,
-                    location: hotel.address,
-                    icon: Hotel,
-                    colorClass: 'text-indigo-600',
-                    bgClass: 'bg-indigo-50 border-indigo-100',
-                    externalLink: mapsUrl
+                    id: `hotel-in-${hotel.id}`, type: 'hotel_checkin', time: '14:00',
+                    title: `Check-in: ${hotel.name}`, location: hotel.address, icon: Hotel, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50'
                 });
-
                 addToDay(hotel.checkOutDate, {
-                    id: `hotel-out-${hotel.id}`,
-                    type: 'hotel_checkout',
-                    time: '11:00',
-                    title: `Check-out: ${hotel.name}`,
-                    icon: Hotel,
-                    colorClass: 'text-slate-500',
-                    bgClass: 'bg-slate-50 border-slate-100',
-                    externalLink: mapsUrl
+                    id: `hotel-out-${hotel.id}`, type: 'hotel_checkout', time: '11:00',
+                    title: `Check-out: ${hotel.name}`, icon: Hotel, colorClass: 'text-slate-500', bgClass: 'bg-slate-50'
                 });
-
-                // Add Hotel Stays (Middle days)
-                const start = parseDateString(hotel.checkInDate);
-                const end = parseDateString(hotel.checkOutDate);
-
-                if (start && end) {
-                    const current = new Date(start);
-                    // Skip checkin day, skip checkout day for "Stay" events, but context logic handles it
-                    current.setDate(current.getDate() + 1);
-
-                    while (current < end) {
-                        const isoKey = `${current.getFullYear()}-${(current.getMonth() + 1).toString().padStart(2, '0')}-${current.getDate().toString().padStart(2, '0')}`;
-                        const plan = dayMap.get(isoKey);
-                        if (plan) {
-                            // Minimal "Hotel Stay" event if nothing else exists
-                            // plan.hasHotel = true; // Handled by 2nd pass
-                            // const stayId = `stay-${hotel.id}-${isoKey}`;
-                            // plan.events.unshift({ ... });
-                        }
-                        current.setDate(current.getDate() + 1);
-                    }
-                }
             });
 
             trip.restaurants?.forEach(cat => cat.restaurants.forEach(res => {
                 if (res.reservationDate) {
                     addToDay(res.reservationDate, {
-                        id: res.id,
-                        type: 'food',
-                        time: res.reservationTime || '20:00',
-                        title: res.name,
-                        subtitle: (res as any).categoryTitle || res.description,
-                        location: res.location,
-                        icon: Utensils,
-                        colorClass: 'text-orange-600',
-                        bgClass: 'bg-orange-50 border-orange-100'
+                        id: res.id, type: 'food', time: res.reservationTime || '20:00',
+                        title: res.name, subtitle: (res as any).categoryTitle, location: res.location, icon: Utensils, colorClass: 'text-orange-600', bgClass: 'bg-orange-50'
                     });
                 }
             }));
@@ -302,15 +201,8 @@ export const ItineraryView: React.FC<{
             trip.attractions?.forEach(cat => cat.attractions.forEach(attr => {
                 if (attr.scheduledDate) {
                     addToDay(attr.scheduledDate, {
-                        id: attr.id,
-                        type: 'attraction',
-                        time: attr.scheduledTime || '10:00',
-                        title: attr.name,
-                        price: attr.price,
-                        location: attr.location,
-                        icon: Ticket,
-                        colorClass: 'text-purple-600',
-                        bgClass: 'bg-purple-50 border-purple-100'
+                        id: attr.id, type: 'attraction', time: attr.scheduledTime || '10:00',
+                        title: attr.name, price: attr.price, location: attr.location, icon: Ticket, colorClass: 'text-purple-600', bgClass: 'bg-purple-50'
                     });
                 }
             }));
@@ -321,110 +213,62 @@ export const ItineraryView: React.FC<{
                     const time = timeMatch ? timeMatch[1] : '';
                     const text = timeMatch ? timeMatch[2] : act;
                     let type: TimelineEventType = 'activity';
-                    let icon = Sparkles;
-                    let color = 'text-emerald-600';
-                    let bg = 'bg-emerald-50 border-emerald-100';
+                    let icon = Sparkles; let color = 'text-emerald-600'; let bg = 'bg-emerald-50';
                     const textLower = text.toLowerCase();
-                    if (textLower.includes('טיסה') || textLower.includes('flight')) { type = 'flight'; icon = Plane; color = 'text-blue-600'; bg = 'bg-blue-50 border-blue-100'; }
-                    else if (textLower.includes('נסיעה') || textLower.includes('driver') || textLower.includes('הסעה') || textLower.includes('transfer')) { type = 'travel'; icon = Car; color = 'text-gray-600'; bg = 'bg-gray-50 border-gray-100'; }
+                    if (textLower.includes('טיסה')) { type = 'flight'; icon = Plane; color = 'text-blue-600'; bg = 'bg-blue-50'; }
+                    else if (textLower.includes('הסעה')) { type = 'travel'; icon = Car; color = 'text-gray-600'; bg = 'bg-gray-50'; }
                     addToDay(day.date, {
-                        id: `manual-${day.id}-${idx}`,
-                        type, time, title: text, icon, colorClass: color, bgClass: bg,
-                        isManual: true,
-                        dayId: day.id,
-                        activityIndex: idx
+                        id: `manual-${day.id}-${idx}`, type, time, title: text, icon, colorClass: color, bgClass: bg, isManual: true, dayId: day.id, activityIndex: idx
                     });
                 });
             });
 
-            externalEvents.forEach(ev => {
-                // @ts-ignore
-                if (ev.date) addToDay(ev.date, ev);
-            });
-
             const sortedTimeline = Array.from(dayMap.values()).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
-            // --- SECOND PASS: State Machine for Sticky Context ---
+            // --- SECOND PASS: Context & Theme ---
             let currentCity = trip.destinationEnglish || trip.destination.split(' - ')[0] || '';
             let currentHotelName = '';
 
-            // Helper to clean city name (remove "Hotel" etc if needed, or extract from address)
-            const extractCity = (address: string) => {
-                if (!address) return currentCity;
-                const parts = address.split(',');
-                // Simple heuristic: 2nd to last part usually city, or last part
-                if (parts.length >= 2) return parts[parts.length - 2].trim();
-                return parts[0].trim();
-            };
-
             sortedTimeline.forEach((day, index) => {
-                // 1. Sort events for this day
                 day.events.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
 
-                // 2. State Transition Logic based on Today's Events
-
-                // Flights change city *after* arrival, but for the day title, if it's Arrival, we are in new city? 
-                // Usually Flight takes whole day.
                 const flight = day.events.find(e => e.type === 'flight');
                 if (flight) {
                     const toCity = flight.title.replace('טיסה ל', '').trim();
                     if (toCity) currentCity = toCity;
-                    currentHotelName = ''; // Reset hotel on flight day usually
+                    currentHotelName = '';
                 }
 
-                // Hotel Check-in sets new hotel
                 const checkIn = day.events.find(e => e.type === 'hotel_checkin');
                 if (checkIn) {
-                    // Update city from hotel address
-                    if (checkIn.location) {
-                        // Try to extract city from address if possible, otherwise keep current
-                        // currentCity = extractCity(checkIn.location); 
-                    }
                     const nameMatch = checkIn.title.match(/Check-in: (.+)/);
                     if (nameMatch) currentHotelName = nameMatch[1];
                 }
 
-                // Hotel Check-out clears hotel
                 const checkOut = day.events.find(e => e.type === 'hotel_checkout');
-                if (checkOut) {
-                    currentHotelName = '';
+                if (checkOut) currentHotelName = '';
+
+                // Set Context
+                day.locationContext = currentCity;
+                day.hasHotel = !!currentHotelName;
+
+                // Title Generation
+                const autoTitle = generateDayTitle(day, trip, index, sortedTimeline.length);
+                if (day.events.length === 0 && currentHotelName) {
+                    day.locationContext = `${currentCity} (${currentHotelName})`;
+                } else if (autoTitle && autoTitle !== 'Start') {
+                    day.locationContext = autoTitle;
                 }
 
-                // 3. Apply Context to Day
-                day.locationContext = currentCity; // "Phuket"
-                day.hasHotel = !!currentHotelName; // For UI badge
-
-                // 4. Generate Title if empty
-                // If we have manual events, generateDayTitle (existing logic) handles it well?
-                // Or we overwrite it.
-                // Let's use existing logic but pass the *State* context as fallback
-
-                // Existing logic re-used but enhanced
-                if (day.events.length === 0) {
-                    // Empty Day
-                    if (currentHotelName) {
-                        day.locationContext = `${currentCity} (${currentHotelName})`;
-                    } else {
-                        day.locationContext = `${currentCity}`;
-                    }
-                } else {
-                    // Verify if existing title logic is good. 
-                    // It uses generateDayTitle() below. 
-                    // We'll update the 'locationContext' property which IS the title in the UI.
-                    day.locationContext = generateDayTitle(day, trip, index, sortedTimeline.length);
-
-                    // Fallback: If generateDayTitle returns generic "Start", replace with currentCity
-                    if (day.locationContext === 'Start' || !day.locationContext) {
-                        day.locationContext = currentCity;
-                    }
-                }
+                // *** CRITICAL: Apply Theme based on City Context ***
+                day.theme = getCityTheme(currentCity);
 
                 day.stats = {
                     food: day.events.filter(e => e.type === 'food').length,
                     attr: day.events.filter(e => e.type === 'attraction').length,
                     flight: day.events.filter(e => e.type === 'flight').length,
                     travel: day.events.filter(e => e.type === 'travel').length,
-                    hotel: day.events.filter(e => e.type === 'hotel_checkin' || e.type === 'hotel_stay').length
+                    hotel: day.events.filter(e => e.type === 'hotel_checkin').length
                 };
             });
 
@@ -432,7 +276,7 @@ export const ItineraryView: React.FC<{
         };
 
         generateTimeline();
-    }, [trip, externalEvents]);
+    }, [trip]);
 
     // CALENDAR SYNC REMOVED - Feature disabled to eliminate "Unverified App" warning
     const handleSyncCalendar = async () => {
@@ -768,7 +612,6 @@ export const ItineraryView: React.FC<{
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                                 {timeline.map((day, index) => {
-                                    const [y, m, d] = day.dateIso.split('-');
                                     const dayNumber = index + 1;
                                     const isLastDay = index === timeline.length - 1;
 
@@ -776,61 +619,53 @@ export const ItineraryView: React.FC<{
                                         <div
                                             key={day.dateIso}
                                             onClick={() => setSelectedDayIso(day.dateIso)}
-                                            className={`bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[220px] relative`}
+                                            className={`bg-white border rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[220px] relative
+                                                ${day.theme.border} hover:border-opacity-100 border-opacity-60`}
                                         >
-                                            {/* Flow Arrow (Desktop Only) */}
-                                            {!isLastDay && (
-                                                <div className="hidden xl:block absolute -left-5 top-1/2 -translate-y-1/2 z-20 text-slate-300">
-                                                    <div className="bg-slate-100/50 p-1 rounded-full">
-                                                        <ChevronLeft className="w-5 h-5 stroke-[2.5] text-slate-400" />
-                                                    </div>
-                                                </div>
-                                            )}
+                                            {!isLastDay && <div className="hidden xl:block absolute -left-5 top-1/2 -translate-y-1/2 z-20 text-slate-300"><div className="bg-slate-50/50 p-1 rounded-full"><ChevronLeft className="w-5 h-5 stroke-[2.5] text-slate-300" /></div></div>}
 
-                                            {/* Day Counter Badge */}
-                                            <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-md z-30 transform group-hover:scale-110 transition-transform">
-                                                DAY {dayNumber.toString().padStart(2, '0')}
-                                            </div>
-                                            {/* Header Compact */}
-                                            <div className={`p-3 border-b border-white/50 flex items-center justify-between transition-colors ${getCityColorClass(day.locationContext)}`}>
+                                            <div className="absolute -top-2 -right-2 bg-slate-800 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-md z-30 opacity-0 group-hover:opacity-100 transition-opacity">DAY {dayNumber.toString().padStart(2, '0')}</div>
+
+                                            {/* --- COLORFUL HEADER --- */}
+                                            <div className={`p-3 border-b flex items-center justify-between transition-colors ${day.theme.bg} ${day.theme.border}`}>
                                                 <div className="flex items-center gap-3">
-                                                    <div className="bg-white/80 backdrop-blur-sm border border-slate-200 text-slate-700 min-w-[48px] h-10 px-2 rounded-xl flex flex-col items-center justify-center shadow-sm">
+                                                    {/* Date Badge: Colorful Background */}
+                                                    <div className={`min-w-[48px] h-10 px-2 rounded-xl flex flex-col items-center justify-center shadow-sm border ${day.theme.badge} ${day.theme.border}`}>
                                                         <span className="text-xs font-black leading-none whitespace-nowrap">{day.displayDate}</span>
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 truncate">{day.displayDayOfWeek}</div>
-                                                        <h3 className="font-black text-slate-800 text-sm leading-tight line-clamp-2">{day.locationContext || 'יום בטיול'}</h3>
+                                                        {/* Day Name: Colored Text */}
+                                                        <div className={`text-[10px] font-bold uppercase tracking-widest leading-none mb-1 truncate ${day.theme.textLight}`}>
+                                                            {day.displayDayOfWeek}
+                                                        </div>
+                                                        {/* Title: Darker Colored Text */}
+                                                        <h3 className={`font-black text-sm leading-tight line-clamp-2 ${day.theme.text}`}>
+                                                            {day.locationContext || 'יום בטיול'}
+                                                        </h3>
                                                     </div>
                                                 </div>
                                                 {day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout') && (
-                                                    <div className="bg-indigo-50 text-indigo-500 p-1.5 rounded-lg"><Hotel className="w-3.5 h-3.5" /></div>
+                                                    <div className={`p-1.5 rounded-lg bg-white/60 ${day.theme.icon}`}><Hotel className="w-3.5 h-3.5" /></div>
                                                 )}
                                             </div>
 
-                                            {/* Content Preview */}
+                                            {/* Events Preview */}
                                             <div className="p-3 flex-grow overflow-hidden relative bg-white">
                                                 {day.events.length > 0 ? (
                                                     <div className="space-y-1.5 relative z-10">
                                                         {day.events.slice(0, 3).map((event, idx) => (
                                                             <div key={idx} className="flex items-center gap-2 w-full">
-                                                                <span className="text-[10px] font-mono font-bold opacity-50 min-w-[32px]">{event.time || "--:--"}</span>
+                                                                <span className="text-[10px] font-mono font-bold opacity-40 min-w-[32px]">{event.time || "--:--"}</span>
                                                                 <div className={`p-1 rounded-full ${event.bgClass} flex-shrink-0`}><event.icon className={`w-3 h-3 ${event.colorClass}`} /></div>
                                                                 <span className="text-xs font-bold text-slate-700 truncate leading-none flex-1 opacity-90">{event.title}</span>
                                                             </div>
                                                         ))}
-                                                        {day.events.length > 3 && (
-                                                            <div className="text-[10px] font-bold text-slate-400 pt-1 px-8">
-                                                                + עוד {day.events.length - 3} פריטים
-                                                            </div>
-                                                        )}
+                                                        {day.events.length > 3 && <div className="text-[10px] font-bold text-slate-400 pt-1 px-8">+ עוד {day.events.length - 3} פריטים</div>}
                                                     </div>
                                                 ) : (
-                                                    <div className="h-full">
-                                                        {/* CONTEXTUAL INTELLIGENCE: SMART PLANNER REMOVED AS PER USER REQUEST */}
-                                                        <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2">
-                                                            <Moon className="w-5 h-5 mb-1" />
-                                                            <span className="text-[10px] font-bold">יום חופשי</span>
-                                                        </div>
+                                                    <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2">
+                                                        <Moon className="w-5 h-5 mb-1" />
+                                                        <span className="text-[10px] font-bold">יום חופשי</span>
                                                     </div>
                                                 )}
                                                 <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
@@ -850,76 +685,42 @@ export const ItineraryView: React.FC<{
             {/* DAY DETAIL MODAL - PORTAL FIXED POSITIONING */}
             {
                 selectedDayIso && activeDay && createPortal(
-                    <div
-                        className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm animate-fade-in flex items-center justify-center p-4 content-center"
-                        onClick={(e) => { if (e.target === e.currentTarget) setSelectedDayIso(null); }}
-                    >
+                    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 content-center" onClick={() => setSelectedDayIso(null)}>
                         <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] animate-scale-in" onClick={e => e.stopPropagation()}>
-                            {/* Modal Header */}
-                            <div className="bg-white border-b border-slate-100 p-5 flex items-center justify-between flex-shrink-0">
+                            {/* Modal Header with Theme Colors */}
+                            <div className={`border-b p-5 flex items-center justify-between flex-shrink-0 ${activeDay.theme.bg} ${activeDay.theme.border}`}>
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-blue-50 text-blue-600 min-w-[56px] h-12 px-2 rounded-xl flex flex-col items-center justify-center font-bold text-sm border border-blue-100 shadow-inner">
+                                    <div className={`min-w-[56px] h-12 px-2 rounded-xl flex flex-col items-center justify-center font-bold text-sm border shadow-sm ${activeDay.theme.badge} ${activeDay.theme.border}`}>
                                         {activeDay.displayDate}
                                     </div>
                                     <div>
-                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{activeDay.displayDayOfWeek}</div>
-                                        <h2 className="text-lg font-black text-slate-800">{activeDay.locationContext || 'לו"ז יומי'}</h2>
+                                        <div className={`text-xs font-bold uppercase tracking-wider ${activeDay.theme.textLight}`}>{activeDay.displayDayOfWeek}</div>
+                                        <h2 className={`text-lg font-black ${activeDay.theme.text}`}>{activeDay.locationContext || 'לו"ז יומי'}</h2>
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => { const [y, m, d] = activeDay.dateIso.split('-'); setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` }) }} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"><Plus className="w-5 h-5" /></button>
-                                    <button onClick={() => setSelectedDayIso(null)} className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:bg-slate-100 transition-colors"><X className="w-5 h-5" /></button>
+                                    <button onClick={() => setSelectedDayIso(null)} className="p-2 bg-white/50 hover:bg-white rounded-lg transition-colors"><X className={`w-5 h-5 ${activeDay.theme.icon}`} /></button>
                                 </div>
                             </div>
 
                             {/* Events List */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50 scrollbar-hide">
-                                {activeDay.events.length > 0 ? (
-                                    activeDay.events.map((event, i) => (
-                                        <div key={`${event.id}-${i}`} className="group flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all relative">
-                                            <div className="w-12 flex-shrink-0 pt-1 text-center">
-                                                <span className="text-xs font-bold text-slate-400 font-mono tracking-tight block">{event.time || '--:--'}</span>
-                                            </div>
-                                            <div className={`mt-0.5 w-1 h-full absolute right-12 top-0 rounded-full opacity-20 ${event.bgClass.replace('bg-', 'bg-')}`}></div>
-
-                                            <div className="flex-1 min-w-0 pr-2 border-r-2 border-slate-50 mr-1">
-                                                <div className="flex justify-between items-start">
-                                                    <h3 className="font-bold text-slate-800 text-sm truncate">{event.title}</h3>
-                                                    <div className={`p-1.5 rounded-lg ${event.bgClass} flex-shrink-0`}><event.icon className={`w-3.5 h-3.5 ${event.colorClass}`} /></div>
-                                                </div>
-                                                <div className="flex flex-wrap items-center gap-2 mt-1">
-                                                    {event.subtitle && <span className="text-[10px] text-slate-500 truncate max-w-[150px]">{event.subtitle}</span>}
-                                                    {event.location && (
-                                                        <a
-                                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event.title} ${event.location}`)}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="flex items-center text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded hover:bg-slate-100 hover:text-blue-500 transition-colors"
-                                                        >
-                                                            <MapPin className="w-2.5 h-2.5 ml-0.5" /> {event.location}
-                                                        </a>
-                                                    )}
-                                                    {event.isExternal && <span className="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 rounded font-bold">G-Cal</span>}
-                                                </div>
-                                            </div>
-
-                                            {/* Quick Delete */}
-                                            {event.isManual && (
-                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteActivity(event.dayId!, event.activityIndex!) }} className="absolute bottom-2 left-2 text-slate-200 hover:text-red-500 transition-colors p-1"><Trash2 className="w-3.5 h-3.5" /></button>
-                                            )}
+                                {activeDay.events.map((event, i) => (
+                                    <div key={i} className="flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm relative group overflow-hidden">
+                                        <div className="w-12 flex-shrink-0 pt-1 text-center">
+                                            <span className="text-xs font-bold text-slate-400 font-mono">{event.time}</span>
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="text-center py-10 text-slate-300 text-xs font-bold">אין פעילויות</div>
-                                )}
-
-                                <button
-                                    onClick={() => { const [y, m, d] = activeDay.dateIso.split('-'); setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` }) }}
-                                    className="w-full py-3 mt-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs font-bold hover:border-blue-300 hover:text-blue-500 transition-all flex items-center justify-center gap-1"
-                                >
-                                    <Plus className="w-3.5 h-3.5" /> הוספה מהירה
-                                </button>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start">
+                                                <h3 className="font-bold text-slate-800 text-sm">{event.title}</h3>
+                                                <div className={`p-1 rounded-full ${event.bgClass} flex-shrink-0`}><event.icon className={`w-3 h-3 ${event.colorClass}`} /></div>
+                                            </div>
+                                            {event.subtitle && <p className="text-xs text-slate-500 mt-0.5">{event.subtitle}</p>}
+                                            {event.isManual && <button onClick={() => handleDeleteActivity(event.dayId!, event.activityIndex!)} className="text-red-400 text-xs mt-2 opacity-0 group-hover:opacity-100 transition-opacity">מחק</button>}
+                                        </div>
+                                    </div>
+                                ))}
+                                <button onClick={() => { const [y, m, d] = activeDay.dateIso.split('-'); setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` }) }} className="w-full py-3 mt-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs font-bold hover:border-blue-300 hover:text-blue-500 transition-all flex items-center justify-center gap-1"><Plus className="w-3.5 h-3.5" /> הוספה מהירה</button>
                             </div>
                         </div>
                     </div>,

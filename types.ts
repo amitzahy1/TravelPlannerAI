@@ -328,6 +328,7 @@ export interface DayPlan {
   events: TimelineEvent[];
   stats: { food: number, attr: number, flight: number, travel: number, hotel: number };
   hasHotel: boolean;
+  theme: import('./utils/cityColors').CityTheme;
 }
 
 // --- NEW: Staged Trip Data (Omni-Import System) ---
