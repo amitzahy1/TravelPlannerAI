@@ -756,10 +756,15 @@ export const ItineraryView: React.FC<{
                                                 </div>
                                             </div>
 
-                                            {/* Plane Widget (Top Left Corner) */}
+                                            {/* Dynamic Context Widget (Top Left Corner) */}
                                             <div className="absolute top-3 left-3 z-20">
                                                 <div className="bg-white/20 backdrop-blur-md border border-white/30 p-2 rounded-full shadow-lg transform group-hover:rotate-12 transition-transform duration-500">
-                                                    <Plane className="w-5 h-5 text-white" />
+                                                    {(() => {
+                                                        const t = (day.locationContext || '').toLowerCase();
+                                                        if (t.includes('טיסה') || t.includes('flight') || day.events.some(e => e.type === 'flight')) return <Plane className="w-5 h-5 text-white" />;
+                                                        if (day.hasHotel || t.includes('מלון') || t.includes('hotel')) return <Hotel className="w-5 h-5 text-white" />;
+                                                        return <MapPin className="w-5 h-5 text-white" />;
+                                                    })()}
                                                 </div>
                                             </div>
 

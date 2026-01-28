@@ -45,44 +45,42 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
         </div>
 
         {/* 2. The Flight Timeline (Center - Main Visual) */}
-        <div className="md:col-span-6 flex items-center justify-between gap-4 w-full">
+        <div className="md:col-span-6 flex items-center justify-between gap-2 md:gap-8 w-full">
 
           {/* Departure */}
-          <div className="text-right min-w-[80px]">
+          <div className="text-right min-w-[90px] md:min-w-[110px]">
             <div className="text-3xl font-black text-slate-800 leading-none">{segment.fromCode || 'ORG'}</div>
-            <div className="text-xs text-slate-500 font-medium truncate max-w-[100px] mt-1 pr-1">{segment.fromCity}</div>
-            <div className="text-sm font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.departureTime).split(',')[1]}</div>
+            <div className="text-xs text-slate-500 font-medium truncate max-w-[100px] mt-1 pr-1" title={segment.fromCity}>{segment.fromCity}</div>
+            <div className="text-lg font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.departureTime).split(',')[1]}</div>
             <div className="text-[10px] text-slate-400 font-bold uppercase">{formatDateTime(segment.departureTime).split(',')[0]}</div>
           </div>
 
           {/* Visual Path */}
-          <div className="flex-1 flex flex-col items-center px-4 relative">
-            <div className="text-xs font-bold text-slate-400 mb-1 flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {durationDisplay}
+          <div className="flex-1 flex flex-col items-center px-2 md:px-6 relative min-w-[80px]">
+            <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-slate-100 shadow-sm z-10 whitespace-nowrap">
+              <Clock className="w-3 h-3 text-slate-300" /> {durationDisplay}
             </div>
             <div className="w-full flex items-center relative h-6">
               {/* Line */}
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full h-0.5 bg-slate-200"></div>
               </div>
-              {/* Plane Icon */}
+              {/* Plane Icon (RTL Aware: Pointing Left) */}
               <div className="absolute left-1/2 -translate-x-1/2 bg-white px-2 z-10">
-                <Plane className="w-5 h-5 text-sky-500 transform rotate-180" /> {/* Rotate for RTL layout visual logic if needed, but standard is LTR plane ✈️. If RTL page, probably should point left? Let's check. lucide-plane points NE. Rotate 180 makes it SW. For TLV->JFK (Right to Left in Hebrew UI), plane should fly Right to Left? Let's assume standard 'forward' is fine or rotate 90/-90. Let's stick to standard icon for now or rotate-90 if vertical. Actually, let's keep it simple: plane icon. */}
-                {/* Correction: In Hebrew UI, flow is Right to Left. So TLV (Right) -> JFK (Left). Plane should point Left. Defaults usually point Right. transform -scale-x-100 flips it horizontally. */}
                 <Plane className="w-5 h-5 text-sky-500 transform -scale-x-100" />
               </div>
               {/* Dots at ends */}
-              <div className="absolute right-0 w-2 h-2 bg-slate-300 rounded-full"></div>
-              <div className="absolute left-0 w-2 h-2 bg-blue-500 rounded-full ring-4 ring-blue-50"></div>
+              <div className="absolute right-0 w-2.5 h-2.5 bg-slate-300 rounded-full ring-2 ring-white"></div>
+              <div className="absolute left-0 w-2.5 h-2.5 bg-blue-500 rounded-full ring-4 ring-blue-50"></div>
             </div>
             <div className="text-[10px] text-slate-400 mt-1 font-mono tracking-widest uppercase">DIRECT</div>
           </div>
 
           {/* Arrival */}
-          <div className="text-left min-w-[80px]">
+          <div className="text-left min-w-[90px] md:min-w-[110px]">
             <div className="text-3xl font-black text-slate-800 leading-none">{segment.toCode || 'DES'}</div>
-            <div className="text-xs text-slate-500 font-medium truncate max-w-[100px] mt-1 pl-1">{segment.toCity}</div>
-            <div className="text-sm font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.arrivalTime).split(',')[1]}</div>
+            <div className="text-xs text-slate-500 font-medium truncate max-w-[100px] mt-1 pl-1" title={segment.toCity}>{segment.toCity}</div>
+            <div className="text-lg font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.arrivalTime).split(',')[1]}</div>
             <div className="text-[10px] text-slate-400 font-bold uppercase">{formatDateTime(segment.arrivalTime).split(',')[0]}</div>
           </div>
 
