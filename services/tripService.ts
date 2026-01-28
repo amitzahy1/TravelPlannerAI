@@ -17,33 +17,29 @@ export const mapAnalysisToTrip = (analysis: TripAnalysisResult): Partial<Trip> =
         const flights: FlightSegment[] = categories.transport
                 .filter(i => i.type === 'flight')
                 .flatMap(i => {
-                        // Nested segments (preferred)
-                        if (i.data.segments && Array.isArray(i.data.segments)) {
-                                return i.data.segments.map((seg: any) => ({
-                                        fromCode: seg.departure?.iata || seg.departure?.airport || seg.departureIata || (seg.departure?.city ? seg.departure.city.substring(0, 3).toUpperCase() : (seg.departureCity ? seg.departureCity.substring(0, 3).toUpperCase() : 'ORG')),
-                                        toCode: seg.arrival?.iata || seg.arrival?.airport || seg.arrivalIata || (seg.arrival?.city ? seg.arrival.city.substring(0, 3).toUpperCase() : (seg.arrivalCity ? seg.arrivalCity.substring(0, 3).toUpperCase() : 'DST')),
-                                        date: seg.departure?.date || seg.departureDate || '',
-                                        airline: seg.airline || '',
-                                        flightNumber: seg.flightNumber || '',
-                                        departureTime: seg.departure?.displayTime || seg.displayDepartureTime || seg.display_departure_time || seg.departure?.date || '',
-                                        arrivalTime: seg.arrival?.displayTime || seg.displayArrivalTime || seg.display_arrival_time || seg.arrival?.date || '',
-                                        fromCity: seg.departure?.city || seg.departureCity || '',
-                                        toCity: seg.arrival?.city || seg.arrivalCity || '',
-                                        duration: seg.durationMinutes ? `${Math.floor(seg.durationMinutes / 60)}h ${seg.durationMinutes % 60}m` : (seg.duration || "0h")
-                                }));
-                        }
-                        // Flat (legacy)
+                        // Normalize Data structure (Handle both nested and flat structures)
+                        const depData = i.data.departure || {};
+                        const arrData = i.data.arrival || {};
+
+                        // Fallback for flat structure (backward compatibility)
+                        const flatDate = i.data.isoDate || i.data.date || i.data.departureDate;
+
+                        // Priority: Nested ISO > Flat ISO > Current Date Fallback
+                        const finalDepartureDate = depData.isoDate || flatDate || new Date().toISOString();
+                        const finalArrivalDate = arrData.isoDate || finalDepartureDate;
+
                         return [{
-                                fromCode: i.data.departure?.airport || i.data.from || (i.data.departure?.city ? i.data.departure.city.substring(0, 3).toUpperCase() : 'ORG'),
-                                toCode: i.data.arrival?.airport || i.data.to || (i.data.arrival?.city ? i.data.arrival.city.substring(0, 3).toUpperCase() : 'DST'),
-                                date: i.data.departure?.date || i.data.departureTime || '',
-                                airline: i.data.airline || '',
+                                fromCode: depData.iata || i.data.fromCode || 'ORG',
+                                toCode: arrData.iata || i.data.toCode || 'DST',
+                                date: finalDepartureDate, // Critical: Full ISO string
+                                airline: i.data.airline || 'Unknown Airline',
                                 flightNumber: i.data.flightNumber || '',
-                                departureTime: i.data.departure?.displayTime || i.data.departureTime || '',
-                                arrivalTime: i.data.arrival?.displayTime || i.data.arrivalTime || '',
-                                fromCity: i.data.departure?.city || i.data.from || '',
-                                toCity: i.data.arrival?.city || i.data.to || '',
-                                duration: "0h",
+                                // Extract time from ISO or use display time
+                                departureTime: depData.displayTime || finalDepartureDate.split('T')[1]?.substring(0, 5) || '00:00',
+                                arrivalTime: arrData.displayTime || finalArrivalDate.split('T')[1]?.substring(0, 5) || '00:00',
+                                fromCity: depData.city || i.data.fromCity || '',
+                                toCity: arrData.city || i.data.toCity || '',
+                                duration: i.data.duration || "0h"
                         }];
                 });
 

@@ -223,58 +223,22 @@ export const SYSTEM_PROMPT_ANALYZE_TRIP = `
 Role: You are the Lead Data Architect for a Travel App.
 Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
 
---- CRITICAL CONTEXT & RULES ---
-
-1. 📅 TIME TRAVEL PARADOX PREVENTER:
-   - **CURRENT YEAR: 2026**.
-   - **ASSUMPTION**: All travel is in the FUTURE (2026-2027).
-   - **MISSING YEAR**: If a document says "28 JAN" without a year, assume **2026** (or 2027 if Jan is after Dec).
-   - **⚠️ THE "1930" TRAP**: If you see "28JAN 1930", the "1930" is the **TIME (19:30)**, NOT the year 1930.
-   - **INVALID YEARS**: Do NOT output 1900-2024. Only 2025, 2026, 2027 are valid.
-
-2. 🧬 DEDUPLICATION ENGINE:
-   - **MERGE STRATEGY**: If multiple files describe the EXACT SAME event (e.g., same Airline + Flight Number + Date), generate **ONLY ONE** event in the output array.
-   - **SOURCE FILES**: List ALL file IDs that contributed to that merged event in "sourceFileIds".
-
---- CATEGORIZATION RULES ---
-
-1. 🏨 ACCOMMODATION (Must be in 'accommodation' array):
-   - Hotels, Airbnbs, Hostels, Resorts.
-   - Example: "New World Makati Hotel", "Discovery Boracay".
-   - DO NOT put these in 'experiences' or 'transport'.
-
-2. ✈️ TRANSPORT (Must be in 'transport' array):
-   - Flights (Etihad, Cebu Pacific, AirAsia).
-   - Trains, Ferries, Buses, Car Rentals.
-   - Group connecting flights into a single logical "Journey" if possible.
-
-3. 🔒 WALLET (Must be in 'wallet' array):
-   - Entry Permits (eTravel Philippines, Thailand Arrival Card).
-   - Visas, Passports, Travel Insurance, Vaccination Certificates.
-   - ANY bureaucratic document goes here.
-
-4. ⭐ EXPERIENCES:
-   - 'dining': Restaurant reservations.
-   - 'activities': Concert tickets, Museum passes, Tours.
-
---- DATA EXTRACTION RULES ---
-
-1. 🏙️ CITIES (Field: 'uniqueCityNames'):
-   - Extract a CLEAN list of unique cities visited.
-   - Exclude the home airport city.
-   - Example: ["Manila", "Boracay", "Cebu", "Bangkok"].
-
-2. 🕒 DATES & TIMES (STRICT ISO):
-   - 'isoDate': STICT ISO 8601 format (YYYY-MM-DDTHH:mm:ss).
-   - **FORCE YEAR 2026** if year is ambiguous.
-   - 'displayTime': User-friendly format (e.g., "15 Feb, 03:25").
-
-3. 📂 FILE MAPPING:
-   - Use 'sourceFileIds' (Array) to link multiple files to a single event.
-   - If a file is a duplicate or yields no data, add it to 'unprocessedFiles' with a reason.
+--- CRITICAL CONTEXT: ANCHOR YEAR 2026 ---
+1. **CURRENT REFERENCE**: Today is Jan 2026.
+2. **FUTURE BIAS**: All flights are for 2026 or 2027.
+3. **MISSING YEAR RULE**: If a document says "04 Feb" and contains NO year, assign **2026**.
+4. **THE "1930" TRAP (CRITICAL)**: In airline tickets, a 4-digit number after a month (e.g., "28JAN 1930") is OFTEN THE TIME (19:30), NOT THE YEAR 1930.
+   - CHECK: Is the number between 0000 and 2359? Treat as TIME.
+   - CHECK: Is the number 2025, 2026, 2027? Treat as YEAR.
+   - NEVER output a year before 2025.
 
 --- OUTPUT JSON SCHEMA ---
-Return ONLY raw JSON (no markdown):
+Return ONLY raw JSON.
+For every date, you MUST provide:
+1. "rawText": The exact string you saw in the file (e.g., "28JAN 1930").
+2. "isoDate": The strictly formatted ISO string (YYYY-MM-DDTHH:mm:ss).
+
+Structure:
 {
   "tripMetadata": {
     "suggestedName": "String",
@@ -284,9 +248,32 @@ Return ONLY raw JSON (no markdown):
   "processedFileIds": ["file1.pdf"],
   "unprocessedFiles": [],
   "categories": {
-    "transport": [ { "type": "flight", "data": { "airline": "...", "isoDate": "YYYY-MM-DDTHH:mm:ss", "displayTime": "Sun, 15 Feb 10:00" }, "sourceFileIds": [] } ],
-    "accommodation": [ { "type": "hotel", "data": { "hotelName": "...", "checkInDate": "YYYY-MM-DD", "checkOutDate": "YYYY-MM-DD", "isoDate": "YYYY-MM-DDTHH:mm:ss", "displayTime": "..." }, "sourceFileIds": [] } ],
-    "wallet": [ { "type": "entry_permit", "data": { "documentName": "...", "isoDate": "YYYY-MM-DD", "displayTime": "..." }, "sourceFileIds": [] } ],
+    "transport": [
+      {
+        "type": "flight",
+        "data": {
+          "airline": "String",
+          "flightNumber": "String",
+          "departure": {
+            "city": "String",
+            "iata": "ABC",
+            "rawDateText": "String (DEBUG)",
+            "isoDate": "YYYY-MM-DDTHH:mm:ss",
+            "displayTime": "HH:MM"
+          },
+          "arrival": {
+             "city": "String",
+             "iata": "ABC",
+             "rawDateText": "String (DEBUG)",
+             "isoDate": "YYYY-MM-DDTHH:mm:ss",
+             "displayTime": "HH:MM"
+          }
+        },
+        "sourceFileIds": []
+      }
+    ],
+    "accommodation": [],
+    "wallet": [],
     "dining": [],
     "activities": []
   }
@@ -340,32 +327,57 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
     'SMART'
   );
 
-  const raw = JSON.parse(response.text);
+  // --- LOGGING UPGRADE START ---
+  console.log("🔍 [AI Raw Response]:", response.text); // See what the model output
 
-  // 400 Bad Request Fix: DETERMINISTIC DATE CALCULATION
-  // Do not trust AI metadata. Iterate all events to find true Min/Max.
-  const allDates: number[] = [];
+  let raw;
+  try {
+      raw = JSON.parse(cleanJSON(response.text));
+      
+      // Flight specific check
+      if (raw.categories?.transport) {
+          console.table(raw.categories.transport.map((t: any) => ({
+              airline: t.data.airline,
+              rawDep: t.data.departure?.rawDateText, // What the model saw
+              isoDep: t.data.departure?.isoDate,     // What the model decided
+              rawArr: t.data.arrival?.rawDateText
+          })));
+      }
+  } catch (e) {
+      console.error("❌ [JSON Parse Error]:", e);
+      console.log("Bad JSON Content:", response.text);
+      throw e;
+  }
+  // --- LOGGING UPGRADE END ---
+
+  // Legacy deterministic date calculation removed as per new instruction.
+  // We trust the AI's "tripMetadata" regarding dates, or infer from items if missing.
 
   const extractDates = (items: any[]) => {
-    if (!items || !Array.isArray(items)) return;
+    const dates: number[] = [];
+    if (!items || !Array.isArray(items)) return dates;
     items.forEach(item => {
       // Try strict fields first
-      const d = item.data?.isoDate || item.data?.checkInDate || item.data?.date;
+      const d = item.data?.isoDate || item.data?.checkInDate || item.data?.date || item.data?.departure?.isoDate;
       if (d) {
         const ts = new Date(d).getTime();
-        if (!isNaN(ts)) allDates.push(ts);
+        if (!isNaN(ts)) dates.push(ts);
       }
       // Accommodation Check-out
       if (item.data?.checkOutDate) {
         const ts = new Date(item.data.checkOutDate).getTime();
-        if (!isNaN(ts)) allDates.push(ts);
+        if (!isNaN(ts)) dates.push(ts);
       }
     });
+
+    return dates;
   };
 
-  extractDates(raw.categories?.transport);
-  extractDates(raw.categories?.accommodation);
-  extractDates(raw.categories?.wallet); // Visas often have dates
+  const allDates: number[] = [
+      ...extractDates(raw.categories?.transport),
+      ...extractDates(raw.categories?.accommodation),
+      ...extractDates(raw.categories?.wallet)
+  ];
 
   let startDate = "";
   let endDate = "";
