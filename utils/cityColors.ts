@@ -7,73 +7,94 @@ export interface CityTheme {
         icon: string;
 }
 
-// Google Style: Neutral texts, pastel backgrounds, color accents only on badges/icons
+// Google Style: Neutral texts, pastel backgrounds, color accents on badges/icons
+// Badge Text set to slate-900 (Black) per user request
 const THEMES: CityTheme[] = [
-        // 0. Beach / Tropical (Orange/Amber)
+        // 0. Beach / Tropical (Orange) - Distinct
         {
-                bg: 'bg-orange-50', // צבע שטוח ובהיר מאוד במקום גרדיינט
-                border: 'border-orange-100',
-                text: 'text-slate-800', // Google Style: טקסט כהה וקריא
+                bg: 'bg-orange-50',
+                border: 'border-orange-200',
+                text: 'text-slate-800',
                 textLight: 'text-slate-500',
-                badge: 'bg-orange-100 text-orange-700',
+                badge: 'bg-orange-100 text-slate-900', // Fixed to Black
                 icon: 'text-orange-500'
         },
-        // 1. Urban / Corporate (Blue/Indigo)
+        // 1. Urban (Blue) - Distinct
         {
                 bg: 'bg-blue-50',
-                border: 'border-blue-100',
+                border: 'border-blue-200',
                 text: 'text-slate-800',
                 textLight: 'text-slate-500',
-                badge: 'bg-blue-100 text-blue-700',
+                badge: 'bg-blue-100 text-slate-900',
                 icon: 'text-blue-500'
         },
-        // 2. Nature (Emerald/Teal)
+        // 2. Nature (Emerald) - Distinct
         {
                 bg: 'bg-emerald-50',
-                border: 'border-emerald-100',
+                border: 'border-emerald-200',
                 text: 'text-slate-800',
                 textLight: 'text-slate-500',
-                badge: 'bg-emerald-100 text-emerald-700',
+                badge: 'bg-emerald-100 text-slate-900',
                 icon: 'text-emerald-500'
         },
-        // 3. Romantic / Soft (Rose/Pink)
+        // 3. Romantic (Rose) - Distinct
         {
                 bg: 'bg-rose-50',
-                border: 'border-rose-100',
+                border: 'border-rose-200',
                 text: 'text-slate-800',
                 textLight: 'text-slate-500',
-                badge: 'bg-rose-100 text-rose-700',
+                badge: 'bg-rose-100 text-slate-900',
                 icon: 'text-rose-500'
         },
-        // 4. Nightlife (Violet/Purple)
+        // 4. Nightlife (Violet) - Distinct
         {
                 bg: 'bg-violet-50',
-                border: 'border-violet-100',
+                border: 'border-violet-200',
                 text: 'text-slate-800',
                 textLight: 'text-slate-500',
-                badge: 'bg-violet-100 text-violet-700',
+                badge: 'bg-violet-100 text-slate-900',
                 icon: 'text-violet-500'
         },
-        // 5. Coastal / Fresh (Cyan/Sky)
+        // 5. Coastal (Sky/Cyan) - Boosted Intensity for visibility (Cebu fix)
         {
-                bg: 'bg-cyan-50',
-                border: 'border-cyan-100',
+                bg: 'bg-sky-100', // Changed from 50 to 100 for visibility
+                border: 'border-sky-300',
                 text: 'text-slate-800',
                 textLight: 'text-slate-500',
-                badge: 'bg-cyan-100 text-cyan-700',
-                icon: 'text-cyan-600'
+                badge: 'bg-sky-200 text-slate-900',
+                icon: 'text-sky-600'
+        },
+        // 6. Historic (Amber) - New
+        {
+                bg: 'bg-amber-50',
+                border: 'border-amber-200',
+                text: 'text-slate-800',
+                textLight: 'text-slate-500',
+                badge: 'bg-amber-100 text-slate-900',
+                icon: 'text-amber-600'
+        },
+        // 7. Modern (Fuchsia) - New
+        {
+                bg: 'bg-fuchsia-50',
+                border: 'border-fuchsia-200',
+                text: 'text-slate-800',
+                textLight: 'text-slate-500',
+                badge: 'bg-fuchsia-100 text-slate-900',
+                icon: 'text-fuchsia-600'
         }
 ];
 
 export const getCityTheme = (cityName: string): CityTheme => {
         if (!cityName) {
+                // Return a default theme that is NOT white, preventing "blank" look
+                // Using Slate theme as default fallback
                 return {
-                        bg: 'bg-white',
-                        border: 'border-slate-100',
+                        bg: 'bg-slate-50',
+                        border: 'border-slate-200',
                         text: 'text-slate-800',
-                        textLight: 'text-slate-400',
-                        badge: 'bg-slate-100 text-slate-600',
-                        icon: 'text-slate-400'
+                        textLight: 'text-slate-500',
+                        badge: 'bg-slate-200 text-slate-900',
+                        icon: 'text-slate-500'
                 };
         }
 
