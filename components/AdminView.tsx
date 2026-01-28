@@ -791,39 +791,109 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             </button>
                                         </div>
                                         <div className="space-y-4">
-                                            {(activeTrip?.flights?.segments || []).map((seg, idx) => (
-                                                <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group hover:shadow-md transition-shadow">
-                                                    <button onClick={() => handleDeleteFlightSegment(idx)} className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
-                                                    <div className="flex gap-3 items-center mb-3 pr-2">
-                                                        <input className="w-14 text-center font-black bg-white rounded-lg border border-slate-200 py-1.5 uppercase text-sm focus:border-sky-500 outline-none" value={seg.fromCode} onChange={(e) => handleUpdateFlightSegment(idx, 'fromCode', e.target.value)} placeholder="TLV" />
-                                                        <Plane className="w-4 h-4 text-slate-300 rotate-90 shrink-0" />
-                                                        <input className="w-14 text-center font-black bg-white rounded-lg border border-slate-200 py-1.5 uppercase text-sm focus:border-sky-500 outline-none" value={seg.toCode} onChange={(e) => handleUpdateFlightSegment(idx, 'toCode', e.target.value)} placeholder="JFK" />
-                                                        <input className="flex-1 font-medium bg-transparent border-b border-transparent focus:border-slate-300 outline-none text-sm px-2 text-left rtl:text-right" value={seg.flightNumber} onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)} placeholder="מספר טיסה" />
+                                            <div className="space-y-6">
+                                                {(activeTrip?.flights?.segments || []).map((seg, idx) => {
+                                                    // Helper for inline date splitting
+                                                    const currentDate = seg.date ? seg.date.split('T')[0] : '';
+
+                                                    return (
+                                                        <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 relative group hover:shadow-lg transition-all">
+                                                            <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button
+                                                                    onClick={() => handleDeleteFlightSegment(idx)}
+                                                                    className="text-red-400 hover:text-red-600 bg-white p-2 rounded-full shadow-sm"
+                                                                    title="מחק טיסה"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+                                                                {/* Airline & Number */}
+                                                                <div className="md:col-span-3 space-y-1">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">חברת תעופה / מס' טיסה</label>
+                                                                    <div className="flex gap-2">
+                                                                        <input
+                                                                            value={seg.airline || ''}
+                                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'airline', e.target.value)}
+                                                                            className="w-full p-2 bg-white rounded-lg border border-slate-200 focus:border-blue-500 outline-none font-bold text-sm"
+                                                                            placeholder="Airline"
+                                                                        />
+                                                                        <input
+                                                                            value={seg.flightNumber || ''}
+                                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)}
+                                                                            className="w-24 p-2 bg-white rounded-lg border border-slate-200 focus:border-blue-500 outline-none font-mono text-sm text-center uppercase"
+                                                                            placeholder="LY001"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Route */}
+                                                                <div className="md:col-span-3 space-y-1">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">נתיב (קוד שדה תעופה)</label>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <input
+                                                                            value={seg.fromCode || ''}
+                                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'fromCode', e.target.value)}
+                                                                            className="w-full p-2 bg-white rounded-lg border border-slate-200 focus:border-blue-500 outline-none text-center font-black uppercase tracking-wider text-sm"
+                                                                            placeholder="TLV"
+                                                                        />
+                                                                        <Plane className="w-4 h-4 text-slate-300 transform rotate-90" />
+                                                                        <input
+                                                                            value={seg.toCode || ''}
+                                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'toCode', e.target.value)}
+                                                                            className="w-full p-2 bg-white rounded-lg border border-slate-200 focus:border-blue-500 outline-none text-center font-black uppercase tracking-wider text-sm"
+                                                                            placeholder="JFK"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Date & Time */}
+                                                                <div className="md:col-span-4 space-y-1">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">תאריך ושעת המראה</label>
+                                                                    <div className="flex gap-2">
+                                                                        <input
+                                                                            type="date"
+                                                                            value={currentDate}
+                                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'date', e.target.value)}
+                                                                            className="w-full p-2 bg-white rounded-lg border border-slate-200 focus:border-blue-500 outline-none text-sm font-bold"
+                                                                        />
+                                                                        <input
+                                                                            type="time"
+                                                                            value={seg.departureTime || ''}
+                                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'departureTime', e.target.value)}
+                                                                            className="w-32 p-2 bg-white rounded-lg border border-slate-200 focus:border-blue-500 outline-none font-mono text-sm"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Arrival Time */}
+                                                                <div className="md:col-span-2 space-y-1">
+                                                                    <label className="text-[10px] font-bold text-slate-400 uppercase">שעת נחיתה</label>
+                                                                    <input
+                                                                        type="time"
+                                                                        value={seg.arrivalTime || ''}
+                                                                        onChange={(e) => handleUpdateFlightSegment(idx, 'arrivalTime', e.target.value)}
+                                                                        className="w-full p-2 bg-white rounded-lg border border-slate-200 focus:border-blue-500 outline-none font-mono text-sm"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                                {(!activeTrip?.flights?.segments?.length) && (
+                                                    <div className="text-center py-12 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100">
+                                                        <Plane className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                                                        <div className="text-slate-400 text-sm font-medium">אין טיסות ברשימה</div>
+                                                        <button
+                                                            onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', fromCode: '', toCode: '', fromCity: '', toCity: '', date: '', departureTime: '', arrivalTime: '', airline: '', duration: '' }] } })}
+                                                            className="mt-4 text-sm font-bold text-blue-500 hover:text-blue-600 hover:underline"
+                                                        >
+                                                            צור טיסה ראשונה
+                                                        </button>
                                                     </div>
-                                                    <div className="flex gap-2 text-xs">
-                                                        <DateInput className="bg-white border border-slate-200 rounded px-2 py-1.5 flex-1" value={seg.date ? seg.date.split('T')[0] : ''} onChange={(iso) => handleUpdateFlightSegment(idx, 'date', iso)} placeholder="תאריך" />
-                                                        <input
-                                                            className="w-16 bg-white border border-slate-200 rounded px-2 py-1.5 text-center direction-ltr font-mono text-sm"
-                                                            value={seg.departureTime?.includes('T') ? seg.departureTime.split('T')[1].substring(0, 5) : (seg.departureTime?.match(/\d{1,2}:\d{2}/)?.[0] || seg.departureTime)}
-                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'departureTime', e.target.value)}
-                                                            placeholder="14:00"
-                                                        />
-                                                        <span className="self-center text-slate-300">-</span>
-                                                        <input
-                                                            className="w-16 bg-white border border-slate-200 rounded px-2 py-1.5 text-center direction-ltr font-mono text-sm"
-                                                            value={seg.arrivalTime?.includes('T') ? seg.arrivalTime.split('T')[1].substring(0, 5) : (seg.arrivalTime?.match(/\d{1,2}:\d{2}/)?.[0] || seg.arrivalTime)}
-                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'arrivalTime', e.target.value)}
-                                                            placeholder="19:00"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {(!activeTrip?.flights?.segments?.length) && (
-                                                <div className="text-center py-12 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100">
-                                                    <Plane className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                                                    <div className="text-slate-400 text-sm font-medium">אין טיסות ברשימה</div>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
