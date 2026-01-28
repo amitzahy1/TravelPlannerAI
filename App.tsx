@@ -173,6 +173,16 @@ const AppContent: React.FC = () => {
     const newTrips = trips.filter(t => t.id !== tripId);
     setTrips(newTrips);
 
+    // ZOMBIE FIX: Immediately sync to LocalStorage to prevent persistence of deleted item
+    try {
+      localStorage.setItem('travel_app_data_v1', JSON.stringify(newTrips));
+      if (activeTripId === tripId) {
+        localStorage.removeItem('lastTripId');
+      }
+    } catch (e) {
+      console.warn('Failed to sync LocalStorage during delete', e);
+    }
+
     // If active trip is deleted, switch
     if (activeTripId === tripId) {
       setActiveTripId(newTrips.length > 0 ? newTrips[0].id : '');
