@@ -210,18 +210,18 @@ export const joinSharedTrip = async (
     const tripRef = doc(db, "shared-trips", originalTripId);
 
     // 2. Add User to Collaborators
-    // The rule (request.resource.data.shareId == resource.data.shareId) 
-    // will pass if we don't change shareId (it's unchanged in the merge)
-    // PROVIDED the doc already has a shareId.
+    // We explicitly provide shareId to fulfill strict rules on new joins
+    // AND to "heal" legacy trips during the join process.
     try {
       await updateDoc(tripRef, {
         collaborators: arrayUnion(user.uid),
-        // Just in case, we also explicitly provide it to fulfill strict rules on new joins
-        shareId: shareId
+        shareId: shareId,
+        updatedAt: Timestamp.now()
       });
     } catch (err: any) {
+      console.error("Join updateDoc failed:", err);
       if (err.code === 'permission-denied') {
-        throw new Error("אין הרשאה להצטרף. ייתכן שהבעלים ביטל את השיתוף או שמדובר בטיול ישן שיש לשתף מחדש.");
+        throw new Error("אין הרשאה להצטרף. ייתכן שהבעלים ביטל את השיתוף או שמדובר בקישור שיתוף ישן מאוד.");
       }
       throw err;
     }
