@@ -98,20 +98,33 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({ value, o
                                                 onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
                                                 className="p-2 hover:bg-white rounded-xl shadow-sm transition-all"
                                         >
-                                                <ChevronLeft className="w-5 h-5 text-slate-400" />
+                                                <ChevronRight className="w-5 h-5 text-slate-400" />
                                         </button>
 
                                         <div className="flex items-center gap-2" dir="rtl">
-                                                <span className="font-black text-slate-700 text-lg">
-                                                        {viewDate.toLocaleDateString('he-IL', { month: 'long' })}
-                                                </span>
+                                                {/* Month Select */}
+                                                <div className="relative">
+                                                        <select
+                                                                value={viewDate.getMonth()}
+                                                                onChange={(e) => setViewDate(new Date(viewDate.getFullYear(), parseInt(e.target.value), 1))}
+                                                                className="appearance-none bg-transparent font-black text-slate-800 cursor-pointer focus:outline-none hover:text-indigo-600 px-2 text-lg text-right"
+                                                        >
+                                                                {Array.from({ length: 12 }, (_, i) => i).map(m => (
+                                                                        <option key={m} value={m}>
+                                                                                {new Date(2000, m, 1).toLocaleDateString('he-IL', { month: 'long' })}
+                                                                        </option>
+                                                                ))}
+                                                        </select>
+                                                </div>
+
+                                                {/* Year Select */}
                                                 <div className="relative">
                                                         <select
                                                                 value={viewDate.getFullYear()}
                                                                 onChange={(e) => setViewDate(new Date(parseInt(e.target.value), viewDate.getMonth(), 1))}
-                                                                className="appearance-none bg-transparent font-bold text-slate-500 cursor-pointer focus:outline-none hover:text-indigo-600 pr-4 pl-2 text-lg"
+                                                                className="appearance-none bg-transparent font-bold text-slate-500 cursor-pointer focus:outline-none hover:text-indigo-600 px-2 text-lg"
                                                         >
-                                                                {Array.from({ length: 35 }, (_, i) => 2000 + i).map(y => (
+                                                                {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map(y => (
                                                                         <option key={y} value={y}>{y}</option>
                                                                 ))}
                                                         </select>
@@ -122,7 +135,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({ value, o
                                                 onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
                                                 className="p-2 hover:bg-white rounded-xl shadow-sm transition-all"
                                         >
-                                                <ChevronRight className="w-5 h-5 text-slate-400" />
+                                                <ChevronLeft className="w-5 h-5 text-slate-400" />
                                         </button>
                                 </div>
 

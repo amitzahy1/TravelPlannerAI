@@ -44,86 +44,67 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
   };
 
   const renderSegment = (seg: FlightSegment, index: number) => (
-    <div key={index} className="border-b border-dashed border-gray-300 last:border-0 pb-4 mb-4 last:pb-0 last:mb-0 relative group">
-      <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => setEditingSegment({ segment: seg, index })} className="p-1.5 text-slate-400 hover:text-blue-600 bg-white border border-slate-200 rounded-lg shadow-sm"><Edit className="w-4 h-4" /></button>
-      </div>
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-3">
-          <div className="text-lg text-gray-400 font-mono font-bold">
-            {seg.date ? new Date(seg.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).replace(/ /g, '') : ''}
-          </div>
-          <div className="font-black text-lg text-blue-900 flex items-center gap-3">
-            <img src={`https://pics.avs.io/200/200/${(seg.flightNumber?.match(/^[A-Z0-9]{2}/i)?.[0] || seg.airline.substr(0, 2)).toUpperCase()}.png`} alt={seg.airline} onError={(e) => e.currentTarget.style.display = 'none'} className="w-12 h-12 rounded-full object-cover shadow-sm border border-slate-100" />
-            {seg.airline}
-          </div>
-          <span className="text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded font-mono tracking-wider font-bold">{seg.flightNumber}</span>
-        </div>
-        <div className="text-left flex items-center gap-2">
-          {seg.baggage && (
-            <div className="text-xs bg-slate-50 text-slate-500 px-2 py-1 rounded flex items-center gap-1 font-bold border border-slate-100">
-              <Briefcase className="w-3 h-3" />
-              {seg.baggage}
-            </div>
-          )}
-        </div>
-      </div>
+    <div key={index} className="border-b border-gray-100 last:border-0 py-4 hover:bg-slate-50 transition-colors px-4 -mx-4 relative group">
+      <button onClick={() => setEditingSegment({ segment: seg, index })} className="absolute top-4 left-4 text-slate-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Edit className="w-4 h-4" /></button>
 
-      <div className="flex items-center justify-between mb-3 px-2">
-        <div className="flex-1">
-          <div className="text-4xl font-black text-gray-800 leading-none tracking-tight">{seg.fromCode || (seg.fromCity ? seg.fromCity.substring(0, 3).toUpperCase() : 'ORG')}</div>
-          <div className="text-sm text-gray-500 mt-1 font-medium">{seg.fromCity}</div>
-          <div className="mt-3 text-left">
-            <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-              {seg.departureTime ? new Date(seg.departureTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).replace(/ /g, '') : ''}
-            </div>
-            <div className="text-3xl font-black text-blue-900 leading-none mt-1" dir="ltr">
+      <div className="flex flex-col md:flex-row items-center gap-6 w-full">
+
+        {/* 1. Airline Info */}
+        <div className="flex items-center gap-3 w-full md:w-1/4">
+          <img src={`https://pics.avs.io/200/200/${(seg.flightNumber?.match(/^[A-Z0-9]{2}/i)?.[0] || seg.airline.substring(0, 2)).toUpperCase()}.png`} alt={seg.airline} onError={(e) => e.currentTarget.style.display = 'none'} className="w-8 h-8 rounded-full object-cover border border-slate-100" />
+          <div className="flex flex-col text-left">
+            <span className="text-sm font-bold text-slate-800">{seg.airline}</span>
+            <span className="text-xs text-slate-400 font-mono">{seg.flightNumber}</span>
+          </div>
+        </div>
+
+        {/* 2. Times & Duration */}
+        <div className="flex-1 flex items-center justify-center gap-6 w-full md:w-auto">
+          {/* Dep */}
+          <div className="text-right">
+            <div className="text-lg font-black text-slate-800 leading-none">
               {seg.departureTime?.includes('T') ? seg.departureTime.split('T')[1].substring(0, 5) : (seg.departureTime?.match(/\d{1,2}:\d{2}/)?.[0] || '00:00')}
             </div>
-          </div>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center px-4">
-          <div className="text-sm text-gray-500 font-bold bg-white px-3 relative top-3 z-10">
-            {calculateDuration(seg.departureTime, seg.arrivalTime) || seg.duration || '0h'}
-          </div>
-          <div className="w-full h-px bg-gray-300 relative"></div>
-          <Plane className="w-6 h-6 text-blue-500 transform rotate-90 bg-white z-10 p-1 mt-[-12px]" />
-        </div>
-
-        <div className="flex-1 text-left">
-          <div className="text-4xl font-black text-gray-800 leading-none tracking-tight">{seg.toCode || (seg.toCity ? seg.toCity.substring(0, 3).toUpperCase() : 'DST')}</div>
-          <div className="text-sm text-gray-500 mt-1 font-medium">{seg.toCity}</div>
-          <div className="mt-3 text-left">
-            <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-              {seg.arrivalTime ? new Date(seg.arrivalTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).replace(/ /g, '') : ''}
+            <div className="text-xs text-slate-400 font-bold uppercase mt-1">
+              {seg.fromCode || 'ORG'}
             </div>
-            <div className="text-3xl font-black text-blue-900 leading-none mt-1" dir="ltr">
+          </div>
+
+          {/* Duration Graph */}
+          <div className="flex flex-col items-center w-32">
+            <div className="text-xs font-bold text-slate-500 mb-1">
+              {calculateDuration(seg.departureTime, seg.arrivalTime) || seg.duration || '0h 00m'}
+            </div>
+            <div className="w-full h-[2px] bg-slate-200 relative">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-1">
+                <Plane className="w-3 h-3 text-slate-300 transform rotate-90" />
+              </div>
+            </div>
+          </div>
+
+          {/* Arr */}
+          <div className="text-left">
+            <div className="text-lg font-black text-slate-800 leading-none">
               {seg.arrivalTime?.includes('T') ? seg.arrivalTime.split('T')[1].substring(0, 5) : (seg.arrivalTime?.match(/\d{1,2}:\d{2}/)?.[0] || '00:00')}
             </div>
+            <div className="text-xs text-slate-400 font-bold uppercase mt-1">
+              {seg.toCode || 'DST'}
+            </div>
           </div>
         </div>
-      </div>
 
-      {
-        (seg.terminal || seg.gate) && (
-          <div className="flex gap-3 bg-gray-50 p-2 rounded-lg border border-gray-100 text-xs w-fit">
-            {seg.terminal && (
-              <div className="flex flex-col">
-                <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider">טרמינל</span>
-                <span className="font-mono font-bold text-gray-700">{seg.terminal}</span>
-              </div>
-            )}
-            {seg.gate && (
-              <div className="flex flex-col border-r border-gray-200 pr-3 mr-3">
-                <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider">שער</span>
-                <span className="font-mono font-bold text-gray-700">{seg.gate}</span>
-              </div>
-            )}
-          </div>
-        )
-      }
-    </div >
+        {/* 3. Date & Badge */}
+        <div className="w-full md:w-1/6 text-right flex flex-col items-end">
+          <span className="text-xs font-bold text-slate-600">
+            {seg.date ? new Date(seg.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : ''}
+          </span>
+          {seg.baggage && (
+            <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded mt-1">{seg.baggage}</span>
+          )}
+        </div>
+
+      </div>
+    </div>
   );
 
   return (
