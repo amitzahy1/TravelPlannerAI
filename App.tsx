@@ -110,6 +110,7 @@ const AppContent: React.FC = () => {
     const loadTrips = async () => {
       if (!user) {
         setTrips([]);
+        setIsLoading(false); // Fix 1: Stop loading if no user
         return;
       }
 
@@ -119,6 +120,7 @@ const AppContent: React.FC = () => {
         if (cached) {
           setTrips(JSON.parse(cached));
           console.log("💾 Loaded lightweight trips from cache");
+          setIsLoading(false); // Fix 2: Stop loading immediately if cache exists
         }
       } catch (e) {
         console.warn("Cache corrupted, clearing");
@@ -145,6 +147,7 @@ const AppContent: React.FC = () => {
             // Smart merge if needed, but for now simple replacement works best for deletes
             return freshTrips;
           });
+          setIsLoading(false); // Fix 3: Stop loading after server update
 
           // 3. Save to Cache (COMPRESSED!)
           try {
@@ -162,6 +165,7 @@ const AppContent: React.FC = () => {
 
       } catch (error) {
         console.error("Error setting up trips listener:", error);
+        setIsLoading(false); // Final safety net
       }
     };
 
