@@ -149,12 +149,8 @@ export const generateWithFallback = async (
       // Remove rigid responseSchema to prevent 400 validation errors
       delete generationConfig.responseSchema;
 
-      // Thinking Mode Injection for Flash Fallbacks in Smart Tasks
-      if ((intent === 'SMART' || intent === 'ANALYZE') && modelId.includes('flash')) {
-        console.log("⚡ Injecting Thinking Mode for Flash model");
-        // @ts-ignore - Experimental Feature
-        generationConfig.thinking_level = "medium";
-      }
+      // Thinking Mode Injection: REMOVED.
+      // Causes 400 Bad Request on standard Flash/Pro models.
 
       const model = googleAI.getGenerativeModel({
         model: modelId,
@@ -162,13 +158,29 @@ export const generateWithFallback = async (
       });
 
       // SDK Adapter: Ensure contents are in correct format
-      let adaptedContents = contents;
-      // If passing history with 'role' and 'parts', it's already close, but ensure 'parts' is array
-      if (Array.isArray(contents) && contents.length > 0 && contents[0].role) {
-        adaptedContents = contents.map(c => ({
-          role: c.role,
-          parts: Array.isArray(c.parts) ? c.parts : [{ text: c.content || '' }]
-        }));
+      // API requires: { role: string, parts: { text: string }[] }[]
+      let adaptedContents = [];
+
+      if (typeof contents === 'string') {
+        adaptedContents = [{ role: 'user', parts: [{ text: contents }] }];
+      } else if (Array.isArray(contents)) {
+        if (contents.length === 0) adaptedContents = [{ role: 'user', parts: [{ text: '' }] }];
+        // Case 1: Array of strings ["prompt"]
+        else if (typeof contents[0] === 'string') {
+          adaptedContents = [{ role: 'user', parts: contents.map(t => ({ text: t })) }];
+        }
+        // Case 2: Array of parts without role [{ text: '...' }]
+        else if (contents[0].text || contents[0].inlineData) {
+          adaptedContents = [{ role: 'user', parts: contents }];
+        }
+        // Case 3: Proper Content objects [{ role: 'user', parts: [...] }]
+        else if (contents[0].role && contents[0].parts) {
+          adaptedContents = contents;
+        }
+        // Fallback
+        else {
+          adaptedContents = [{ role: 'user', parts: [{ text: JSON.stringify(contents) }] }];
+        }
       }
 
       const result = await model.generateContent({ contents: adaptedContents });
@@ -231,9 +243,11 @@ Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
    - Exclude the home airport city.
    - Example: ["Manila", "Boracay", "Cebu", "Bangkok"].
 
-2. 🕒 DATES & TIMES:
-   - 'date': ISO 8601 format (e.g., "2026-02-15T03:25:00") for DB.
-   - 'displayTime': User-friendly format (e.g., "15 Feb, 03:25"). USE THIS FORMAT EXACTLY.
+2. 🕒 DATES & TIMES (CRITICAL):
+   - 'startDate': The EARLIEST date found in any flight departure or hotel check-in.
+   - 'endDate': The LATEST date found in any flight return or hotel check-out.
+   - Format: "YYYY-MM-DD" (ISO 8601).
+   - Check all files to ensure the entire range is covered.
 
 3. 📂 FILE MAPPING:
    - Use 'sourceFileIds' (Array) to link multiple files to a single event.
@@ -243,16 +257,17 @@ Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
 Return ONLY raw JSON (no markdown):
 {
   "tripMetadata": {
-    "suggestedName": "String",
-    "suggestedDates": "YYYY-MM-DD - YYYY-MM-DD",
+    "suggestedName": "String (e.g., 'Japan - Cherry Blossom')",
+    "startDate": "YYYY-MM-DD",
+    "endDate": "YYYY-MM-DD",
     "mainDestination": "String (Country/Region)",
     "uniqueCityNames": ["City1", "City2"]
   },
   "processedFileIds": ["file1.pdf", "file2.pdf"],
   "unprocessedFiles": [{ "fileName": "x.pdf", "reason": "Duplicate" }],
   "categories": {
-    "transport": [ { "type": "flight", "data": { "airline": "...", "displayTime": "..." }, "sourceFileIds": [...] } ],
-    "accommodation": [ { "type": "hotel", "data": { "hotelName": "...", "checkInDate": "...", "displayTime": "..." }, "sourceFileIds": [...] } ],
+    "transport": [ { "type": "flight", "data": { "airline": "...", "displayTime": "Sun, 15 Feb 10:00" }, "sourceFileIds": [...] } ],
+    "accommodation": [ { "type": "hotel", "data": { "hotelName": "...", "checkInDate": "YYYY-MM-DD", "displayTime": "..." }, "sourceFileIds": [...] } ],
     "wallet": [ { "type": "entry_permit", "data": { "documentName": "...", "displayTime": "..." }, "sourceFileIds": [...] } ],
     "dining": [],
     "activities": []
@@ -309,13 +324,17 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
 
   const raw = JSON.parse(response.text);
 
-  // Basic date parsing logic
-  let startDate = "";
-  let endDate = "";
-  if (raw.tripMetadata?.suggestedDates) {
+  // Basic date parsing logic (Updated for Schema v2)
+  let startDate = raw.tripMetadata?.startDate || "";
+  let endDate = raw.tripMetadata?.endDate || "";
+
+  // Fallback for legacy generic date string
+  if ((!startDate || !endDate) && raw.tripMetadata?.suggestedDates) {
     const parts = raw.tripMetadata.suggestedDates.split('-');
-    startDate = parts[0]?.trim();
-    endDate = parts[1]?.trim();
+    if (parts.length >= 2) {
+      startDate = parts[0]?.trim();
+      endDate = parts[1]?.trim();
+    }
   }
 
   return {
