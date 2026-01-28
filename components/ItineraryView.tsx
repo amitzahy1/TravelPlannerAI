@@ -47,6 +47,7 @@ export const ItineraryView: React.FC<{
     const [timeline, setTimeline] = useState<DayPlan[]>([]);
     const [selectedDayIso, setSelectedDayIso] = useState<string | null>(null);
     const [quickAddModal, setQuickAddModal] = useState<{ isOpen: boolean, targetDate?: string }>({ isOpen: false });
+    const [activeWidget, setActiveWidget] = useState<'flights' | 'hotels' | 'attractions' | 'restaurants' | null>(null);
 
     // Title Generation Logic
     const generateDayTitle = (day: DayPlan, trip: Trip, dayIndex: number, totalDays: number): string => {
@@ -92,6 +93,22 @@ export const ItineraryView: React.FC<{
                     if (s && e) { startDate = s; endDate = e; }
                 }
             }
+
+            // --- Pre-calculate Hotel Spans ---
+            const hotelSpans = new Map<string, string>(); // DateISO -> HotelName
+            trip.hotels?.forEach(hotel => {
+                const start = parseDateString(hotel.checkInDate);
+                const end = parseDateString(hotel.checkOutDate);
+                if (start && end) {
+                    let d = new Date(start);
+                    // Mark check-in day through check-out day (exclusive of checkout usually, but let's include for context)
+                    while (d < end) {
+                        const iso = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+                        hotelSpans.set(iso, hotel.name);
+                        d.setDate(d.getDate() + 1);
+                    }
+                }
+            });
 
             const dayMap = new Map<string, DayPlan>();
             const loopDate = new Date(startDate);
@@ -179,15 +196,18 @@ export const ItineraryView: React.FC<{
 
             const sortedTimeline = Array.from(dayMap.values()).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
-            // --- SECOND PASS: Context & Theme (THE FIX) ---
-            // 1. Initialize with trip main destination to avoid "White/Empty" start
+            // --- SECOND PASS: Context & Theme ---
             let currentCity = trip.destinationEnglish || trip.destination || 'Start';
             let currentHotelName = '';
 
             sortedTimeline.forEach((day, index) => {
                 day.events.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
 
-                // Update context based on specific events
+                // 1. Check if this day is within a hotel span (Fix for "Empty" intermediate days)
+                const hotelStaying = hotelSpans.get(day.dateIso);
+                if (hotelStaying) currentHotelName = hotelStaying;
+
+                // 2. Update context based on specific events (Override if new event happens)
                 const flight = day.events.find(e => e.type === 'flight');
                 if (flight) {
                     const toCity = flight.title.replace('טיסה ל', '').trim();
@@ -202,20 +222,24 @@ export const ItineraryView: React.FC<{
                 }
 
                 const checkOut = day.events.find(e => e.type === 'hotel_checkout');
-                if (checkOut) currentHotelName = '';
+                if (checkOut) {
+                    // On checkout day, we are leaving, so clear for *future* context, 
+                    // but usually we want to show we were there in the morning.
+                    // For now, let's say checkout clears it immediately for clarity.
+                    currentHotelName = '';
+                }
 
                 // Apply persistent context
                 day.locationContext = currentCity;
-                day.hasHotel = !!currentHotelName;
+                day.hasHotel = !!currentHotelName || !!hotelStaying;
 
                 // Ensure theme is never empty/white. 
-                // getCityTheme returns a color based on the string.
                 day.theme = getCityTheme(currentCity);
 
                 // Title Logic
                 const autoTitle = generateDayTitle(day, trip, index, sortedTimeline.length);
-                if (day.events.length === 0 && currentHotelName) {
-                    day.locationContext = `${currentCity}`;
+                if (day.events.length === 0 && (currentHotelName || hotelStaying)) {
+                    day.locationContext = `${currentHotelName || hotelStaying}`;
                 } else if (autoTitle && autoTitle !== 'Start') {
                     day.locationContext = autoTitle;
                 }
@@ -288,25 +312,25 @@ export const ItineraryView: React.FC<{
                     {/* STATS WIDGETS (Interactive & Large) */}
                     <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2 max-w-[70%]">
                         {tripStats.flights > 0 && (
-                            <button onClick={() => onSwitchTab && onSwitchTab('flights')} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg">
+                            <button onClick={() => setActiveWidget('flights')} className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[60px] justify-center">
                                 <Plane className="w-4 h-4 text-blue-300 transform -rotate-45" />
                                 <span className="text-sm drop-shadow-md">{tripStats.flights}</span>
                             </button>
                         )}
                         {tripStats.hotels > 0 && (
-                            <button onClick={() => onSwitchTab && onSwitchTab('hotels')} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg">
+                            <button onClick={() => setActiveWidget('hotels')} className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[60px] justify-center">
                                 <Hotel className="w-4 h-4 text-indigo-300" />
                                 <span className="text-sm drop-shadow-md">{tripStats.hotels}</span>
                             </button>
                         )}
                         {tripStats.attractions > 0 && (
-                            <button onClick={() => onSwitchTab && onSwitchTab('attractions')} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg">
+                            <button onClick={() => setActiveWidget('attractions')} className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[60px] justify-center">
                                 <Ticket className="w-4 h-4 text-purple-300" />
                                 <span className="text-sm drop-shadow-md">{tripStats.attractions}</span>
                             </button>
                         )}
                         {tripStats.food > 0 && (
-                            <button onClick={() => onSwitchTab && onSwitchTab('restaurants')} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg">
+                            <button onClick={() => setActiveWidget('restaurants')} className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[60px] justify-center">
                                 <Utensils className="w-4 h-4 text-orange-300" />
                                 <span className="text-sm drop-shadow-md">{tripStats.food}</span>
                             </button>
@@ -331,9 +355,6 @@ export const ItineraryView: React.FC<{
                             const isLastDay = index === timeline.length - 1;
 
                             // Determine Header Icon Priority
-                            // 1. Flight (Most important)
-                            // 2. Hotel (If staying/check-in)
-                            // 3. Default (Pin/Empty)
                             const hasFlight = day.events.some(e => e.type === 'flight');
                             const hasHotel = day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout');
 
@@ -368,7 +389,7 @@ export const ItineraryView: React.FC<{
                                             </div>
                                         </div>
 
-                                        {/* Status Icon (Top Left in RTL / Top Right visually) */}
+                                        {/* Status Icon */}
                                         <div className={`p-1.5 rounded-lg bg-white/60 ${day.theme.icon}`}>
                                             <HeaderIcon className="w-3.5 h-3.5" />
                                         </div>
@@ -418,6 +439,64 @@ export const ItineraryView: React.FC<{
                     </div>
                 )}
             </div>
+
+            {/* Widget Detail Modal (NEW) */}
+            {activeWidget && createPortal(
+                <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setActiveWidget(null)}>
+                    <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-fade-in" onClick={e => e.stopPropagation()}>
+                        <div className="p-5 border-b flex items-center justify-between bg-slate-50">
+                            <h3 className="text-xl font-black text-slate-800">
+                                {activeWidget === 'flights' && 'טיסות'}
+                                {activeWidget === 'hotels' && 'מלונות'}
+                                {activeWidget === 'attractions' && 'אטרקציות'}
+                                {activeWidget === 'restaurants' && 'מסעדות'}
+                            </h3>
+                            <button onClick={() => setActiveWidget(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X className="w-5 h-5 text-slate-500" /></button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {activeWidget === 'flights' && trip.flights?.segments?.map((seg, i) => (
+                                <div key={i} className="flex gap-4 p-3 border rounded-xl hover:bg-slate-50 transition-colors">
+                                    <div className="p-3 bg-blue-50 rounded-full h-fit"><Plane className="w-5 h-5 text-blue-600" /></div>
+                                    <div>
+                                        <div className="font-bold">{seg.fromCode} ➔ {seg.toCode}</div>
+                                        <div className="text-sm text-slate-500">{seg.airline} • {seg.date}</div>
+                                    </div>
+                                </div>
+                            ))}
+                            {activeWidget === 'hotels' && trip.hotels?.map((h, i) => (
+                                <div key={i} className="flex gap-4 p-3 border rounded-xl hover:bg-slate-50 transition-colors">
+                                    <div className="p-3 bg-indigo-50 rounded-full h-fit"><Hotel className="w-5 h-5 text-indigo-600" /></div>
+                                    <div>
+                                        <div className="font-bold">{h.name}</div>
+                                        <div className="text-sm text-slate-500">{h.checkInDate} - {h.checkOutDate}</div>
+                                        <div className="text-xs text-slate-400 mt-1">{h.address}</div>
+                                    </div>
+                                </div>
+                            ))}
+                            {activeWidget === 'attractions' && trip.attractions?.map(cat => cat.attractions.map((attr, i) => (
+                                <div key={i} className="flex gap-4 p-3 border rounded-xl hover:bg-slate-50 transition-colors">
+                                    <div className="p-3 bg-purple-50 rounded-full h-fit"><Ticket className="w-5 h-5 text-purple-600" /></div>
+                                    <div>
+                                        <div className="font-bold">{attr.name}</div>
+                                        <div className="text-sm text-slate-500">{attr.description?.substring(0, 50)}...</div>
+                                        <div className="text-xs text-slate-400 mt-1">{attr.location}</div>
+                                    </div>
+                                </div>
+                            )))}
+                            {activeWidget === 'restaurants' && trip.restaurants?.map(cat => cat.restaurants.map((res, i) => (
+                                <div key={i} className="flex gap-4 p-3 border rounded-xl hover:bg-slate-50 transition-colors">
+                                    <div className="p-3 bg-orange-50 rounded-full h-fit"><Utensils className="w-5 h-5 text-orange-600" /></div>
+                                    <div>
+                                        <div className="font-bold">{res.name}</div>
+                                        <div className="text-sm text-slate-500">{res.cuisine}</div>
+                                        <div className="text-xs text-slate-400 mt-1">{res.location}</div>
+                                    </div>
+                                </div>
+                            )))}
+                        </div>
+                    </div>
+                </div>, document.body
+            )}
 
             {/* Day Detail Modal */}
             {selectedDayIso && activeDay && createPortal(
