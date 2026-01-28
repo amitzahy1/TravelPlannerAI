@@ -60,7 +60,7 @@ export interface HotelBooking {
   costNumeric?: number; // Actual number for calc
   imageUrl?: string;
   googleMapsUrl?: string;
-  bookingSource?: 'Booking.com' | 'Agoda' | 'Airbnb' | 'Direct';
+  bookingSource?: 'Booking.com' | 'Agoda' | 'Airbnb' | 'Direct' | 'Smart Search';
   notes?: string; // User notes
   lat?: number;
   lng?: number;

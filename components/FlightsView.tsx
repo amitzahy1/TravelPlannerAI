@@ -213,6 +213,14 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
           </div>
         )}
       </section>
+
+      {editingSegment && (
+        <FlightEditModal
+          segment={editingSegment.segment}
+          onClose={() => setEditingSegment(null)}
+          onSave={(updated) => handleUpdateSegment(updated)}
+        />
+      )}
     </div>
   );
 };

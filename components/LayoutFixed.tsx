@@ -135,15 +135,15 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         {/* 2. Tools (Admin, Wallet) */}
                                                         <button
                                                                 onClick={onOpenAdmin}
-                                                                className="flex items-center gap-2 text-slate-600 hover:text-purple-700 hover:bg-white px-3 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-purple-100 hover:shadow-sm"
+                                                                className="flex items-center gap-2 text-slate-600 hover:text-purple-700 hover:bg-white px-3 py-2 rounded-lg text-sm font-bold transition-all border border-transparent hover:border-purple-100 hover:shadow-sm"
                                                         >
                                                                 <Sparkles className="w-4 h-4 text-purple-500" />
-                                                                <span>ניהול</span>
+                                                                <span>ניהול טיולים</span>
                                                         </button>
 
                                                         <button
                                                                 onClick={() => setIsWalletOpen(true)}
-                                                                className="flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-white px-3 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-slate-200 hover:shadow-sm"
+                                                                className="flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-white px-3 py-2 rounded-lg text-sm font-bold transition-all border border-transparent hover:border-slate-200 hover:shadow-sm"
                                                         >
                                                                 <Wallet className="w-4 h-4 text-slate-500" />
                                                                 <span>ארנק</span>

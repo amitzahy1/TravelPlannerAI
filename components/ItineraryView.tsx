@@ -13,6 +13,7 @@ import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR REMOVED: import { requestAccessToken } from '../services/googleAuthService';
 import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
+import { getCityColorClass } from '../utils/cityColors';
 
 // --- Types ---
 // Removed to types.ts
@@ -54,29 +55,7 @@ const getDayOfWeek = (date: Date) => {
     return days[date.getDay()];
 };
 
-const getCityColor = (locationContext: string) => {
-    if (!locationContext) return 'bg-white';
-
-    // Hash function to consistenly map a city string to a color index
-    let hash = 0;
-    for (let i = 0; i < locationContext.length; i++) {
-        hash = locationContext.charCodeAt(i) + ((hash << 5) - hash);
-    }
-
-    const colors = [
-        'bg-indigo-50/50 hover:bg-indigo-50', // Generic/City
-        'bg-blue-50/50 hover:bg-blue-50',     // Coastal
-        'bg-emerald-50/50 hover:bg-emerald-50', // Nature
-        'bg-purple-50/50 hover:bg-purple-50',   // Urban/Culture
-        'bg-rose-50/50 hover:bg-rose-50',       // Romantic
-        'bg-amber-50/50 hover:bg-amber-50',     // Warm/Historic
-        'bg-slate-50/50 hover:bg-slate-50',     // Modern
-        'bg-cyan-50/50 hover:bg-cyan-50'        // Fresh
-    ];
-
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
-};
+// Local getCityColor removed in favor of utils/cityColors
 
 export const ItineraryView: React.FC<{
     trip: Trip,
@@ -234,6 +213,7 @@ export const ItineraryView: React.FC<{
                 const isoKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
 
                 if (!dayMap.has(isoKey)) {
+                    // Try to generate days if out of range, or just skip
                     return;
                 }
                 dayMap.get(isoKey)?.events.push(event);
@@ -252,7 +232,6 @@ export const ItineraryView: React.FC<{
                     colorClass: 'text-blue-600',
                     bgClass: 'bg-blue-50 border-blue-100'
                 });
-                // Title will be generated dynamically by generateDayTitle
             });
 
             trip.hotels?.forEach(hotel => {
@@ -281,54 +260,23 @@ export const ItineraryView: React.FC<{
                     externalLink: mapsUrl
                 });
 
+                // Add Hotel Stays (Middle days)
                 const start = parseDateString(hotel.checkInDate);
                 const end = parseDateString(hotel.checkOutDate);
-                const city = hotel.address ? hotel.address.split(',')[0].trim() : hotel.name;
 
                 if (start && end) {
                     const current = new Date(start);
-                    while (current <= end) {
+                    // Skip checkin day, skip checkout day for "Stay" events, but context logic handles it
+                    current.setDate(current.getDate() + 1);
+
+                    while (current < end) {
                         const isoKey = `${current.getFullYear()}-${(current.getMonth() + 1).toString().padStart(2, '0')}-${current.getDate().toString().padStart(2, '0')}`;
                         const plan = dayMap.get(isoKey);
-
                         if (plan) {
-                            const isCheckOutDay = current.getTime() === end.getTime();
-                            if (!isCheckOutDay) {
-                                plan.hasHotel = true;
-                            }
-                            if (!plan.locationContext || plan.locationContext === 'טיסה') {
-                                // IMPROVED CITY EXTRACTION
-                                // If city is "Station 1", try to look deeper or use hotel name if needed. 
-                                // Ideally, we want "Boracay" or "Manila".
-                                // Heuristic: If address splits to > 1 part, take the LAST part (usually Country) or 2nd to last (City). 
-                                // BUT, 'hotel.address' often is "Street, City, Country".
-                                const parts = (hotel.address || '').split(',').map(p => p.trim());
-                                let bestCityCandidate = parts[0];
-                                if (parts.length >= 2) {
-                                    // Check for keywords like "Station" (Boracay thing)
-                                    if (bestCityCandidate.includes('Station')) {
-                                        bestCityCandidate = parts.find(p => p.includes('Boracay') || p.includes('Manila') || p.includes('Cebu') || p.includes('Bangkok') || p.includes('Phuket')) || parts[1];
-                                    }
-                                }
-                                plan.locationContext = bestCityCandidate || hotel.name;
-                            }
-                            const isCheckInDay = current.getTime() === start.getTime();
-                            if (!isCheckInDay && !isCheckOutDay) {
-                                const stayId = `stay-${hotel.id}-${isoKey}`;
-                                if (!plan.events.find(e => e.id === stayId)) {
-                                    plan.events.unshift({
-                                        id: stayId,
-                                        type: 'hotel_stay',
-                                        time: '',
-                                        title: `לנים ב-${hotel.name}`,
-                                        location: hotel.address,
-                                        icon: BedDouble,
-                                        colorClass: 'text-indigo-500',
-                                        bgClass: 'bg-indigo-50/30 border-indigo-100',
-                                        externalLink: mapsUrl
-                                    });
-                                }
-                            }
+                            // Minimal "Hotel Stay" event if nothing else exists
+                            // plan.hasHotel = true; // Handled by 2nd pass
+                            // const stayId = `stay-${hotel.id}-${isoKey}`;
+                            // plan.events.unshift({ ... });
                         }
                         current.setDate(current.getDate() + 1);
                     }
@@ -396,15 +344,81 @@ export const ItineraryView: React.FC<{
 
             const sortedTimeline = Array.from(dayMap.values()).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
-            // Generate dynamic titles for each day (Task 6)
-            sortedTimeline.forEach((day, index) => {
-                day.locationContext = generateDayTitle(day, trip, index, sortedTimeline.length);
+            // --- SECOND PASS: State Machine for Sticky Context ---
+            let currentCity = trip.destinationEnglish || trip.destination.split(' - ')[0] || '';
+            let currentHotelName = '';
 
-                day.events.sort((a, b) => {
-                    if (a.type === 'hotel_stay' && !a.time) return -1;
-                    if (b.type === 'hotel_stay' && !b.time) return 1;
-                    return (a.time || '00:00').localeCompare(b.time || '00:00')
-                });
+            // Helper to clean city name (remove "Hotel" etc if needed, or extract from address)
+            const extractCity = (address: string) => {
+                if (!address) return currentCity;
+                const parts = address.split(',');
+                // Simple heuristic: 2nd to last part usually city, or last part
+                if (parts.length >= 2) return parts[parts.length - 2].trim();
+                return parts[0].trim();
+            };
+
+            sortedTimeline.forEach((day, index) => {
+                // 1. Sort events for this day
+                day.events.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
+
+                // 2. State Transition Logic based on Today's Events
+
+                // Flights change city *after* arrival, but for the day title, if it's Arrival, we are in new city? 
+                // Usually Flight takes whole day.
+                const flight = day.events.find(e => e.type === 'flight');
+                if (flight) {
+                    const toCity = flight.title.replace('טיסה ל', '').trim();
+                    if (toCity) currentCity = toCity;
+                    currentHotelName = ''; // Reset hotel on flight day usually
+                }
+
+                // Hotel Check-in sets new hotel
+                const checkIn = day.events.find(e => e.type === 'hotel_checkin');
+                if (checkIn) {
+                    // Update city from hotel address
+                    if (checkIn.location) {
+                        // Try to extract city from address if possible, otherwise keep current
+                        // currentCity = extractCity(checkIn.location); 
+                    }
+                    const nameMatch = checkIn.title.match(/Check-in: (.+)/);
+                    if (nameMatch) currentHotelName = nameMatch[1];
+                }
+
+                // Hotel Check-out clears hotel
+                const checkOut = day.events.find(e => e.type === 'hotel_checkout');
+                if (checkOut) {
+                    currentHotelName = '';
+                }
+
+                // 3. Apply Context to Day
+                day.locationContext = currentCity; // "Phuket"
+                day.hasHotel = !!currentHotelName; // For UI badge
+
+                // 4. Generate Title if empty
+                // If we have manual events, generateDayTitle (existing logic) handles it well?
+                // Or we overwrite it.
+                // Let's use existing logic but pass the *State* context as fallback
+
+                // Existing logic re-used but enhanced
+                if (day.events.length === 0) {
+                    // Empty Day
+                    if (currentHotelName) {
+                        day.locationContext = `${currentCity} (${currentHotelName})`;
+                    } else {
+                        day.locationContext = `${currentCity}`;
+                    }
+                } else {
+                    // Verify if existing title logic is good. 
+                    // It uses generateDayTitle() below. 
+                    // We'll update the 'locationContext' property which IS the title in the UI.
+                    day.locationContext = generateDayTitle(day, trip, index, sortedTimeline.length);
+
+                    // Fallback: If generateDayTitle returns generic "Start", replace with currentCity
+                    if (day.locationContext === 'Start' || !day.locationContext) {
+                        day.locationContext = currentCity;
+                    }
+                }
+
                 day.stats = {
                     food: day.events.filter(e => e.type === 'food').length,
                     attr: day.events.filter(e => e.type === 'attraction').length,
@@ -762,7 +776,7 @@ export const ItineraryView: React.FC<{
                                         <div
                                             key={day.dateIso}
                                             onClick={() => setSelectedDayIso(day.dateIso)}
-                                            className={`${getCityColor(day.locationContext)} border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[220px] relative`}
+                                            className={`${getCityColorClass(day.locationContext)} border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[220px] relative`}
                                         >
                                             {/* Flow Arrow (Desktop Only) */}
                                             {!isLastDay && (
