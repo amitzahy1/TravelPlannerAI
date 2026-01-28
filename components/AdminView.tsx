@@ -12,6 +12,8 @@ import { AlertTriangle, Calendar as CalIcon } from 'lucide-react';
 // import { requestAccessToken } from '../services/googleAuthService';
 // import { fetchCalendarEvents, mapEventsToTimeline } from '../services/calendarService';
 import { CalendarDatePicker } from './CalendarDatePicker';
+import { ConfirmModal } from './ConfirmModal';
+
 
 interface TripSettingsModalProps {
     data: Trip[];
@@ -109,6 +111,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai'>('overview');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
+    const [tripToDelete, setTripToDelete] = useState<string | null>(null);
+    const [hotelToDelete, setHotelToDelete] = useState<string | null>(null); // For Admin hotel deletion
+
 
     // Helper: Format for Display (e.g. "08 Aug")
     const formatDisplayDate = (iso: string) => {
@@ -205,21 +210,26 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     };
 
     // --- Deletion Logic ---
-    const handleDeleteTrip = async (e: React.MouseEvent, tripIdToDelete: string) => {
+    const handleDeleteTrip = (e: React.MouseEvent, tripIdToDelete: string) => {
         e.stopPropagation();
-        if (window.confirm("פעולה זו תמחק את הטיול ואת כל המידע שבו לצמיתות. האם להמשיך?")) {
-            // Call the proper delete handler from App.tsx which uses deleteDoc on Firebase
-            await onDeleteTrip(tripIdToDelete);
-
-            // Update local UI state
-            const newTrips = trips.filter(t => t.id !== tripIdToDelete);
-            setTrips(newTrips);
-
-            if (activeTripId === tripIdToDelete && newTrips.length > 0) {
-                setActiveTripId(newTrips[0].id);
-            }
-        }
+        setTripToDelete(tripIdToDelete);
     };
+
+    const confirmDeleteTrip = async () => {
+        if (!tripToDelete) return;
+
+        await onDeleteTrip(tripToDelete);
+
+        // Update local UI state
+        const newTrips = trips.filter(t => t.id !== tripToDelete);
+        setTrips(newTrips);
+
+        if (activeTripId === tripToDelete && newTrips.length > 0) {
+            setActiveTripId(newTrips[0].id);
+        }
+        setTripToDelete(null);
+    };
+
 
     const handleDeleteFlightSegment = (indexToDelete: number) => {
         if (!activeTrip.flights?.segments) return;
@@ -239,11 +249,16 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     };
 
     const handleDeleteHotel = (hotelId: string) => {
-        if (window.confirm("למחוק מלון זה מהרשימה?")) {
-            const newHotels = activeTrip.hotels.filter(h => h.id !== hotelId);
-            handleUpdateTrip({ hotels: newHotels });
-        }
+        setHotelToDelete(hotelId);
     };
+
+    const confirmDeleteHotel = () => {
+        if (!hotelToDelete) return;
+        const newHotels = activeTrip.hotels.filter(h => h.id !== hotelToDelete);
+        handleUpdateTrip({ hotels: newHotels });
+        setHotelToDelete(null);
+    };
+
 
     const handleUpdateHotel = (hotelId: string, field: keyof HotelBooking, value: any) => {
         const newHotels = activeTrip.hotels.map(h => h.id === hotelId ? { ...h, [field]: value } : h);
@@ -499,7 +514,26 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
     return (
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-0 md:p-6 animate-fade-in" onClick={onClose}>
+            <ConfirmModal
+                isOpen={!!tripToDelete}
+                title="מחיקת טיול"
+                message="האם אתה בטוח שברצונך למחוק את הטיול? פעולה זו הינה בלתי הפיכה."
+                confirmText="מחק טיול"
+                isDangerous={true}
+                onConfirm={confirmDeleteTrip}
+                onClose={() => setTripToDelete(null)}
+            />
+            <ConfirmModal
+                isOpen={!!hotelToDelete}
+                title="מחיקת מלון"
+                message="האם להסיר מלון זה מהרשימה?"
+                confirmText="הסר"
+                isDangerous={true}
+                onConfirm={confirmDeleteHotel}
+                onClose={() => setHotelToDelete(null)}
+            />
             <div className="w-full h-full md:max-w-6xl bg-white md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-scale-in" onClick={(e) => e.stopPropagation()}>
+
 
                 {/* MOBILE OVERLAY BACKDROP */}
                 {isSidebarOpen && (
@@ -540,11 +574,12 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         const isOwner = !t.isShared || t.sharing?.role === 'owner';
-                                        if (window.confirm(isOwner ? 'האם למחוק את הטיול הזה לצמיתות?' : 'האם לצאת מהטיול המשותף?')) {
-                                            isOwner ? onDeleteTrip(t.id) : onLeaveTrip(t.id);
-                                        }
+                                        // Specific confirm logic (now handled by wrapper, but if we click the button directly)
+                                        // We reuse handleDeleteTrip which sets state
+                                        isOwner ? handleDeleteTrip(e, t.id) : onLeaveTrip(t.id);
                                     }}
                                     className={`absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-20 ${(!t.isShared || t.sharing?.role === 'owner')
+
                                         ? 'text-slate-300 hover:text-red-500 hover:bg-red-50'
                                         : 'text-slate-300 hover:text-orange-500 hover:bg-orange-50'
                                         }`}

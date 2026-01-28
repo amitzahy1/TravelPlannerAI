@@ -120,7 +120,11 @@ const AppContent: React.FC = () => {
 
   // Real-Time Sync Hook (Project Genesis 2.0)
   useEffect(() => {
-    if (activeTrip && activeTrip.isShared && activeTrip.sharing?.shareId) {
+    // Safety check: Ensure activeTrip actually exists in the current trips list
+    // This prevents "zombie" subscriptions to deleted trips
+    const isValidTrip = trips.some(t => t.id === activeTrip?.id);
+
+    if (activeTrip && activeTrip.isShared && activeTrip.sharing?.shareId && isValidTrip) {
       console.log("🔌 Subscribing to shared trip:", activeTrip.name);
       const unsubscribe = subscribeToSharedTrip(activeTrip.sharing.shareId, (updatedTrip) => {
         console.log("⚡ Real-time update received for:", updatedTrip.name);
@@ -128,7 +132,8 @@ const AppContent: React.FC = () => {
       });
       return () => unsubscribe();
     }
-  }, [activeTrip?.id, activeTrip?.isShared, activeTrip?.sharing?.shareId]);
+  }, [activeTrip?.id, activeTrip?.isShared, activeTrip?.sharing?.shareId, trips.length]); // Added trips.length as dependency to re-eval validity
+
 
   const handleUpdateActiveTrip = async (updatedTrip: Trip) => {
     const newTrips = trips.map(t => t.id === updatedTrip.id ? updatedTrip : t);

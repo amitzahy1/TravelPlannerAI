@@ -3,6 +3,8 @@ import { Trip, HotelBooking } from '../types';
 import { Hotel, MapPin, Calendar, ExternalLink, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X, Save, DollarSign, Image as ImageIcon, Link as LinkIcon, Globe, Sparkles, Loader2, Navigation, Search, UploadCloud, FileText, Coffee, ShieldCheck } from 'lucide-react';
 import { getAI, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
+import { ConfirmModal } from './ConfirmModal';
+
 
 // Helper to determine placeholder image based on address
 const getPlaceImage = (address: string): string => {
@@ -39,6 +41,8 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSmartAddOpen, setIsSmartAddOpen] = useState(false);
     const [editingHotel, setEditingHotel] = useState<HotelBooking | null>(null);
+    const [hotelToDelete, setHotelToDelete] = useState<string | null>(null);
+
 
     const handleNoteUpdate = (hotelId: string, newNote: string) => {
         const updatedHotels = (trip.hotels || []).map(h => h.id === hotelId ? { ...h, notes: newNote } : h);
@@ -49,16 +53,22 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
         onUpdateTrip({ ...trip, hotels: updatedHotels });
     };
     const handleDeleteHotel = (hotelId: string) => {
-        if (window.confirm("האם אתה בטוח שברצונך למחוק מלון זה?")) {
-            const updatedHotels = (trip.hotels || []).filter(h => h.id !== hotelId);
+        setHotelToDelete(hotelId);
+    };
+
+    const confirmDeleteHotel = () => {
+        if (hotelToDelete) {
+            const updatedHotels = (trip.hotels || []).filter(h => h.id !== hotelToDelete);
             onUpdateTrip({ ...trip, hotels: updatedHotels });
+            setHotelToDelete(null);
         }
     };
+
     const handleEditHotel = (hotel: HotelBooking) => { setEditingHotel(hotel); setIsModalOpen(true); };
     const handleAddNew = () => { setEditingHotel(null); setIsModalOpen(true); };
 
     const handleSmartAdd = (hotelData: HotelBooking) => {
-        const newHotels = [...(trip.hotels || []), { ...hotelData, id: `h-${Date.now()}` }];
+        const newHotels = [...(trip.hotels || []), { ...hotelData, id: crypto.randomUUID() }];
         onUpdateTrip({ ...trip, hotels: newHotels });
         setIsSmartAddOpen(false);
     };
@@ -66,7 +76,7 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
     const handleSaveHotel = (hotelData: HotelBooking) => {
         let newHotels = [...(trip.hotels || [])];
         if (editingHotel) { newHotels = newHotels.map(h => h.id === hotelData.id ? hotelData : h); }
-        else { newHotels.push({ ...hotelData, id: `h-${Date.now()}` }); }
+        else { newHotels.push({ ...hotelData, id: crypto.randomUUID() }); }
         onUpdateTrip({ ...trip, hotels: newHotels });
         setIsModalOpen(false);
         setEditingHotel(null);
@@ -127,6 +137,17 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
 
             {isModalOpen && <HotelFormModal initialData={editingHotel} onClose={() => setIsModalOpen(false)} onSave={handleSaveHotel} />}
             {isSmartAddOpen && <SmartHotelAddModal onClose={() => setIsSmartAddOpen(false)} onSave={handleSmartAdd} />}
+
+            <ConfirmModal
+                isOpen={!!hotelToDelete}
+                title="מחיקת מלון"
+                message="האם אתה בטוח שברצונך למחוק את המלון מהרשימה?"
+                confirmText="מחק"
+                cancelText="ביטול"
+                onConfirm={confirmDeleteHotel}
+                onClose={() => setHotelToDelete(null)}
+                isDangerous={true}
+            />
         </div>
     );
 };
