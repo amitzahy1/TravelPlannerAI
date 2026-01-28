@@ -38,62 +38,6 @@ const getDayOfWeek = (date: Date) => {
     return days[date.getDay()];
 };
 
-// --- Flight Card Component (Google Style) ---
-const FlightCard = ({ event }: { event: TimelineEvent }) => {
-    // מנסה לחלץ קוד שדה תעופה מהמחרוזת (למשל: "TLV ➔ BKK")
-    const [origin, dest] = event.location?.split('➔').map(s => s.trim()) || ['ORG', 'DST'];
-
-    // חישוב זמן נחיתה משוער (לצורך תצוגה בלבד אם חסר)
-    const depTime = event.time || "00:00";
-
-    return (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow my-2 mx-1 relative overflow-hidden group">
-            {/* פס צבעוני עדין בצד */}
-            <div className="absolute top-0 bottom-0 right-0 w-1 bg-blue-500"></div>
-
-            <div className="flex flex-col gap-3">
-                {/* Header: Airline & Flight No */}
-                <div className="flex justify-between items-center text-xs text-slate-500">
-                    <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center">
-                            <Plane className="w-3 h-3 text-blue-600 transform -rotate-45" />
-                        </div>
-                        <span className="font-bold text-slate-700 text-sm truncate max-w-[150px]">{event.subtitle || "טיסה"}</span>
-                    </div>
-                    <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-[10px]">{event.title.replace('טיסה ל', '')}</span>
-                </div>
-
-                {/* Route Visualizer */}
-                <div className="flex items-center justify-between px-1">
-                    {/* Departure */}
-                    <div className="text-center min-w-[60px]">
-                        <div className="text-xl font-black text-slate-800">{depTime}</div>
-                        <div className="text-xs font-bold text-slate-400">{origin}</div>
-                    </div>
-
-                    {/* Path Line */}
-                    <div className="flex-1 flex flex-col items-center px-4">
-                        <div className="text-[10px] text-slate-400 mb-1 font-medium">משך טיסה (משוער)</div>
-                        <div className="w-full h-[2px] bg-slate-200 relative flex items-center justify-center">
-                            <div className="absolute w-2 h-2 bg-slate-300 rounded-full -left-1"></div>
-                            <div className="bg-white px-1 z-10">
-                                <Plane className="w-3 h-3 text-slate-300 transform rotate-90" />
-                            </div>
-                            <div className="absolute w-2 h-2 bg-slate-300 rounded-full -right-1"></div>
-                        </div>
-                    </div>
-
-                    {/* Arrival (Placeholder if unknown) */}
-                    <div className="text-center min-w-[60px]">
-                        <div className="text-xl font-black text-slate-800 opacity-40">--:--</div>
-                        <div className="text-xs font-bold text-slate-400">{dest}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 export const ItineraryView: React.FC<{
     trip: Trip,
     onUpdateTrip: (updatedTrip: Trip) => void,
@@ -117,9 +61,8 @@ export const ItineraryView: React.FC<{
             const hotelMatch = hotelCheckin.title?.match(/Check-in: (.+)/);
             return hotelMatch && hotelMatch[1] ? `הגעה למלון` : (day.hasHotel ? `צ'ק-אין` : 'מלון');
         }
-        if (events.length === 0) return day.locationContext;
-        if (events.length === 1) return events[0].title;
-        return day.locationContext;
+        // Fallback to location context if no major event
+        return day.locationContext || trip.destinationEnglish || trip.destination;
     };
 
     useEffect(() => {
@@ -141,8 +84,8 @@ export const ItineraryView: React.FC<{
 
             const dayMap = new Map<string, DayPlan>();
             const loopDate = new Date(startDate);
-            const defaultTheme = getCityTheme('');
 
+            // Default initialization
             while (loopDate <= endDate) {
                 const isoDate = `${loopDate.getFullYear()}-${(loopDate.getMonth() + 1).toString().padStart(2, '0')}-${loopDate.getDate().toString().padStart(2, '0')}`;
                 dayMap.set(isoDate, {
@@ -153,7 +96,7 @@ export const ItineraryView: React.FC<{
                     events: [],
                     stats: { food: 0, attr: 0, flight: 0, travel: 0, hotel: 0 },
                     hasHotel: false,
-                    theme: defaultTheme
+                    theme: getCityTheme('') // Placeholder, will be updated in Second Pass
                 });
                 loopDate.setDate(loopDate.getDate() + 1);
             }
@@ -169,8 +112,12 @@ export const ItineraryView: React.FC<{
             trip.flights?.segments?.forEach(seg => {
                 addToDay(seg.date, {
                     id: `flight-dep-${seg.flightNumber}`, type: 'flight', time: seg.departureTime,
-                    title: `טיסה ל${seg.toCity || seg.toCode || 'יעד'}`, subtitle: `${seg.airline} ${seg.flightNumber}`,
-                    location: `${seg.fromCode} ➔ ${seg.toCode}`, icon: Plane, colorClass: 'text-blue-600', bgClass: 'bg-blue-50'
+                    title: `טיסה ל${seg.toCity || seg.toCode || 'יעד'}`,
+                    subtitle: `${seg.airline} ${seg.flightNumber}`,
+                    location: `${seg.fromCode} ➔ ${seg.toCode}`,
+                    icon: Plane,
+                    colorClass: 'text-blue-600',
+                    bgClass: 'bg-blue-50'
                 });
             });
 
@@ -221,18 +168,20 @@ export const ItineraryView: React.FC<{
 
             const sortedTimeline = Array.from(dayMap.values()).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
-            // --- SECOND PASS: Context & Theme ---
-            let currentCity = trip.destinationEnglish || trip.destination.split(' - ')[0] || '';
+            // --- SECOND PASS: Context & Theme (THE FIX) ---
+            // 1. Initialize with trip main destination to avoid "White/Empty" start
+            let currentCity = trip.destinationEnglish || trip.destination || 'Start';
             let currentHotelName = '';
 
             sortedTimeline.forEach((day, index) => {
                 day.events.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
 
+                // Update context based on specific events
                 const flight = day.events.find(e => e.type === 'flight');
                 if (flight) {
                     const toCity = flight.title.replace('טיסה ל', '').trim();
                     if (toCity) currentCity = toCity;
-                    currentHotelName = '';
+                    currentHotelName = ''; // Reset hotel on flight day usually
                 }
 
                 const checkIn = day.events.find(e => e.type === 'hotel_checkin');
@@ -244,18 +193,21 @@ export const ItineraryView: React.FC<{
                 const checkOut = day.events.find(e => e.type === 'hotel_checkout');
                 if (checkOut) currentHotelName = '';
 
-                // Set Context
+                // Apply persistent context
                 day.locationContext = currentCity;
                 day.hasHotel = !!currentHotelName;
 
+                // Ensure theme is never empty/white. 
+                // getCityTheme returns a color based on the string.
+                day.theme = getCityTheme(currentCity);
+
+                // Title Logic
                 const autoTitle = generateDayTitle(day, trip, index, sortedTimeline.length);
                 if (day.events.length === 0 && currentHotelName) {
                     day.locationContext = `${currentCity}`;
                 } else if (autoTitle && autoTitle !== 'Start') {
                     day.locationContext = autoTitle;
                 }
-
-                day.theme = getCityTheme(currentCity);
 
                 day.stats = {
                     food: day.events.filter(e => e.type === 'food').length,
@@ -339,7 +291,7 @@ export const ItineraryView: React.FC<{
 
                                     <div className="absolute -top-2 -right-2 bg-slate-800 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-md z-30 opacity-0 group-hover:opacity-100 transition-opacity">DAY {dayNumber.toString().padStart(2, '0')}</div>
 
-                                    {/* --- COLORFUL HEADER --- */}
+                                    {/* --- UNIFIED HEADER (Standardized Design) --- */}
                                     <div className={`p-3 border-b flex items-center justify-between transition-colors ${day.theme.bg} ${day.theme.border}`}>
                                         <div className="flex items-center gap-3">
                                             <div className={`min-w-[48px] h-10 px-2 rounded-xl flex flex-col items-center justify-center shadow-sm border ${day.theme.badge} ${day.theme.border}`}>
@@ -350,7 +302,7 @@ export const ItineraryView: React.FC<{
                                                     {day.displayDayOfWeek}
                                                 </div>
                                                 <h3 className={`font-black text-sm leading-tight line-clamp-2 ${day.theme.text}`}>
-                                                    {day.locationContext || 'יום בטיול'}
+                                                    {day.locationContext}
                                                 </h3>
                                             </div>
                                         </div>
@@ -359,23 +311,33 @@ export const ItineraryView: React.FC<{
                                         )}
                                     </div>
 
-                                    {/* Events Preview - FIXED FOR GOOGLE STYLE FLIGHTS */}
+                                    {/* EVENTS LIST (Clean Rows Only) */}
                                     <div className="p-3 flex-grow overflow-y-auto scrollbar-hide relative bg-white">
                                         {day.events.length > 0 ? (
                                             <div className="space-y-1.5 relative z-10">
                                                 {day.events.map((event, idx) => (
-                                                    <div key={idx}>
-                                                        {event.type === 'flight' ? (
-                                                            // *** RENDER NEW GOOGLE STYLE FLIGHT CARD ***
-                                                            <FlightCard event={event} />
-                                                        ) : (
-                                                            // Standard Event Row
-                                                            <div className="flex items-center gap-2 w-full py-1">
-                                                                <span className="text-[10px] font-mono font-bold opacity-40 min-w-[32px]">{event.time || "--:--"}</span>
-                                                                <div className={`p-1 rounded-full ${event.bgClass} flex-shrink-0`}><event.icon className={`w-3 h-3 ${event.colorClass}`} /></div>
-                                                                <span className="text-xs font-bold text-slate-700 truncate leading-none flex-1 opacity-90">{event.title}</span>
-                                                            </div>
-                                                        )}
+                                                    <div key={idx} className="flex items-center gap-2 w-full py-1 group/item">
+                                                        {/* Time Column */}
+                                                        <span className="text-[10px] font-mono font-bold opacity-40 min-w-[32px] group-hover/item:opacity-70 transition-opacity">
+                                                            {event.time || "--:--"}
+                                                        </span>
+
+                                                        {/* Icon Badge */}
+                                                        <div className={`p-1.5 rounded-full ${event.bgClass} flex-shrink-0`}>
+                                                            <event.icon className={`w-3.5 h-3.5 ${event.colorClass}`} />
+                                                        </div>
+
+                                                        {/* Text Info */}
+                                                        <div className="flex flex-col min-w-0 flex-1">
+                                                            <span className="text-xs font-bold text-slate-700 truncate leading-tight opacity-90">
+                                                                {event.title}
+                                                            </span>
+                                                            {event.subtitle && (
+                                                                <span className="text-[10px] text-slate-400 truncate leading-tight">
+                                                                    {event.subtitle}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -405,20 +367,23 @@ export const ItineraryView: React.FC<{
                                 </div>
                                 <div>
                                     <div className={`text-xs font-bold uppercase tracking-wider ${activeDay.theme.textLight}`}>{activeDay.displayDayOfWeek}</div>
-                                    <h2 className={`text-lg font-black ${activeDay.theme.text}`}>{activeDay.locationContext || 'לו"ז יומי'}</h2>
+                                    <h2 className={`text-lg font-black ${activeDay.theme.text}`}>{activeDay.locationContext}</h2>
                                 </div>
                             </div>
                             <button onClick={() => setSelectedDayIso(null)} className="p-2 bg-white/50 hover:bg-white rounded-lg transition-colors"><X className={`w-5 h-5 ${activeDay.theme.icon}`} /></button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50 scrollbar-hide">
                             {activeDay.events.map((event, i) => (
-                                <div key={i} className="flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                                    <span className="text-xs font-bold text-slate-400 font-mono pt-1">{event.time}</span>
-                                    <div className="flex-1">
-                                        <div className="flex justify-between"><h3 className="font-bold text-slate-800 text-sm">{event.title}</h3><event.icon className={`w-4 h-4 ${event.colorClass}`} /></div>
-                                        <div className="text-xs text-slate-500 mt-1">{event.subtitle || event.location}</div>
-                                        {event.isManual && <button onClick={() => handleDeleteActivity(event.dayId!, event.activityIndex!)} className="text-red-400 text-xs mt-2">מחק</button>}
+                                <div key={i} className="flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm items-center">
+                                    <span className="text-xs font-bold text-slate-400 font-mono min-w-[40px]">{event.time}</span>
+                                    <div className={`p-2 rounded-full ${event.bgClass} flex-shrink-0`}>
+                                        <event.icon className={`w-4 h-4 ${event.colorClass}`} />
                                     </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold text-slate-800 text-sm truncate">{event.title}</h3>
+                                        <div className="text-xs text-slate-500 truncate">{event.subtitle || event.location}</div>
+                                    </div>
+                                    {event.isManual && <button onClick={() => handleDeleteActivity(event.dayId!, event.activityIndex!)} className="text-red-400 text-xs px-2">מחק</button>}
                                 </div>
                             ))}
                             <button onClick={() => { const [y, m, d] = activeDay.dateIso.split('-'); setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` }) }} className="w-full py-3 mt-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs font-bold hover:border-blue-300 hover:text-blue-500 transition-all flex items-center justify-center gap-1"><Plus className="w-3.5 h-3.5" /> הוספה מהירה</button>
