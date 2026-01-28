@@ -400,7 +400,32 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
       tripMetadata: raw.tripMetadata,
       processedFileIds: raw.processedFileIds || [],
       unprocessedFiles: raw.unprocessedFiles || [],
-      categories: raw.categories || { transport: [], accommodation: [], dining: [], activities: [], wallet: [] }
+      categories: {
+        transport: raw.categories?.transport || [],
+        // Fix: Normalize Accommodation Data Structure (AI returns flat, UI expects nested)
+        accommodation: raw.categories?.accommodation?.map((item: any) => {
+          // If already correct structure, keep it
+          if (item.data && item.data.hotelName) return item;
+
+          // If flat structure (AI drift), format it
+          return {
+            type: 'hotel',
+            data: {
+              hotelName: item.name || item.hotelName || "Unknown Hotel",
+              address: item.address,
+              checkInDate: item.checkIn?.isoDate || item.checkInDate || item.checkIn,
+              checkOutDate: item.checkOut?.isoDate || item.checkOutDate || item.checkOut,
+              displayTime: "14:00", // Default
+              bookingId: item.bookingId
+            },
+            sourceFileIds: item.sourceFileIds || [],
+            confidence: 0.9
+          };
+        }) || [],
+        dining: raw.categories?.dining || [],
+        activities: raw.categories?.activities || [],
+        wallet: raw.categories?.wallet || []
+      }
     }
   };
 };
