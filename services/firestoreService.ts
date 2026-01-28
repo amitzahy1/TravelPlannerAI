@@ -155,7 +155,7 @@ export const createSharedTrip = async (
       owner: userId,
       collaborators: [userId],
       allowedEmails: inviteEmail ? [userEmail, inviteEmail] : [userEmail],
-      shareId: shareId, // CRITICAL: Burn shareId into the doc for Security Rules
+      shareId: shareId, // CRITICAL: This is the key for Security Rules
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       updatedBy: userId,
@@ -285,12 +285,12 @@ export const joinSharedTrip = async (
     const tripRef = doc(db, "shared-trips", originalTripId);
 
     // 2. Add User to Collaborators
-    // We explicitly provide shareId to fulfill strict rules on new joins
-    // AND to "heal" legacy trips during the join process.
+    // CRITICAL: We MUST send the shareId in the updateDoc to satisfy security rules:
+    // "request.resource.data.shareId == resource.data.shareId"
     try {
       await updateDoc(tripRef, {
         collaborators: arrayUnion(user.uid),
-        shareId: shareId,
+        shareId: shareId, // REQUIRED PROOF
         updatedAt: Timestamp.now()
       });
     } catch (err: any) {

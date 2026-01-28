@@ -145,7 +145,24 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
                                                                 </button>
                                                         </div>
 
-                                                        <div className="flex items-center justify-center gap-8 mt-8">
+                                                        {/* Refresh / Fix Link UI */}
+                                                        <div className="flex flex-col gap-3">
+                                                                {successMessage ? (
+                                                                        <div className="p-4 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-2xl border border-emerald-100 animate-bounce-short">
+                                                                                {successMessage}
+                                                                        </div>
+                                                                ) : (
+                                                                        <button
+                                                                                onClick={handleCreateShare}
+                                                                                disabled={loading}
+                                                                                className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors py-2 px-4 rounded-xl hover:bg-indigo-50 flex items-center justify-center gap-2 mx-auto"
+                                                                        >
+                                                                                {loading ? '⌛ מעבד...' : '♻️ חידוש לינק (במקרה של שגיאה)'}
+                                                                        </button>
+                                                                )}
+                                                        </div>
+
+                                                        <div className="flex items-center justify-center gap-8 mt-4">
                                                                 <div className="flex flex-col items-center gap-2">
                                                                         <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600 border border-emerald-100"><Shield className="w-6 h-6" /></div>
                                                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">מאובטח</span>
