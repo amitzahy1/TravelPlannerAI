@@ -3,6 +3,8 @@ import { HashRouter } from 'react-router-dom';
 import { LayoutFixed as Layout } from './components/LayoutFixed';
 import { loadTrips, saveTrips, saveSingleTrip, deleteTrip, leaveTrip } from './services/storageService';
 import { subscribeToSharedTrip } from './services/firestoreService';
+import { collection, query, where, onSnapshot, Unsubscribe } from 'firebase/firestore'; // New imports
+import { db } from './services/firebaseConfig';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Trip } from './types';
 import { LandingPage } from './components/LandingPage';
@@ -90,40 +92,85 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // 1. Load trips when user changes (Restored & Enhanced)
-  const loadUserTrips = useCallback(async () => {
-    if (!user) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      // Load from server (Hybrid: Firestore + Shared Refs)
-      const loadedTrips = await loadTrips(user.uid);
-      setTrips(loadedTrips);
+  // Helper to strip heavy data (PDFs/Images) before caching
+  const compressForCache = (trips: Trip[]) => {
+    return trips.map(t => ({
+      ...t,
+      // Remove heavy base64 strings if they exist in documents
+      documents: [],
+      // Keep everything else, but ensure we don't store megabytes of data
+      flights: { ...t.flights, segments: t.flights?.segments || [] },
+      itinerary: t.itinerary || []
+    }));
+  };
 
-      // Update Cache Safely
-      safeSetItem('travel_app_data_v1', loadedTrips);
-
-      // Persistence Logic: Load last used trip
-      const lastTripId = localStorage.getItem('lastTripId');
-      if (lastTripId && loadedTrips.find(t => t.id === lastTripId)) {
-        setActiveTripId(lastTripId);
-      } else if (loadedTrips.length > 0) {
-        setActiveTripId(loadedTrips[loadedTrips.length - 1].id);
-      }
-    } catch (err) {
-      console.error('Error loading trips:', err);
-      setError('שגיאה בטעינת הנתונים. אנא נסה שוב.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  // Initial Load Effect
   useEffect(() => {
-    if (!authLoading && user) {
-      loadUserTrips();
-    }
-  }, [authLoading, user, loadUserTrips]);
+    let unsubscribe: Unsubscribe | null = null;
+
+    const loadTrips = async () => {
+      if (!user) {
+        setTrips([]);
+        return;
+      }
+
+      // 1. Load from cache (Safe Load)
+      try {
+        const cached = localStorage.getItem("cachedTrips");
+        if (cached) {
+          setTrips(JSON.parse(cached));
+          console.log("💾 Loaded lightweight trips from cache");
+        }
+      } catch (e) {
+        console.warn("Cache corrupted, clearing");
+        localStorage.removeItem("cachedTrips");
+      }
+
+      // 2. Subscribe to Firestore (Source of Truth)
+      try {
+        const q = query(
+          collection(db, "trips"),
+          where("userId", "==", user.uid)
+        );
+
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          const freshTrips = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Trip[];
+
+          console.log(`🔥 Firestore Update: ${freshTrips.length} trips.`);
+
+          // Update State Logic
+          setTrips(prev => {
+            // Smart merge if needed, but for now simple replacement works best for deletes
+            return freshTrips;
+          });
+
+          // 3. Save to Cache (COMPRESSED!)
+          try {
+            // *** THE FIX: Remove heavy files before saving ***
+            const safeData = compressForCache(freshTrips);
+            localStorage.setItem("cachedTrips", JSON.stringify(safeData));
+          } catch (error: any) {
+            console.error("⚠️ Cache Error:", error);
+            // If quota still exceeded, clear it completely to allow app to function
+            if (error.name === 'QuotaExceededError' || error.code === 22) {
+              localStorage.clear();
+            }
+          }
+        });
+
+      } catch (error) {
+        console.error("Error setting up trips listener:", error);
+      }
+    };
+
+    loadTrips();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user]);
 
   const activeTrip = trips.find(t => t.id === activeTripId) || trips[trips.length - 1] || null;
 
@@ -333,7 +380,7 @@ const AppContent: React.FC = () => {
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <div className="text-red-500 text-lg font-bold">{error}</div>
         <button
-          onClick={loadUserTrips}
+          onClick={() => window.location.reload()}
           className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
         >
           נסה שוב
