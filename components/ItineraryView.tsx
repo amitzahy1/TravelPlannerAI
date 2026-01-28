@@ -38,6 +38,17 @@ const getDayOfWeek = (date: Date) => {
     return days[date.getDay()];
 };
 
+// פונקציית עזר לבדיקה אם תאריך נמצא בתוך טווח של מלון
+const isDateInHotelRange = (checkIn: string, checkOut: string, targetDateIso: string) => {
+    const start = new Date(checkIn).setHours(0, 0, 0, 0);
+    const end = new Date(checkOut).setHours(0, 0, 0, 0);
+    const target = new Date(targetDateIso).setHours(0, 0, 0, 0);
+    // אנחנו כוללים את יום הצ'ק אין אבל לא את יום הצ'ק אאוט (כי בו עוזבים)
+    // או שכוללים את הכל ונותנים עדיפות לאירועים ספציפיים.
+    // כאן נבדוק אם זה *בין* התאריכים או שווה לצ'ק אין
+    return target >= start && target < end;
+};
+
 export const ItineraryView: React.FC<{
     trip: Trip,
     onUpdateTrip: (updatedTrip: Trip) => void,
@@ -47,34 +58,21 @@ export const ItineraryView: React.FC<{
     const [timeline, setTimeline] = useState<DayPlan[]>([]);
     const [selectedDayIso, setSelectedDayIso] = useState<string | null>(null);
     const [quickAddModal, setQuickAddModal] = useState<{ isOpen: boolean, targetDate?: string }>({ isOpen: false });
-    const [activeWidget, setActiveWidget] = useState<'flights' | 'hotels' | 'attractions' | 'restaurants' | null>(null);
 
     // Title Generation Logic
-    const generateDayTitle = (day: DayPlan, trip: Trip, dayIndex: number, totalDays: number): string => {
+    const generateDayTitle = (day: DayPlan): string => {
         const events = day.events;
-        const flightEvents = events.filter(e => e.type === 'flight');
-
-        if (flightEvents.length > 0) {
-            // Collect all unique destinations
-            const destinations = new Set<string>();
-            flightEvents.forEach(f => {
-                const destMatch = f.title?.match(/טיסה ל(.+)/);
-                if (destMatch && destMatch[1]) destinations.add(destMatch[1].trim());
-            });
-
-            if (destinations.size > 0) {
-                return `טיסה ל${Array.from(destinations).join(', ')}`;
-            }
-            return 'יום טיסה';
+        const flightEvent = events.find(e => e.type === 'flight');
+        if (flightEvent) {
+            const destMatch = flightEvent.title?.match(/טיסה ל(.+)/);
+            return destMatch && destMatch[1] ? `טיסה ל${destMatch[1]}` : 'יום טיסה';
         }
-
         const hotelCheckin = events.find(e => e.type === 'hotel_checkin');
         if (hotelCheckin) {
-            const hotelMatch = hotelCheckin.title?.match(/Check-in: (.+)/);
-            return hotelMatch && hotelMatch[1] ? `הגעה למלון` : (day.hasHotel ? `צ'ק-אין` : 'מלון');
+            return `הגעה למלון`;
         }
-        // Fallback to location context if no major event
-        return day.locationContext || trip.destinationEnglish || trip.destination;
+        // Fallback to location context
+        return day.locationContext;
     };
 
     useEffect(() => {
@@ -94,26 +92,10 @@ export const ItineraryView: React.FC<{
                 }
             }
 
-            // --- Pre-calculate Hotel Spans ---
-            const hotelSpans = new Map<string, string>(); // DateISO -> HotelName
-            trip.hotels?.forEach(hotel => {
-                const start = parseDateString(hotel.checkInDate);
-                const end = parseDateString(hotel.checkOutDate);
-                if (start && end) {
-                    let d = new Date(start);
-                    // Mark check-in day through check-out day (exclusive of checkout usually, but let's include for context)
-                    while (d < end) {
-                        const iso = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-                        hotelSpans.set(iso, hotel.name);
-                        d.setDate(d.getDate() + 1);
-                    }
-                }
-            });
-
             const dayMap = new Map<string, DayPlan>();
             const loopDate = new Date(startDate);
 
-            // Default initialization
+            // 1. אתחול ימים
             while (loopDate <= endDate) {
                 const isoDate = `${loopDate.getFullYear()}-${(loopDate.getMonth() + 1).toString().padStart(2, '0')}-${loopDate.getDate().toString().padStart(2, '0')}`;
                 dayMap.set(isoDate, {
@@ -124,7 +106,7 @@ export const ItineraryView: React.FC<{
                     events: [],
                     stats: { food: 0, attr: 0, flight: 0, travel: 0, hotel: 0 },
                     hasHotel: false,
-                    theme: getCityTheme('') // Placeholder, will be updated in Second Pass
+                    theme: getCityTheme('')
                 });
                 loopDate.setDate(loopDate.getDate() + 1);
             }
@@ -136,16 +118,14 @@ export const ItineraryView: React.FC<{
                 if (dayMap.has(isoKey)) dayMap.get(isoKey)?.events.push(event);
             };
 
-            // --- Ingest Data ---
+            // 2. הזנת נתונים (Ingest Data)
             trip.flights?.segments?.forEach(seg => {
                 addToDay(seg.date, {
                     id: `flight-dep-${seg.flightNumber}`, type: 'flight', time: seg.departureTime,
                     title: `טיסה ל${seg.toCity || seg.toCode || 'יעד'}`,
                     subtitle: `${seg.airline} ${seg.flightNumber}`,
                     location: `${seg.fromCode} ➔ ${seg.toCode}`,
-                    icon: Plane,
-                    colorClass: 'text-blue-600',
-                    bgClass: 'bg-blue-50'
+                    icon: Plane, colorClass: 'text-blue-600', bgClass: 'bg-blue-50'
                 });
             });
 
@@ -196,54 +176,67 @@ export const ItineraryView: React.FC<{
 
             const sortedTimeline = Array.from(dayMap.values()).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
-            // --- SECOND PASS: Context & Theme ---
-            let currentCity = trip.destinationEnglish || trip.destination || 'Start';
-            let currentHotelName = '';
+            // --- 3. התיקון הגדול: לוגיקת Context חכמה ---
+            // במקום להסתמך רק על אירועים נקודתיים, נבדוק בתוך איזה טווח מלון אנחנו נמצאים
+
+            let defaultCity = trip.destinationEnglish || trip.destination || 'Start';
 
             sortedTimeline.forEach((day, index) => {
+                // מיון אירועים
                 day.events.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
 
-                // 1. Check if this day is within a hotel span (Fix for "Empty" intermediate days)
-                const hotelStaying = hotelSpans.get(day.dateIso);
-                if (hotelStaying) currentHotelName = hotelStaying;
-
-                // 2. Update context based on specific events (Override if new event happens)
+                // א. זיהוי בסיסי לפי טיסה
                 const flight = day.events.find(e => e.type === 'flight');
                 if (flight) {
                     const toCity = flight.title.replace('טיסה ל', '').trim();
-                    if (toCity) currentCity = toCity;
-                    currentHotelName = ''; // Reset hotel on flight day usually
+                    if (toCity) {
+                        day.locationContext = toCity;
+                    }
                 }
 
-                const checkIn = day.events.find(e => e.type === 'hotel_checkin');
-                if (checkIn) {
-                    const nameMatch = checkIn.title.match(/Check-in: (.+)/);
-                    if (nameMatch) currentHotelName = nameMatch[1];
+                // ב. התיקון: בדיקה אם היום הנוכחי הוא חלק משהות במלון
+                // אנו עוברים על כל המלונות ובודקים אם התאריך הזה נופל בטווח שלהם
+                const activeHotel = trip.hotels?.find(h =>
+                    h.checkInDate && h.checkOutDate &&
+                    isDateInHotelRange(h.checkInDate, h.checkOutDate, day.dateIso)
+                );
+
+                if (activeHotel) {
+                    // אם אנחנו במלון, העיר היא המיקום של המלון
+                    // ננסה לחלץ עיר מהכתובת, או נשתמש בשם המלון אם אין ברירה
+                    const hotelCity = activeHotel.address.split(',').pop()?.trim() || activeHotel.name;
+                    day.locationContext = hotelCity;
+                    day.hasHotel = true;
+
+                    // אם זה יום "ריק" באמצע המלון, הכותרת תהיה "יום ב[עיר]"
+                    if (day.events.length === 0) {
+                        day.locationContext = `${hotelCity} (יום חופשי)`;
+                    }
+                } else if (!day.locationContext) {
+                    // אם אין מלון ואין טיסה, נשתמש בברירת המחדל או בעיר של אתמול (Persistence)
+                    if (index > 0) {
+                        day.locationContext = sortedTimeline[index - 1].locationContext.replace(' (יום חופשי)', '');
+                    } else {
+                        day.locationContext = defaultCity;
+                    }
                 }
 
-                const checkOut = day.events.find(e => e.type === 'hotel_checkout');
-                if (checkOut) {
-                    // On checkout day, we are leaving, so clear for *future* context, 
-                    // but usually we want to show we were there in the morning.
-                    // For now, let's say checkout clears it immediately for clarity.
-                    currentHotelName = '';
-                }
+                // ג. קביעת צבע (Theme)
+                // מנקה סוגריים ורעש כדי שהצבע יהיה עקבי (למשל "Boracay (Resort)" -> "Boracay")
+                const cleanCityName = day.locationContext.split('(')[0].trim();
+                day.theme = getCityTheme(cleanCityName);
 
-                // Apply persistent context
-                day.locationContext = currentCity;
-                day.hasHotel = !!currentHotelName || !!hotelStaying;
-
-                // Ensure theme is never empty/white. 
-                day.theme = getCityTheme(currentCity);
-
-                // Title Logic
-                const autoTitle = generateDayTitle(day, trip, index, sortedTimeline.length);
-                if (day.events.length === 0 && (currentHotelName || hotelStaying)) {
-                    day.locationContext = `${currentHotelName || hotelStaying}`;
-                } else if (autoTitle && autoTitle !== 'Start') {
+                // ד. כותרת סופית
+                const autoTitle = generateDayTitle(day);
+                if (activeHotel && !day.events.find(e => e.type === 'hotel_checkin') && !day.events.find(e => e.type === 'hotel_checkout') && !flight) {
+                    // ימי אמצע
+                    // הכותרת כבר טופלה ב-locationContext
+                } else if (autoTitle) {
+                    // ימי אירוע
                     day.locationContext = autoTitle;
                 }
 
+                // ה. סטטיסטיקות
                 day.stats = {
                     food: day.events.filter(e => e.type === 'food').length,
                     attr: day.events.filter(e => e.type === 'attraction').length,
@@ -287,15 +280,6 @@ export const ItineraryView: React.FC<{
         if (url) onUpdateTrip({ ...trip, coverImage: url });
     };
 
-    // --- Stats Calculation ---
-    const tripStats = useMemo(() => {
-        const flights = trip.flights?.segments?.length || 0;
-        const hotels = trip.hotels?.length || 0;
-        const attractions = trip.attractions?.reduce((acc, cat) => acc + cat.attractions.length, 0) || 0;
-        const food = trip.restaurants?.reduce((acc, cat) => acc + cat.restaurants.length, 0) || 0;
-        return { flights, hotels, attractions, food };
-    }, [trip]);
-
     const activeDay = useMemo(() => timeline.find(d => d.dateIso === selectedDayIso), [timeline, selectedDayIso]);
 
     return (
@@ -305,37 +289,7 @@ export const ItineraryView: React.FC<{
                 <div className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-xl z-0">
                     <img src={trip.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80'} className="w-full h-full object-cover" alt="Cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
-
-                    {/* Edit Cover Button */}
-                    <button onClick={handleChangeCover} className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-black/60"><Edit2 className="w-4 h-4" /></button>
-
-                    {/* STATS WIDGETS (Interactive & Large) */}
-                    <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2 max-w-[70%]">
-                        {tripStats.flights > 0 && (
-                            <button onClick={() => setActiveWidget('flights')} className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[60px] justify-center">
-                                <Plane className="w-4 h-4 text-blue-300 transform -rotate-45" />
-                                <span className="text-sm drop-shadow-md">{tripStats.flights}</span>
-                            </button>
-                        )}
-                        {tripStats.hotels > 0 && (
-                            <button onClick={() => setActiveWidget('hotels')} className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[60px] justify-center">
-                                <Hotel className="w-4 h-4 text-indigo-300" />
-                                <span className="text-sm drop-shadow-md">{tripStats.hotels}</span>
-                            </button>
-                        )}
-                        {tripStats.attractions > 0 && (
-                            <button onClick={() => setActiveWidget('attractions')} className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[60px] justify-center">
-                                <Ticket className="w-4 h-4 text-purple-300" />
-                                <span className="text-sm drop-shadow-md">{tripStats.attractions}</span>
-                            </button>
-                        )}
-                        {tripStats.food > 0 && (
-                            <button onClick={() => setActiveWidget('restaurants')} className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/50 backdrop-blur-md border border-white/10 rounded-xl text-white font-bold transition-all hover:scale-105 active:scale-95 shadow-lg min-w-[60px] justify-center">
-                                <Utensils className="w-4 h-4 text-orange-300" />
-                                <span className="text-sm drop-shadow-md">{tripStats.food}</span>
-                            </button>
-                        )}
-                    </div>
+                    <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20"><Edit2 className="w-4 h-4" /></button>
                 </div>
                 <div className="absolute inset-0 z-10 flex flex-col justify-end p-6 pointer-events-none">
                     <div className="space-y-1 max-w-xl pointer-events-auto text-white">
@@ -354,26 +308,18 @@ export const ItineraryView: React.FC<{
                             const dayNumber = index + 1;
                             const isLastDay = index === timeline.length - 1;
 
-                            // Determine Header Icon Priority
-                            const hasFlight = day.events.some(e => e.type === 'flight');
-                            const hasHotel = day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout');
-
-                            let HeaderIcon = MapPin; // Default
-                            if (hasFlight) HeaderIcon = Plane;
-                            else if (hasHotel) HeaderIcon = Hotel;
-
                             return (
                                 <div
                                     key={day.dateIso}
                                     onClick={() => setSelectedDayIso(day.dateIso)}
-                                    className={`bg-white border rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[260px] relative
+                                    className={`bg-white border rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-visible group flex flex-col h-[300px] relative
                                         ${day.theme.border} hover:border-opacity-100 border-opacity-60`}
                                 >
                                     {!isLastDay && <div className="hidden xl:block absolute -left-5 top-1/2 -translate-y-1/2 z-20 text-slate-300"><div className="bg-slate-50/50 p-1 rounded-full"><ChevronLeft className="w-5 h-5 stroke-[2.5] text-slate-300" /></div></div>}
 
                                     <div className="absolute -top-2 -right-2 bg-slate-800 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-md z-30 opacity-0 group-hover:opacity-100 transition-opacity">DAY {dayNumber.toString().padStart(2, '0')}</div>
 
-                                    {/* --- UNIFIED HEADER (Standardized Design) --- */}
+                                    {/* --- UNIFIED HEADER --- */}
                                     <div className={`p-3 border-b flex items-center justify-between transition-colors ${day.theme.bg} ${day.theme.border}`}>
                                         <div className="flex items-center gap-3">
                                             <div className={`min-w-[48px] h-10 px-2 rounded-xl flex flex-col items-center justify-center shadow-sm border ${day.theme.badge} ${day.theme.border}`}>
@@ -388,50 +334,81 @@ export const ItineraryView: React.FC<{
                                                 </h3>
                                             </div>
                                         </div>
-
-                                        {/* Status Icon */}
-                                        <div className={`p-1.5 rounded-lg bg-white/60 ${day.theme.icon}`}>
-                                            <HeaderIcon className="w-3.5 h-3.5" />
-                                        </div>
+                                        {day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout') && (
+                                            <div className={`p-1.5 rounded-lg bg-white/60 ${day.theme.icon}`}><Hotel className="w-3.5 h-3.5" /></div>
+                                        )}
                                     </div>
 
-                                    {/* EVENTS LIST (Clean Rows Only) */}
-                                    <div className="p-3 flex-grow overflow-y-auto scrollbar-hide relative bg-white">
+                                    {/* EVENTS LIST */}
+                                    <div className="p-3 flex-grow overflow-y-auto scrollbar-hide relative bg-white space-y-2">
                                         {day.events.length > 0 ? (
-                                            <div className="space-y-1.5 relative z-10">
-                                                {day.events.map((event, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2 w-full py-1 group/item">
-                                                        {/* Time Column */}
-                                                        <span className="text-[10px] font-mono font-bold opacity-40 min-w-[32px] group-hover/item:opacity-70 transition-opacity">
-                                                            {event.time || "--:--"}
-                                                        </span>
-
-                                                        {/* Icon Badge */}
-                                                        <div className={`p-1.5 rounded-full ${event.bgClass} flex-shrink-0`}>
-                                                            <event.icon className={`w-3.5 h-3.5 ${event.colorClass}`} />
+                                            day.events.map((event, idx) => (
+                                                <div key={idx}>
+                                                    {event.type === 'flight' ? (
+                                                        // *** עיצוב הטיסה החדש (Google Flights Style) ***
+                                                        <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 flex flex-col gap-2 group/flight hover:border-blue-300 transition-colors">
+                                                            <div className="flex justify-between items-center">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <div className="bg-white p-1 rounded-full shadow-sm">
+                                                                        <Plane className="w-3 h-3 text-blue-600 transform -rotate-45" />
+                                                                    </div>
+                                                                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight truncate max-w-[100px]">
+                                                                        {event.subtitle || "טיסה"}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex flex-col text-right">
+                                                                    <span className="text-lg font-black text-slate-800 leading-none">{event.time}</span>
+                                                                    <span className="text-[10px] font-bold text-slate-500 uppercase">
+                                                                        {event.location?.split('➔')[0]?.trim() || 'ORG'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex-1 px-3 flex flex-col items-center">
+                                                                    <div className="w-full h-[1px] bg-blue-200 relative mt-1">
+                                                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-50 px-1">
+                                                                            <Plane className="w-3 h-3 text-blue-300 transform rotate-[270deg]" />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex flex-col text-left">
+                                                                    <span className="text-lg font-black text-slate-800 leading-none opacity-40">--:--</span>
+                                                                    <span className="text-[10px] font-bold text-slate-500 uppercase">
+                                                                        {event.location?.split('➔')[1]?.trim() || 'DST'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
                                                         </div>
-
-                                                        {/* Text Info */}
-                                                        <div className="flex flex-col min-w-0 flex-1">
-                                                            <span className="text-xs font-bold text-slate-700 truncate leading-tight opacity-90">
-                                                                {event.title}
+                                                    ) : (
+                                                        // *** שאר האירועים ***
+                                                        <div className="flex items-center gap-3 w-full py-1.5 group/item hover:bg-slate-50 rounded-lg px-1 transition-colors">
+                                                            <span className="text-[11px] font-mono font-bold text-slate-400 min-w-[35px]">
+                                                                {event.time || "--:--"}
                                                             </span>
-                                                            {event.subtitle && (
-                                                                <span className="text-[10px] text-slate-400 truncate leading-tight">
-                                                                    {event.subtitle}
+                                                            <div className={`p-1.5 rounded-full ${event.bgClass} flex-shrink-0 shadow-sm`}>
+                                                                <event.icon className={`w-3.5 h-3.5 ${event.colorClass}`} />
+                                                            </div>
+                                                            <div className="flex flex-col min-w-0 flex-1">
+                                                                <span className="text-xs font-bold text-slate-700 truncate leading-tight group-hover/item:text-blue-600 transition-colors">
+                                                                    {event.title}
                                                                 </span>
-                                                            )}
+                                                                {event.subtitle && (
+                                                                    <span className="text-[10px] text-slate-400 truncate leading-tight">
+                                                                        {event.subtitle}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                                    )}
+                                                </div>
+                                            ))
                                         ) : (
-                                            <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2">
-                                                <Moon className="w-5 h-5 mb-1" />
+                                            <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2 min-h-[100px]">
+                                                <Moon className="w-6 h-6 mb-1" />
                                                 <span className="text-[10px] font-bold">יום חופשי</span>
                                             </div>
                                         )}
-                                        <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                                        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
                                     </div>
                                 </div>
                             );
@@ -440,65 +417,7 @@ export const ItineraryView: React.FC<{
                 )}
             </div>
 
-            {/* Widget Detail Modal (NEW) */}
-            {activeWidget && createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setActiveWidget(null)}>
-                    <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-fade-in" onClick={e => e.stopPropagation()}>
-                        <div className="p-5 border-b flex items-center justify-between bg-slate-50">
-                            <h3 className="text-xl font-black text-slate-800">
-                                {activeWidget === 'flights' && 'טיסות'}
-                                {activeWidget === 'hotels' && 'מלונות'}
-                                {activeWidget === 'attractions' && 'אטרקציות'}
-                                {activeWidget === 'restaurants' && 'מסעדות'}
-                            </h3>
-                            <button onClick={() => setActiveWidget(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X className="w-5 h-5 text-slate-500" /></button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                            {activeWidget === 'flights' && trip.flights?.segments?.map((seg, i) => (
-                                <div key={i} className="flex gap-4 p-3 border rounded-xl hover:bg-slate-50 transition-colors">
-                                    <div className="p-3 bg-blue-50 rounded-full h-fit"><Plane className="w-5 h-5 text-blue-600" /></div>
-                                    <div>
-                                        <div className="font-bold">{seg.fromCode} ➔ {seg.toCode}</div>
-                                        <div className="text-sm text-slate-500">{seg.airline} • {seg.date}</div>
-                                    </div>
-                                </div>
-                            ))}
-                            {activeWidget === 'hotels' && trip.hotels?.map((h, i) => (
-                                <div key={i} className="flex gap-4 p-3 border rounded-xl hover:bg-slate-50 transition-colors">
-                                    <div className="p-3 bg-indigo-50 rounded-full h-fit"><Hotel className="w-5 h-5 text-indigo-600" /></div>
-                                    <div>
-                                        <div className="font-bold">{h.name}</div>
-                                        <div className="text-sm text-slate-500">{h.checkInDate} - {h.checkOutDate}</div>
-                                        <div className="text-xs text-slate-400 mt-1">{h.address}</div>
-                                    </div>
-                                </div>
-                            ))}
-                            {activeWidget === 'attractions' && trip.attractions?.map(cat => cat.attractions.map((attr, i) => (
-                                <div key={i} className="flex gap-4 p-3 border rounded-xl hover:bg-slate-50 transition-colors">
-                                    <div className="p-3 bg-purple-50 rounded-full h-fit"><Ticket className="w-5 h-5 text-purple-600" /></div>
-                                    <div>
-                                        <div className="font-bold">{attr.name}</div>
-                                        <div className="text-sm text-slate-500">{attr.description?.substring(0, 50)}...</div>
-                                        <div className="text-xs text-slate-400 mt-1">{attr.location}</div>
-                                    </div>
-                                </div>
-                            )))}
-                            {activeWidget === 'restaurants' && trip.restaurants?.map(cat => cat.restaurants.map((res, i) => (
-                                <div key={i} className="flex gap-4 p-3 border rounded-xl hover:bg-slate-50 transition-colors">
-                                    <div className="p-3 bg-orange-50 rounded-full h-fit"><Utensils className="w-5 h-5 text-orange-600" /></div>
-                                    <div>
-                                        <div className="font-bold">{res.name}</div>
-                                        <div className="text-sm text-slate-500">{res.cuisine}</div>
-                                        <div className="text-xs text-slate-400 mt-1">{res.location}</div>
-                                    </div>
-                                </div>
-                            )))}
-                        </div>
-                    </div>
-                </div>, document.body
-            )}
-
-            {/* Day Detail Modal */}
+            {/* MODALS - SAME AS BEFORE */}
             {selectedDayIso && activeDay && createPortal(
                 <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedDayIso(null)}>
                     <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
@@ -534,7 +453,6 @@ export const ItineraryView: React.FC<{
                 </div>, document.body
             )}
 
-            {/* Quick Add Modal */}
             {quickAddModal.isOpen && createPortal(
                 <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4" onClick={() => setQuickAddModal({ isOpen: false })}>
                     <div className="bg-white rounded-3xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
