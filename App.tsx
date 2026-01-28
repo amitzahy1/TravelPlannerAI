@@ -71,29 +71,83 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
-  // Load trips when user changes
-  const loadUserTrips = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const loadedTrips = await loadTrips(user?.uid);
-      setTrips(loadedTrips);
+  // Load trips with Real-Time Priority (Post-Mortem Step 3)
+  useEffect(() => {
+    let unsubscribe: import('firebase/firestore').Unsubscribe | null = null;
+    const STORAGE_KEY = 'travel_app_data_v1';
 
-      // Persistence Logic: Load last used trip
-      const lastTripId = localStorage.getItem('lastTripId');
-      if (lastTripId && loadedTrips.find(t => t.id === lastTripId)) {
-        setActiveTripId(lastTripId);
-      } else if (loadedTrips.length > 0) {
-        // Default to the NEWEST trip (last in array) if no history
-        setActiveTripId(loadedTrips[loadedTrips.length - 1].id);
+    const loadTripsRealtime = async () => {
+      if (!user) {
+        setTrips([]);
+        return;
       }
-    } catch (err) {
-      console.error('Error loading trips:', err);
-      setError('שגיאה בטעינת הנתונים. אנא נסה שוב.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.uid]);
+      setIsLoading(true);
+
+      // 1. Fast Load from Cache (so user sees something)
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          console.log("💾 Loaded from cache:", parsed.length);
+          setTrips(parsed);
+
+          // Persistence Logic: Load last used trip from cache
+          const lastTripId = localStorage.getItem('lastTripId');
+          if (lastTripId && parsed.find((t: Trip) => t.id === lastTripId)) {
+            setActiveTripId(lastTripId);
+          } else if (parsed.length > 0 && !activeTripId) {
+            setActiveTripId(parsed[Math.max(0, parsed.length - 1)].id);
+          }
+
+        } catch (e) { console.error("Cache parse error", e); }
+      }
+
+      // 2. Subscribe to Valid Truth from Server
+      try {
+        const { getFirestore, collection, query, where, onSnapshot, orderBy } = await import('firebase/firestore');
+        const db = (await import('./services/firebaseConfig')).db;
+
+        const q = query(
+          collection(db, "users", user.uid, "trips"), // Use user subcollection as primary source for now
+          // If using root 'trips' collection, query needs: where("userId", "==", user.uid)
+          orderBy('updatedAt', 'desc')
+        );
+
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          const freshTrips = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Trip[];
+
+          console.log("🔥 Firestore Realtime Update: ", freshTrips.length, " trips found.");
+          setTrips(freshTrips);
+          setIsLoading(false);
+
+          // Update Cache
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(freshTrips));
+        }, (err) => {
+          console.error("Firestore subscription error:", err);
+          setIsLoading(false);
+        });
+
+      } catch (error) {
+        console.error("Error setting up trips listener:", error);
+        setIsLoading(false);
+      }
+    };
+
+    loadTripsRealtime();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user]);
+
+  // Keep loadUserTrips as a manual refresh fallback if needed (or remove if fully replaced)
+  const loadUserTrips = useCallback(async () => {
+    // Legacy load, kept/noop for now to satisfy dependencies
+    console.log("Manual refresh triggered");
+  }, []);
 
   useEffect(() => {
     if (!authLoading) {
@@ -161,66 +215,68 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // App.tsx logic update for Zombie Trip Fix
+
   const handleDeleteTrip = async (tripId: string) => {
+    if (!confirm("Are you sure you want to delete this trip? This cannot be undone.")) return;
+
     // Store previous state for rollback
     const previousTrips = [...trips];
     const previousActiveId = activeTripId;
 
     setProcessingTripId(tripId); // 🛡️ BLOCK SUBSCRIPTIONS
 
-    // Optimistic UI update
+    // 1. Optimistic UI update
     console.log(`[DELETE] Starting deletion for trip: ${tripId}`);
-    const newTrips = trips.filter(t => t.id !== tripId);
-    setTrips(newTrips);
+    const newTripsList = trips.filter(t => t.id !== tripId);
+    setTrips(newTripsList);
 
-    // ZOMBIE FIX: Immediately sync to LocalStorage to prevent persistence of deleted item
-    try {
-      localStorage.setItem('travel_app_data_v1', JSON.stringify(newTrips));
-      if (activeTripId === tripId) {
-        localStorage.removeItem('lastTripId');
-      }
-    } catch (e) {
-      console.warn('Failed to sync LocalStorage during delete', e);
-    }
-
-    // If active trip is deleted, switch
+    // If active trip is deleted, switch to empty or first available
     if (activeTripId === tripId) {
-      setActiveTripId(newTrips.length > 0 ? newTrips[0].id : '');
+      setActiveTripId(newTripsList.length > 0 ? newTripsList[0].id : '');
+      // Explicit cleanup of active trip pointers
+      localStorage.removeItem("activeTripId");
+      localStorage.removeItem("lastTripId");
     }
 
     try {
       const tripToDelete = previousTrips.find(t => t.id === tripId);
       const shareId = tripToDelete?.isShared && tripToDelete?.sharing?.shareId ? tripToDelete.sharing.shareId : undefined;
 
+      // 2. Execute Server Deletion
       console.log(`[DELETE] Sending delete command to Server...`);
+      // We pass user?.uid because deleteTrip requires it.
       await deleteTrip(tripId, user?.uid, shareId);
       console.log('✅ [DELETE] Server confirmed deletion success');
+
+      // 3. Critical LocalStorage Cleanup (The Zombie Fix)
+      // Use the CORRECT key 'travel_app_data_v1'
+      const STORAGE_KEY = 'travel_app_data_v1';
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newTripsList));
+
+      // Cleanup specific trip cache if it exists (generic cleanup)
+      localStorage.removeItem(`trip_${tripId}`);
+
     } catch (err: any) {
       console.error('❌ [DELETE] Server returned error:', err);
-      // ZOMBIE FIX: If permission denied or not found, DO NOT REVERT.
-      // We assume the user wants it gone. 
+
+      // ZOMBIE FIX: Access Denied / Not Found = Treat as Success (don't revert)
       const isPermissionError = err.code === 'permission-denied' || err.message?.includes('permission');
       const isNotFoundError = err.code === 'not-found' || err.message?.includes('not found');
 
       if (isPermissionError || isNotFoundError) {
         console.log('🧹 Force cleaning zombie trip from local state despite server error');
-        // Ensure it's gone from local storage too
-        try {
-          const localKey = 'travel_app_data_v1';
-          const stored = localStorage.getItem(localKey);
-          if (stored) {
-            const localTrips = JSON.parse(stored) as Trip[];
-            const filtered = localTrips.filter(t => t.id !== tripId);
-            localStorage.setItem(localKey, JSON.stringify(filtered));
-          }
-        } catch (e) { console.error("Local storage clean failed", e); }
+        const STORAGE_KEY = 'travel_app_data_v1';
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newTripsList));
         return;
       }
 
-      // Only revert for genuine network/unknown errors where data might still be safe on server
+      // Rollback for genuine errors
+      console.error("Failed to delete trip, rolling back:", err);
+      alert("Failed to delete trip from server. Please check your internet connection.");
       setTrips(previousTrips);
       setActiveTripId(previousActiveId);
-      alert('שגיאה במחיקת הטיול. נסה שוב.');
+
     } finally {
       setProcessingTripId(null); // 🔓 RELEASE GUARD
     }
