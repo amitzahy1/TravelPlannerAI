@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Trip, Attraction, AttractionCategory } from '../types';
-import { MapPin, Ticket, Star, Landmark, Sparkles, Filter, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid } from 'lucide-react';
+import { MapPin, Ticket, Star, Landmark, Sparkles, Filter, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid, Heart } from 'lucide-react';
 // cleaned imports
 import { getAttractionImage } from '../services/imageMapper';
 import { getAI, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
@@ -78,6 +78,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [recError, setRecError] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedRater, setSelectedRater] = useState<string>('all');
+    const [isResearchingAll, setIsResearchingAll] = useState(false);
+    const [researchProgress, setResearchProgress] = useState({ current: 0, total: 0 });
 
     const [selectedCity, setSelectedCity] = useState<string>('all');
     const [textQuery, setTextQuery] = useState('');
@@ -132,7 +134,92 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const clearSearch = () => { setTextQuery(''); setSearchResults(null); };
 
-    const initiateResearch = (city?: string) => fetchRecommendations(true, city || trip.destinationEnglish || tripCities[0]);
+    const initiateResearch = (city?: string) => {
+        if (city) setSelectedCity(city);
+        fetchRecommendations(true, city || trip.destinationEnglish || tripCities[0]);
+    };
+
+    const researchAllCities = async () => {
+        setIsResearchingAll(true);
+        setRecError('');
+        const cities = tripCities;
+        setResearchProgress({ current: 0, total: cities.length });
+
+        try {
+            const ai = getAI();
+            let accumulatedCategories: AttractionCategory[] = [...aiCategories];
+
+            for (let i = 0; i < cities.length; i++) {
+                setResearchProgress({ current: i + 1, total: cities.length });
+                const city = cities[i];
+
+                // Check if we already have this city (crude check via region or title)
+                // Actually easier to just fetch all and merge
+                try {
+                    const prompt = createResearchPrompt(city);
+                    const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
+                    const rawData = JSON.parse(response.text || '{}');
+                    const categoriesList = rawData.categories || (Array.isArray(rawData) ? rawData : []);
+
+                    if (categoriesList.length > 0) {
+                        const processed = categoriesList.map((c: any, index: number) => ({
+                            ...c,
+                            id: c.id || `ai-cat-${city}-${index}-${Date.now()}`,
+                            attractions: (c.attractions || []).map((a: any, j: number) => ({
+                                ...a,
+                                id: `ai-attr-${city}-${index}-${Math.random().toString(36).substr(2, 5)}-${j}`,
+                                categoryTitle: c.title
+                            }))
+                        }));
+
+                        // Merge logic: append new categories/restaurants
+                        processed.forEach((newCat: any) => {
+                            const existingIdx = accumulatedCategories.findIndex(ac => ac.title === newCat.title);
+                            if (existingIdx !== -1) {
+                                // Merge restaurants, dedupe by name
+                                const existingRes = accumulatedCategories[existingIdx].attractions;
+                                newCat.attractions.forEach((nr: any) => {
+                                    if (!existingRes.some(er => er.name === nr.name)) {
+                                        existingRes.push(nr);
+                                    }
+                                });
+                            } else {
+                                accumulatedCategories.push(newCat);
+                            }
+                        });
+                    }
+                } catch (cityErr) {
+                    console.error(`Error researching ${city}:`, cityErr);
+                }
+            }
+
+            setAiCategories(accumulatedCategories);
+            onUpdateTrip({ ...trip, aiAttractions: accumulatedCategories });
+            setSelectedCity('all');
+        } catch (e) {
+            console.error("Critical Error in Research All:", e);
+            setRecError('שגיאה במהלך מחקר מקיף.');
+        } finally {
+            setIsResearchingAll(false);
+            setResearchProgress({ current: 0, total: 0 });
+        }
+    };
+
+    const createResearchPrompt = (target: string) => `
+    Role: You are the Lead Product Architect and Senior AI Engineer at Google Travel.
+    Mission: Re-engineer the Attraction Discovery Engine to implement the "Curator Algorithm" - a strict, quota-based recommendation system.
+
+    **PART 1: THE LOGIC RULES**
+    1. **Scope Authority:** Search primarily in "${target}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 20km to find quality spots.
+    2. **Quality > Quantity:** Return **UP TO 6** recommendations.
+    3. **NO HALLUCINATIONS:** If a category has no real results, return empty.
+    
+    **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
+    [אתרי חובה, טבע ונופים, מוזיאונים ותרבות, קניות ושווקים, אקסטרים ופעילויות, חופים ומים, למשפחות וילדים, היסטוריה ודת, חיי לילה ואווירה, פינות נסתרות]
+
+    OUTPUT JSON ONLY:
+    { "categories": [ { "id", "title", "attractions": [ { "name", "description", "location", "rating", "type", "price", "recommendationSource" } ] } ] }
+    `;
 
     const fetchRecommendations = async (forceRefresh = false, specificCity?: string) => {
         setLoadingRecs(true);
@@ -302,7 +389,13 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         let list: any[] = [];
         if (selectedCategory === 'all') aiCategories.forEach(c => list.push(...c.attractions.map(a => ({ ...a, categoryTitle: c.title }))));
         else { const cat = aiCategories.find(c => c.id === selectedCategory); if (cat) list = cat.attractions.map(a => ({ ...a, categoryTitle: cat.title })); }
-        if (selectedCity !== 'all') list = list.filter(a => (a.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
+        if (selectedCity !== 'all') {
+            const lowCity = selectedCity.toLowerCase();
+            list = list.filter(a =>
+                (a.location || '').toLowerCase().includes(lowCity) ||
+                (a.description || '').toLowerCase().includes(lowCity)
+            );
+        }
         if (selectedRater !== 'all') list = list.filter(a => a.recommendationSource === selectedRater);
         return list;
     }, [aiCategories, selectedCategory, selectedRater, selectedCity]);
@@ -392,10 +485,21 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 </div>
             )}
 
-            {/* Tabs */}
             <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-2">
-                <button onClick={() => setActiveTab('my_list')} className={`flex - 1 py - 2.5 rounded - xl text - sm font - bold flex items - center justify - center gap - 2 transition - all ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'} `}><Ticket className="w-4 h-4" /> האטרקציות שלי</button>
-                <button onClick={() => setActiveTab('recommended')} className={`flex - 1 py - 2.5 rounded - xl text - sm font - bold flex items - center justify - center gap - 2 transition - all ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'} `}><Sparkles className="w-4 h-4" /> המלצות TOP (AI)</button>
+                <button
+                    onClick={() => setActiveTab('my_list')}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Ticket className={`w-4 h-4 ${activeTab === 'my_list' ? 'text-purple-500' : 'text-slate-400'}`} />
+                    האטרקציות שלי
+                </button>
+                <button
+                    onClick={() => setActiveTab('recommended')}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Sparkles className={`w-4 h-4 ${activeTab === 'recommended' ? 'text-blue-500' : 'text-slate-400'}`} />
+                    המלצות TOP (AI)
+                </button>
             </div>
 
             {/* City Filter Bar */}
@@ -405,7 +509,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         <button
                             key={city}
                             onClick={() => setSelectedCity(city)}
-                            className={`px - 4 py - 2 rounded - full text - xs font - black transition - all border ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'} `}
+                            className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                         >
                             {city}
                         </button>
@@ -505,12 +609,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                 <div className="flex bg-slate-100/80 p-1 rounded-full gap-1 overflow-x-auto scrollbar-hide">
                                     <button
                                         onClick={() => initiateResearch(undefined)}
-                                        className={`px - 4 py - 1.5 rounded - full text - xs font - bold transition - all whitespace - nowrap flex items - center gap - 1.5 ${(!selectedCity || selectedCity === 'all')
-                                                ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5'
-                                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-                                            } `}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${(!selectedCity || selectedCity === 'all')
+                                            ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5'
+                                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                                            }`}
                                     >
-                                        <RotateCw className={`w - 3 h - 3 ${loadingRecs ? 'animate-spin' : ''} `} />
+                                        <RotateCw className={`w-3 h-3 ${loadingRecs ? 'animate-spin' : ''}`} />
                                         {loadingRecs ? 'טוען...' : 'רענן'}
                                     </button>
                                     <div className="w-px bg-slate-300 mx-1 h-4 self-center" />
@@ -519,10 +623,10 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                         <button
                                             key={city}
                                             onClick={() => initiateResearch(city)}
-                                            className={`px - 4 py - 1.5 rounded - full text - xs font - bold transition - all whitespace - nowrap ${selectedCity === city
-                                                    ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
-                                                    : 'text-slate-600 hover:bg-white hover:text-purple-600'
-                                                } `
+                                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedCity === city
+                                                ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
+                                                : 'text-slate-600 hover:bg-white hover:text-purple-600'
+                                                }`
                                             }
                                         >
                                             {city}
@@ -572,12 +676,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                     ) : (
                                         <>
                                             <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide"><div className="flex gap-2">
-                                                <button onClick={() => setSelectedCategory('all')} className={`px - 4 py - 2 rounded - full text - xs font - bold border ${selectedCategory === 'all' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'} `}>הכל</button>
-                                                {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px - 4 py - 2 rounded - full text - xs font - bold border ${selectedCategory === c.id ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'} `}>{displayTitle(c.title)}</button>)}
+                                                <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === 'all' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>הכל</button>
+                                                {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>{displayTitle(c.title)}</button>)}
                                             </div></div>
                                             <div className="mb-4 overflow-x-auto pb-2 flex gap-2 items-center"><span className="text-[10px] font-bold text-slate-400">הומלץ ע"י:</span>
-                                                <button onClick={() => setSelectedRater('all')} className={`px - 4 py - 2 rounded - full text - xs font - bold border ${selectedRater === 'all' ? 'bg-purple-600 text-white' : 'bg-white state-slate-600'} `}>הכל</button>
-                                                {availableRaters.map(r => <button key={r} onClick={() => setSelectedRater(r)} className={`px - 4 py - 2 rounded - full text - xs font - bold border ${selectedRater === r ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'} `}>{r}</button>)}
+                                                <button onClick={() => setSelectedRater('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === 'all' ? 'bg-purple-600 text-white' : 'bg-white state-slate-600'}`}>הכל</button>
+                                                {availableRaters.map(r => <button key={r} onClick={() => setSelectedRater(r)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === r ? 'bg-purple-600 text-white' : 'bg-white text-slate-600'}`}>{r}</button>)}
                                             </div>
                                             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                                                 {filteredRecommendations.map(rec => <AttractionRecommendationCard key={rec.id} rec={rec} tripDestination={trip.destination} isAdded={addedIds.has(rec.id) || trip.attractions.some(c => c.attractions.some(a => a.name === rec.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(rec)} />)}
@@ -664,7 +768,7 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
 
                         {/* Genre / Badge Highlight */}
                         <div className="flex items-center gap-2 mt-1">
-                            <div className={`text - [10px] font - bold px - 1.5 py - 0.5 rounded flex items - center gap - 1 ${visuals.gradient} `}>
+                            <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${visuals.gradient}`}>
                                 <span>{visuals.icon}</span>
                                 <span>{visuals.label}</span>
                             </div>
@@ -684,11 +788,9 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
                     {/* Heart Icon Toggle */}
                     <button
                         onClick={toggleFavorite}
-                        className={`p - 1.5 rounded - lg transition - colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'} `}
+                        className={`p-1.5 rounded-lg transition-colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'}`}
                     >
-                        {/* Using Star as Heart for consistency if needed, but Heart is better. Restaurants uses Heart now? Yes. */}
-                        <Star className={`w - 4 h - 4 ${data.isFavorite ? 'fill-red-500 text-red-500' : ''} `} />
-                        {/* Note: I'm using Star here because the user might have said 'duplicate design' but let's check imports. I'll use Heart if I import it, or Star if that's what was used. RestaurantsView used Heart. */}
+                        <Heart className={`w-4 h-4 ${data.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(); }}

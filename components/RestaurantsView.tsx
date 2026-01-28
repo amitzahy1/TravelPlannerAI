@@ -129,6 +129,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // UX State
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedRater, setSelectedRater] = useState<string>('all');
+    const [isResearchingAll, setIsResearchingAll] = useState(false);
+    const [researchProgress, setResearchProgress] = useState({ current: 0, total: 0 });
 
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
     const [selectedCity, setSelectedCity] = useState<string>('all');
@@ -213,6 +215,85 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const initiateResearch = (city?: string) => {
         fetchRecommendations(true, city || trip.destinationEnglish || tripCities[0]);
     };
+
+    const researchAllCities = async () => {
+        setIsResearchingAll(true);
+        setRecError('');
+        const cities = tripCities;
+        setResearchProgress({ current: 0, total: cities.length });
+
+        try {
+            const ai = getAI();
+            let accumulatedCategories: RestaurantCategory[] = [...aiCategories];
+
+            for (let i = 0; i < cities.length; i++) {
+                setResearchProgress({ current: i + 1, total: cities.length });
+                const city = cities[i];
+
+                try {
+                    const prompt = createResearchPrompt(city);
+                    const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SMART');
+                    const rawData = JSON.parse(response.text || '{}');
+                    const categoriesList = rawData.categories || (Array.isArray(rawData) ? rawData : []);
+
+                    if (categoriesList.length > 0) {
+                        const processed = categoriesList.map((c: any, index: number) => ({
+                            ...c,
+                            id: c.id || `ai-food-cat-${city}-${index}-${Date.now()}`,
+                            region: city,
+                            restaurants: (c.restaurants || []).map((r: any, j: number) => ({
+                                ...r,
+                                id: `ai-rec-${city}-${index}-${Math.random().toString(36).substr(2, 5)}-${j}`,
+                                categoryTitle: c.title
+                            }))
+                        }));
+
+                        // Merge logic: append new categories/restaurants
+                        processed.forEach((newCat: any) => {
+                            const existingIdx = accumulatedCategories.findIndex(ac => ac.title === newCat.title);
+                            if (existingIdx !== -1) {
+                                const existingRes = accumulatedCategories[existingIdx].restaurants;
+                                newCat.restaurants.forEach((nr: any) => {
+                                    if (!existingRes.some(er => er.name === nr.name)) {
+                                        existingRes.push(nr);
+                                    }
+                                });
+                            } else {
+                                accumulatedCategories.push(newCat);
+                            }
+                        });
+                    }
+                } catch (cityErr) {
+                    console.error(`Error researching ${city}:`, cityErr);
+                }
+            }
+
+            setAiCategories(accumulatedCategories);
+            onUpdateTrip({ ...trip, aiRestaurants: accumulatedCategories });
+            setSelectedCity('all');
+        } catch (e) {
+            console.error("Critical Error in Research All:", e);
+            setRecError('שגיאה במהלך מחקר מקיף.');
+        } finally {
+            setIsResearchingAll(false);
+            setResearchProgress({ current: 0, total: 0 });
+        }
+    };
+
+    const createResearchPrompt = (specificCity: string) => `
+    Role: You are the Lead Product Architect and Senior AI Engineer at Google Travel.
+    Mission: Re-engineer the Restaurant Discovery Engine to implement the "Curator Algorithm" - a strict, quota-based recommendation system.
+
+    **PART 1: THE LOGIC RULES**
+    1. **Scope Authority:** Search primarily in "${specificCity}".
+    2. **Quality > Quantity:** Return **UP TO 6** recommendations.
+    
+    **PART 2: THE "PERFECT DEFINITION MATRIX" (Standard 10 Categories)**
+    [Authentic Local Food, Luxury & Michelin, Cocktail Bars, Family Friendly, Ramen, Pizza, Burger, Cafe & Dessert, Thai, Japanese]
+
+    OUTPUT JSON ONLY:
+    { "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl" } ] } ] }
+    `;
 
     const fetchRecommendations = async (forceRefresh = false, specificCity: string) => {
         setLoadingRecs(true);
@@ -767,6 +848,19 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             <div className="animate-fade-in bg-white/80 backdrop-blur-lg rounded-2xl p-2 border border-slate-200/60 shadow-lg shadow-slate-100/50 mb-6 flex justify-between items-center sticky top-2 z-30">
                                 {/* Left: City Tabs (Pill Design) */}
                                 <div className="flex bg-slate-100/80 p-1 rounded-full gap-1 overflow-x-auto scrollbar-hide">
+                                    <button
+                                        onClick={researchAllCities}
+                                        disabled={isResearchingAll}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-black transition-all whitespace-nowrap flex items-center gap-1.5 ${isResearchingAll
+                                            ? 'bg-orange-100 text-orange-600'
+                                            : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md shadow-orange-200 hover:scale-105'
+                                            }`}
+                                    >
+                                        <BrainCircuit className={`w-3 h-3 ${isResearchingAll ? 'animate-pulse' : ''}`} />
+                                        {isResearchingAll ? `סורק הכל (${researchProgress.current}/${researchProgress.total})` : 'מחקר מקיף (AI) לכל הטיול'}
+                                    </button>
+                                    <div className="w-px bg-slate-300 mx-1 h-4 self-center" />
+
                                     <button
                                         onClick={() => initiateResearch(undefined)}
                                         className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${(!selectedCity || selectedCity === 'all')
