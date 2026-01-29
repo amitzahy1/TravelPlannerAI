@@ -363,37 +363,31 @@ export const ItineraryView: React.FC<{
 
             // Generate dynamic titles
             sortedTimeline.forEach((day, index) => {
-                // 1. Calculate base context from events for fallback or initial detection
-                // (We might not need generateDayTitle if we trust the sticky logic, but we keep it for "Day Trip" etc)
+                // 1. Calculate base context from events
+                let context = generateDayTitle(day, trip, index, sortedTimeline.length);
 
-                // 2. Detect Context Shifters
+                // 2. Update Sticky Location if Flight detected (Forward looking)
                 const flightTo = day.events.find(e => e.type === 'flight' && e.title.includes('טיסה ל'));
-                const hotelStay = day.events.find(e => (e.type === 'hotel_checkin' || e.type === 'hotel_stay') && e.location);
-
                 if (flightTo) {
                     const match = flightTo.title.match(/טיסה ל(.+)/);
                     if (match) {
                         currentStickyLocation = match[1].trim();
-                    } else {
-                        // Try parsing from raw title if format differs
-                        currentStickyLocation = flightTo.title.replace('טיסה ל', '').trim();
                     }
-                } else if (hotelStay && hotelStay.location) {
-                    // Extract city from hotel location (Simple heuristic: usually the last part or the main part)
-                    // Assuming location is "City, Country" or just "City"
-                    const parts = hotelStay.location.split(',');
-                    // If address is complex, this might need refinement, but often it's just city for these badges
-                    currentStickyLocation = parts[0].trim();
                 }
 
-                // 3. Apply Sticky Location
-                day.locationContext = currentStickyLocation;
+                // 3. Apply Sticky Location if context is just the default location (meaning no specific event overrode it)
+                // This fixes the issue where days after a flight revert to the trip's main destination
+                if (context === defaultLocation) {
+                    context = currentStickyLocation;
+                }
+
+                day.locationContext = context;
 
                 // Sort events by time
                 day.events.sort((a, b) => {
                     if (a.type === 'hotel_stay' && !a.time) return -1;
                     if (b.type === 'hotel_stay' && !b.time) return 1;
-                    return (a.time || '00:00').localeCompare(b.time || '00:00');
+                    return (a.time || '00:00').localeCompare(b.time || '00:00')
                 });
 
                 // Update stats
@@ -761,24 +755,36 @@ export const ItineraryView: React.FC<{
                                     const dayNumber = index + 1;
                                     const isLastDay = index === timeline.length - 1;
 
-                                    const theme = getCityTheme(day.locationContext);
+                                    // Helper to determine color based on location context text
+                                    const getLocationColor = (text: string) => {
+                                        if (!text) return 'bg-indigo-600';
+                                        const t = text.toLowerCase();
+                                        if (t.includes('תאילנד') || t.includes('בנגקוק') || t.includes('bangkok') || t.includes('thailand') || t.includes('קו')) return 'bg-teal-600';
+                                        if (t.includes('ניו יורק') || t.includes('new york') || t.includes('usa')) return 'bg-blue-600';
+                                        if (t.includes('מדבר') || t.includes('desert') || t.includes('דובאי')) return 'bg-orange-500';
+                                        if (t.includes('אירופה') || t.includes('לונדון') || t.includes('פריז')) return 'bg-slate-700';
+                                        if (t.includes('טיסה') || t.includes('flight')) return 'bg-sky-500';
+                                        return 'bg-indigo-600'; // Default
+                                    };
+
+                                    const headerColorClass = getLocationColor(day.locationContext);
 
                                     return (
                                         <div
                                             key={day.dateIso}
                                             onClick={() => setSelectedDayIso(day.dateIso)}
-                                            className={`bg-white border rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-[260px] relative ${theme.border}`}
+                                            className="bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-[260px] relative"
                                         >
                                             {/* Header Background */}
-                                            <div className={`h-16 ${theme.bg} relative overflow-hidden flex items-center px-4 transition-colors duration-300`}>
+                                            <div className={`h-16 ${headerColorClass} relative overflow-hidden flex items-center px-4`}>
                                                 {/* Decorative Circles */}
-                                                <div className="absolute -right-4 -top-4 w-20 h-20 bg-white opacity-20 rounded-full"></div>
-                                                <div className="absolute right-10 bottom-0 w-12 h-12 bg-white opacity-10 rounded-full"></div>
+                                                <div className="absolute -right-4 -top-4 w-20 h-20 bg-white opacity-10 rounded-full"></div>
+                                                <div className="absolute right-10 bottom-0 w-12 h-12 bg-white opacity-5 rounded-full"></div>
 
                                                 {/* Day Info */}
-                                                <div className={`${theme.text} relative z-10 w-full flex justify-between items-center pl-10 leading-normal`}>
+                                                <div className="text-white relative z-10 w-full flex justify-between items-center pl-10">
                                                     <div>
-                                                        <div className={`text-[10px] font-bold opacity-80 uppercase tracking-widest mb-0.5 ${theme.textLight}`}>{day.displayDayOfWeek}</div>
+                                                        <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-0.5">{day.displayDayOfWeek}</div>
                                                         <div className="text-xl font-black leading-none flex items-center gap-1.5">
                                                             <span>{day.displayDate.split(' ')[1]}</span>
                                                             <span className="opacity-90 uppercase">{day.displayDate.split(' ')[0]}</span>
@@ -786,7 +792,7 @@ export const ItineraryView: React.FC<{
                                                     </div>
                                                     {/* Location Context */}
                                                     <div className="text-right max-w-[50%]">
-                                                        <h3 className="text-sm font-bold truncate leading-tight opacity-95">{day.locationContext || 'יום בטיול'}</h3>
+                                                        <h3 className="text-sm font-bold text-white truncate leading-tight opacity-95">{day.locationContext || 'יום בטיול'}</h3>
                                                     </div>
                                                 </div>
                                             </div>
