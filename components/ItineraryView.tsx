@@ -13,6 +13,7 @@ import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR REMOVED: import { requestAccessToken } from '../services/googleAuthService';
 import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
+import { getCityTheme } from '../utils/cityColors';
 
 // --- Types ---
 // Removed to types.ts
@@ -754,44 +755,33 @@ export const ItineraryView: React.FC<{
                                     const dayNumber = index + 1;
                                     const isLastDay = index === timeline.length - 1;
 
-                                    // Helper to determine color based on location context text
-                                    const getLocationColor = (text: string) => {
-                                        if (!text) return 'bg-indigo-600';
-                                        const t = text.toLowerCase();
-                                        if (t.includes('תאילנד') || t.includes('בנגקוק') || t.includes('bangkok') || t.includes('thailand') || t.includes('קו')) return 'bg-teal-600';
-                                        if (t.includes('ניו יורק') || t.includes('new york') || t.includes('usa')) return 'bg-blue-600';
-                                        if (t.includes('מדבר') || t.includes('desert') || t.includes('דובאי')) return 'bg-orange-500';
-                                        if (t.includes('אירופה') || t.includes('לונדון') || t.includes('פריז')) return 'bg-slate-700';
-                                        if (t.includes('טיסה') || t.includes('flight')) return 'bg-sky-500';
-                                        return 'bg-indigo-600'; // Default
-                                    };
-
-                                    const headerColorClass = getLocationColor(day.locationContext);
+                                    const theme = getCityTheme(day.locationContext);
 
                                     return (
                                         <div
                                             key={day.dateIso}
                                             onClick={() => setSelectedDayIso(day.dateIso)}
-                                            className="bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-[260px] relative"
+                                            className={`bg-white border rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-[260px] relative ${theme.border}`}
                                         >
                                             {/* Header Background */}
-                                            <div className={`h-16 ${headerColorClass} relative overflow-hidden flex items-center px-4`}>
+                                            <div className={`h-16 ${theme.bg} relative overflow-hidden flex items-center px-4 transition-colors duration-300`}>
                                                 {/* Decorative Circles */}
-                                                <div className="absolute -right-4 -top-4 w-20 h-20 bg-white opacity-10 rounded-full"></div>
-                                                <div className="absolute right-10 bottom-0 w-12 h-12 bg-white opacity-5 rounded-full"></div>
+                                                <div className="absolute -right-4 -top-4 w-20 h-20 bg-white opacity-20 rounded-full"></div>
+                                                <div className="absolute right-10 bottom-0 w-12 h-12 bg-white opacity-10 rounded-full"></div>
 
                                                 {/* Day Info */}
-                                                <div className="text-white relative z-10 w-full flex justify-between items-center pl-10">
+                                                <div className={`${theme.text} relative z-10 w-full flex justify-between items-center pl-10`}>
                                                     <div>
-                                                        <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-0.5">{day.displayDayOfWeek}</div>
+                                                        <div className={`text-[10px] font-bold opacity-80 uppercase tracking-widest mb-0.5 ${theme.textLight}`}>{day.displayDayOfWeek}</div>
                                                         <div className="text-xl font-black leading-none flex items-baseline gap-1">
-                                                            <span className="text-sm font-bold opacity-80 uppercase">{day.displayDate.split(' ')[0]}</span>
+                                                            {/* FIX: Date Format Date first (29), then Month (Jan) */}
                                                             <span>{day.displayDate.split(' ')[1]}</span>
+                                                            <span className="text-sm font-bold opacity-80 uppercase">{day.displayDate.split(' ')[0]}</span>
                                                         </div>
                                                     </div>
                                                     {/* Location Context */}
                                                     <div className="text-right max-w-[50%]">
-                                                        <h3 className="text-sm font-bold text-white truncate leading-tight opacity-95">{day.locationContext || 'יום בטיול'}</h3>
+                                                        <h3 className="text-sm font-bold truncate leading-tight opacity-95">{day.locationContext || 'יום בטיול'}</h3>
                                                     </div>
                                                 </div>
                                             </div>

@@ -135,10 +135,10 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         {/* 2. Tools (Admin, Wallet) */}
                                                         <button
                                                                 onClick={onOpenAdmin}
-                                                                className="flex items-center gap-2 text-slate-600 hover:text-purple-700 hover:bg-white px-3 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-purple-100 hover:shadow-sm"
+                                                                className="flex items-center gap-2 text-purple-700 bg-purple-50 hover:bg-purple-100 hover:text-purple-800 px-5 py-2.5 rounded-xl text-sm font-black transition-all border border-purple-200 shadow-sm hover:shadow-md"
                                                         >
-                                                                <Sparkles className="w-4 h-4 text-purple-500" />
-                                                                <span>ניהול</span>
+                                                                <Sparkles className="w-4 h-4 text-purple-600" />
+                                                                <span>ניהול טיולים</span>
                                                         </button>
 
                                                         <button

@@ -404,19 +404,18 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
         transport: raw.categories?.transport || [],
         // Fix: Normalize Accommodation Data Structure (AI returns flat, UI expects nested)
         accommodation: raw.categories?.accommodation?.map((item: any) => {
-          // If already correct structure, keep it
-          if (item.data && item.data.hotelName) return item;
+          // Normalize Data Source (Handle both nested item.data and flat item)
+          const d = item.data || item;
 
-          // If flat structure (AI drift), format it
           return {
             type: 'hotel',
             data: {
-              hotelName: item.name || item.hotelName || "Unknown Hotel",
-              address: item.address,
-              checkInDate: item.checkIn?.isoDate || item.checkInDate || item.checkIn,
-              checkOutDate: item.checkOut?.isoDate || item.checkOutDate || item.checkOut,
-              displayTime: "14:00", // Default
-              bookingId: item.bookingId
+              hotelName: d.hotelName || d.propertyName || d.name || "Unknown Hotel",
+              address: d.address || d.location,
+              checkInDate: d.checkIn?.isoDate || d.checkInDate || d.checkIn,
+              checkOutDate: d.checkOut?.isoDate || d.checkOutDate || d.checkOut,
+              displayTime: d.displayTime || "15:00",
+              bookingId: d.bookingId || d.confirmationCode
             },
             sourceFileIds: item.sourceFileIds || [],
             confidence: 0.9

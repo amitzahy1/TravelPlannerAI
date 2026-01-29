@@ -19,19 +19,43 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
 
   const calculateDuration = (dep: string, arr: string) => {
     if (!dep || !arr) return "משך לא ידוע";
-    const [h1, m1] = dep.split(':').map(Number);
-    const [h2, m2] = arr.split(':').map(Number);
-    if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return "משך לא ידוע";
 
-    let diffMinutes = (h2 * 60 + m2) - (h1 * 60 + m1);
-    if (diffMinutes < 0) diffMinutes += 24 * 60; // Assume next day overlap
+    // Helper to get minutes from midnight
+    const getMinutes = (timeStr: string) => {
+      // Try HH:MM
+      if (timeStr.match(/^\d{1,2}:\d{2}$/)) {
+        const [h, m] = timeStr.split(':').map(Number);
+        return h * 60 + m;
+      }
+      // Try ISO
+      const d = new Date(timeStr);
+      if (!isNaN(d.getTime())) {
+        return d.getHours() * 60 + d.getMinutes();
+      }
+      // Try extracting HH:MM from string
+      const match = timeStr.match(/(\d{1,2}):(\d{2})/);
+      if (match) {
+        return parseInt(match[1]) * 60 + parseInt(match[2]);
+      }
+      return null;
+    };
 
-    const hours = Math.floor(diffMinutes / 60);
-    const mins = diffMinutes % 60;
+    const depMins = getMinutes(dep);
+    const arrMins = getMinutes(arr);
+
+    if (depMins === null || arrMins === null) return "משך לא ידוע";
+
+    let diff = arrMins - depMins;
+    if (diff < 0) diff += 24 * 60; // Cross midnight assumption
+
+    const hours = Math.floor(diff / 60);
+    const mins = diff % 60;
     return `${hours}h ${mins > 0 ? mins + 'm' : ''}`;
   };
 
-  const durationDisplay = (segment.duration && segment.duration !== '0h') ? segment.duration : calculateDuration(segment.departureTime || '', segment.arrivalTime || '');
+  const durationDisplay = (segment.duration && segment.duration !== '0h' && segment.duration !== '0h 0m')
+    ? segment.duration
+    : calculateDuration(segment.departureTime || '', segment.arrivalTime || '');
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow p-6 mb-4 relative overflow-hidden group">
@@ -60,10 +84,13 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
         <div className="md:col-span-6 flex items-center justify-between gap-2 md:gap-8 w-full">
 
           {/* Departure */}
-          <div className="text-right min-w-[90px] md:min-w-[110px]">
-            <div className="text-4xl font-black text-slate-800 leading-none">{segment.fromCode || segment.fromCity?.substring(0, 3).toUpperCase() || 'ORG'}</div>
-            <div className="text-xs text-slate-500 font-medium truncate max-w-[110px] mt-1 pr-1" title={segment.fromCity}>{segment.fromCity}</div>
-            <div className="text-xl font-bold text-blue-600 mt-3 font-mono" dir="ltr">{formatDateTime(segment.departureTime).split(',')[1]}</div>
+          <div className="text-right min-w-[90px] md:min-w-[130px]">
+            {/* FIX: City Name as Main Header */}
+            <div className="text-3xl font-black text-slate-800 leading-none truncate max-w-[180px]" title={segment.fromCity}>
+              {segment.fromCity || segment.fromCode || 'ORG'}
+            </div>
+            {/* Removed sub-city text */}
+            <div className="text-xl font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.departureTime).split(',')[1]}</div>
             <div className="text-sm font-bold text-slate-600 mt-1 uppercase">{formatDateTime(segment.departureTime).split(',')[0]}</div>
           </div>
 
@@ -89,10 +116,13 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
           </div>
 
           {/* Arrival */}
-          <div className="text-left min-w-[90px] md:min-w-[110px]">
-            <div className="text-4xl font-black text-slate-800 leading-none">{segment.toCode || segment.toCity?.substring(0, 3).toUpperCase() || 'DES'}</div>
-            <div className="text-xs text-slate-500 font-medium truncate max-w-[110px] mt-1 pl-1" title={segment.toCity}>{segment.toCity}</div>
-            <div className="text-xl font-bold text-blue-600 mt-3 font-mono" dir="ltr">{formatDateTime(segment.arrivalTime).split(',')[1]}</div>
+          <div className="text-left min-w-[90px] md:min-w-[130px]">
+            {/* FIX: City Name as Main Header */}
+            <div className="text-3xl font-black text-slate-800 leading-none truncate max-w-[180px]" title={segment.toCity}>
+              {segment.toCity || segment.toCode || 'DES'}
+            </div>
+            {/* Removed sub-city text */}
+            <div className="text-xl font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.arrivalTime).split(',')[1]}</div>
             <div className="text-sm font-bold text-slate-600 mt-1 uppercase">{formatDateTime(segment.arrivalTime).split(',')[0]}</div>
           </div>
 
