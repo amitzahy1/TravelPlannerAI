@@ -794,6 +794,20 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             <div className="space-y-6">
                                                 {(activeTrip?.flights?.segments || []).map((seg, idx) => {
                                                     const currentDate = seg.date ? seg.date.split('T')[0] : '';
+
+                                                    const getTime = (iso: string) => {
+                                                        if (!iso) return '';
+                                                        if (iso.includes('T')) return iso.split('T')[1].substring(0, 5);
+                                                        return iso;
+                                                    };
+
+                                                    const updateTime = (field: 'departureTime' | 'arrivalTime', newTime: string) => {
+                                                        // Use existing date or today if missing
+                                                        const baseDate = seg.date?.split('T')[0] || new Date().toISOString().split('T')[0];
+                                                        const newIso = `${baseDate}T${newTime}:00`;
+                                                        handleUpdateFlightSegment(idx, field, newIso);
+                                                    };
+
                                                     return (
                                                         <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group hover:shadow-md transition-shadow mb-4">
                                                             {/* Delete Button */}
@@ -829,6 +843,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                                                 className="w-full text-center font-black text-xl uppercase bg-transparent outline-none tracking-wider text-slate-700 placeholder:text-slate-200"
                                                                                 placeholder="TLV"
                                                                             />
+                                                                            {/* City Hint */}
+                                                                            <div className="text-[10px] text-slate-400 font-medium text-center truncate mt-1">{seg.fromCity || '-'}</div>
                                                                         </div>
                                                                     </div>
 
@@ -847,6 +863,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                                                 className="w-full text-center font-black text-xl uppercase bg-transparent outline-none tracking-wider text-slate-700 placeholder:text-slate-200"
                                                                                 placeholder="JFK"
                                                                             />
+                                                                            {/* City Hint */}
+                                                                            <div className="text-[10px] text-slate-400 font-medium text-center truncate mt-1">{seg.toCity || '-'}</div>
                                                                         </div>
                                                                     </div>
 
@@ -891,8 +909,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                                         <input
                                                                             type="time"
                                                                             className="w-full text-xs font-bold font-mono outline-none bg-transparent text-slate-700"
-                                                                            value={seg.departureTime || ''}
-                                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'departureTime', e.target.value)}
+                                                                            value={getTime(seg.departureTime as string)}
+                                                                            onChange={(e) => updateTime('departureTime', e.target.value)}
                                                                         />
                                                                     </div>
                                                                     <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm transition-colors focus-within:border-blue-300">
@@ -900,8 +918,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                                         <input
                                                                             type="time"
                                                                             className="w-full text-xs font-bold font-mono outline-none bg-transparent text-slate-700"
-                                                                            value={seg.arrivalTime || ''}
-                                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'arrivalTime', e.target.value)}
+                                                                            value={getTime(seg.arrivalTime as string)}
+                                                                            onChange={(e) => updateTime('arrivalTime', e.target.value)}
                                                                         />
                                                                     </div>
                                                                 </div>
