@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Trip } from '../types';
 import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, MessageCircle, X, Sparkles, ShoppingBag, Check, List, User } from 'lucide-react';
-import { TripAssistant } from './TripAssistant';
+// TripAssistant removed
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
 
@@ -263,7 +263,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                         {
                                 isChatOpen && activeTrip && (
                                         <div className="fixed bottom-40 md:bottom-28 left-6 right-6 md:right-auto md:w-96 h-[500px] max-h-[60vh] z-[60] animate-scale-in origin-bottom-left">
-                                                <TripAssistant trip={activeTrip} onClose={() => setIsChatOpen(false)} />
+
                                         </div>
                                 )
                         }

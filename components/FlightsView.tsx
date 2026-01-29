@@ -88,10 +88,6 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
 
         {/* 3. Class & Status (Right) */}
         <div className="md:col-span-3 flex flex-row md:flex-col justify-end items-end gap-2 border-t md:border-t-0 md:border-r border-slate-100 pt-4 md:pt-0 md:pr-6">
-          <div className="badge bg-green-50 text-green-700 border border-green-100 px-3 py-1 rounded-full text-xs font-bold">
-            Confirmed
-          </div>
-          <div className="text-xs text-slate-400 font-medium">Economy Class</div>
           {segment.baggage && (
             <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
               <Briefcase className="w-3.5 h-3.5" /> {segment.baggage}

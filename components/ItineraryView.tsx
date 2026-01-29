@@ -353,17 +353,43 @@ export const ItineraryView: React.FC<{
                 if (ev.date) addToDay(ev.date, ev);
             });
 
+            // Sort manually to ensure order
             const sortedTimeline = Array.from(dayMap.values()).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
-            // Generate dynamic titles for each day (Task 6)
-            sortedTimeline.forEach((day, index) => {
-                day.locationContext = generateDayTitle(day, trip, index, sortedTimeline.length);
+            // Sticky Location Logic variables
+            const defaultLocation = trip.destinationEnglish || trip.destination.split('-')[0].trim();
+            let currentStickyLocation = defaultLocation;
 
+            // Generate dynamic titles
+            sortedTimeline.forEach((day, index) => {
+                // 1. Calculate base context from events
+                let context = generateDayTitle(day, trip, index, sortedTimeline.length);
+
+                // 2. Update Sticky Location if Flight detected (Forward looking)
+                const flightTo = day.events.find(e => e.type === 'flight' && e.title.includes('טיסה ל'));
+                if (flightTo) {
+                    const match = flightTo.title.match(/טיסה ל(.+)/);
+                    if (match) {
+                        currentStickyLocation = match[1].trim();
+                    }
+                }
+
+                // 3. Apply Sticky Location if context is just the default location (meaning no specific event overrode it)
+                // This fixes the issue where days after a flight revert to the trip's main destination
+                if (context === defaultLocation) {
+                    context = currentStickyLocation;
+                }
+
+                day.locationContext = context;
+
+                // Sort events by time
                 day.events.sort((a, b) => {
                     if (a.type === 'hotel_stay' && !a.time) return -1;
                     if (b.type === 'hotel_stay' && !b.time) return 1;
                     return (a.time || '00:00').localeCompare(b.time || '00:00')
                 });
+
+                // Update stats
                 day.stats = {
                     food: day.events.filter(e => e.type === 'food').length,
                     attr: day.events.filter(e => e.type === 'attraction').length,
@@ -747,7 +773,10 @@ export const ItineraryView: React.FC<{
                                                 <div className="text-white relative z-10 w-full flex justify-between items-center pl-10">
                                                     <div>
                                                         <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-0.5">{day.displayDayOfWeek}</div>
-                                                        <div className="text-xl font-black leading-none">{day.displayDate.split(' ')[0]} <span className="text-sm font-medium opacity-80">{day.displayDate.split(' ')[1]}</span></div>
+                                                        <div className="text-xl font-black leading-none flex items-baseline gap-1">
+                                                            <span className="text-sm font-bold opacity-80 uppercase">{day.displayDate.split(' ')[0]}</span>
+                                                            <span>{day.displayDate.split(' ')[1]}</span>
+                                                        </div>
                                                     </div>
                                                     {/* Location Context */}
                                                     <div className="text-right max-w-[50%]">
