@@ -14,90 +14,76 @@ const getAirlineLogo = (airlineName: string, flightNumber: string) => {
 
 // --- Sub-components ---
 
-const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ segment, isLast }) => {
-  const logoUrl = getAirlineLogo(segment.airline, segment.flightNumber);
-
-  // Calculate Duration Display if not provided
-  // (In a real app, we'd parse dates. Here we trust the string or default)
-  const durationDisplay = segment.duration || "משך לא ידוע";
-
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow p-6 mb-4 relative overflow-hidden group">
-      {/* Decorative Top Line */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-sky-400 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-
-        {/* 1. Airline Info (Left) */}
-        <div className="md:col-span-3 flex flex-row md:flex-col items-center md:items-start gap-3">
-          <img
-            src={logoUrl}
-            alt={segment.airline}
-            onError={(e) => e.currentTarget.style.display = 'none'}
-            className="w-12 h-12 rounded-full object-cover border border-slate-100 p-0.5 bg-white shadow-sm"
-          />
-          <div>
-            <div className="font-black text-slate-800 text-lg leading-tight">{segment.airline}</div>
-            <div className="text-xs font-bold text-slate-400 font-mono tracking-wider mt-0.5 bg-slate-50 px-2 py-0.5 rounded-md w-fit">
-              {segment.flightNumber}
-            </div>
+        <img
+          src={logoUrl}
+          alt={segment.airline}
+          onError={(e) => e.currentTarget.style.display = 'none'}
+          className="w-16 h-16 rounded-full object-cover border border-slate-100 p-0.5 bg-white shadow-sm"
+        />
+        <div>
+          <div className="font-black text-slate-800 text-lg leading-tight">{segment.airline}</div>
+          <div className="text-xs font-bold text-slate-400 font-mono tracking-wider mt-0.5 bg-slate-50 px-2 py-0.5 rounded-md w-fit">
+            {segment.flightNumber}
           </div>
         </div>
+      </div >
 
-        {/* 2. The Flight Timeline (Center - Main Visual) */}
-        <div className="md:col-span-6 flex items-center justify-between gap-2 md:gap-8 w-full">
+  {/* 2. The Flight Timeline (Center - Main Visual) */ }
+  < div className = "md:col-span-6 flex items-center justify-between gap-2 md:gap-8 w-full" >
 
-          {/* Departure */}
-          <div className="text-right min-w-[90px] md:min-w-[110px]">
-            <div className="text-3xl font-black text-slate-800 leading-none">{segment.fromCode || 'ORG'}</div>
-            <div className="text-xs text-slate-500 font-medium truncate max-w-[100px] mt-1 pr-1" title={segment.fromCity}>{segment.fromCity}</div>
-            <div className="text-lg font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.departureTime).split(',')[1]}</div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase">{formatDateTime(segment.departureTime).split(',')[0]}</div>
+    {/* Departure */ }
+    < div className = "text-right min-w-[90px] md:min-w-[110px]" >
+          <div className="text-3xl font-black text-slate-800 leading-none">{segment.fromCode || 'ORG'}</div>
+          <div className="text-xs text-slate-500 font-medium truncate max-w-[100px] mt-1 pr-1" title={segment.fromCity}>{segment.fromCity}</div>
+          <div className="text-lg font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.departureTime).split(',')[1]}</div>
+          <div className="text-[10px] text-slate-400 font-bold uppercase">{formatDateTime(segment.departureTime).split(',')[0]}</div>
+        </div >
+
+  {/* Visual Path */ }
+  < div className = "flex-1 flex flex-col items-center px-2 md:px-6 relative min-w-[80px]" >
+          <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-slate-100 shadow-sm z-10 whitespace-nowrap">
+            <Clock className="w-3 h-3 text-slate-300" /> {durationDisplay}
           </div>
-
-          {/* Visual Path */}
-          <div className="flex-1 flex flex-col items-center px-2 md:px-6 relative min-w-[80px]">
-            <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-slate-100 shadow-sm z-10 whitespace-nowrap">
-              <Clock className="w-3 h-3 text-slate-300" /> {durationDisplay}
+          <div className="w-full flex items-center relative h-6">
+            {/* Line */}
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full h-0.5 bg-slate-200"></div>
             </div>
-            <div className="w-full flex items-center relative h-6">
-              {/* Line */}
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full h-0.5 bg-slate-200"></div>
-              </div>
-              {/* Plane Icon (RTL Aware: Pointing Left) */}
-              <div className="absolute left-1/2 -translate-x-1/2 bg-white px-2 z-10">
-                <Plane className="w-5 h-5 text-sky-500 transform -scale-x-100" />
-              </div>
-              {/* Dots at ends */}
-              <div className="absolute right-0 w-2.5 h-2.5 bg-slate-300 rounded-full ring-2 ring-white"></div>
-              <div className="absolute left-0 w-2.5 h-2.5 bg-blue-500 rounded-full ring-4 ring-blue-50"></div>
+            {/* Plane Icon (RTL Aware: Pointing Left) */}
+            <div className="absolute left-1/2 -translate-x-1/2 bg-white px-2 z-10">
+              <Plane className="w-5 h-5 text-sky-500 transform -scale-x-100" />
             </div>
-            <div className="text-[10px] text-slate-400 mt-1 font-mono tracking-widest uppercase">DIRECT</div>
+            {/* Dots at ends */}
+            <div className="absolute right-0 w-2.5 h-2.5 bg-slate-300 rounded-full ring-2 ring-white"></div>
+            <div className="absolute left-0 w-2.5 h-2.5 bg-blue-500 rounded-full ring-4 ring-blue-50"></div>
           </div>
+          <div className="text-[10px] text-slate-400 mt-1 font-mono tracking-widest uppercase">DIRECT</div>
+        </div >
 
-          {/* Arrival */}
-          <div className="text-left min-w-[90px] md:min-w-[110px]">
-            <div className="text-3xl font-black text-slate-800 leading-none">{segment.toCode || 'DES'}</div>
-            <div className="text-xs text-slate-500 font-medium truncate max-w-[100px] mt-1 pl-1" title={segment.toCity}>{segment.toCity}</div>
-            <div className="text-lg font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.arrivalTime).split(',')[1]}</div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase">{formatDateTime(segment.arrivalTime).split(',')[0]}</div>
-          </div>
+  {/* Arrival */ }
+  < div className = "text-left min-w-[90px] md:min-w-[110px]" >
+          <div className="text-3xl font-black text-slate-800 leading-none">{segment.toCode || 'DES'}</div>
+          <div className="text-xs text-slate-500 font-medium truncate max-w-[100px] mt-1 pl-1" title={segment.toCity}>{segment.toCity}</div>
+          <div className="text-lg font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.arrivalTime).split(',')[1]}</div>
+          <div className="text-[10px] text-slate-400 font-bold uppercase">{formatDateTime(segment.arrivalTime).split(',')[0]}</div>
+        </div >
 
-        </div>
+      </div >
 
-        {/* 3. Class & Status (Right) */}
-        <div className="md:col-span-3 flex flex-row md:flex-col justify-end items-end gap-2 border-t md:border-t-0 md:border-r border-slate-100 pt-4 md:pt-0 md:pr-6">
-          {segment.baggage && (
-            <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-              <Briefcase className="w-3.5 h-3.5" /> {segment.baggage}
-            </div>
-          )}
-        </div>
+  {/* 3. Class & Status (Right) */ }
+  < div className = "md:col-span-3 flex flex-row md:flex-col justify-end items-end gap-2 border-t md:border-t-0 md:border-r border-slate-100 pt-4 md:pt-0 md:pr-6" >
+  {
+    segment.baggage && (
+      <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+        <Briefcase className="w-3.5 h-3.5" /> {segment.baggage}
       </div>
+    )
+  }
+      </div >
+    </div >
 
-    </div>
-  );
+  </div >
+);
 };
 
 export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
