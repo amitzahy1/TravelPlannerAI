@@ -785,9 +785,9 @@ export const ItineraryView: React.FC<{
                                                 <div className="text-white relative z-10 w-full flex justify-between items-center pl-10">
                                                     <div>
                                                         <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-0.5">{day.displayDayOfWeek}</div>
-                                                        <div className="text-xl font-black leading-none flex items-baseline gap-1">
+                                                        <div className="text-xl font-black leading-none flex items-center gap-1.5">
                                                             <span>{day.displayDate.split(' ')[1]}</span>
-                                                            <span className="text-sm font-bold opacity-80 uppercase">{day.displayDate.split(' ')[0]}</span>
+                                                            <span className="opacity-90 uppercase">{day.displayDate.split(' ')[0]}</span>
                                                         </div>
                                                     </div>
                                                     {/* Location Context */}
@@ -814,12 +814,7 @@ export const ItineraryView: React.FC<{
                                                 יום {dayNumber}
                                             </div>
 
-                                            {/* Hotel Indicator (Floating) */}
-                                            {day.hasHotel && !day.events.some(e => e.type === 'hotel_checkout') && (
-                                                <div className="absolute top-12 left-4 text-[10px] font-bold text-indigo-100 bg-indigo-900/40 backdrop-blur px-2 py-1 rounded-lg border border-white/10 z-20 flex items-center gap-1">
-                                                    <Moon className="w-3 h-3" />
-                                                </div>
-                                            )}
+                                            {/* Hotel Indicator REMOVED per user request */}
 
                                             {/* Flow Arrow (Desktop Only - Outside) */}
                                             {!isLastDay && (
