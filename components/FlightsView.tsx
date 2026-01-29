@@ -31,7 +31,7 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
     return `${hours}h ${mins > 0 ? mins + 'm' : ''}`;
   };
 
-  const durationDisplay = segment.duration || calculateDuration(segment.departureTime || '', segment.arrivalTime || '');
+  const durationDisplay = (segment.duration && segment.duration !== '0h') ? segment.duration : calculateDuration(segment.departureTime || '', segment.arrivalTime || '');
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow p-6 mb-4 relative overflow-hidden group">
@@ -61,10 +61,10 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
 
           {/* Departure */}
           <div className="text-right min-w-[90px] md:min-w-[110px]">
-            <div className="text-3xl font-black text-slate-800 leading-none">{segment.fromCode || 'ORG'}</div>
-            <div className="text-xs text-slate-500 font-medium truncate max-w-[100px] mt-1 pr-1" title={segment.fromCity}>{segment.fromCity}</div>
-            <div className="text-lg font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.departureTime).split(',')[1]}</div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase">{formatDateTime(segment.departureTime).split(',')[0]}</div>
+            <div className="text-4xl font-black text-slate-800 leading-none">{segment.fromCode || segment.fromCity?.substring(0, 3).toUpperCase() || 'ORG'}</div>
+            <div className="text-xs text-slate-500 font-medium truncate max-w-[110px] mt-1 pr-1" title={segment.fromCity}>{segment.fromCity}</div>
+            <div className="text-xl font-bold text-blue-600 mt-3 font-mono" dir="ltr">{formatDateTime(segment.departureTime).split(',')[1]}</div>
+            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">{formatDateTime(segment.departureTime).split(',')[0]}</div>
           </div>
 
           {/* Visual Path */}
@@ -90,10 +90,10 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
 
           {/* Arrival */}
           <div className="text-left min-w-[90px] md:min-w-[110px]">
-            <div className="text-3xl font-black text-slate-800 leading-none">{segment.toCode || 'DES'}</div>
-            <div className="text-xs text-slate-500 font-medium truncate max-w-[100px] mt-1 pl-1" title={segment.toCity}>{segment.toCity}</div>
-            <div className="text-lg font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.arrivalTime).split(',')[1]}</div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase">{formatDateTime(segment.arrivalTime).split(',')[0]}</div>
+            <div className="text-4xl font-black text-slate-800 leading-none">{segment.toCode || segment.toCity?.substring(0, 3).toUpperCase() || 'DES'}</div>
+            <div className="text-xs text-slate-500 font-medium truncate max-w-[110px] mt-1 pl-1" title={segment.toCity}>{segment.toCity}</div>
+            <div className="text-xl font-bold text-blue-600 mt-3 font-mono" dir="ltr">{formatDateTime(segment.arrivalTime).split(',')[1]}</div>
+            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">{formatDateTime(segment.arrivalTime).split(',')[0]}</div>
           </div>
 
         </div>

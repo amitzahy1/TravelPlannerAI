@@ -690,7 +690,18 @@ export const ItineraryView: React.FC<{
                                                                         <Calendar className="w-3.5 h-3.5 text-indigo-400" />
                                                                         <span className="font-bold">{item.checkInDate ? `${parseDateString(item.checkInDate)?.getDate()}/${parseDateString(item.checkInDate)?.getMonth()! + 1}` : '--'} - {item.checkOutDate ? `${parseDateString(item.checkOutDate)?.getDate()}/${parseDateString(item.checkOutDate)?.getMonth()! + 1}` : '--'}</span>
                                                                     </div>
-                                                                    {item.nights && <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full">{item.nights} לילות</span>}
+                                                                    {(() => {
+                                                                        const start = parseDateString(item.checkInDate || '');
+                                                                        const end = parseDateString(item.checkOutDate || '');
+                                                                        if (start && end) {
+                                                                            const diffTime = Math.abs(end.getTime() - start.getTime());
+                                                                            const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                                            if (nights > 0) {
+                                                                                return <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full">{nights} לילות</span>;
+                                                                            }
+                                                                        }
+                                                                        return null;
+                                                                    })()}
                                                                 </div>
                                                             )}
 
