@@ -425,9 +425,16 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                                                                         type: 'transfer'
                                                                                                 });
                                                                                         } else if (selectedRec.type === 'hotel_missing') {
-                                                                                                // For hotel, we also open date picker to add a "Reminder" or "Check-in" placeholder
+                                                                                                let startName = 'תזכורת: להזמין מלון';
+                                                                                                if (selectedRec.suggestedDates && selectedRec.suggestedDates.length > 0) {
+                                                                                                        const firstDate = selectedRec.suggestedDates[0];
+                                                                                                        const dayPlan = timeline.find(d => d.dateIso === firstDate);
+                                                                                                        const city = dayPlan?.locationContext || '';
+                                                                                                        if (city) startName = `להזמין מלון: ${city}`;
+                                                                                                }
+
                                                                                                 setItemToSchedule({
-                                                                                                        item: { id: 'hotel-action', name: 'תזכורת: להזמין מלון' },
+                                                                                                        item: { id: 'hotel-action', name: startName },
                                                                                                         type: 'hotel_missing'
                                                                                                 });
                                                                                         }
