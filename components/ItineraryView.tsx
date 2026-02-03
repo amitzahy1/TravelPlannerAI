@@ -500,6 +500,8 @@ export const ItineraryView: React.FC<{
     }, [trip, externalEvents]);
 
     // SMART DATE RECALCULATION: Auto-update trip.dates when flights/hotels change
+    // DISABLED: Causing infinite loop when Firestore writes fail (Permission Errors)
+    /*
     useEffect(() => {
         const calculateTripDatesFromData = () => {
             const allDates: Date[] = [];
@@ -546,6 +548,7 @@ export const ItineraryView: React.FC<{
             onUpdateTrip({ ...trip, dates: calculatedDates });
         }
     }, [trip.flights?.segments, trip.hotels]);
+    */
 
     // CALENDAR SYNC REMOVED - Feature disabled to eliminate "Unverified App" warning
     const handleSyncCalendar = async () => {
