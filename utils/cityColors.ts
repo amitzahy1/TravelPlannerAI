@@ -44,6 +44,33 @@ const THEMES: CityTheme[] = [
         { bg: 'bg-teal-600', border: 'border-teal-700', text: 'text-white', textLight: 'text-teal-100', badge: 'bg-white/20 text-white', icon: 'text-white' }
 ];
 
+// Explicit City Overrides to ensure distinct colors for popular destinations
+const CITY_OVERRIDES: Record<string, number> = {
+        // Philippines
+        'manila': 1, // Urban Blue
+        'makati': 1,
+        'cebu': 12, // Lavender (Purple) - Kept User's "Purple" for Cebu
+        'boracay': 15, // Ocean (Teal) - Distinct from Cebu
+        'el nido': 2, // Emerald
+        'coron': 11, // Aqua
+        'bohol': 8, // Forest
+        'siargao': 0, // Tropical Orange
+
+        // Thailand
+        'bangkok': 6, // Amber (Historic/Temple)
+        'phuket': 10, // Sunset Red
+        'ko samui': 5, // Coastal Sky
+        'chiang mai': 8, // Green
+
+        // General
+        'tel aviv': 5, // Coastal
+        'jerusalem': 9, // Royal
+        'london': 1, // Urban
+        'paris': 3, // Romantic
+        'new york': 1,
+        'tokyo': 7, // Modern
+};
+
 export const getCityTheme = (cityName: string): CityTheme => {
         if (!cityName) {
                 // Return a default theme that is NOT white, preventing "blank" look
@@ -56,6 +83,18 @@ export const getCityTheme = (cityName: string): CityTheme => {
                         badge: 'bg-slate-200 text-slate-900',
                         icon: 'text-slate-500'
                 };
+        }
+
+        const lowerName = cityName.trim().toLowerCase();
+
+        // Check for overrides first
+        if (lowerName in CITY_OVERRIDES) {
+                return THEMES[CITY_OVERRIDES[lowerName]];
+        }
+
+        // Check for partial matches in overrides (e.g. "metro manila" -> match "manila")
+        for (const [key, index] of Object.entries(CITY_OVERRIDES)) {
+                if (lowerName.includes(key)) return THEMES[index];
         }
 
         let hash = 0;

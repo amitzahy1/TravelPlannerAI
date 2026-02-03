@@ -370,6 +370,11 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                                                                                 src={(item as any).imageUrl || getPlaceImage(item.name, itemType, []).url}
                                                                                                                 alt=""
                                                                                                                 className="w-full h-full object-cover"
+                                                                                                                onError={(e) => {
+                                                                                                                        const target = e.target as HTMLImageElement;
+                                                                                                                        target.onerror = null; // Prevent loop
+                                                                                                                        target.src = getPlaceImage(item.name, itemType, []).url;
+                                                                                                                }}
                                                                                                         />
                                                                                                 </div>
 

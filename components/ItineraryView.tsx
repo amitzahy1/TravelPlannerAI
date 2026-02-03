@@ -205,6 +205,13 @@ export const ItineraryView: React.FC<{
             'south korea': 'Seoul', 'israel': 'Tel Aviv', 'greece': 'Athens'
         };
 
+        // Specific Metro Manila Area Mapping
+        const manilaAreas = ['makati', 'bgc', 'bonifacio', 'quezon city', 'pasay', 'taguig', 'mandaluyong', 'metro manila'];
+        const addressLower = (address || '').toLowerCase();
+        if (manilaAreas.some(area => addressLower.includes(area))) {
+            return 'Manila';
+        }
+
         // Parse address parts (comma-separated)
         const addressParts = address ? address.split(',').map(p => p.trim()).filter(Boolean) : [];
 
