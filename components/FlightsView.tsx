@@ -26,6 +26,7 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onCl
     departureTime: parseFlightTime(segment.departureTime) || '',
     arrivalTime: parseFlightTime(segment.arrivalTime) || '',
     date: parseDateToIso(segment.date) || '',
+    arrivalDate: parseDateToIso(segment.arrivalTime) || parseDateToIso(segment.date) || '', // Initialize Arrival Date
     airline: segment.airline || '',
     flightNumber: segment.flightNumber || '',
     duration: segment.duration || ''
@@ -41,8 +42,8 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onCl
       departureTime: form.date && form.departureTime
         ? `${form.date}T${form.departureTime}:00`
         : form.departureTime,
-      arrivalTime: form.date && form.arrivalTime
-        ? `${form.date}T${form.arrivalTime}:00`
+      arrivalTime: form.arrivalDate && form.arrivalTime
+        ? `${form.arrivalDate}T${form.arrivalTime}:00`
         : form.arrivalTime,
       date: form.date,
       airline: form.airline,
@@ -142,9 +143,9 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onCl
           </div>
 
           {/* Date & Times */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">תאריך</label>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">תאריך המראה</label>
               <input
                 type="date"
                 value={form.date}
@@ -158,6 +159,15 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onCl
                 type="time"
                 value={form.departureTime}
                 onChange={e => setForm({ ...form, departureTime: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">תאריך נחיתה</label>
+              <input
+                type="date"
+                value={form.arrivalDate}
+                onChange={e => setForm({ ...form, arrivalDate: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
