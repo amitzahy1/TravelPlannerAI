@@ -104,7 +104,6 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
       }
     });
 
-    const sharedTrips = (await Promise.all(sharedTripPromises)).filter((t): t is Trip => t !== null);
 
     const sharedTrips = (await Promise.all(sharedTripPromises)).filter((t): t is Trip => t !== null);
     console.log(`🔥 [StorageService] Loaded ${sharedTrips.length} valid shared trips`);
