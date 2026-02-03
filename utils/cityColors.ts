@@ -50,7 +50,9 @@ const CITY_OVERRIDES: Record<string, number> = {
         'manila': 1, // Urban Blue
         'makati': 1,
         'cebu': 12, // Lavender (Purple) - Kept User's "Purple" for Cebu
-        'boracay': 0, // Tropical Orange (High contrast vs Blue/Purple)
+        'boracay': 0, // Tropical Orange
+        'boracay island': 0, // Explicit override
+        'boracay beach': 0,
         'el nido': 2, // Emerald
         'coron': 11, // Aqua
         'bohol': 8, // Forest

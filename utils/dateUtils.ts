@@ -27,7 +27,8 @@ export const formatDateTime = (isoString?: string) => {
 export const formatDateOnly = (isoString?: string) => {
         if (!isoString) return 'TBD';
         try {
-                const cleanIso = isoString.split('/')[0].split(' ')[0];
+                // FORCE strip time component to prevent timezone issues shifting the day
+                const cleanIso = isoString.split('T')[0].split(' ')[0].split('/')[0];
                 const date = new Date(cleanIso);
                 if (isNaN(date.getTime())) return isoString;
                 return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
