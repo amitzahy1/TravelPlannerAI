@@ -298,7 +298,7 @@ const AppContent: React.FC = () => {
       }>
         {(() => {
           switch (currentTab) {
-            case 'flights': return <FlightsView trip={activeTrip} />;
+            case 'flights': return <FlightsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
             case 'restaurants': return <RestaurantsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
             case 'attractions': return <AttractionsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
             case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} onSwitchTab={setCurrentTab} />;

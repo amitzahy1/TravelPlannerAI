@@ -14,6 +14,7 @@ import { getPlaceImage } from '../services/imageMapper';
 import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
 import { getCityTheme } from '../utils/cityColors';
+import { SmartRecommendationsBar } from './SmartRecommendationsBar';
 
 // --- Types ---
 // Removed to types.ts
@@ -406,6 +407,54 @@ export const ItineraryView: React.FC<{
         generateTimeline();
     }, [trip, externalEvents]);
 
+    // SMART DATE RECALCULATION: Auto-update trip.dates when flights/hotels change
+    useEffect(() => {
+        const calculateTripDatesFromData = () => {
+            const allDates: Date[] = [];
+
+            // Collect dates from flights
+            trip.flights?.segments?.forEach(seg => {
+                const depDate = parseDateString(seg.departureTime || seg.date || '');
+                const arrDate = parseDateString(seg.arrivalTime || seg.date || '');
+                if (depDate) allDates.push(depDate);
+                if (arrDate) allDates.push(arrDate);
+            });
+
+            // Collect dates from hotels
+            trip.hotels?.forEach(hotel => {
+                const checkIn = parseDateString(hotel.checkInDate);
+                const checkOut = parseDateString(hotel.checkOutDate);
+                if (checkIn) allDates.push(checkIn);
+                if (checkOut) allDates.push(checkOut);
+            });
+
+            if (allDates.length < 2) return null;
+
+            // Sort and get min/max
+            allDates.sort((a, b) => a.getTime() - b.getTime());
+            const minDate = allDates[0];
+            const maxDate = allDates[allDates.length - 1];
+
+            // Format as "DD/MM/YYYY - DD/MM/YYYY"
+            const formatDate = (d: Date) => {
+                const dd = d.getDate().toString().padStart(2, '0');
+                const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+                const yyyy = d.getFullYear();
+                return `${dd}/${mm}/${yyyy}`;
+            };
+
+            return `${formatDate(minDate)} - ${formatDate(maxDate)}`;
+        };
+
+        const calculatedDates = calculateTripDatesFromData();
+
+        // Only update if we have calculated dates AND they differ from current
+        if (calculatedDates && calculatedDates !== trip.dates) {
+            console.log('🔄 Smart Date Recalculation:', { current: trip.dates, calculated: calculatedDates });
+            onUpdateTrip({ ...trip, dates: calculatedDates });
+        }
+    }, [trip.flights?.segments, trip.hotels]);
+
     // CALENDAR SYNC REMOVED - Feature disabled to eliminate "Unverified App" warning
     const handleSyncCalendar = async () => {
         alert("סנכרון יומן Google הוסר לצורך אבטחה. כעת הלו\"ז מנוהל ישירות באפליקציה.");
@@ -738,6 +787,15 @@ export const ItineraryView: React.FC<{
                     </div>
                 </div>
             </div>
+
+            {/* 2.5 SMART RECOMMENDATIONS BAR */}
+            <SmartRecommendationsBar
+                trip={trip}
+                favoriteRestaurants={favoriteRestaurants}
+                favoriteAttractions={favoriteAttractions}
+                timeline={timeline}
+                onScheduleFavorite={handleScheduleFavorite}
+            />
 
             {/* 3. MAIN TIMELINE (Repositioned for Density) */}
             <div className="px-1 md:px-1 w-full space-y-6 relative z-10 -mt-2">

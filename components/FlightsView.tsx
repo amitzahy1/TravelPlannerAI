@@ -1,66 +1,253 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Trip, FlightSegment } from '../types';
-import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase } from 'lucide-react';
-import { formatDateTime, formatDateOnly } from '../utils/dateUtils';
+import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check } from 'lucide-react';
+import { formatDateTime, formatDateOnly, parseFlightTime, calculateFlightDuration, parseDateToIso } from '../utils/dateUtils';
 
 // --- Assets & Helpers ---
 
 const getAirlineLogo = (airlineName: string, flightNumber: string) => {
-  // Use avs.io for logos, falling back to a generic initial if fails visually (handled by img error)
-  // Logic: Try finding IATA code from flight number (e.g. LY001 -> LY) or first 2 chars of name
   const iata = flightNumber?.match(/^[A-Z0-9]{2}/i)?.[0] || airlineName.substring(0, 2);
   return `https://pics.avs.io/200/200/${iata.toUpperCase()}.png`;
 };
 
-// --- Sub-components ---
+// --- Edit Modal ---
+interface EditFlightModalProps {
+  segment: FlightSegment;
+  onSave: (updated: FlightSegment) => void;
+  onClose: () => void;
+}
 
-const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ segment, isLast }) => {
-  const logoUrl = getAirlineLogo(segment.airline, segment.flightNumber);
+const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onClose }) => {
+  const [form, setForm] = useState({
+    fromCity: segment.fromCity || '',
+    fromCode: segment.fromCode || '',
+    toCity: segment.toCity || '',
+    toCode: segment.toCode || '',
+    departureTime: parseFlightTime(segment.departureTime) || '',
+    arrivalTime: parseFlightTime(segment.arrivalTime) || '',
+    date: parseDateToIso(segment.date) || '',
+    airline: segment.airline || '',
+    flightNumber: segment.flightNumber || '',
+    duration: segment.duration || ''
+  });
 
-  const calculateDuration = (dep: string, arr: string) => {
-    if (!dep || !arr) return "משך לא ידוע";
-
-    // Helper to get minutes from midnight
-    const getMinutes = (timeStr: string) => {
-      // Try HH:MM
-      if (timeStr.match(/^\d{1,2}:\d{2}$/)) {
-        const [h, m] = timeStr.split(':').map(Number);
-        return h * 60 + m;
-      }
-      // Try ISO
-      const d = new Date(timeStr);
-      if (!isNaN(d.getTime())) {
-        return d.getHours() * 60 + d.getMinutes();
-      }
-      // Try extracting HH:MM from string
-      const match = timeStr.match(/(\d{1,2}):(\d{2})/);
-      if (match) {
-        return parseInt(match[1]) * 60 + parseInt(match[2]);
-      }
-      return null;
+  const handleSave = () => {
+    const updated: FlightSegment = {
+      ...segment,
+      fromCity: form.fromCity,
+      fromCode: form.fromCode,
+      toCity: form.toCity,
+      toCode: form.toCode,
+      departureTime: form.date && form.departureTime
+        ? `${form.date}T${form.departureTime}:00`
+        : form.departureTime,
+      arrivalTime: form.date && form.arrivalTime
+        ? `${form.date}T${form.arrivalTime}:00`
+        : form.arrivalTime,
+      date: form.date,
+      airline: form.airline,
+      flightNumber: form.flightNumber,
+      duration: form.duration
     };
-
-    const depMins = getMinutes(dep);
-    const arrMins = getMinutes(arr);
-
-    if (depMins === null || arrMins === null) return "משך לא ידוע";
-
-    let diff = arrMins - depMins;
-    if (diff < 0) diff += 24 * 60; // Cross midnight assumption
-
-    const hours = Math.floor(diff / 60);
-    const mins = diff % 60;
-    return `${hours}h ${mins > 0 ? mins + 'm' : ''}`;
+    onSave(updated);
+    onClose();
   };
 
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-in zoom-in-95 duration-200"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-black text-slate-800">עריכת פרטי טיסה</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Airline & Flight Number */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">חברת תעופה</label>
+              <input
+                type="text"
+                value={form.airline}
+                onChange={e => setForm({ ...form, airline: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">מספר טיסה</label>
+              <input
+                type="text"
+                value={form.flightNumber}
+                onChange={e => setForm({ ...form, flightNumber: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                dir="ltr"
+              />
+            </div>
+          </div>
+
+          {/* From */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">עיר מוצא</label>
+              <input
+                type="text"
+                value={form.fromCity}
+                onChange={e => setForm({ ...form, fromCity: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">קוד נמל (IATA)</label>
+              <input
+                type="text"
+                value={form.fromCode}
+                onChange={e => setForm({ ...form, fromCode: e.target.value.toUpperCase() })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono uppercase"
+                dir="ltr"
+                maxLength={3}
+              />
+            </div>
+          </div>
+
+          {/* To */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">עיר יעד</label>
+              <input
+                type="text"
+                value={form.toCity}
+                onChange={e => setForm({ ...form, toCity: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">קוד נמל (IATA)</label>
+              <input
+                type="text"
+                value={form.toCode}
+                onChange={e => setForm({ ...form, toCode: e.target.value.toUpperCase() })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono uppercase"
+                dir="ltr"
+                maxLength={3}
+              />
+            </div>
+          </div>
+
+          {/* Date & Times */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">תאריך</label>
+              <input
+                type="date"
+                value={form.date}
+                onChange={e => setForm({ ...form, date: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">שעת המראה</label>
+              <input
+                type="time"
+                value={form.departureTime}
+                onChange={e => setForm({ ...form, departureTime: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">שעת נחיתה</label>
+              <input
+                type="time"
+                value={form.arrivalTime}
+                onChange={e => setForm({ ...form, arrivalTime: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Duration (optional override) */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">משך טיסה (אופציונלי, לדרוס חישוב)</label>
+            <input
+              type="text"
+              value={form.duration}
+              onChange={e => setForm({ ...form, duration: e.target.value })}
+              placeholder="לדוגמא: 6h 30m"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              dir="ltr"
+            />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+          >
+            ביטול
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <Check className="w-4 h-4" />
+            שמירה
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Sub-components ---
+
+interface FlightCardProps {
+  segment: FlightSegment;
+  isLast: boolean;
+  onEdit?: () => void;
+}
+
+const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
+  const logoUrl = getAirlineLogo(segment.airline, segment.flightNumber);
+
+  // Use the new timezone-aware duration calculator
   const durationDisplay = (segment.duration && segment.duration !== '0h' && segment.duration !== '0h 0m')
     ? segment.duration
-    : calculateDuration(segment.departureTime || '', segment.arrivalTime || '');
+    : calculateFlightDuration(segment.departureTime || '', segment.arrivalTime || '');
+
+  // Extract display times - handle both ISO and raw formats
+  const getDisplayTime = (timeStr?: string): string => {
+    if (!timeStr) return '00:00';
+    const parsed = parseFlightTime(timeStr);
+    return parsed || '00:00';
+  };
+
+  const depTime = getDisplayTime(segment.departureTime);
+  const arrTime = getDisplayTime(segment.arrivalTime);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow p-6 mb-4 relative overflow-hidden group">
       {/* Decorative Top Line */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-sky-400 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+      {/* Edit Button */}
+      {onEdit && (
+        <button
+          onClick={onEdit}
+          className="absolute top-4 left-4 p-2 bg-slate-100 hover:bg-blue-100 rounded-full text-slate-500 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all z-10"
+          title="ערוך טיסה"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
 
@@ -85,13 +272,11 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
 
           {/* Departure */}
           <div className="text-right min-w-[90px] md:min-w-[130px]">
-            {/* FIX: City Name as Main Header */}
             <div className="text-3xl font-black text-slate-800 leading-none truncate max-w-[180px]" title={segment.fromCity}>
               {segment.fromCity || segment.fromCode || 'ORG'}
             </div>
-            {/* Removed sub-city text */}
-            <div className="text-xl font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.departureTime).split(',')[1]}</div>
-            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">{formatDateTime(segment.departureTime).split(',')[0]}</div>
+            <div className="text-xl font-bold text-blue-600 mt-2 font-mono" dir="ltr">{depTime}</div>
+            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">{formatDateOnly(segment.departureTime) !== 'TBD' ? formatDateOnly(segment.departureTime) : formatDateOnly(segment.date)}</div>
           </div>
 
           {/* Visual Path */}
@@ -117,13 +302,11 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
 
           {/* Arrival */}
           <div className="text-left min-w-[90px] md:min-w-[130px]">
-            {/* FIX: City Name as Main Header */}
             <div className="text-3xl font-black text-slate-800 leading-none truncate max-w-[180px]" title={segment.toCity}>
               {segment.toCity || segment.toCode || 'DES'}
             </div>
-            {/* Removed sub-city text */}
-            <div className="text-xl font-bold text-blue-600 mt-2 font-mono" dir="ltr">{formatDateTime(segment.arrivalTime).split(',')[1]}</div>
-            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">{formatDateTime(segment.arrivalTime).split(',')[0]}</div>
+            <div className="text-xl font-bold text-blue-600 mt-2 font-mono" dir="ltr">{arrTime}</div>
+            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">{formatDateOnly(segment.arrivalTime) !== 'TBD' ? formatDateOnly(segment.arrivalTime) : formatDateOnly(segment.date)}</div>
           </div>
 
         </div>
@@ -144,6 +327,7 @@ const FlightCard: React.FC<{ segment: FlightSegment, isLast: boolean }> = ({ seg
 export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
   const { flights, documents } = trip;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && onUpdateTrip) {
@@ -151,6 +335,24 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
       const updatedTrip = { ...trip, documents: [...(trip.documents || []), ...newDocs] };
       onUpdateTrip(updatedTrip);
     }
+  };
+
+  const handleSaveSegment = (index: number, updatedSegment: FlightSegment) => {
+    if (!onUpdateTrip) return;
+
+    const newSegments = [...flights.segments];
+    newSegments[index] = updatedSegment;
+
+    const updatedTrip: Trip = {
+      ...trip,
+      flights: {
+        ...trip.flights,
+        segments: newSegments
+      }
+    };
+
+    onUpdateTrip(updatedTrip);
+    setEditingIndex(null);
   };
 
   return (
@@ -180,7 +382,12 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
         {flights.segments.length > 0 ? (
           <div className="space-y-4">
             {flights.segments.map((seg, i) => (
-              <FlightCard key={i} segment={seg} isLast={i === flights.segments.length - 1} />
+              <FlightCard
+                key={i}
+                segment={seg}
+                isLast={i === flights.segments.length - 1}
+                onEdit={onUpdateTrip ? () => setEditingIndex(i) : undefined}
+              />
             ))}
           </div>
         ) : (
@@ -258,6 +465,15 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
           </div>
         )}
       </section>
+
+      {/* Edit Modal */}
+      {editingIndex !== null && flights.segments[editingIndex] && (
+        <EditFlightModal
+          segment={flights.segments[editingIndex]}
+          onSave={(updated) => handleSaveSegment(editingIndex, updated)}
+          onClose={() => setEditingIndex(null)}
+        />
+      )}
     </div>
   );
 };
