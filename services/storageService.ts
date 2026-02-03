@@ -64,24 +64,29 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
     console.log(`🔥 [StorageService] Found ${sharedRefs.length} shared trip refs:`, sharedRefs.map(r => r.sharedTripId));
 
     const sharedTripPromises = sharedRefs.map(async (ref) => {
-      const trip = await getSharedTrip(ref.sharedTripId);
-      if (trip) {
-        return {
-          ...trip,
-          isShared: true,
-          sharing: {
-            shareId: ref.sharedTripId,
-            role: ref.role,
-            owner: 'fetched',
-            collaborators: [],
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            updatedBy: 'system'
-          }
-        } as Trip;
+      try {
+        const trip = await getSharedTrip(ref.sharedTripId);
+        if (trip) {
+          return {
+            ...trip,
+            isShared: true,
+            sharing: {
+              shareId: ref.sharedTripId,
+              role: ref.role,
+              owner: 'fetched',
+              collaborators: [],
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              updatedBy: 'system'
+            }
+          } as Trip;
+        }
+        console.warn(`⚠️ [StorageService] Shared trip ref ${ref.sharedTripId} has no trip data - ORPHAN REF`);
+        return null;
+      } catch (err) {
+        console.warn(`⚠️ [StorageService] Failed to load shared trip ${ref.sharedTripId} (likely permission error or deleted)`, err);
+        return null; // Return null so it's filtered out and doesn't crash everything
       }
-      console.warn(`⚠️ [StorageService] Shared trip ref ${ref.sharedTripId} has no trip data - ORPHAN REF`);
-      return null;
     });
 
     const sharedTrips = (await Promise.all(sharedTripPromises)).filter((t): t is Trip => t !== null);

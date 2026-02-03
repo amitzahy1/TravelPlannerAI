@@ -236,16 +236,22 @@ export const ItineraryView: React.FC<{
             }
         }
 
+        // Result Candidate
+        let candidate = trip.destination.split('-')[0].trim();
+
         // Fallback: check if hotel name contains a known city
         const hotelLower = hotelName.toLowerCase();
         for (const [country, capital] of Object.entries(capitalMap)) {
             if (hotelLower.includes(country) || address.toLowerCase().includes(country)) {
-                return capital;
+                candidate = capital;
+                break;
             }
         }
 
-        // Ultimate fallback: trip destination first segment
-        return trip.destination.split(/[-&,]/)[0].trim();
+        return candidate.replace(/\d+/g, '') // Remove numbers
+            .replace(/Street|St\.|Ave\.|Road|Block|Unit|Apartment|Apt\.?/gi, '') // Remove common street words
+            .replace(/[,\.]/g, '') // Remove punctuation
+            .trim();
     };
 
     useEffect(() => {
@@ -642,7 +648,7 @@ export const ItineraryView: React.FC<{
 
 
 
-    const handleScheduleFavorite = (item: Restaurant | Attraction, dateIso: string, type: 'food' | 'attraction') => {
+    const handleScheduleFavorite = (item: Restaurant | Attraction | { name: string, id: string }, dateIso: string, type: 'food' | 'attraction' | 'transfer' | 'hotel_missing') => {
         const [y, m, d] = dateIso.split('-');
         const dateFormatted = `${d}/${m}/${y}`;
         const time = type === 'food' ? '20:00' : '10:00';
@@ -658,7 +664,7 @@ export const ItineraryView: React.FC<{
                 )
             }));
             onUpdateTrip({ ...trip, restaurants: updatedRestaurants });
-        } else {
+        } else if (type === 'attraction') {
             // Update the actual attraction object
             const updatedAttractions = trip.attractions?.map(cat => ({
                 ...cat,
@@ -669,6 +675,18 @@ export const ItineraryView: React.FC<{
                 )
             }));
             onUpdateTrip({ ...trip, attractions: updatedAttractions });
+        } else if (type === 'transfer' || type === 'hotel_missing') {
+            // Add as manual activity
+            const updatedItinerary = trip.itinerary.map(day => {
+                if (day.date === dateIso) {
+                    return {
+                        ...day,
+                        activities: [...day.activities, type === 'transfer' ? '10:00 הסעה לשדה תעופה' : '09:00 תזכורת: להזמין מלון']
+                    };
+                }
+                return day;
+            });
+            onUpdateTrip({ ...trip, itinerary: updatedItinerary });
         }
     };
 

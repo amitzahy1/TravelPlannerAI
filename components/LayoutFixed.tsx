@@ -20,7 +20,7 @@ interface LayoutProps {
 export const LayoutFixed: React.FC<LayoutProps> = ({
         children, activeTrip, trips, onSwitchTrip, currentTab, onSwitchTab, onOpenAdmin, onUpdateTrip, onDeleteTrip
 }) => {
-        const [isChatOpen, setIsChatOpen] = useState(false);
+
         const [isWalletOpen, setIsWalletOpen] = useState(false);
         const [isTripMenuOpen, setIsTripMenuOpen] = useState(false);
 
@@ -248,25 +248,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                 </nav>
                         </div>
 
-                        {/* Floating Chat Assistant Button */}
-                        <div className="fixed bottom-24 md:bottom-10 left-6 z-[60]">
-                                <button
-                                        onClick={() => setIsChatOpen(!isChatOpen)}
-                                        className={`p-4 rounded-full shadow-2xl shadow-blue-500/30 transition-all hover:scale-110 flex items-center justify-center ${isChatOpen ? 'bg-slate-800 text-white rotate-90' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                                                }`}
-                                >
-                                        {isChatOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
-                                </button>
-                        </div>
 
-                        {/* Chat Assistant Window */}
-                        {
-                                isChatOpen && activeTrip && (
-                                        <div className="fixed bottom-40 md:bottom-28 left-6 right-6 md:right-auto md:w-96 h-[500px] max-h-[60vh] z-[60] animate-scale-in origin-bottom-left">
-
-                                        </div>
-                                )
-                        }
 
                         {/* Quick Wallet Overlay */}
                         {

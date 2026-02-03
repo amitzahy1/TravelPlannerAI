@@ -25,7 +25,8 @@ interface Props {
         favoriteRestaurants: Restaurant[];
         favoriteAttractions: Attraction[];
         timeline: DayPlan[];
-        onScheduleFavorite: (item: Restaurant | Attraction, dateIso: string, type: 'food' | 'attraction') => void;
+        // Expanded types to include Actions
+        onScheduleFavorite: (item: Restaurant | Attraction | { name: string, id: string }, dateIso: string, type: 'food' | 'attraction' | 'transfer' | 'hotel_missing') => void;
 }
 
 export const SmartRecommendationsBar: React.FC<Props> = ({
@@ -38,7 +39,7 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
         const [selectedRec, setSelectedRec] = useState<GroupedRecommendation | null>(null);
         const [scrollIndex, setScrollIndex] = useState(0);
         // NEW: State for date picker when selecting a specific item
-        const [itemToSchedule, setItemToSchedule] = useState<{ item: Restaurant | Attraction, type: 'food' | 'attraction' } | null>(null);
+        const [itemToSchedule, setItemToSchedule] = useState<{ item: Restaurant | Attraction | { name: string, id: string }, type: 'food' | 'attraction' | 'transfer' | 'hotel_missing' } | null>(null);
 
         // Generate GROUPED recommendations
         const recommendations = useMemo(() => {
@@ -376,20 +377,58 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
 
                                                                 {/* Suggested Dates (for hotel/transfer) */}
                                                                 {(selectedRec.type === 'hotel_missing' || selectedRec.type === 'transfer') && selectedRec.suggestedDates && (
-                                                                        <div>
-                                                                                <h4 className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
-                                                                                        <Calendar className="w-3 h-3" />
-                                                                                        תאריכים רלוונטיים
-                                                                                </h4>
-                                                                                <div className="flex flex-wrap gap-2">
-                                                                                        {selectedRec.suggestedDates.slice(0, 8).map(date => (
-                                                                                                <span
-                                                                                                        key={date}
-                                                                                                        className="px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-bold text-slate-600"
-                                                                                                >
-                                                                                                        {formatDateDisplay(date)}
-                                                                                                </span>
-                                                                                        ))}
+                                                                        <div className="space-y-4">
+                                                                                {/* Action Button */}
+                                                                                <button
+                                                                                        onClick={() => {
+                                                                                                if (selectedRec.type === 'transfer') {
+                                                                                                        setItemToSchedule({
+                                                                                                                item: { id: 'transfer-action', name: 'הסעה לשדה תעופה' },
+                                                                                                                type: 'transfer'
+                                                                                                        });
+                                                                                                } else if (selectedRec.type === 'hotel_missing') {
+                                                                                                        // For hotel, we also open date picker to add a "Reminder" or "Check-in" placeholder
+                                                                                                        setItemToSchedule({
+                                                                                                                item: { id: 'hotel-action', name: 'תזכורת: להזמין מלון' },
+                                                                                                                type: 'hotel_missing'
+                                                                                                        });
+                                                                                                }
+                                                                                        }}
+                                                                                        className={`w-full py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-sm hover:shadow-md ${selectedRec.type === 'transfer'
+                                                                                                        ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                                                                        : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                                                                                                }`}
+                                                                                >
+                                                                                        {selectedRec.type === 'transfer' ? <Car className="w-5 h-5" /> : <Hotel className="w-5 h-5" />}
+                                                                                        <span>
+                                                                                                {selectedRec.type === 'transfer' ? 'קבע הסעה בלו"ז' : 'הוסף תזכורת ליומן'}
+                                                                                        </span>
+                                                                                </button>
+
+                                                                                <div>
+                                                                                        <h4 className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
+                                                                                                <Calendar className="w-3 h-3" />
+                                                                                                תאריכים רלוונטיים
+                                                                                        </h4>
+                                                                                        <div className="flex flex-wrap gap-2">
+                                                                                                {selectedRec.suggestedDates.slice(0, 8).map(date => (
+                                                                                                        <button
+                                                                                                                key={date}
+                                                                                                                onClick={() => {
+                                                                                                                        // Direct add to specific date if clicked
+                                                                                                                        const dummyItem = selectedRec.type === 'transfer'
+                                                                                                                                ? { id: 'transfer-action', name: 'הסעה לשדה תעופה' }
+                                                                                                                                : { id: 'hotel-action', name: 'תזכורת: להזמין מלון' };
+
+                                                                                                                        onScheduleFavorite(dummyItem, date, selectedRec.type as any);
+                                                                                                                        setSelectedRec(null);
+                                                                                                                }}
+                                                                                                                className="px-3 py-1.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 border border-transparent rounded-lg text-xs font-bold text-slate-600 transition-all"
+                                                                                                        >
+                                                                                                                {formatDateDisplay(date)}
+                                                                                                        </button>
+                                                                                                ))}
+                                                                                        </div>
                                                                                 </div>
                                                                         </div>
                                                                 )}
