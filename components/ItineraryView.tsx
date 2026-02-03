@@ -17,7 +17,6 @@ import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR REMOVED: import { requestAccessToken } from '../services/googleAuthService';
 import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
-import { TripDateSelector } from './TripDateSelector';
 import { SmartRecommendationsBar } from './SmartRecommendationsBar';
 
 // --- Types ---
