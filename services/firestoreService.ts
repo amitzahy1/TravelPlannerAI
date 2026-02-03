@@ -372,24 +372,31 @@ export const updateSharedTrip = async (
  */
 export const subscribeToSharedTrip = (
   shareId: string,
-  callback: (trip: Trip, metadata: SharedTripMetadata) => void
+  callback: (trip: Trip, metadata: SharedTripMetadata) => void,
+  onError?: (error: any) => void
 ): Unsubscribe => {
   const tripRef = doc(db, 'shared-trips', shareId);
 
-  return onSnapshot(tripRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const data = snapshot.data();
-      const metadata: SharedTripMetadata = {
-        owner: data.owner,
-        collaborators: data.collaborators,
-        shareId: data.shareId,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-        updatedBy: data.updatedBy
-      };
-      callback(data.tripData as Trip, metadata);
+  return onSnapshot(tripRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        const metadata: SharedTripMetadata = {
+          owner: data.owner,
+          collaborators: data.collaborators,
+          shareId: data.shareId,
+          createdAt: data.createdAt.toDate(),
+          updatedAt: data.updatedAt.toDate(),
+          updatedBy: data.updatedBy
+        };
+        callback(data.tripData as Trip, metadata);
+      }
+    },
+    (error) => {
+      console.error("🔥 [FirestoreService] Subscription Error:", error);
+      if (onError) onError(error);
     }
-  });
+  );
 };
 
 /**
