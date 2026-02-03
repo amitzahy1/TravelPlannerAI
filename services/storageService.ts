@@ -56,7 +56,9 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
     console.log(`🔥 [StorageService] Loading trips for user: ${userId}`);
 
     // 1. Fetch Private Trips
-    const privateTrips = await getUserTrips(userId);
+    const rawPrivateTrips = await getUserTrips(userId);
+    // FORCE OWNERSHIP: Private trips in my collection are MINE, even if data is missing userId
+    const privateTrips = rawPrivateTrips.map(t => ({ ...t, userId }));
     console.log(`🔥 [StorageService] Found ${privateTrips.length} private trips`);
 
     // 2. Fetch Shared Trips (Project Genesis 2.0)
