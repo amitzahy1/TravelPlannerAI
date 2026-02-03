@@ -1074,21 +1074,26 @@ export const ItineraryView: React.FC<{
                     >
                         <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] animate-scale-in" onClick={e => e.stopPropagation()}>
                             {/* Modal Header */}
-                            <div className="bg-white border-b border-slate-100 p-5 flex items-center justify-between flex-shrink-0">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-blue-50 text-blue-600 min-w-[56px] h-12 px-2 rounded-xl flex flex-col items-center justify-center font-bold text-sm border border-blue-100 shadow-inner">
-                                        {activeDay.displayDate}
+                            {(() => {
+                                const modalTheme = getCityTheme(activeDay.locationContext);
+                                return (
+                                    <div className={`${modalTheme.bg} border-b border-white/10 p-5 flex items-center justify-between flex-shrink-0`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-white/20 backdrop-blur-sm text-white min-w-[56px] h-12 px-2 rounded-xl flex flex-col items-center justify-center font-bold text-sm border border-white/20 shadow-inner">
+                                                {activeDay.displayDate}
+                                            </div>
+                                            <div>
+                                                <div className="text-xs font-bold text-white/70 uppercase tracking-wider">{activeDay.displayDayOfWeek}</div>
+                                                <h2 className="text-lg font-black text-white">{activeDay.locationContext || 'לו"ז יומי'}</h2>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => { const [y, m, d] = activeDay.dateIso.split('-'); setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` }) }} className="p-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors"><Plus className="w-5 h-5" /></button>
+                                            <button onClick={() => setSelectedDayIso(null)} className="p-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"><X className="w-5 h-5" /></button>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{activeDay.displayDayOfWeek}</div>
-                                        <h2 className="text-lg font-black text-slate-800">{activeDay.locationContext || 'לו"ז יומי'}</h2>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => { const [y, m, d] = activeDay.dateIso.split('-'); setQuickAddModal({ isOpen: true, targetDate: `${d}/${m}/${y}` }) }} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"><Plus className="w-5 h-5" /></button>
-                                    <button onClick={() => setSelectedDayIso(null)} className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:bg-slate-100 transition-colors"><X className="w-5 h-5" /></button>
-                                </div>
-                            </div>
+                                );
+                            })()}
 
                             {/* Events List */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50 scrollbar-hide">
