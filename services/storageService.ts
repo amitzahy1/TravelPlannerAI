@@ -69,6 +69,7 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
         if (trip) {
           return {
             ...trip,
+            id: ref.sharedTripId, // CRITICAL: Use ShareID as the specific ID to prevent duplicates with private trips
             isShared: true,
             sharing: {
               shareId: ref.sharedTripId,
