@@ -167,6 +167,87 @@ export const ItineraryView: React.FC<{
         return cityContext;
     };
 
+    // SMART City Extraction - finds actual city from hotel address
+    // Prioritizes: known cities from trip/flights > last address segments > hotel name
+    const extractRobustCity = (address: string, hotelName: string, trip: Trip): string => {
+        if (!address && !hotelName) return trip.destination.split('-')[0].trim();
+
+        // Build known cities database from trip data
+        const knownCities = new Set<string>();
+
+        // From trip destination (e.g., "Georgia - Tbilisi & Batumi")
+        trip.destination.split(/[-&,]/).forEach(part => {
+            const city = part.trim().toLowerCase();
+            if (city && city.length > 2 && !['and', 'the'].includes(city)) {
+                knownCities.add(city);
+            }
+        });
+
+        // From English destination if exists
+        if (trip.destinationEnglish) {
+            trip.destinationEnglish.split(/[-&,]/).forEach(part => {
+                const city = part.trim().toLowerCase();
+                if (city && city.length > 2) knownCities.add(city);
+            });
+        }
+
+        // From flight segments (only fromCity and toCity exist on FlightSegment)
+        trip.flights?.segments?.forEach(seg => {
+            if (seg.toCity) knownCities.add(seg.toCity.toLowerCase());
+            if (seg.fromCity) knownCities.add(seg.fromCity.toLowerCase());
+        });
+
+        // Add common capital cities mapping for countries
+        const capitalMap: Record<string, string> = {
+            'georgia': 'Tbilisi', 'philippines': 'Manila', 'thailand': 'Bangkok',
+            'vietnam': 'Hanoi', 'indonesia': 'Jakarta', 'japan': 'Tokyo',
+            'south korea': 'Seoul', 'israel': 'Tel Aviv', 'greece': 'Athens'
+        };
+
+        // Parse address parts (comma-separated)
+        const addressParts = address ? address.split(',').map(p => p.trim()).filter(Boolean) : [];
+
+        // Try to match against known cities in address
+        for (const part of addressParts) {
+            const partLower = part.toLowerCase();
+            for (const known of knownCities) {
+                if (partLower.includes(known) || known.includes(partLower)) {
+                    // Return properly capitalized version
+                    return part.charAt(0).toUpperCase() + part.slice(1);
+                }
+            }
+        }
+
+        // Look for city after street number pattern (e.g., "Freedom Square 4, Tbilisi")
+        // Cities usually come after street addresses
+        if (addressParts.length >= 2) {
+            // Skip first part if it looks like a street address (has numbers)
+            for (let i = 1; i < addressParts.length; i++) {
+                const part = addressParts[i];
+                const partLower = part.toLowerCase();
+
+                // Skip if it's a country or postal code
+                if (/^\d+$/.test(part)) continue; // Pure number = postal code
+                const countries = ['georgia', 'philippines', 'thailand', 'vietnam', 'indonesia', 'japan', 'israel', 'greece', 'usa', 'uk'];
+                if (countries.some(c => partLower.includes(c))) continue;
+
+                // This is likely the city
+                return part.charAt(0).toUpperCase() + part.slice(1);
+            }
+        }
+
+        // Fallback: check if hotel name contains a known city
+        const hotelLower = hotelName.toLowerCase();
+        for (const [country, capital] of Object.entries(capitalMap)) {
+            if (hotelLower.includes(country) || address.toLowerCase().includes(country)) {
+                return capital;
+            }
+        }
+
+        // Ultimate fallback: trip destination first segment
+        return trip.destination.split(/[-&,]/)[0].trim();
+    };
+
     useEffect(() => {
         const generateTimeline = () => {
             let startDate = new Date();
@@ -260,7 +341,8 @@ export const ItineraryView: React.FC<{
 
                 const start = parseDateString(hotel.checkInDate);
                 const end = parseDateString(hotel.checkOutDate);
-                const city = hotel.address ? hotel.address.split(',')[0].trim() : hotel.name;
+                // Use smart city extraction instead of simple first-part split
+                const city = extractRobustCity(hotel.address || '', hotel.name, trip);
 
                 if (start && end) {
                     const current = new Date(start);
@@ -583,6 +665,31 @@ export const ItineraryView: React.FC<{
                 attractions: cat.attractions.map(a =>
                     a.id === item.id
                         ? { ...a, scheduledDate: dateFormatted, scheduledTime: time }
+                        : a
+                )
+            }));
+            onUpdateTrip({ ...trip, attractions: updatedAttractions });
+        }
+    };
+
+    // NEW: Unschedule a food/attraction, returning it to recommendations
+    const handleUnscheduleItem = (itemId: string, type: 'food' | 'attraction') => {
+        if (type === 'food') {
+            const updatedRestaurants = trip.restaurants?.map(cat => ({
+                ...cat,
+                restaurants: cat.restaurants.map(r =>
+                    r.id === itemId
+                        ? { ...r, reservationDate: undefined, reservationTime: undefined }
+                        : r
+                )
+            }));
+            onUpdateTrip({ ...trip, restaurants: updatedRestaurants });
+        } else {
+            const updatedAttractions = trip.attractions?.map(cat => ({
+                ...cat,
+                attractions: cat.attractions.map(a =>
+                    a.id === itemId
+                        ? { ...a, scheduledDate: undefined, scheduledTime: undefined }
                         : a
                 )
             }));
@@ -981,9 +1088,22 @@ export const ItineraryView: React.FC<{
                                                 </div>
                                             </div>
 
-                                            {/* Quick Delete */}
-                                            {event.isManual && (
-                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteActivity(event.dayId!, event.activityIndex!) }} className="absolute bottom-2 left-2 text-slate-200 hover:text-red-500 transition-colors p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                                            {/* Quick Delete - Manual activities, Restaurants, Attractions */}
+                                            {(event.isManual || event.type === 'food' || event.type === 'attraction') && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (event.isManual) {
+                                                            handleDeleteActivity(event.dayId!, event.activityIndex!);
+                                                        } else if (event.type === 'food' || event.type === 'attraction') {
+                                                            handleUnscheduleItem(event.id, event.type);
+                                                        }
+                                                    }}
+                                                    className="absolute bottom-2 left-2 text-slate-200 hover:text-red-500 transition-colors p-1"
+                                                    title={event.isManual ? 'מחק מהלוז' : 'הסר מהלוז (יחזור להמלצות)'}
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
                                             )}
                                         </div>
                                     ))

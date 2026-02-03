@@ -37,6 +37,8 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
 }) => {
         const [selectedRec, setSelectedRec] = useState<GroupedRecommendation | null>(null);
         const [scrollIndex, setScrollIndex] = useState(0);
+        // NEW: State for date picker when selecting a specific item
+        const [itemToSchedule, setItemToSchedule] = useState<{ item: Restaurant | Attraction, type: 'food' | 'attraction' } | null>(null);
 
         // Generate GROUPED recommendations
         const recommendations = useMemo(() => {
@@ -356,15 +358,13 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                                                                                 </p>
                                                                                                         </div>
 
-                                                                                                        {/* Quick Add Button */}
+                                                                                                        {/* Quick Add Button -> Opens Date Picker */}
                                                                                                         <button
                                                                                                                 onClick={() => {
-                                                                                                                        if (selectedRec.suggestedDates?.[0]) {
-                                                                                                                                onScheduleFavorite(item, selectedRec.suggestedDates[0], itemType);
-                                                                                                                        }
+                                                                                                                        setItemToSchedule({ item, type: itemType });
                                                                                                                 }}
                                                                                                                 className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                                                                                                                title="הוסף ליום הראשון המתאים"
+                                                                                                                title="בחר יום להוספה"
                                                                                                         >
                                                                                                                 <Calendar className="w-4 h-4" />
                                                                                                         </button>
@@ -402,6 +402,101 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                                         className="w-full px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors"
                                                                 >
                                                                         סגור
+                                                                </button>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                </>,
+                                document.body
+                        )}
+
+                        {/* DATE PICKER POPUP - Shows when user wants to schedule an item */}
+                        {itemToSchedule && createPortal(
+                                <>
+                                        {/* Backdrop */}
+                                        <div
+                                                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000]"
+                                                onClick={() => setItemToSchedule(null)}
+                                        />
+
+                                        {/* Date Picker Popup */}
+                                        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm px-4 z-[10001]">
+                                                <div className="bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[70vh] flex flex-col">
+                                                        {/* Header */}
+                                                        <div className="p-4 bg-blue-50 border-b border-blue-100">
+                                                                <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-3">
+                                                                                <div className="p-2 bg-blue-100 rounded-xl">
+                                                                                        <Calendar className="w-5 h-5 text-blue-600" />
+                                                                                </div>
+                                                                                <div>
+                                                                                        <h3 className="text-base font-black text-slate-800">בחר יום להוספה</h3>
+                                                                                        <p className="text-xs text-slate-500 truncate max-w-[180px]" dir="ltr">
+                                                                                                {itemToSchedule.item.name}
+                                                                                        </p>
+                                                                                </div>
+                                                                        </div>
+                                                                        <button
+                                                                                onClick={() => setItemToSchedule(null)}
+                                                                                className="p-2 hover:bg-blue-100 rounded-full transition-colors"
+                                                                        >
+                                                                                <X className="w-5 h-5 text-slate-400" />
+                                                                        </button>
+                                                                </div>
+                                                        </div>
+
+                                                        {/* Days List */}
+                                                        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                                                                {timeline.map((day) => (
+                                                                        <button
+                                                                                key={day.dateIso}
+                                                                                onClick={() => {
+                                                                                        onScheduleFavorite(itemToSchedule.item, day.dateIso, itemToSchedule.type);
+                                                                                        setItemToSchedule(null);
+                                                                                        setSelectedRec(null); // Close parent popup too
+                                                                                }}
+                                                                                className="w-full flex items-center gap-3 p-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-100 hover:border-blue-200 transition-all group text-right"
+                                                                        >
+                                                                                {/* Date Badge */}
+                                                                                <div className="w-14 h-14 bg-white rounded-xl border border-slate-200 flex flex-col items-center justify-center flex-shrink-0 group-hover:border-blue-300 transition-colors">
+                                                                                        <span className="text-lg font-black text-slate-800">
+                                                                                                {new Date(day.dateIso).getDate()}
+                                                                                        </span>
+                                                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                                                                                {new Intl.DateTimeFormat('he-IL', { month: 'short' }).format(new Date(day.dateIso))}
+                                                                                        </span>
+                                                                                </div>
+
+                                                                                {/* Day Info */}
+                                                                                <div className="flex-1 min-w-0">
+                                                                                        <div className="text-sm font-bold text-slate-700">
+                                                                                                {day.displayDayOfWeek}
+                                                                                        </div>
+                                                                                        <div className="text-xs text-slate-400 truncate">
+                                                                                                {day.locationContext || trip.destination.split('-')[0].trim()}
+                                                                                        </div>
+                                                                                        {day.events.length > 0 && (
+                                                                                                <div className="text-[10px] text-slate-300 mt-0.5">
+                                                                                                        {day.events.length} פעילויות קיימות
+                                                                                                </div>
+                                                                                        )}
+                                                                                </div>
+
+                                                                                {/* Add Icon */}
+                                                                                <div className="p-2 bg-blue-100 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
+                                                                                        <Calendar className="w-4 h-4 text-blue-600" />
+                                                                                </div>
+                                                                        </button>
+                                                                ))}
+                                                        </div>
+
+                                                        {/* Footer */}
+                                                        <div className="p-3 border-t border-slate-100">
+                                                                <button
+                                                                        onClick={() => setItemToSchedule(null)}
+                                                                        className="w-full px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors"
+                                                                >
+                                                                        ביטול
                                                                 </button>
                                                         </div>
                                                 </div>

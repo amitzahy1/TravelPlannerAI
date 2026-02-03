@@ -112,6 +112,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai'>('overview');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
     const [tripToDelete, setTripToDelete] = useState<string | null>(null);
+    const [tripToLeave, setTripToLeave] = useState<string | null>(null); // NEW: For shared trip leave confirmation
     const [hotelToDelete, setHotelToDelete] = useState<string | null>(null); // For Admin hotel deletion
 
 
@@ -537,6 +538,27 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                 onConfirm={confirmDeleteHotel}
                 onClose={() => setHotelToDelete(null)}
             />
+            {/* Leave Shared Trip Confirmation */}
+            <ConfirmModal
+                isOpen={!!tripToLeave}
+                title="יציאה מטיול משותף"
+                message="האם אתה בטוח שברצונך לעזוב את הטיול המשותף? לא תוכל לראות ולערוך את הטיול יותר."
+                confirmText="עזוב טיול"
+                isDangerous={true}
+                onConfirm={async () => {
+                    if (tripToLeave) {
+                        await onLeaveTrip(tripToLeave);
+                        // Update local state 
+                        const newTrips = trips.filter(t => t.id !== tripToLeave);
+                        setTrips(newTrips);
+                        if (activeTripId === tripToLeave && newTrips.length > 0) {
+                            setActiveTripId(newTrips[0].id);
+                        }
+                        setTripToLeave(null);
+                    }
+                }}
+                onClose={() => setTripToLeave(null)}
+            />
             <div className="w-full h-full md:max-w-6xl bg-white md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-scale-in" onClick={(e) => e.stopPropagation()}>
 
 
@@ -579,9 +601,12 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         const isOwner = !t.isShared || t.sharing?.role === 'owner';
-                                        // Specific confirm logic (now handled by wrapper, but if we click the button directly)
-                                        // We reuse handleDeleteTrip which sets state
-                                        isOwner ? handleDeleteTrip(e, t.id) : onLeaveTrip(t.id);
+                                        // Use confirmation modal for both delete and leave
+                                        if (isOwner) {
+                                            handleDeleteTrip(e, t.id);
+                                        } else {
+                                            setTripToLeave(t.id); // NEW: Show confirmation instead of direct call
+                                        }
                                     }}
                                     className={`absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-20 ${(!t.isShared || t.sharing?.role === 'owner')
 
