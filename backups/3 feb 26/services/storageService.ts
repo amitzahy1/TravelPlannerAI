@@ -82,28 +82,12 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
           } as Trip;
         }
         console.warn(`⚠️ [StorageService] Shared trip ref ${ref.sharedTripId} has no trip data - ORPHAN REF`);
-        // SELF-HEALING: Orphan refs (doc exists but is empty/null which logic says shouldn't happen, or getSharedTrip returned null)
-        if (userId) {
-          console.log(`🧹 [Self-Healing] Removing orphan shared trip ref: ${ref.sharedTripId}`);
-          await deleteSharedTripRef(userId, ref.sharedTripId);
-        }
         return null;
       } catch (err) {
         console.warn(`⚠️ [StorageService] Failed to load shared trip ${ref.sharedTripId} (likely permission error or deleted)`, err);
-        // SELF-HEALING: If we can't load it, we should properly remove the reference so it doesn't persist as a zombie
-        try {
-          if (userId) {
-            console.log(`🧹 [Self-Healing] Removing broken shared trip ref: ${ref.sharedTripId}`);
-            await deleteSharedTripRef(userId, ref.sharedTripId);
-          }
-        } catch (cleanupErr) {
-          console.warn('Failed to cleanup broken ref:', cleanupErr);
-        }
-        return null; // Return null so it's filtered out
+        return null; // Return null so it's filtered out and doesn't crash everything
       }
     });
-
-    const sharedTrips = (await Promise.all(sharedTripPromises)).filter((t): t is Trip => t !== null);
 
     const sharedTrips = (await Promise.all(sharedTripPromises)).filter((t): t is Trip => t !== null);
     console.log(`🔥 [StorageService] Loaded ${sharedTrips.length} valid shared trips`);
