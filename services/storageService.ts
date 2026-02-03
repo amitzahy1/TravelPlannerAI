@@ -56,10 +56,17 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
     console.log(`🔥 [StorageService] Loading trips for user: ${userId}`);
 
     // 1. Fetch Private Trips
+    // 1. Fetch Private Trips
     const rawPrivateTrips = await getUserTrips(userId);
-    // FORCE OWNERSHIP: Private trips in my collection are MINE, even if data is missing userId
-    const privateTrips = rawPrivateTrips.map(t => ({ ...t, userId }));
-    console.log(`🔥 [StorageService] Found ${privateTrips.length} private trips`);
+    // FORCE OWNERSHIP & PRIVATE STATUS: Private trips in my collection are MINE.
+    // We override isShared to false to fix "Zombie Legacy Trips" that think they are shared but have no sharing data.
+    const privateTrips = rawPrivateTrips.map(t => ({
+      ...t,
+      userId,
+      isShared: false,
+      sharing: undefined
+    }));
+    console.log(`🔥 [StorageService] Found ${privateTrips.length} private trips (Sanitized)`);
 
     // 2. Fetch Shared Trips (Project Genesis 2.0)
     const sharedRefs = await getUserSharedTrips(userId);
