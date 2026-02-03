@@ -15,16 +15,22 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({ value, o
                 // Handle DD/MM/YYYY
                 if (v.includes('/')) {
                         const [d, m, y] = v.split('/');
-                        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+                        const parsed = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+                        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 2020) return parsed;
                 }
                 // Handle YYYY-MM-DD (Strict Local)
                 if (v.match(/^\d{4}-\d{2}-\d{2}$/)) {
                         const [y, m, d] = v.split('-').map(Number);
-                        return new Date(y, m - 1, d);
+                        const parsed = new Date(y, m - 1, d);
+                        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 2020) return parsed;
                 }
                 // Fallback
                 const d = new Date(v);
-                return isNaN(d.getTime()) ? new Date() : d;
+                // If invalid or year is unreasonable, return current date
+                if (isNaN(d.getTime()) || d.getFullYear() < 2020 || d.getFullYear() > 2050) {
+                        return new Date();
+                }
+                return d;
         };
 
         const initialDate = useMemo(() => parseInitialDate(value), [value]);
@@ -111,7 +117,7 @@ export const CalendarDatePicker: React.FC<CalendarDatePickerProps> = ({ value, o
                                                                 onChange={(e) => setViewDate(new Date(parseInt(e.target.value), viewDate.getMonth(), 1))}
                                                                 className="appearance-none bg-transparent font-bold text-slate-500 cursor-pointer focus:outline-none hover:text-indigo-600 pr-4 pl-2 text-lg"
                                                         >
-                                                                {Array.from({ length: 35 }, (_, i) => 2000 + i).map(y => (
+                                                                {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
                                                                         <option key={y} value={y}>{y}</option>
                                                                 ))}
                                                         </select>

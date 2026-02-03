@@ -93,18 +93,18 @@ export const ItineraryView: React.FC<{
     }, [trip.attractions]);
 
     // Generate context-aware day title based on events (Task 6)
+    // Updated: Use locationContext (city) instead of "מלון"
     const generateDayTitle = (day: DayPlan, trip: Trip, dayIndex: number, totalDays: number): string => {
         const events = day.events;
+        const cityContext = day.locationContext || trip.destinationEnglish || trip.destination.split('-')[0].trim();
 
-        // Priority 1: Flight Day
+        // Priority 1: Flight Day - Show flight direction
         const flightEvent = events.find(e => e.type === 'flight');
         if (flightEvent) {
-            // Check if it's the last flight (return flight)
             const isLastDay = dayIndex === totalDays - 1 || dayIndex === totalDays - 2;
             if (isLastDay) {
                 return 'טיסה חזרה';
             }
-            // Extract destination from flight title
             const destMatch = flightEvent.title?.match(/טיסה ל(.+)/);
             if (destMatch && destMatch[1]) {
                 return `טיסה ל${destMatch[1]}`;
@@ -112,56 +112,59 @@ export const ItineraryView: React.FC<{
             return 'טיסה';
         }
 
-        // Priority 2: Hotel Check-in Day
+        // Priority 2: Hotel Check-in - Show city name instead of hotel name
         const hotelCheckin = events.find(e => e.type === 'hotel_checkin');
         if (hotelCheckin) {
-            // Extract hotel name from "Check-in: Hotel Name"
-            const hotelMatch = hotelCheckin.title?.match(/Check-in: (.+)/);
-            if (hotelMatch && hotelMatch[1]) {
-                return `מלון ${hotelMatch[1]}`;
-            }
-            return day.hasHotel ? `צ'ק-אין` : 'מלון';
+            // Use city context, NOT "מלון + hotel name"
+            return cityContext;
         }
 
-        // Priority 3: Empty Day
+        // Priority 3: Hotel Stay - Show city name
+        const hotelStay = events.find(e => e.type === 'hotel_stay');
+        if (hotelStay && events.length === 1) {
+            // Only hotel stay, show city name
+            return cityContext;
+        }
+
+        // Priority 4: Empty Day - Show city name
         if (events.length === 0) {
-            const location = trip.destinationEnglish || trip.destination.split('-')[0].trim();
-            // User requested ONLY city name for free days, no "Free day in..."
-            return location;
+            return cityContext;
         }
 
-        // Priority 4: Single Event
+        // Priority 5: Check-out followed by activities - Show city
+        const hotelCheckout = events.find(e => e.type === 'hotel_checkout');
+        if (hotelCheckout && events.length >= 1) {
+            return cityContext;
+        }
+
+        // Priority 6: Single Event
         if (events.length === 1) {
             const event = events[0];
             if (event.type === 'travel') return 'הסעה';
-            if (event.type === 'hotel_stay') return 'מלון';
-            // Use the event title if it's descriptive
             if (event.title && event.title.length < 30) {
                 return event.title;
             }
         }
 
-        // Priority 5: Multiple Events - Analyze dominant type
+        // Priority 7: Multiple Events - Analyze dominant type
         const stats = {
             food: events.filter(e => e.type === 'food').length,
             attractions: events.filter(e => e.type === 'attraction').length,
             activities: events.filter(e => e.type === 'activity').length,
         };
 
-        const location = trip.destinationEnglish || trip.destination.split('-')[0].trim();
-
         if (stats.attractions >= 2) {
-            return `סיורים ב${location}`;
+            return `סיורים ב${cityContext}`;
         }
         if (stats.food >= 2) {
-            return `אוכל ב${location}`;
+            return `אוכל ב${cityContext}`;
         }
         if (events.length >= 3) {
-            return `יום פעילויות ב${location}`;
+            return `יום פעילויות ב${cityContext}`;
         }
 
-        // Default: Location name
-        return location;
+        // Default: City name
+        return cityContext;
     };
 
     useEffect(() => {

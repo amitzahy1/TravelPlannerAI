@@ -46,20 +46,23 @@ export const saveTripsToLocal = (trips: Trip[]): void => {
  */
 export const loadTrips = async (userId?: string): Promise<Trip[]> => {
   if (!userId) {
-    return loadTripsFromLocal();
+    console.log('📦 [StorageService] No userId - loading from localStorage');
+    const localTrips = loadTripsFromLocal();
+    console.log(`📦 [StorageService] Loaded ${localTrips.length} trips from localStorage`);
+    return localTrips;
   }
 
   try {
-    // ZOMBIE FIX REVISED: Always attempt to load from Firestore.
-    // Do NOT return INITIAL_DATA if firebase returns empty.
-    // Just return empty array.
-
+    console.log(`🔥 [StorageService] Loading trips for user: ${userId}`);
 
     // 1. Fetch Private Trips
     const privateTrips = await getUserTrips(userId);
+    console.log(`🔥 [StorageService] Found ${privateTrips.length} private trips`);
 
     // 2. Fetch Shared Trips (Project Genesis 2.0)
     const sharedRefs = await getUserSharedTrips(userId);
+    console.log(`🔥 [StorageService] Found ${sharedRefs.length} shared trip refs:`, sharedRefs.map(r => r.sharedTripId));
+
     const sharedTripPromises = sharedRefs.map(async (ref) => {
       const trip = await getSharedTrip(ref.sharedTripId);
       if (trip) {
@@ -69,7 +72,6 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
           sharing: {
             shareId: ref.sharedTripId,
             role: ref.role,
-            // Mock metadata if missing, real sync happens in App.tsx
             owner: 'fetched',
             collaborators: [],
             createdAt: new Date(),
@@ -78,18 +80,20 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
           }
         } as Trip;
       }
+      console.warn(`⚠️ [StorageService] Shared trip ref ${ref.sharedTripId} has no trip data - ORPHAN REF`);
       return null;
     });
 
     const sharedTrips = (await Promise.all(sharedTripPromises)).filter((t): t is Trip => t !== null);
+    console.log(`🔥 [StorageService] Loaded ${sharedTrips.length} valid shared trips`);
 
-    // 3. Merge & Dedupe (Prefer Shared version if ID conflict exists? Usually IDs are unique)
-    return [...privateTrips, ...sharedTrips];
+    // 3. Merge & Return
+    const allTrips = [...privateTrips, ...sharedTrips];
+    console.log(`🔥 [StorageService] Total trips to return: ${allTrips.length}`);
+    return allTrips;
   } catch (error) {
-    console.error('Error loading trips from Firestore:', error);
-    // On error, still return empty for logged-in users to prevent data leak
-    // Only use localStorage for truly offline/anonymous users
-    console.warn('⚠️ Firestore error - returning empty trips (not falling back to local storage for security)');
+    console.error('❌ [StorageService] Error loading trips from Firestore:', error);
+    console.warn('⚠️ [StorageService] Returning empty trips (not falling back to localStorage for security)');
     return [];
   }
 };
