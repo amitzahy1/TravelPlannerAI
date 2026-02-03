@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import { resolveLocationName } from '../utils/geoData'; // Imported from new DB
+import { getCityTheme } from '../utils/cityColors'; // Color Engine
 import {
     MapPin, Calendar, Navigation, Info, ExternalLink,
     Share2, Download, CloudRain, Sun, Moon,
@@ -16,7 +17,7 @@ import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR REMOVED: import { requestAccessToken } from '../services/googleAuthService';
 import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
-import { getCityTheme } from '../utils/cityColors';
+import { TripDateSelector } from './TripDateSelector';
 import { SmartRecommendationsBar } from './SmartRecommendationsBar';
 
 // --- Types ---
@@ -967,19 +968,9 @@ export const ItineraryView: React.FC<{
                                     const dayNumber = index + 1;
                                     const isLastDay = index === timeline.length - 1;
 
-                                    // Helper to determine color based on location context text
-                                    const getLocationColor = (text: string) => {
-                                        if (!text) return 'bg-indigo-600';
-                                        const t = text.toLowerCase();
-                                        if (t.includes('תאילנד') || t.includes('בנגקוק') || t.includes('bangkok') || t.includes('thailand') || t.includes('קו')) return 'bg-teal-600';
-                                        if (t.includes('ניו יורק') || t.includes('new york') || t.includes('usa')) return 'bg-blue-600';
-                                        if (t.includes('מדבר') || t.includes('desert') || t.includes('דובאי')) return 'bg-orange-500';
-                                        if (t.includes('אירופה') || t.includes('לונדון') || t.includes('פריז')) return 'bg-slate-700';
-                                        if (t.includes('טיסה') || t.includes('flight')) return 'bg-sky-500';
-                                        return 'bg-indigo-600'; // Default
-                                    };
-
-                                    const headerColorClass = getLocationColor(day.locationContext);
+                                    // Use dynamic theme engine
+                                    const theme = getCityTheme(day.locationContext);
+                                    const headerColorClass = theme.bg;
 
                                     return (
                                         <div
