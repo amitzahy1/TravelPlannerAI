@@ -59,8 +59,9 @@ const getDayOfWeek = (date: Date) => {
 export const ItineraryView: React.FC<{
     trip: Trip,
     onUpdateTrip: (updatedTrip: Trip) => void,
-    onSwitchTab?: (tab: string) => void
-}> = ({ trip, onUpdateTrip, onSwitchTab }) => {
+    onSwitchTab?: (tab: string) => void,
+    onRefresh?: () => void
+}> = ({ trip, onUpdateTrip, onSwitchTab, onRefresh }) => {
 
     const [timeline, setTimeline] = useState<DayPlan[]>([]);
     const [selectedDayIso, setSelectedDayIso] = useState<string | null>(null);
@@ -746,8 +747,25 @@ export const ItineraryView: React.FC<{
                 <div className="absolute inset-0 pointer-events-none z-10 flex flex-col md:flex-row justify-between items-end p-6">
                     {/* Text Info */}
                     <div className="space-y-1 max-w-xl pointer-events-auto">
-                        <div className="flex items-center gap-3 text-white/80 font-bold text-xs uppercase tracking-widest bg-white/10 backdrop-blur-md px-3 py-1 rounded-full w-fit border border-white/20">
-                            <Calendar className="w-3.5 h-3.5" /> {trip.dates}
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-3 text-white/80 font-bold text-xs uppercase tracking-widest bg-white/10 backdrop-blur-md px-3 py-1 rounded-full w-fit border border-white/20">
+                                <Calendar className="w-3.5 h-3.5" /> {trip.dates}
+                            </div>
+                            {onRefresh && (
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        const btn = e.currentTarget;
+                                        btn.classList.add('animate-spin');
+                                        onRefresh();
+                                        setTimeout(() => btn.classList.remove('animate-spin'), 1000);
+                                    }}
+                                    className="p-1.5 bg-white/10 backdrop-blur-md text-white/80 hover:bg-white/20 hover:text-white rounded-full transition-colors border border-white/10"
+                                    title="רענן נתונים"
+                                >
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                </button>
+                            )}
                         </div>
                         <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight drop-shadow-md">
                             {trip.name}

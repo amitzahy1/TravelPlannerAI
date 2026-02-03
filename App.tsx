@@ -121,33 +121,8 @@ const AppContent: React.FC = () => {
     }
   }, [trips, activeTripId]);
 
-  // Real-Time Sync Hook (Project Genesis 2.0)
-  useEffect(() => {
-    // Safety check: Ensure activeTrip actually exists in the current trips list
-    // AND is not currently being processed (deleted/left)
-    const isValidTrip = trips.some(t => t.id === activeTrip?.id);
-    const isProcessing = activeTrip?.id === processingTripId;
-
-    if (activeTrip && activeTrip.isShared && activeTrip.sharing?.shareId && isValidTrip && !isProcessing) {
-
-      console.log("🔌 Subscribing to shared trip:", activeTrip.name);
-
-      const unsubscribe = subscribeToSharedTrip(
-        activeTrip.sharing.shareId,
-        (updatedTrip) => {
-          console.log("⚡ Real-time update received for:", updatedTrip.name);
-          setTrips(prev => prev.map(t => t.id === updatedTrip.id ? { ...updatedTrip, isShared: true, sharing: activeTrip.sharing } : t));
-        },
-        (error) => {
-          console.warn("⚠️ Subscription failed (permission lost?):", error);
-          // Optional: You could show a UI alert here or mark the trip as "disconnected"
-        }
-      );
-      return () => unsubscribe();
-    }
-  }, [activeTrip?.id, activeTrip?.isShared, activeTrip?.sharing?.shareId, trips.length, processingTripId]);
-
-
+  // Real-Time Sync REMOVED due to performance issues (User Request)
+  // useEffect(() => { ... }) 
 
   const handleUpdateActiveTrip = async (updatedTrip: Trip) => {
     const newTrips = trips.map(t => t.id === updatedTrip.id ? updatedTrip : t);
@@ -309,7 +284,7 @@ const AppContent: React.FC = () => {
             case 'flights': return <FlightsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
             case 'restaurants': return <RestaurantsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
             case 'attractions': return <AttractionsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
-            case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} onSwitchTab={setCurrentTab} />;
+            case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} onSwitchTab={setCurrentTab} onRefresh={loadUserTrips} />;
             case 'hotels': return <HotelsView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
             case 'map_full': return <UnifiedMapView trip={activeTrip} title="מפת הטיול המלאה" />;
             case 'budget': return <BudgetView trip={activeTrip} onUpdateTrip={handleUpdateActiveTrip} />;
