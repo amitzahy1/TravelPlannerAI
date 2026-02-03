@@ -94,14 +94,14 @@ const COUNTRY_THEMES: Record<string, number> = {
 export const getCityTheme = (cityName: string): CityTheme => {
         if (!cityName) {
                 // Return a default theme that is NOT white, preventing "blank" look
-                // Using Slate theme as default fallback
+                // Using Slate-600 (Dark Grey) as default fallback to ensure text-white is visible
                 return {
-                        bg: 'bg-slate-50',
-                        border: 'border-slate-200',
-                        text: 'text-slate-800',
-                        textLight: 'text-slate-500',
-                        badge: 'bg-slate-200 text-slate-900',
-                        icon: 'text-slate-500'
+                        bg: 'bg-slate-600',
+                        border: 'border-slate-700',
+                        text: 'text-white',
+                        textLight: 'text-slate-300',
+                        badge: 'bg-white/20 text-white',
+                        icon: 'text-slate-300'
                 };
         }
 

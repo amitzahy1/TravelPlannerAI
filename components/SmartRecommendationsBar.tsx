@@ -409,8 +409,19 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                                         <button
                                                                                 onClick={() => {
                                                                                         if (selectedRec.type === 'transfer') {
+                                                                                                // Try to find context from the first suggested date
+                                                                                                let startName = 'הסעה לשדה תעופה';
+                                                                                                if (selectedRec.suggestedDates && selectedRec.suggestedDates.length > 0) {
+                                                                                                        const firstDate = selectedRec.suggestedDates[0];
+                                                                                                        const relevantSeg = trip.flights?.segments?.find(s => (s.date === firstDate || s.departureTime?.startsWith(firstDate)));
+                                                                                                        if (relevantSeg) {
+                                                                                                                const from = relevantSeg.fromCity;
+                                                                                                                const to = relevantSeg.toCity;
+                                                                                                                if (from && to) startName = `הסעה: ${from} > ${to}`;
+                                                                                                        }
+                                                                                                }
                                                                                                 setItemToSchedule({
-                                                                                                        item: { id: 'transfer-action', name: 'הסעה לשדה תעופה' },
+                                                                                                        item: { id: 'transfer-action', name: startName },
                                                                                                         type: 'transfer'
                                                                                                 });
                                                                                         } else if (selectedRec.type === 'hotel_missing') {
@@ -443,8 +454,18 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                                                                         key={date}
                                                                                                         onClick={() => {
                                                                                                                 // Direct add to specific date if clicked
+                                                                                                                let startName = 'הסעה לשדה תעופה';
+                                                                                                                if (selectedRec.type === 'transfer') {
+                                                                                                                        const relevantSeg = trip.flights?.segments?.find(s => (s.date === date || s.departureTime?.startsWith(date)));
+                                                                                                                        if (relevantSeg) {
+                                                                                                                                const from = relevantSeg.fromCity || relevantSeg.origin;
+                                                                                                                                const to = relevantSeg.toCity || relevantSeg.destination;
+                                                                                                                                if (from && to) startName = `הסעה: ${from} > ${to}`;
+                                                                                                                        }
+                                                                                                                }
+
                                                                                                                 const dummyItem = selectedRec.type === 'transfer'
-                                                                                                                        ? { id: 'transfer-action', name: 'הסעה לשדה תעופה' }
+                                                                                                                        ? { id: 'transfer-action', name: startName }
                                                                                                                         : { id: 'hotel-action', name: 'תזכורת: להזמין מלון' };
 
                                                                                                                 onScheduleFavorite(dummyItem, date, selectedRec.type as any);
