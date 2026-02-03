@@ -1,3 +1,5 @@
+import { getCountryForCity } from './geoData';
+
 export interface CityTheme {
         bg: string;
         border: string;
@@ -73,6 +75,22 @@ const CITY_OVERRIDES: Record<string, number> = {
         'tokyo': 7, // Modern
 };
 
+// Country-Level Defaults (Fallback if City not found)
+const COUNTRY_THEMES: Record<string, number> = {
+        'Philippines': 1, // Default Blue (matches Manila)
+        'Thailand': 6,    // Default Amber (matches Bangkok)
+        'Japan': 7,       // Modern
+        'France': 3,      // Romantic
+        'Italy': 13,      // Earth/Food
+        'United Kingdom': 9, // Royal
+        'United States': 1,  // Urban
+        'United Arab Emirates': 13, // Desert/Gold
+        'Greece': 5,      // Coastal Blue
+        'Maldives': 11,   // Aqua
+        'Switzerland': 2, // Nature/Green
+        'Israel': 5       // Coastal
+};
+
 export const getCityTheme = (cityName: string): CityTheme => {
         if (!cityName) {
                 // Return a default theme that is NOT white, preventing "blank" look
@@ -89,16 +107,23 @@ export const getCityTheme = (cityName: string): CityTheme => {
 
         const lowerName = cityName.trim().toLowerCase();
 
-        // Check for overrides first
+        // 1. Check for specific city overrides first (Priority: High)
         if (lowerName in CITY_OVERRIDES) {
                 return THEMES[CITY_OVERRIDES[lowerName]];
         }
 
-        // Check for partial matches in overrides (e.g. "metro manila" -> match "manila")
+        // 2. Check for partial matches in overrides (e.g. "metro manila" -> match "manila")
         for (const [key, index] of Object.entries(CITY_OVERRIDES)) {
                 if (lowerName.includes(key)) return THEMES[index];
         }
 
+        // 3. Check for Country Theme (Priority: Medium)
+        const country = getCountryForCity(cityName);
+        if (country && COUNTRY_THEMES[country] !== undefined) {
+                return THEMES[COUNTRY_THEMES[country]];
+        }
+
+        // 4. Fallback to consistent hash (Priority: Low)
         let hash = 0;
         for (let i = 0; i < cityName.length; i++) {
                 hash = cityName.charCodeAt(i) + ((hash << 5) - hash);

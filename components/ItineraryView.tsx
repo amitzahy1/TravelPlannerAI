@@ -2,10 +2,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
+import { resolveLocationName } from '../utils/geoData'; // Imported from new DB
 import {
-    Calendar, MapPin, Plane, Car, Globe,
-    Hotel, Utensils, Ticket, Plus, Sparkles, X,
-    ArrowLeft, Edit2, BedDouble, Moon, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, Clock, MoreHorizontal, RefreshCw, CheckCircle2
+    MapPin, Calendar, Navigation, Info, ExternalLink,
+    Share2, Download, CloudRain, Sun, Moon,
+    ChevronDown, ChevronUp, AlertCircle, Clock, Check,
+    Plane, Car, Globe, Hotel, Utensils, Ticket, Plus, Sparkles, X,
+    ArrowLeft, Edit2, BedDouble, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, CheckCircle2
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR INTEGRATION REMOVED - No longer calling Google Calendar API
@@ -198,22 +201,17 @@ export const ItineraryView: React.FC<{
             if (seg.fromCity) knownCities.add(seg.fromCity.toLowerCase());
         });
 
-        // Add common capital cities mapping for countries
+        // 1. Try to resolve using robust Geo Database
+        const resolvedCity = resolveLocationName(address);
+        if (resolvedCity) return resolvedCity;
+
+        // 2. Legacy Fallback (capital map and manual parsing) - kept just in case
+        const addressParts = address ? address.split(',').map(p => p.trim()).filter(Boolean) : [];
         const capitalMap: Record<string, string> = {
             'georgia': 'Tbilisi', 'philippines': 'Manila', 'thailand': 'Bangkok',
             'vietnam': 'Hanoi', 'indonesia': 'Jakarta', 'japan': 'Tokyo',
             'south korea': 'Seoul', 'israel': 'Tel Aviv', 'greece': 'Athens'
         };
-
-        // Specific Metro Manila Area Mapping
-        const manilaAreas = ['makati', 'bgc', 'bonifacio', 'quezon city', 'pasay', 'taguig', 'mandaluyong', 'metro manila'];
-        const addressLower = (address || '').toLowerCase();
-        if (manilaAreas.some(area => addressLower.includes(area))) {
-            return 'Manila';
-        }
-
-        // Parse address parts (comma-separated)
-        const addressParts = address ? address.split(',').map(p => p.trim()).filter(Boolean) : [];
 
         // Try to match against known cities in address
         for (const part of addressParts) {
