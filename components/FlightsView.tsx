@@ -276,7 +276,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
               {segment.fromCity || segment.fromCode || 'ORG'}
             </div>
             <div className="text-xl font-bold text-blue-600 mt-2 font-mono" dir="ltr">{depTime}</div>
-            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">{formatDateOnly(segment.departureTime) !== 'TBD' ? formatDateOnly(segment.departureTime) : formatDateOnly(segment.date)}</div>
+            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">
+              {segment.departureTime ? formatDateOnly(segment.departureTime) : formatDateOnly(segment.date)}
+            </div>
           </div>
 
           {/* Visual Path */}
@@ -306,7 +308,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
               {segment.toCity || segment.toCode || 'DES'}
             </div>
             <div className="text-xl font-bold text-blue-600 mt-2 font-mono" dir="ltr">{arrTime}</div>
-            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">{formatDateOnly(segment.arrivalTime) !== 'TBD' ? formatDateOnly(segment.arrivalTime) : formatDateOnly(segment.date)}</div>
+            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">
+              {segment.arrivalTime ? formatDateOnly(segment.arrivalTime) : '---'}
+            </div>
           </div>
 
         </div>
