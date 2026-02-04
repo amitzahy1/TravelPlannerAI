@@ -275,18 +275,28 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
 
                         {/* Mobile Bottom Navigation - Glassmorphism */}
                         <div className="md:hidden fixed bottom-4 left-2 right-2 bg-white/95 backdrop-blur-xl border border-white/40 z-50 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-1.5 pb-2 overflow-x-auto scrollbar-hide">
-                                <nav className="flex justify-between px-2 min-w-max gap-4">
-                                        {navItems.map(item => (
+                                <nav className="flex justify-between items-center px-2 min-w-max gap-2">
+                                        {/* Navigation Items */}
+                                        {navItems.slice(0, 5).map(item => (
                                                 <button
                                                         key={item.id}
                                                         onClick={() => onSwitchTab(item.id)}
-                                                        className={`flex flex-col items-center justify-center py-1.5 min-w-[3.5rem] rounded-xl transition-all ${currentTab === item.id ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-50'
+                                                        className={`flex flex-col items-center justify-center py-1.5 min-w-[2.8rem] rounded-xl transition-all ${currentTab === item.id ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-50'
                                                                 }`}
                                                 >
-                                                        <item.icon className={`w-5 h-5 mb-0.5 ${currentTab === item.id ? 'fill-current' : ''}`} strokeWidth={currentTab === item.id ? 2.5 : 2} />
-                                                        <span className={`text-[9px] font-bold leading-none ${currentTab === item.id ? 'text-blue-700' : 'text-slate-400'}`}>{item.label}</span>
+                                                        <item.icon className={`w-4 h-4 mb-0.5 ${currentTab === item.id ? 'fill-current' : ''}`} strokeWidth={currentTab === item.id ? 2.5 : 2} />
+                                                        <span className={`text-[8px] font-bold leading-none ${currentTab === item.id ? 'text-blue-700' : 'text-slate-400'}`}>{item.label}</span>
                                                 </button>
                                         ))}
+
+                                        {/* Prominent Admin Button */}
+                                        <button
+                                                onClick={onOpenAdmin}
+                                                className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-purple-200 min-w-max"
+                                        >
+                                                <Sparkles className="w-4 h-4" />
+                                                <span>ניהול</span>
+                                        </button>
                                 </nav>
                         </div>
 

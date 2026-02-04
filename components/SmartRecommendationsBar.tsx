@@ -27,6 +27,8 @@ interface Props {
         timeline: DayPlan[];
         // Expanded types to include Actions
         onScheduleFavorite: (item: Restaurant | Attraction | { name: string, id: string }, dateIso: string, type: 'food' | 'attraction' | 'transfer' | 'hotel_missing') => void;
+        // Optional: Navigate to Hotels/Flights tab
+        onSwitchTab?: (tab: string) => void;
 }
 
 export const SmartRecommendationsBar: React.FC<Props> = ({
@@ -34,7 +36,8 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
         favoriteRestaurants,
         favoriteAttractions,
         timeline,
-        onScheduleFavorite
+        onScheduleFavorite,
+        onSwitchTab
 }) => {
         const [selectedRec, setSelectedRec] = useState<GroupedRecommendation | null>(null);
         const [scrollIndex, setScrollIndex] = useState(0);
@@ -405,7 +408,21 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                         {/* Suggested Dates (for hotel/transfer) */}
                                                         {(selectedRec.type === 'hotel_missing' || selectedRec.type === 'transfer') && selectedRec.suggestedDates && (
                                                                 <div className="space-y-4">
-                                                                        {/* Action Button */}
+                                                                        {/* Navigation Button - For hotel_missing, go to Hotels page */}
+                                                                        {selectedRec.type === 'hotel_missing' && onSwitchTab && (
+                                                                                <button
+                                                                                        onClick={() => {
+                                                                                                onSwitchTab('hotels');
+                                                                                                setSelectedRec(null);
+                                                                                        }}
+                                                                                        className="w-full py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-sm hover:shadow-md bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700"
+                                                                                >
+                                                                                        <Hotel className="w-5 h-5" />
+                                                                                        <span>עבור לדף מלונות להוספה</span>
+                                                                                </button>
+                                                                        )}
+
+                                                                        {/* Action Button - For transfer or alternative hotel reminder */}
                                                                         <button
                                                                                 onClick={() => {
                                                                                         if (selectedRec.type === 'transfer') {
@@ -450,6 +467,7 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                                                 </span>
                                                                         </button>
 
+
                                                                         <div>
                                                                                 <h4 className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
                                                                                         <Calendar className="w-3 h-3" />
@@ -465,8 +483,8 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                                                                                 if (selectedRec.type === 'transfer') {
                                                                                                                         const relevantSeg = trip.flights?.segments?.find(s => (s.date === date || s.departureTime?.startsWith(date)));
                                                                                                                         if (relevantSeg) {
-                                                                                                                                const from = relevantSeg.fromCity || relevantSeg.origin;
-                                                                                                                                const to = relevantSeg.toCity || relevantSeg.destination;
+                                                                                                                                const from = relevantSeg.fromCity;
+                                                                                                                                const to = relevantSeg.toCity;
                                                                                                                                 if (from && to) startName = `הסעה: ${from} > ${to}`;
                                                                                                                         }
                                                                                                                 }
@@ -541,7 +559,7 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
 
                                                 {/* Days List */}
                                                 <div className="flex-1 overflow-y-auto p-3 space-y-2 safe-area-bottom">
-                                                        {timeline.map((day) => (
+                                                        {timeline.map((day, dayIdx) => (
                                                                 <button
                                                                         key={day.dateIso}
                                                                         onClick={() => {
@@ -561,7 +579,7 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                                         </div>
                                                                         <div className="flex-1">
                                                                                 <div className="flex items-center justify-between">
-                                                                                        <span className="font-bold text-slate-700 group-hover:text-blue-800 transition-colors">יום {day.day}</span>
+                                                                                        <span className="font-bold text-slate-700 group-hover:text-blue-800 transition-colors">יום {dayIdx + 1}</span>
                                                                                         {/* Show if city matches */}
                                                                                         {trip.hotels?.some(h => {
                                                                                                 const checkIn = new Date(h.checkInDate);

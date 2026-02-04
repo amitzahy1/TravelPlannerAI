@@ -10,7 +10,7 @@ export interface CityTheme {
 }
 
 // Google Style: Neutral texts, pastel backgrounds, color accents on badges/icons
-// Badge Text set to slate-900 (Black) per user request
+// 20+ UNIQUE COLORS (excluding yellow, white, gray)
 const THEMES: CityTheme[] = [
         // 0. Beach / Tropical (Orange)
         { bg: 'bg-orange-500', border: 'border-orange-600', text: 'text-white', textLight: 'text-orange-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
@@ -25,10 +25,10 @@ const THEMES: CityTheme[] = [
         // 5. Coastal (Sky)
         { bg: 'bg-sky-500', border: 'border-sky-600', text: 'text-white', textLight: 'text-sky-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
         // 6. Historic (Amber)
-        { bg: 'bg-amber-500', border: 'border-amber-600', text: 'text-white', textLight: 'text-amber-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-amber-600', border: 'border-amber-700', text: 'text-white', textLight: 'text-amber-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
         // 7. Modern (Fuchsia)
         { bg: 'bg-fuchsia-600', border: 'border-fuchsia-700', text: 'text-white', textLight: 'text-fuchsia-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
-        // 8. Forest (Green)
+        // 8. Forest (Green) - USED FOR BOHOL
         { bg: 'bg-green-600', border: 'border-green-700', text: 'text-white', textLight: 'text-green-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
         // 9. Royal (Indigo)
         { bg: 'bg-indigo-600', border: 'border-indigo-700', text: 'text-white', textLight: 'text-indigo-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
@@ -36,14 +36,30 @@ const THEMES: CityTheme[] = [
         { bg: 'bg-red-500', border: 'border-red-600', text: 'text-white', textLight: 'text-red-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
         // 11. Aqua (Cyan)
         { bg: 'bg-cyan-600', border: 'border-cyan-700', text: 'text-white', textLight: 'text-cyan-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
-        // 12. Lavender (Purple)
-        { bg: 'bg-purple-500', border: 'border-purple-600', text: 'text-white', textLight: 'text-purple-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
-        // 13. Earth (Stone/Yellow)
-        { bg: 'bg-yellow-500', border: 'border-yellow-600', text: 'text-white', textLight: 'text-yellow-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
-        // 14. Berry (Pink)
+        // 12. Lavender (Purple) - USED FOR CEBU
+        { bg: 'bg-purple-600', border: 'border-purple-700', text: 'text-white', textLight: 'text-purple-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        // 13. Berry (Pink)
         { bg: 'bg-pink-600', border: 'border-pink-700', text: 'text-white', textLight: 'text-pink-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
-        // 15. Ocean (Teal)
-        { bg: 'bg-teal-600', border: 'border-teal-700', text: 'text-white', textLight: 'text-teal-100', badge: 'bg-white/20 text-white', icon: 'text-white' }
+        // 14. Ocean (Teal)
+        { bg: 'bg-teal-600', border: 'border-teal-700', text: 'text-white', textLight: 'text-teal-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        // 15. Desert (Orange-600) - FOR ABU DHABI/DUBAI
+        { bg: 'bg-orange-600', border: 'border-orange-700', text: 'text-white', textLight: 'text-orange-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        // 16. Wine (Rose-600)
+        { bg: 'bg-rose-600', border: 'border-rose-700', text: 'text-white', textLight: 'text-rose-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        // 17. Deep Ocean (Blue-700)
+        { bg: 'bg-blue-700', border: 'border-blue-800', text: 'text-white', textLight: 'text-blue-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        // 18. Autumn (Orange-700)
+        { bg: 'bg-orange-700', border: 'border-orange-800', text: 'text-white', textLight: 'text-orange-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        // 19. Jungle (Lime-600)
+        { bg: 'bg-lime-600', border: 'border-lime-700', text: 'text-white', textLight: 'text-lime-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        // 20. Galaxy (Slate-700)
+        { bg: 'bg-slate-700', border: 'border-slate-800', text: 'text-white', textLight: 'text-slate-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        // 21. Coral (Red-400)
+        { bg: 'bg-red-400', border: 'border-red-500', text: 'text-white', textLight: 'text-red-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        // 22. Deep Purple (Violet-700)
+        { bg: 'bg-violet-700', border: 'border-violet-800', text: 'text-white', textLight: 'text-violet-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        // 23. Sapphire (Indigo-700)
+        { bg: 'bg-indigo-700', border: 'border-indigo-800', text: 'text-white', textLight: 'text-indigo-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
 ];
 
 // Explicit City Overrides to ensure distinct colors for popular destinations
@@ -51,28 +67,32 @@ const CITY_OVERRIDES: Record<string, number> = {
         // Philippines
         'manila': 1, // Urban Blue
         'makati': 1,
-        'cebu': 12, // Lavender (Purple) - Kept User's "Purple" for Cebu
+        'cebu': 12, // Lavender (Purple)
         'boracay': 0, // Tropical Orange
-        'boracay island': 0, // Explicit override
+        'boracay island': 0,
         'boracay beach': 0,
         'el nido': 2, // Emerald
         'coron': 11, // Aqua
-        'bohol': 8, // Forest
-        'siargao': 0, // Tropical Orange
+        'bohol': 8, // Forest Green - UNIQUE
+        'siargao': 0,
 
-        // Thailand
+        // Thailand (ALL DIFFERENT FROM PHILIPPINES)
         'bangkok': 6, // Amber (Historic/Temple)
         'phuket': 10, // Sunset Red
         'ko samui': 5, // Coastal Sky
-        'chiang mai': 8, // Green
+        'chiang mai': 19, // Jungle Lime - CHANGED from 8 to avoid collision
+
+        // UAE (UNIQUE DESERT COLORS)
+        'abu dhabi': 15, // Desert Orange-600
+        'dubai': 18, // Autumn Orange-700
 
         // General
         'tel aviv': 5, // Coastal
         'jerusalem': 9, // Royal
-        'london': 1, // Urban
+        'london': 17, // Deep Ocean Blue
         'paris': 3, // Romantic
-        'new york': 1,
-        'tokyo': 7, // Modern
+        'new york': 20, // Galaxy Slate
+        'tokyo': 7, // Modern Fuchsia
 };
 
 // Country-Level Defaults (Fallback if City not found)
@@ -81,10 +101,10 @@ const COUNTRY_THEMES: Record<string, number> = {
         'Thailand': 6,    // Default Amber (matches Bangkok)
         'Japan': 7,       // Modern
         'France': 3,      // Romantic
-        'Italy': 13,      // Earth/Food
+        'Italy': 16,      // Wine Rose - CHANGED
         'United Kingdom': 9, // Royal
         'United States': 1,  // Urban
-        'United Arab Emirates': 13, // Desert/Gold
+        'United Arab Emirates': 15, // Desert Orange - CHANGED
         'Greece': 5,      // Coastal Blue
         'Maldives': 11,   // Aqua
         'Switzerland': 2, // Nature/Green

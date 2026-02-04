@@ -398,25 +398,74 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
 
         // Plot Route (Only if showing ALL)
         if (activeCity === 'ALL' && trip && !items) {
-            const routeNodes = validItems
-                .filter(i => i.type === 'airport' || i.type === 'hotel')
-                .sort((a, b) => getItemTimestamp(a) - getItemTimestamp(b));
+            // Build ordered city route from flight segments
+            const flightSegments = [...(trip.flights?.segments || [])].sort((a, b) => {
+                return (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0);
+            });
 
-            // Add numbered markers for route stops
+            // Extract unique cities in travel order from flights
+            const cityRoute: { name: string; code?: string; coords?: { lat: number; lng: number } }[] = [];
+
+            flightSegments.forEach(seg => {
+                // Add departure city if not already last in route
+                if (seg.fromCity && (cityRoute.length === 0 || cityRoute[cityRoute.length - 1].name.toLowerCase() !== seg.fromCity.toLowerCase())) {
+                    cityRoute.push({ name: seg.fromCity, code: seg.fromCode });
+                }
+                // Add arrival city
+                if (seg.toCity && (cityRoute.length === 0 || cityRoute[cityRoute.length - 1].name.toLowerCase() !== seg.toCity.toLowerCase())) {
+                    cityRoute.push({ name: seg.toCity, code: seg.toCode });
+                }
+            });
+
+            // Geocode all cities in the route
+            const geocodeCities = async () => {
+                for (const city of cityRoute) {
+                    const query = city.code ? `${city.name} Airport` : city.name;
+                    // Try to find in valid items first
+                    const foundItem = validItems.find(i =>
+                        i.city?.toLowerCase() === city.name.toLowerCase() ||
+                        i.name?.toLowerCase().includes(city.name.toLowerCase())
+                    );
+                    if (foundItem?.lat && foundItem?.lng) {
+                        city.coords = { lat: foundItem.lat, lng: foundItem.lng };
+                    } else if (geocodedCache[query]) {
+                        city.coords = geocodedCache[query];
+                    } else {
+                        const coords = await geocodeAddress(query);
+                        if (coords) {
+                            city.coords = coords;
+                        }
+                    }
+                }
+            };
+
+            // Since we can't use async directly here, use what's already geocoded
+            cityRoute.forEach(city => {
+                const query = city.code ? `${city.name} Airport` : city.name;
+                const foundItem = validItems.find(i =>
+                    i.city?.toLowerCase() === city.name.toLowerCase() ||
+                    i.name?.toLowerCase().includes(city.name.toLowerCase())
+                );
+                if (foundItem?.lat && foundItem?.lng) {
+                    city.coords = { lat: foundItem.lat, lng: foundItem.lng };
+                } else if (geocodedCache[query]) {
+                    city.coords = geocodedCache[query];
+                } else if (geocodedCache[city.name]) {
+                    city.coords = geocodedCache[city.name];
+                }
+            });
+
+            // Add numbered markers for each city stop
             let stopNumber = 0;
-            const seenCities = new Set<string>();
-            routeNodes.forEach(node => {
-                const cityName = node.city || node.name?.split('(')[0]?.trim();
-                if (!cityName || seenCities.has(cityName.toLowerCase()) || !node.lat || !node.lng) return;
-                seenCities.add(cityName.toLowerCase());
+            cityRoute.forEach(city => {
+                if (!city.coords) return;
                 stopNumber++;
 
-                // Numbered city marker
                 const numberHtml = `
                     <div style="
                         background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-                        width: 36px;
-                        height: 36px;
+                        width: 40px;
+                        height: 40px;
                         border-radius: 50%;
                         border: 3px solid white;
                         display: flex;
@@ -425,98 +474,92 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
                         color: white;
                         font-weight: 900;
-                        font-size: 14px;
+                        font-size: 16px;
                         font-family: 'Rubik', sans-serif;
                     ">${stopNumber}</div>
                 `;
                 const numberIcon = L.divIcon({
                     html: numberHtml,
                     className: '',
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 18],
-                    popupAnchor: [0, -20]
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20],
+                    popupAnchor: [0, -25]
                 });
-                L.marker([node.lat!, node.lng!], { icon: numberIcon })
+                L.marker([city.coords.lat, city.coords.lng], { icon: numberIcon })
                     .bindPopup(`<div style="font-family:'Rubik'; text-align:center; direction:rtl; font-weight:bold;">
                         <div style="font-size:11px; color:#6b7280; margin-bottom:2px;">עצירה ${stopNumber}</div>
-                        <div style="font-size:14px; color:#1f2937;">${cityName}</div>
+                        <div style="font-size:14px; color:#1f2937;">${city.name}</div>
                     </div>`)
                     .addTo(markerLayer);
 
-                bounds.extend([node.lat!, node.lng!]);
+                bounds.extend([city.coords.lat, city.coords.lng]);
             });
 
-            // Draw flight path lines between consecutive stops
-            for (let i = 0; i < routeNodes.length - 1; i++) {
-                const start = routeNodes[i];
-                const end = routeNodes[i + 1];
-                if (!start.lat || !end.lat) continue;
+            // Draw flight path lines between consecutive cities
+            for (let i = 0; i < cityRoute.length - 1; i++) {
+                const start = cityRoute[i];
+                const end = cityRoute[i + 1];
+                if (!start.coords || !end.coords) continue;
 
-                const isFlight = (start.type === 'airport' && end.type === 'airport');
-                const dist = getDistanceFromLatLonInKm(start.lat!, start.lng!, end.lat!, end.lng!);
+                const dist = getDistanceFromLatLonInKm(start.coords.lat, start.coords.lng, end.coords.lat, end.coords.lng);
 
-                if (!isFlight && dist < 5) continue;
-                if (!isFlight && dist > 3000) continue;
-
-                // Create curved path for flights
+                // Create curved arc for all connections
                 let pathPoints: [number, number][];
-                if (isFlight && dist > 100) {
-                    // Create arc for flights
-                    const steps = 20;
+                if (dist > 50) {
+                    const steps = 30;
                     pathPoints = [];
                     for (let s = 0; s <= steps; s++) {
                         const t = s / steps;
-                        const lat = start.lat! + (end.lat! - start.lat!) * t;
-                        const lng = start.lng! + (end.lng! - start.lng!) * t;
-                        // Add curve offset (max at middle)
-                        const curveOffset = Math.sin(t * Math.PI) * (dist / 50);
-                        const perpLat = -(end.lng! - start.lng!) / dist;
-                        const perpLng = (end.lat! - start.lat!) / dist;
-                        pathPoints.push([lat + perpLat * curveOffset * 0.01, lng + perpLng * curveOffset * 0.01]);
+                        const lat = start.coords.lat + (end.coords.lat - start.coords.lat) * t;
+                        const lng = start.coords.lng + (end.coords.lng - start.coords.lng) * t;
+                        // Add curve offset (max at middle) - adjusts based on distance
+                        const curveFactor = Math.min(dist / 30, 5);
+                        const curveOffset = Math.sin(t * Math.PI) * curveFactor;
+                        const perpLat = -(end.coords.lng - start.coords.lng) / Math.max(dist, 1);
+                        const perpLng = (end.coords.lat - start.coords.lat) / Math.max(dist, 1);
+                        pathPoints.push([lat + perpLat * curveOffset * 0.5, lng + perpLng * curveOffset * 0.5]);
                     }
                 } else {
-                    pathPoints = [[start.lat!, start.lng!], [end.lat!, end.lng!]];
+                    pathPoints = [[start.coords.lat, start.coords.lng], [end.coords.lat, end.coords.lng]];
                 }
 
+                // Gradient-like effect with dashed line
                 const polyline = L.polyline(pathPoints, {
-                    color: isFlight ? '#3b82f6' : '#10b981',
-                    weight: isFlight ? 4 : 3,
+                    color: '#3b82f6',
+                    weight: 4,
                     opacity: 0.8,
-                    dashArray: isFlight ? '8, 8' : undefined,
+                    dashArray: '10, 6',
                     lineCap: 'round',
                     lineJoin: 'round'
                 }).addTo(routeLayer);
 
-                // Direction Arrow at midpoint
+                // Direction arrow at midpoint
                 const midIdx = Math.floor(pathPoints.length / 2);
                 const midLat = pathPoints[midIdx][0];
                 const midLng = pathPoints[midIdx][1];
-                const bearing = getBearing(start.lat!, start.lng!, end.lat!, end.lng!);
+                const bearing = getBearing(start.coords.lat, start.coords.lng, end.coords.lat, end.coords.lng);
 
                 const arrowHtml = `
                     <div style="
                         transform: rotate(${bearing - 90}deg);
-                        background: ${isFlight ? '#3b82f6' : '#10b981'};
+                        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
                         border-radius: 50%;
-                        width: 24px;
-                        height: 24px;
+                        width: 28px;
+                        height: 28px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                         border: 2px solid white;
                     ">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
                             <path d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>
                     </div>
                 `;
                 L.marker([midLat, midLng], {
-                    icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [24, 24], iconAnchor: [12, 12] })
+                    icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [28, 28], iconAnchor: [14, 14] })
                 }).addTo(routeLayer);
-
-                bounds.extend([start.lat!, start.lng!]);
-                bounds.extend([end.lat!, end.lng!]);
             }
         }
 

@@ -953,6 +953,7 @@ export const ItineraryView: React.FC<{
                 favoriteAttractions={favoriteAttractions}
                 timeline={timeline}
                 onScheduleFavorite={handleScheduleFavorite}
+                onSwitchTab={onSwitchTab}
             />
 
             {/* 3. MAIN TIMELINE (Repositioned for Density) */}
