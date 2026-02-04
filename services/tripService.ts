@@ -39,7 +39,9 @@ export const mapAnalysisToTrip = (analysis: TripAnalysisResult): Partial<Trip> =
                                 arrivalTime: arrData.displayTime || finalArrivalDate.split('T')[1]?.substring(0, 5) || '00:00',
                                 fromCity: depData.city || i.data.fromCity || '',
                                 toCity: arrData.city || i.data.toCity || '',
-                                duration: i.data.duration || "0h"
+                                duration: i.data.duration || "0h",
+                                price: i.data.totalPrice || 0,
+                                currency: i.data.currency || 'USD'
                         }];
                 });
 
@@ -49,9 +51,12 @@ export const mapAnalysisToTrip = (analysis: TripAnalysisResult): Partial<Trip> =
                 checkInDate: (i.data.checkInDate || '').split('T')[0],
                 checkOutDate: (i.data.checkOutDate || '').split('T')[0],
                 address: i.data.address || '',
-                confirmationCode: "",
+                confirmationCode: i.data.bookingId || "",
                 roomType: "",
-                nights: 1
+                nights: 1,
+                costNumeric: i.data.totalPrice || 0,
+                price: i.data.totalPrice ? `${i.data.totalPrice} ${i.data.currency || ''}` : '',
+                locationVibe: ""
         }));
 
         const wallet: SecureNote[] = categories.wallet.map(i => ({

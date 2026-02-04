@@ -272,10 +272,11 @@ User Input: "${magicInput}"`;
             <div
                 className={`bg-white w-full ${mode === 'REVIEW_FORM' ? 'max-w-5xl h-[90vh]' : 'max-w-xl h-auto'} transition-all duration-500 rounded-[2.5rem] shadow-2xl overflow-hidden relative border border-white/20 flex flex-col`}
                 onClick={(e) => e.stopPropagation()}
+                dir="rtl"
             >
 
-                {/* Close Button */}
-                <button onClick={handleClose} className="absolute top-6 right-6 z-30 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
+                {/* Close Button UI - flipped for RTL */}
+                <button onClick={handleClose} className="absolute top-6 left-6 z-30 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">
                     <X className="w-5 h-5 text-slate-500" />
                 </button>
 
@@ -288,7 +289,7 @@ User Input: "${magicInput}"`;
                         </div>
 
                         <h2 className="text-4xl font-black text-slate-800 mb-4 text-center tracking-tight">
-                            Where are you <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-500">going?</span>
+                            לאן <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-500">טסים?</span>
                         </h2>
 
                         <div className="w-full max-w-sm relative group mt-4">
@@ -298,7 +299,7 @@ User Input: "${magicInput}"`;
                                 onChange={(e) => setDestinationInput(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && destinationInput && setMode('CONTEXT')}
                                 type="text"
-                                placeholder="e.g. Tokyo, Paris, New York..."
+                                placeholder="למשל: תאילנד, פריז, ניו יורק..."
                                 className="w-full text-center text-xl font-bold p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:border-emerald-500 focus:bg-white transition-all outline-none placeholder:font-normal"
                             />
                         </div>
@@ -308,51 +309,30 @@ User Input: "${magicInput}"`;
                             disabled={!destinationInput}
                             className={`mt-8 px-10 py-4 rounded-xl font-bold text-lg shadow-lg flex items-center gap-2 transition-all transform active:scale-95 ${destinationInput ? 'bg-slate-800 text-white hover:bg-black hover:shadow-xl' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
                         >
-                            Next <ChevronRight className="w-5 h-5" />
+                            <ChevronRight className="w-5 h-5 rotate-180" />
+                            המשך
                         </button>
                     </div>
                 )}
 
-                {/* --- STATE 2: CONTEXT (Hero Upload + Manual) --- */}
+                {/* --- STATE 2: CONTEXT (Hero Upload ONLY - No Description) --- */}
                 {mode === 'CONTEXT' && (
                     <div className="p-10 flex flex-col h-full min-h-[500px]">
-                        <h2 className="text-3xl font-black text-slate-800 mb-8 text-center flex items-center justify-center gap-2">
-                            Building trip for <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-500 underline decoration-emerald-200 underline-offset-4">{destinationInput}</span>
+                        <h2 className="text-3xl font-black text-slate-800 mb-2 text-center flex items-center justify-center gap-2">
+                            מתכננים את הטיול ל-<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-500 underline decoration-emerald-200 underline-offset-4">{destinationInput}</span>
                         </h2>
+                        <p className="text-slate-500 text-center mb-10 text-lg">
+                            יש לך כרטיסי טיסה או הזמנת מלון? זה הזמן לגרור אותם לכאן!
+                        </p>
 
                         {/* HERO: Magic Upload */}
-                        <div className="w-full mb-8">
+                        <div className="w-full mb-8 flex-1 flex flex-col justify-center">
                             <MagicDropZone onFilesReady={handleFilesReady} compact={false} />
                         </div>
 
-                        {/* Separator */}
-                        <div className="flex items-center gap-4 mb-8 w-full max-w-md mx-auto">
-                            <div className="h-px flex-1 bg-slate-200"></div>
-                            <span className="text-slate-400 font-bold text-sm uppercase">Or Describe It</span>
-                            <div className="h-px flex-1 bg-slate-200"></div>
-                        </div>
-
-                        {/* SECONDARY: Text Input */}
-                        <div className="w-full max-w-md mx-auto relative group">
-                            <textarea
-                                value={magicInput}
-                                onChange={(e) => setMagicInput(e.target.value)}
-                                placeholder="Any specific plans? e.g. 'Staying near Shibuya, focus on food and anime'..."
-                                className="w-full h-24 px-4 py-3 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-sm font-medium text-slate-700 outline-none resize-none transition-all"
-                            />
-                            <button
-                                onClick={handleManualDescription}
-                                disabled={!magicInput.trim() && !uploadedFiles.length}
-                                className="absolute bottom-3 right-3 p-2 bg-white rounded-lg shadow-sm border border-slate-100 hover:bg-blue-50 text-blue-600 transition-colors"
-                                title="Generate"
-                            >
-                                <Wand2 className="w-4 h-4" />
-                            </button>
-                        </div>
-
                         <div className="text-center mt-4">
-                            <button onClick={handleLegacyCreate} className="text-slate-400 text-xs font-medium hover:text-slate-600 underline">
-                                Skip and create empty trip
+                            <button onClick={handleLegacyCreate} className="text-slate-400 text-sm font-medium hover:text-slate-600 underline">
+                                דלג וצור טיול ריק
                             </button>
                         </div>
                     </div>
@@ -362,7 +342,7 @@ User Input: "${magicInput}"`;
                 {mode === 'PROCESSING' && (
                     <div className="p-10 flex flex-col items-center justify-center h-full min-h-[500px]">
                         <ThinkingLoader
-                            texts={["Analyzing destination...", "Reading extracted files...", "Generating smart itinerary...", "Enriching location data...", "Finalizing trip details..."]}
+                            texts={["מנתח את היעד...", "קורא את הקבצים...", "בונה מסלול חכם...", "מוסיף מידע על מיקומים...", "מסיים את הפרטים האחרונים..."]}
                             speed={1500}
                         />
                     </div>
@@ -379,15 +359,15 @@ User Input: "${magicInput}"`;
                                         <Wand2 className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <h2 className="text-2xl font-black text-slate-800">Trip Details</h2>
-                                        <p className="text-slate-500 text-sm">Review the details we extracted for you</p>
+                                        <h2 className="text-2xl font-black text-slate-800">פרטי הטיול</h2>
+                                        <p className="text-slate-500 text-sm">הנה מה שהצלחנו לחלץ מהקבצים שלך</p>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
                                     <div className="space-y-1.5">
                                         <div className="flex justify-between items-center px-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trip Name</label>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">שם הטיול</label>
                                             {tripData.metadata.suggestedName && <span className="text-[9px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded uppercase">AI ✨</span>}
                                         </div>
                                         <div className="relative group">
@@ -395,14 +375,14 @@ User Input: "${magicInput}"`;
                                                 value={formName}
                                                 onChange={(e) => setFormName(e.target.value)}
                                                 className="w-full bg-white border-2 border-slate-100 focus:border-blue-500 rounded-2xl px-4 py-3.5 font-bold text-slate-800 outline-none transition-all shadow-sm group-hover:border-slate-200 text-sm"
-                                                placeholder="e.g. Summer in Paris"
+                                                placeholder="למשל: סופ״ש בפריז"
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-1.5">
                                         <div className="flex justify-between items-center px-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Destination</label>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">יעד</label>
                                             {tripData.metadata.destination && <span className="text-[9px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded uppercase">AI ✨</span>}
                                         </div>
                                         <div className="relative group">
@@ -411,14 +391,14 @@ User Input: "${magicInput}"`;
                                                 value={formDestination}
                                                 onChange={(e) => setFormDestination(e.target.value)}
                                                 className="w-full bg-white border-2 border-slate-100 focus:border-blue-500 rounded-2xl pl-10 pr-4 py-3.5 font-bold text-slate-800 outline-none transition-all shadow-sm group-hover:border-slate-200 text-sm"
-                                                placeholder="City, Country"
+                                                placeholder="עיר, מדינה"
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-1.5">
                                         <div className="flex justify-between items-center px-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dates</label>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">תאריכים</label>
                                             {tripData.metadata.startDate && <span className="text-[9px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded uppercase">AI ✨</span>}
                                         </div>
                                         <div className="relative group">
@@ -441,7 +421,7 @@ User Input: "${magicInput}"`;
                                 <section className="mb-6">
                                     <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 px-1">
                                         <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
-                                        Review Extracted Items
+                                        פריטים שזוהו
                                     </h3>
                                     <StagedDataReview stagedData={tripData.rawStagedData} files={uploadedFiles} />
                                 </section>
@@ -453,11 +433,11 @@ User Input: "${magicInput}"`;
                             <DebugToggle tripData={tripData} />
                             <div className="flex gap-4">
                                 <button onClick={handleLegacyCreate} className="px-6 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">
-                                    Cancel
+                                    בטל
                                 </button>
                                 <button onClick={handleConfirmTrip} className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 flex items-center gap-2 transform active:scale-95 transition-all">
                                     <Check className="w-5 h-5" />
-                                    Create Trip
+                                    צור טיול
                                 </button>
                             </div>
                         </div>
@@ -492,17 +472,17 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
         <div>
             {/* Tabs */}
             <div className="flex items-center gap-1 mb-8 bg-slate-100/50 p-1.5 rounded-2xl w-fit overflow-x-auto scrollbar-hide">
-                <TabButton active={activeTab === 'transport'} onClick={() => setActiveTab('transport')} icon={Plane} label="Transport" count={transport.length} />
-                <TabButton active={activeTab === 'accommodation'} onClick={() => setActiveTab('accommodation')} icon={Bed} label="Hotels" count={accommodation.length} />
-                <TabButton active={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} icon={Shield} label="Wallet" count={wallet.length} />
-                <TabButton active={activeTab === 'experiences'} onClick={() => setActiveTab('experiences')} icon={Star} label="Experiences" count={dining.length + activities.length} />
+                <TabButton active={activeTab === 'transport'} onClick={() => setActiveTab('transport')} icon={Plane} label="טיסות" count={transport.length} />
+                <TabButton active={activeTab === 'accommodation'} onClick={() => setActiveTab('accommodation')} icon={Bed} label="מלונות" count={accommodation.length} />
+                <TabButton active={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} icon={Shield} label="מסמכים" count={wallet.length} />
+                <TabButton active={activeTab === 'experiences'} onClick={() => setActiveTab('experiences')} icon={Star} label="חוויות" count={dining.length + activities.length} />
             </div>
 
             {/* Content */}
             <div className="space-y-4 animate-fade-in">
                 {activeTab === 'transport' && (
                     <>
-                        {transport.length === 0 && <EmptyState label="No transport found" />}
+                        {transport.length === 0 && <EmptyState label="לא נמצאו טיסות" />}
                         {transport.map((item, idx) => {
                             // Helper to extract display data whether it's grouped or single
                             const isFlight = item.type === 'flight';
@@ -517,7 +497,7 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                                         {isFlight ? <Plane className="w-6 h-6" /> : <Bus className="w-6 h-6" />}
                                     </div>
                                     <div>
-                                        <div className="font-bold text-slate-800">{isFlight ? `Flight: ${title}` : title}</div>
+                                        <div className="font-bold text-slate-800">{isFlight ? `טיסה: ${title}` : title}</div>
                                         <div className="text-sm text-slate-500">
                                             {/* Robust Rendering for both Flat and Nested structures */}
                                             {(() => {
@@ -536,6 +516,13 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                                                 return `${depTime} • ${depCity} → ${arrCity}`;
                                             })()}
                                         </div>
+
+                                        {/* Cost Display */}
+                                        {(item.data.totalPrice || item.data.price) && (
+                                            <div className="mt-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded w-fit">
+                                                {item.data.currency} {item.data.totalPrice || item.data.price}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -544,7 +531,7 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                 )}
                 {activeTab === 'accommodation' && (
                     <>
-                        {accommodation.length === 0 && <EmptyState label="No accommodations found" />}
+                        {accommodation.length === 0 && <EmptyState label="לא נמצאו מלונות" />}
                         {accommodation.map((item, idx) => (
                             <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm flex items-start gap-4">
                                 <div className="p-3 bg-purple-50 text-purple-600 rounded-lg"><Bed className="w-6 h-6" /></div>
@@ -553,6 +540,12 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                                     <div className="text-sm text-slate-500">
                                         {item.data.displayTime || (item.data.displayCheckInTime ? `${item.data.displayCheckInTime} - ${item.data.displayCheckOutTime || ''}` : '')} • {item.data.address}
                                     </div>
+                                    {/* Cost Display - Added for Hotel */}
+                                    {(item.data.totalPrice || item.data.price) && (
+                                        <div className="mt-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded w-fit">
+                                            {item.data.currency} {item.data.totalPrice || item.data.price}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -560,13 +553,13 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                 )}
                 {activeTab === 'wallet' && (
                     <>
-                        {wallet.length === 0 && <EmptyState label="No wallet items found" />}
+                        {wallet.length === 0 && <EmptyState label="לא נמצאו מסמכים" />}
                         {wallet.map((item, idx) => (
                             <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm flex items-center gap-4">
                                 <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><Shield className="w-6 h-6" /></div>
                                 <div>
                                     <div className="font-bold text-slate-800">{item.title}</div>
-                                    <div className="text-xs text-slate-400">Secure Document</div>
+                                    <div className="text-xs text-slate-400">מסמך מאובטח</div>
                                 </div>
                             </div>
                         ))}
@@ -574,7 +567,7 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
                 )}
                 {activeTab === 'experiences' && (
                     <>
-                        {[...dining, ...activities].length === 0 && <EmptyState label="No experiences found" />}
+                        {[...dining, ...activities].length === 0 && <EmptyState label="לא נמצאו חוויות" />}
                         {[...dining, ...activities].map((item, idx) => (
                             <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm flex items-center gap-4">
                                 <div className={`p-3 rounded-lg ${item.type === 'dining' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'}`}>
@@ -593,7 +586,7 @@ const StagedDataReview = ({ stagedData, files }: { stagedData: StagedTripData, f
             {/* File References */}
             {files.length > 0 && (
                 <div className="mt-12 pt-8 border-t border-slate-100">
-                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Source Files</h4>
+                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">קבצי מקור</h4>
                     <div className="flex flex-wrap gap-2">
                         {files.map((f, i) => (
                             <div key={i} className="px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-medium text-slate-600 flex items-center gap-2">

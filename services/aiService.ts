@@ -246,6 +246,8 @@ Structure:
         "data": {
           "airline": "String",
           "flightNumber": "String",
+          "totalPrice": Number,
+          "currency": "String (e.g. USD, EUR, ILS)",
           "departure": {
             "city": "String",
             "iata": "ABC",
@@ -264,7 +266,20 @@ Structure:
         "sourceFileIds": []
       }
     ],
-    "accommodation": [],
+    "accommodation": [
+      {
+         "type": "hotel",
+         "data": {
+            "hotelName": "String",
+            "address": "String",
+            "checkIn": "YYYY-MM-DD",
+            "checkOut": "YYYY-MM-DD",
+            "totalPrice": Number,
+            "currency": "String",
+            "bookingId": "String"
+         }
+      }
+    ],
     "wallet": [],
     "dining": [],
     "activities": []
