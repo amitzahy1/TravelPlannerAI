@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Trip, HotelBooking } from '../types';
 import { Hotel, MapPin, Calendar, ExternalLink, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X, Save, DollarSign, Image as ImageIcon, Link as LinkIcon, Globe, Sparkles, Loader2, Navigation, Search, UploadCloud, FileText, Coffee, ShieldCheck } from 'lucide-react';
 import { getAI, generateWithFallback } from '../services/aiService';
@@ -112,7 +113,19 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                     </div>
                     <div className="grid grid-cols-1 gap-6">
                         {hotels.map((hotel, index) => (
-                            <HotelCard key={hotel.id || index} data={hotel} onSaveNote={(note) => handleNoteUpdate(hotel.id, note)} onSaveVibe={(vibe) => handleVibeUpdate(hotel.id, vibe)} onDelete={() => handleDeleteHotel(hotel.id)} onEdit={() => handleEditHotel(hotel)} />
+                            <motion.div
+                                key={hotel.id || index}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{
+                                    delay: index * 0.1,
+                                    type: 'spring',
+                                    stiffness: 300,
+                                    damping: 25
+                                }}
+                            >
+                                <HotelCard data={hotel} onSaveNote={(note) => handleNoteUpdate(hotel.id, note)} onSaveVibe={(vibe) => handleVibeUpdate(hotel.id, vibe)} onDelete={() => handleDeleteHotel(hotel.id)} onEdit={() => handleEditHotel(hotel)} />
+                            </motion.div>
                         ))}
                     </div>
                 </>

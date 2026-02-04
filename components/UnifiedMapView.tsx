@@ -398,24 +398,58 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
 
         // Plot Route (Only if showing ALL)
         if (activeCity === 'ALL' && trip && !items) {
-            // Build ordered city route from flight segments
+            // Build ordered city route from multiple sources
+            const cityRoute: { name: string; code?: string; coords?: { lat: number; lng: number }; date?: Date }[] = [];
+
+            // 1. Try flight segments first (most reliable for order)
             const flightSegments = [...(trip.flights?.segments || [])].sort((a, b) => {
                 return (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0);
             });
 
-            // Extract unique cities in travel order from flights
-            const cityRoute: { name: string; code?: string; coords?: { lat: number; lng: number } }[] = [];
+            if (flightSegments.length > 0) {
+                flightSegments.forEach(seg => {
+                    // Add departure city if not already last in route
+                    if (seg.fromCity && (cityRoute.length === 0 || cityRoute[cityRoute.length - 1].name.toLowerCase() !== seg.fromCity.toLowerCase())) {
+                        cityRoute.push({ name: seg.fromCity, code: seg.fromCode, date: parseTripDate(seg.date) || undefined });
+                    }
+                    // Add arrival city
+                    if (seg.toCity && (cityRoute.length === 0 || cityRoute[cityRoute.length - 1].name.toLowerCase() !== seg.toCity.toLowerCase())) {
+                        cityRoute.push({ name: seg.toCity, code: seg.toCode, date: parseTripDate(seg.date) || undefined });
+                    }
+                });
+            } else {
+                // 2. Fallback: Use hotels sorted by check-in date
+                const sortedHotels = [...(trip.hotels || [])].sort((a, b) => {
+                    const dateA = parseTripDate(a.checkInDate || '')?.getTime() || 0;
+                    const dateB = parseTripDate(b.checkInDate || '')?.getTime() || 0;
+                    return dateA - dateB;
+                });
 
-            flightSegments.forEach(seg => {
-                // Add departure city if not already last in route
-                if (seg.fromCity && (cityRoute.length === 0 || cityRoute[cityRoute.length - 1].name.toLowerCase() !== seg.fromCity.toLowerCase())) {
-                    cityRoute.push({ name: seg.fromCity, code: seg.fromCode });
+                sortedHotels.forEach(hotel => {
+                    // Extract city from hotel address
+                    const cityGuess = hotel.address?.split(',').slice(-2, -1)[0]?.trim()
+                        || hotel.address?.split(',')[1]?.trim()
+                        || hotel.name.split(',')[0];
+
+                    if (cityGuess && (cityRoute.length === 0 || cityRoute[cityRoute.length - 1].name.toLowerCase() !== cityGuess.toLowerCase())) {
+                        cityRoute.push({
+                            name: cityGuess,
+                            date: parseTripDate(hotel.checkInDate || '') || undefined,
+                            coords: hotel.lat && hotel.lng ? { lat: hotel.lat, lng: hotel.lng } : undefined
+                        });
+                    }
+                });
+
+                // 3. Last fallback: Use destination cities from trip.destination
+                if (cityRoute.length === 0 && trip.destination) {
+                    const destCities = trip.destination.split(/[-–,&]/).map(c => c.trim()).filter(Boolean);
+                    destCities.forEach(city => {
+                        if (city && !cityRoute.some(c => c.name.toLowerCase() === city.toLowerCase())) {
+                            cityRoute.push({ name: city });
+                        }
+                    });
                 }
-                // Add arrival city
-                if (seg.toCity && (cityRoute.length === 0 || cityRoute[cityRoute.length - 1].name.toLowerCase() !== seg.toCity.toLowerCase())) {
-                    cityRoute.push({ name: seg.toCity, code: seg.toCode });
-                }
-            });
+            }
 
             // Geocode all cities in the route
             const geocodeCities = async () => {

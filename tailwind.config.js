@@ -15,9 +15,30 @@ export default {
                                 'outfit': ['Outfit', 'sans-serif'],
                                 'heebo': ['Heebo', 'sans-serif'],
                         },
+                        colors: {
+                                // Semantic Glass Colors
+                                glass: {
+                                        light: 'rgba(255, 255, 255, 0.65)',
+                                        dark: 'rgba(15, 23, 42, 0.75)',
+                                        border: 'rgba(255, 255, 255, 0.3)',
+                                },
+                                surface: {
+                                        primary: '#f8fafc',
+                                        elevated: '#ffffff',
+                                        muted: '#f1f5f9',
+                                },
+                                accent: {
+                                        aurora: '#667eea',
+                                        sunset: '#fa709a',
+                                        ocean: '#4facfe',
+                                        forest: '#11998e',
+                                },
+                        },
                         animation: {
                                 'fade-in': 'fadeIn 0.4s ease-out forwards',
                                 'scale-in': 'scaleIn 0.3s ease-out forwards',
+                                'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                                'float': 'float 6s ease-in-out infinite',
                         },
                         keyframes: {
                                 fadeIn: {
@@ -27,7 +48,15 @@ export default {
                                 scaleIn: {
                                         '0%': { opacity: '0', transform: 'scale(0.95)' },
                                         '100%': { opacity: '1', transform: 'scale(1)' },
-                                }
+                                },
+                                slideUp: {
+                                        '0%': { opacity: '0', transform: 'translateY(20px)' },
+                                        '100%': { opacity: '1', transform: 'translateY(0)' },
+                                },
+                                float: {
+                                        '0%, 100%': { transform: 'translateY(0)' },
+                                        '50%': { transform: 'translateY(-10px)' },
+                                },
                         }
                 },
         },
