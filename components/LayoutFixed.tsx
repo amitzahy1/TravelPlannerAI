@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Trip } from '../types';
-import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, MessageCircle, X, Sparkles, ShoppingBag, Check, List, User } from 'lucide-react';
-// TripAssistant removed
+import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, MessageCircle, X, Sparkles, ShoppingBag, Check, List, User, Calendar, Mountain, Plus, Settings } from 'lucide-react';
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
 
@@ -273,32 +273,59 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                 {children}
                         </main>
 
-                        {/* Mobile Bottom Navigation - Glassmorphism */}
-                        <div className="md:hidden fixed bottom-4 left-2 right-2 bg-white/95 backdrop-blur-xl border border-white/40 z-50 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-1.5 pb-2 overflow-x-auto scrollbar-hide">
-                                <nav className="flex justify-between items-center px-2 min-w-max gap-2">
-                                        {/* Navigation Items */}
-                                        {navItems.slice(0, 5).map(item => (
-                                                <button
-                                                        key={item.id}
-                                                        onClick={() => onSwitchTab(item.id)}
-                                                        className={`flex flex-col items-center justify-center py-1.5 min-w-[2.8rem] rounded-xl transition-all ${currentTab === item.id ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-50'
-                                                                }`}
-                                                >
-                                                        <item.icon className={`w-4 h-4 mb-0.5 ${currentTab === item.id ? 'fill-current' : ''}`} strokeWidth={currentTab === item.id ? 2.5 : 2} />
-                                                        <span className={`text-[8px] font-bold leading-none ${currentTab === item.id ? 'text-blue-700' : 'text-slate-400'}`}>{item.label}</span>
-                                                </button>
-                                        ))}
-
-                                        {/* Prominent Admin Button */}
-                                        <button
-                                                onClick={onOpenAdmin}
-                                                className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-purple-200 min-w-max"
+                        {/* Premium Floating Dock - Mobile Only */}
+                        <motion.nav
+                                initial={{ y: 100, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                transition={{ type: 'spring', stiffness: 260, damping: 25, delay: 0.2 }}
+                                className="md:hidden floating-dock"
+                        >
+                                {/* Main Navigation Items */}
+                                {navItems.slice(0, 5).map((item, index) => (
+                                        <motion.button
+                                                key={item.id}
+                                                initial={{ scale: 0, opacity: 0 }}
+                                                animate={{ scale: 1, opacity: 1 }}
+                                                transition={{ delay: 0.1 + index * 0.05, type: 'spring', stiffness: 400, damping: 20 }}
+                                                whileHover={{ scale: 1.15, y: -6 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() => onSwitchTab(item.id)}
+                                                className={`dock-item ${currentTab === item.id ? 'active' : ''}`}
                                         >
-                                                <Sparkles className="w-4 h-4" />
-                                                <span>ניהול</span>
-                                        </button>
-                                </nav>
-                        </div>
+                                                <item.icon className="w-5 h-5" />
+
+                                                {/* Active Glow */}
+                                                <AnimatePresence>
+                                                        {currentTab === item.id && (
+                                                                <motion.div
+                                                                        layoutId="dock-glow-mobile"
+                                                                        initial={{ opacity: 0, scale: 0.8 }}
+                                                                        animate={{ opacity: 1, scale: 1 }}
+                                                                        exit={{ opacity: 0, scale: 0.8 }}
+                                                                        className="absolute inset-0 bg-indigo-500/20 rounded-xl -z-10"
+                                                                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                                                                />
+                                                        )}
+                                                </AnimatePresence>
+                                        </motion.button>
+                                ))}
+
+                                {/* Divider */}
+                                <div className="w-px h-8 bg-white/10 mx-1" />
+
+                                {/* Admin Button - Special CTA */}
+                                <motion.button
+                                        initial={{ scale: 0, rotate: -180 }}
+                                        animate={{ scale: 1, rotate: 0 }}
+                                        transition={{ delay: 0.4, type: 'spring', stiffness: 300, damping: 20 }}
+                                        whileHover={{ scale: 1.2, rotate: 90 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={onOpenAdmin}
+                                        className="dock-item bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30"
+                                >
+                                        <Sparkles className="w-5 h-5" />
+                                </motion.button>
+                        </motion.nav>
 
 
 
