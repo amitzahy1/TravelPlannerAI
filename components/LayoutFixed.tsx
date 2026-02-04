@@ -1,9 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Trip } from '../types';
 import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, MessageCircle, X, Sparkles, ShoppingBag, Check, List, User } from 'lucide-react';
 // TripAssistant removed
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
+
+// Helper to extract city from hotel address
+const extractCityFromAddress = (address?: string): string | null => {
+        if (!address) return null;
+        // Common patterns: "..., City, Country" or "..., City" 
+        const parts = address.split(',').map(p => p.trim());
+        if (parts.length >= 2) {
+                // Try second-to-last part (city before country)
+                const city = parts[parts.length - 2];
+                // Skip if it looks like a country
+                if (city && !city.match(/Philippines|Thailand|Japan|Indonesia|Malaysia/i)) {
+                        return city;
+                }
+        }
+        return parts.length > 0 ? parts[parts.length - 1] : null;
+};
 
 interface LayoutProps {
         children: React.ReactNode;
@@ -21,8 +37,34 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
         children, activeTrip, trips, onSwitchTrip, currentTab, onSwitchTab, onOpenAdmin, onUpdateTrip, onDeleteTrip
 }) => {
 
+
         const [isWalletOpen, setIsWalletOpen] = useState(false);
         const [isTripMenuOpen, setIsTripMenuOpen] = useState(false);
+
+        // Dynamic route calculation: extract cities from flights + hotels
+        const dynamicRoute = useMemo(() => {
+                if (!activeTrip) return '';
+                const cities = new Set<string>();
+
+                // 1. Add flight cities (in order)
+                activeTrip.flights?.segments?.forEach(seg => {
+                        if (seg.fromCity) cities.add(seg.fromCity);
+                        if (seg.toCity) cities.add(seg.toCity);
+                });
+
+                // 2. Add hotel cities
+                activeTrip.hotels?.forEach(hotel => {
+                        const city = extractCityFromAddress(hotel.address);
+                        if (city) cities.add(city);
+                });
+
+                // 3. Fallback to destination if no cities extracted
+                if (cities.size === 0 && activeTrip.destination) {
+                        return activeTrip.destination;
+                }
+
+                return Array.from(cities).join(' - ');
+        }, [activeTrip]);
 
         const navItems = [
                 { id: 'itinerary', label: 'ראשי', icon: Map },
@@ -152,9 +194,9 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
 
                                                 {/* Left: Trip Info Badges */}
                                                 <div className="flex items-center gap-3">
-                                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-100 rounded-lg shadow-sm">
-                                                                <MapPin className="w-3.5 h-3.5 text-rose-500" />
-                                                                <span className="text-xs font-bold text-slate-600">{activeTrip?.destination || "לא צוין יעד"}</span>
+                                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-100 rounded-lg shadow-sm max-w-md">
+                                                                <MapPin className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
+                                                                <span className="text-xs font-bold text-slate-600 truncate">{dynamicRoute || activeTrip?.destination || "לא צוין יעד"}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-100 rounded-lg shadow-sm">
                                                                 <Globe className="w-3.5 h-3.5 text-indigo-500" />

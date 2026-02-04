@@ -402,6 +402,51 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 .filter(i => i.type === 'airport' || i.type === 'hotel')
                 .sort((a, b) => getItemTimestamp(a) - getItemTimestamp(b));
 
+            // Add numbered markers for route stops
+            let stopNumber = 0;
+            const seenCities = new Set<string>();
+            routeNodes.forEach(node => {
+                const cityName = node.city || node.name?.split('(')[0]?.trim();
+                if (!cityName || seenCities.has(cityName.toLowerCase()) || !node.lat || !node.lng) return;
+                seenCities.add(cityName.toLowerCase());
+                stopNumber++;
+
+                // Numbered city marker
+                const numberHtml = `
+                    <div style="
+                        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 50%;
+                        border: 3px solid white;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+                        color: white;
+                        font-weight: 900;
+                        font-size: 14px;
+                        font-family: 'Rubik', sans-serif;
+                    ">${stopNumber}</div>
+                `;
+                const numberIcon = L.divIcon({
+                    html: numberHtml,
+                    className: '',
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18],
+                    popupAnchor: [0, -20]
+                });
+                L.marker([node.lat!, node.lng!], { icon: numberIcon })
+                    .bindPopup(`<div style="font-family:'Rubik'; text-align:center; direction:rtl; font-weight:bold;">
+                        <div style="font-size:11px; color:#6b7280; margin-bottom:2px;">עצירה ${stopNumber}</div>
+                        <div style="font-size:14px; color:#1f2937;">${cityName}</div>
+                    </div>`)
+                    .addTo(markerLayer);
+
+                bounds.extend([node.lat!, node.lng!]);
+            });
+
+            // Draw flight path lines between consecutive stops
             for (let i = 0; i < routeNodes.length - 1; i++) {
                 const start = routeNodes[i];
                 const end = routeNodes[i + 1];
@@ -413,19 +458,62 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 if (!isFlight && dist < 5) continue;
                 if (!isFlight && dist > 3000) continue;
 
-                const polyline = L.polyline([[start.lat!, start.lng!], [end.lat!, end.lng!]], {
+                // Create curved path for flights
+                let pathPoints: [number, number][];
+                if (isFlight && dist > 100) {
+                    // Create arc for flights
+                    const steps = 20;
+                    pathPoints = [];
+                    for (let s = 0; s <= steps; s++) {
+                        const t = s / steps;
+                        const lat = start.lat! + (end.lat! - start.lat!) * t;
+                        const lng = start.lng! + (end.lng! - start.lng!) * t;
+                        // Add curve offset (max at middle)
+                        const curveOffset = Math.sin(t * Math.PI) * (dist / 50);
+                        const perpLat = -(end.lng! - start.lng!) / dist;
+                        const perpLng = (end.lat! - start.lat!) / dist;
+                        pathPoints.push([lat + perpLat * curveOffset * 0.01, lng + perpLng * curveOffset * 0.01]);
+                    }
+                } else {
+                    pathPoints = [[start.lat!, start.lng!], [end.lat!, end.lng!]];
+                }
+
+                const polyline = L.polyline(pathPoints, {
                     color: isFlight ? '#3b82f6' : '#10b981',
-                    weight: 3,
-                    opacity: 0.7,
-                    dashArray: isFlight ? '10, 10' : undefined
+                    weight: isFlight ? 4 : 3,
+                    opacity: 0.8,
+                    dashArray: isFlight ? '8, 8' : undefined,
+                    lineCap: 'round',
+                    lineJoin: 'round'
                 }).addTo(routeLayer);
 
-                // Direction Arrow
-                const midLat = (start.lat! + end.lat!) / 2;
-                const midLng = (start.lng! + end.lng!) / 2;
+                // Direction Arrow at midpoint
+                const midIdx = Math.floor(pathPoints.length / 2);
+                const midLat = pathPoints[midIdx][0];
+                const midLng = pathPoints[midIdx][1];
                 const bearing = getBearing(start.lat!, start.lng!, end.lat!, end.lng!);
-                const arrowHtml = `<div style="transform: rotate(${bearing}deg); color: ${isFlight ? '#3b82f6' : '#10b981'}; background:white; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,0.1);"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M2 12h20M13 2l9 10-9 10" stroke="currentColor" stroke-width="3"/></svg></div>`;
-                L.marker([midLat, midLng], { icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [20, 20], iconAnchor: [10, 10] }) }).addTo(routeLayer);
+
+                const arrowHtml = `
+                    <div style="
+                        transform: rotate(${bearing - 90}deg);
+                        background: ${isFlight ? '#3b82f6' : '#10b981'};
+                        border-radius: 50%;
+                        width: 24px;
+                        height: 24px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                        border: 2px solid white;
+                    ">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                `;
+                L.marker([midLat, midLng], {
+                    icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [24, 24], iconAnchor: [12, 12] })
+                }).addTo(routeLayer);
 
                 bounds.extend([start.lat!, start.lng!]);
                 bounds.extend([end.lat!, end.lng!]);

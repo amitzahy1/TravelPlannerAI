@@ -270,8 +270,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
             className="w-16 h-16 rounded-full object-cover border border-slate-100 p-0.5 bg-white shadow-sm"
           />
           <div>
-            <div className="font-black text-slate-800 text-lg leading-tight">{segment.airline}</div>
-            <div className="text-xs font-bold text-slate-400 font-mono tracking-wider mt-0.5 bg-slate-50 px-2 py-0.5 rounded-md w-fit">
+            <div className="font-black text-slate-800 text-sm md:text-lg leading-tight">{segment.airline}</div>
+            <div className="text-[10px] md:text-xs font-bold text-slate-400 font-mono tracking-wider mt-0.5 bg-slate-50 px-1.5 md:px-2 py-0.5 rounded-md w-fit">
               {segment.flightNumber}
             </div>
           </div>
@@ -281,11 +281,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
         <div className="md:col-span-6 flex items-center justify-between gap-2 md:gap-8 w-full">
 
           {/* Departure */}
-          <div className="text-right min-w-[90px] md:min-w-[130px]">
-            <div className="text-3xl font-black text-slate-800 leading-none truncate max-w-[180px]" title={segment.fromCity}>
+          <div className="text-right min-w-[70px] md:min-w-[130px]">
+            <div className="text-xl md:text-3xl font-black text-slate-800 leading-none truncate max-w-[120px] md:max-w-[180px]" title={segment.fromCity}>
               {segment.fromCity || segment.fromCode || 'ORG'}
             </div>
-            <div className="text-xl font-bold text-blue-600 mt-2 font-mono" dir="ltr">{depTime}</div>
+            <div className="text-base md:text-xl font-bold text-blue-600 mt-1 md:mt-2 font-mono" dir="ltr">{depTime}</div>
             <div className="text-sm font-bold text-slate-600 mt-1 uppercase">
               {segment.departureTime
                 ? new Date(segment.departureTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -315,11 +315,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
           </div>
 
           {/* Arrival */}
-          <div className="text-left min-w-[90px] md:min-w-[130px]">
-            <div className="text-3xl font-black text-slate-800 leading-none truncate max-w-[180px]" title={segment.toCity}>
+          <div className="text-left min-w-[70px] md:min-w-[130px]">
+            <div className="text-xl md:text-3xl font-black text-slate-800 leading-none truncate max-w-[120px] md:max-w-[180px]" title={segment.toCity}>
               {segment.toCity || segment.toCode || 'DES'}
             </div>
-            <div className="text-xl font-bold text-blue-600 mt-2 font-mono" dir="ltr">{arrTime}</div>
+            <div className="text-base md:text-xl font-bold text-blue-600 mt-1 md:mt-2 font-mono" dir="ltr">{arrTime}</div>
             <div className="text-sm font-bold text-slate-600 mt-1 uppercase">
               {segment.arrivalTime ? formatDateOnly(segment.arrivalTime) : '---'}
             </div>

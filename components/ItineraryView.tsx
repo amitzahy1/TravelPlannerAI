@@ -75,7 +75,9 @@ export const ItineraryView: React.FC<{
     const [externalEvents, setExternalEvents] = useState<TimelineEvent[]>([]);
     const [viewingCategory, setViewingCategory] = useState<'food' | 'attractions' | 'hotels' | null>(null);
     const [scheduleItem, setScheduleItem] = useState<{ item: any, type: 'food' | 'attraction' } | null>(null); // For the scheduler
-    const [viewMode, setViewMode] = useState<'expanded' | 'compact'>('expanded'); // Mobile view toggle
+    const [viewMode, setViewMode] = useState<'expanded' | 'compact'>(() =>
+        typeof window !== 'undefined' && window.innerWidth < 768 ? 'compact' : 'expanded'
+    ); // Mobile defaults to compact
 
     // Calculate favorite counts (Task 7)
     const favoriteRestaurants = useMemo(() => {

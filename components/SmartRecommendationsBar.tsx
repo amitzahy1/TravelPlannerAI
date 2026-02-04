@@ -233,7 +233,7 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                         <div className="p-1.5 bg-amber-100 rounded-lg">
                                                 <Lightbulb className="w-4 h-4 text-amber-600" />
                                         </div>
-                                        <span className="text-sm font-bold text-amber-800">המלצות לטיול</span>
+                                        <span className="text-sm font-bold text-amber-800">המלצות לשיפור</span>
                                         <span className="bg-amber-200 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                                                 {recommendations.length}
                                         </span>
