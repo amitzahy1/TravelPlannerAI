@@ -5,7 +5,7 @@ import { MagicDropZone } from './MagicDropZone';
 import { analyzeTripFiles, TripAnalysisResult, generateWithFallback } from '../services/aiService';
 import { mapAnalysisToTrip } from '../services/tripService';
 import { ThinkingLoader } from './ThinkingLoader';
-import { VibePicker, VibeType } from './VibePicker';
+
 
 interface OnboardingModalProps {
     trips?: Trip[];
@@ -16,21 +16,20 @@ interface OnboardingModalProps {
     onClose?: () => void;       // Notify parent
 }
 
-// Updated State Machine: VIBE -> MAGIC -> UPLOAD -> PROCESSING -> REVIEW
-type ViewMode = 'VIBE' | 'MAGIC' | 'UPLOAD' | 'PROCESSING' | 'REVIEW_FORM';
+// Updated State Machine: DESTINATION -> CONTEXT -> PROCESSING -> REVIEW
+type ViewMode = 'DESTINATION' | 'CONTEXT' | 'PROCESSING' | 'REVIEW_FORM';
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], onSelectTrip, onCreateNew, onImportTrip, isOpen = false, onClose }) => {
     // We can still have internal state if we want, but for App.tsx we'll use the prop.
     // However, the component relies on internal setIsOpen(false) in handleClose.
     // We should call onClose instead.
 
-    // Strict State Machine: VIBE-FIRST FLOW (Dream Stream)
-    // 1. VIBE: Choose travel mood
-    // 2. MAGIC: Natural language input ("Tell me about your trip...")
-    // 3. UPLOAD: Show DropZone (optional)
-    // 4. PROCESSING: Thinking Loader
-    // 5. REVIEW_FORM: Smart Form + Staging Area
-    const [mode, setMode] = useState<ViewMode>('VIBE');
+    // Strict State Machine: DREAM STREAM 2.0 FLOW
+    // 1. DESTINATION: "Where are you going?"
+    // 2. CONTEXT: Combined "Magic Upload" (Hero) + "Manual Description"
+    // 3. PROCESSING: Thinking Loader
+    // 4. REVIEW_FORM: Smart Form + Staging Area
+    const [mode, setMode] = useState<ViewMode>('DESTINATION');
 
     // Data State
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -42,7 +41,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     const [formDestination, setFormDestination] = useState("");
 
     // NEW: Dream Stream State
-    const [selectedVibe, setSelectedVibe] = useState<VibeType | null>(null);
+    const [destinationInput, setDestinationInput] = useState("");
     const [magicInput, setMagicInput] = useState("");
     const [isMagicProcessing, setIsMagicProcessing] = useState(false);
 
@@ -62,15 +61,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     const handleClose = () => {
         if (onClose) onClose();
 
-        // Reset to initial state (VIBE)
+        // Reset to initial state (DESTINATION)
         setTimeout(() => {
-            setMode('VIBE');
+            setMode('DESTINATION');
             setTripData(null);
             setUploadedFiles([]);
             setFormName("");
             setFormDates("");
             setFormDestination("");
-            setSelectedVibe(null);
+            setDestinationInput("");
             setMagicInput("");
         }, 300);
     };
@@ -81,9 +80,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
         const newTrip: Trip = {
             id: crypto.randomUUID(),
-            name: "My New Trip",
+            name: destinationInput ? `${destinationInput} Trip` : "My New Trip",
             dates: "",
-            destination: "",
+            destination: destinationInput || "",
             coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
             flights: { passengerName: "", pnr: "", segments: [] },
             hotels: [],
@@ -104,15 +103,16 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
         setMode('PROCESSING');
 
         try {
+            // Pass the destination hint to analysis service if possible (future enhancement)
             const result = await analyzeTripFiles(files);
             setTripData(result);
 
             // Pre-fill form
             setFormName(result.metadata.suggestedName);
-            // Fix: Use the smart route (City - City) if available, otherwise country
+            // Fix: Use the smart route (City - City) if available, otherwise country, fallback to user input
             setFormDestination(result.metadata.cities && result.metadata.cities.length > 0
                 ? result.metadata.cities.join(' - ')
-                : result.metadata.destination);
+                : result.metadata.destination || destinationInput);
 
             if (result.metadata.startDate && result.metadata.endDate) {
                 setFormDates(`${result.metadata.startDate} - ${result.metadata.endDate}`);
@@ -125,6 +125,72 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
             console.error("Analysis failed", error);
             alert("Failed to analyze files. Switching to manual mode.");
             handleLegacyCreate();
+        }
+    };
+
+    // Handle Manual Description Submission (AI Parse)
+    const handleManualDescription = async () => {
+        if (!magicInput.trim()) {
+            handleLegacyCreate();
+            return;
+        }
+
+        setIsMagicProcessing(true);
+        setMode('PROCESSING');
+
+        try {
+            // AI Parse the natural language input, including destination hint
+            const prompt = `Parse this trip description into structured data. 
+            User Context: The user wants to go to "${destinationInput}".
+            
+            Return JSON:
+{
+  "tripName": "string",
+  "destination": "main city/country",
+  "cities": ["city1", "city2"],
+  "startDate": "YYYY-MM-DD or empty",
+  "endDate": "YYYY-MM-DD or empty",
+  "budget": number or null,
+  "travelers": number or null,
+  "interests": ["interest1", "interest2"]
+}
+
+User Input: "${magicInput}"`;
+
+            const response = await generateWithFallback(null, prompt, {}, 'FAST');
+            const parsed = JSON.parse(response.text);
+
+            // Set form data from AI
+            setFormName(parsed.tripName || (destinationInput ? `${destinationInput} Adventure` : "My Dream Trip"));
+            setFormDestination(parsed.cities?.join(' - ') || parsed.destination || destinationInput || "");
+            if (parsed.startDate && parsed.endDate) {
+                setFormDates(`${parsed.startDate} - ${parsed.endDate}`);
+            }
+
+            // Create empty trip data structure
+            setTripData({
+                metadata: {
+                    suggestedName: parsed.tripName,
+                    destination: parsed.destination,
+                    startDate: parsed.startDate,
+                    endDate: parsed.endDate,
+                    cities: parsed.cities || []
+                },
+                rawStagedData: {
+                    tripMetadata: { suggestedName: parsed.tripName, suggestedDates: '', mainDestination: parsed.destination, uniqueCityNames: parsed.cities || [] },
+                    processedFileIds: [],
+                    unprocessedFiles: [],
+                    categories: { transport: [], accommodation: [], wallet: [], dining: [], activities: [] }
+                }
+            });
+
+            setMode('REVIEW_FORM');
+        } catch (error) {
+            console.error("Magic parse failed:", error);
+            // Fallback to manual creation
+            handleLegacyCreate();
+        } finally {
+            setIsMagicProcessing(false);
         }
     };
 
@@ -204,7 +270,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-6 animate-fade-in" onClick={handleClose}>
             <div
-                className={`bg-white w-full ${mode === 'REVIEW_FORM' ? 'max-w-5xl h-[90vh]' : 'max-w-lg h-auto'} transition-all duration-500 rounded-[2.5rem] shadow-2xl overflow-hidden relative border border-white/20 flex flex-col`}
+                className={`bg-white w-full ${mode === 'REVIEW_FORM' ? 'max-w-5xl h-[90vh]' : 'max-w-xl h-auto'} transition-all duration-500 rounded-[2.5rem] shadow-2xl overflow-hidden relative border border-white/20 flex flex-col`}
                 onClick={(e) => e.stopPropagation()}
             >
 
@@ -213,169 +279,96 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                     <X className="w-5 h-5 text-slate-500" />
                 </button>
 
-                {/* --- STATE 1: VIBE PICKER (Dream Stream Start) --- */}
-                {mode === 'VIBE' && (
-                    <VibePicker
-                        onSelect={(vibe) => {
-                            setSelectedVibe(vibe);
-                            setMode('MAGIC');
-                        }}
-                        onSkip={() => setMode('UPLOAD')}
-                    />
-                )}
-
-                {/* --- STATE 2: MAGIC BAR (Natural Language Input) --- */}
-                {mode === 'MAGIC' && (
+                {/* --- STATE 1: DESTINATION (Where are you going?) --- */}
+                {mode === 'DESTINATION' && (
                     <div className="p-10 flex flex-col items-center justify-center h-full min-h-[500px]">
                         <div className="mb-8 relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 blur-3xl opacity-20 rounded-full"></div>
-                            <Wand2 className="w-16 h-16 text-purple-600 relative z-10" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-cyan-500 blur-3xl opacity-20 rounded-full"></div>
+                            <MapPin className="w-16 h-16 text-emerald-500 relative z-10" />
                         </div>
 
-                        <h2 className="text-3xl font-black text-slate-800 mb-3 text-center">
-                            Tell us about your dream trip
+                        <h2 className="text-4xl font-black text-slate-800 mb-4 text-center tracking-tight">
+                            Where are you <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-500">going?</span>
                         </h2>
-                        <p className="text-slate-500 text-center mb-8 max-w-md">
-                            Describe your trip in natural language. Our AI will understand and build it for you.
-                        </p>
 
-                        {/* Magic Input Bar */}
-                        <div className="w-full max-w-xl relative">
-                            <textarea
-                                value={magicInput}
-                                onChange={(e) => setMagicInput(e.target.value)}
-                                placeholder={`Example: "A week in Tokyo with my partner. We love anime, street food, and hidden gems. Budget around $3000."`}
-                                className="w-full h-32 px-6 py-4 bg-slate-50 border-2 border-slate-200 focus:border-purple-500 rounded-2xl text-lg text-slate-800 placeholder:text-slate-400 outline-none resize-none transition-all"
-                                disabled={isMagicProcessing}
+                        <div className="w-full max-w-sm relative group mt-4">
+                            <input
+                                autoFocus
+                                value={destinationInput}
+                                onChange={(e) => setDestinationInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && destinationInput && setMode('CONTEXT')}
+                                type="text"
+                                placeholder="e.g. Tokyo, Paris, New York..."
+                                className="w-full text-center text-xl font-bold p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:border-emerald-500 focus:bg-white transition-all outline-none placeholder:font-normal"
                             />
-
-                            {/* Selected Vibe Badge */}
-                            {selectedVibe && (
-                                <div className="absolute top-3 right-3 px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full capitalize">
-                                    {selectedVibe} vibe ✨
-                                </div>
-                            )}
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-4 mt-6">
-                            <button
-                                onClick={() => setMode('UPLOAD')}
-                                className="px-6 py-3 text-slate-500 hover:text-slate-700 font-medium transition-colors"
-                            >
-                                Skip to File Upload
-                            </button>
-
-                            <button
-                                onClick={async () => {
-                                    if (!magicInput.trim()) {
-                                        setMode('UPLOAD');
-                                        return;
-                                    }
-
-                                    setIsMagicProcessing(true);
-                                    setMode('PROCESSING');
-
-                                    try {
-                                        // AI Parse the natural language input
-                                        const prompt = `Parse this trip description into structured data. Return JSON:
-{
-  "tripName": "string",
-  "destination": "main city/country",
-  "cities": ["city1", "city2"],
-  "startDate": "YYYY-MM-DD or empty",
-  "endDate": "YYYY-MM-DD or empty",
-  "vibe": "${selectedVibe || 'general'}",
-  "budget": number or null,
-  "travelers": number or null,
-  "interests": ["interest1", "interest2"]
-}
-
-User Input: "${magicInput}"`;
-
-                                        const response = await generateWithFallback(null, prompt, {}, 'FAST');
-                                        const parsed = JSON.parse(response.text);
-
-                                        // Set form data from AI
-                                        setFormName(parsed.tripName || "My Dream Trip");
-                                        setFormDestination(parsed.cities?.join(' - ') || parsed.destination || "");
-                                        if (parsed.startDate && parsed.endDate) {
-                                            setFormDates(`${parsed.startDate} - ${parsed.endDate}`);
-                                        }
-
-                                        // Create empty trip data structure
-                                        setTripData({
-                                            metadata: {
-                                                suggestedName: parsed.tripName,
-                                                destination: parsed.destination,
-                                                startDate: parsed.startDate,
-                                                endDate: parsed.endDate,
-                                                cities: parsed.cities || []
-                                            },
-                                            rawStagedData: {
-                                                tripMetadata: { suggestedName: parsed.tripName, suggestedDates: '', mainDestination: parsed.destination, uniqueCityNames: parsed.cities || [] },
-                                                processedFileIds: [],
-                                                unprocessedFiles: [],
-                                                categories: { transport: [], accommodation: [], wallet: [], dining: [], activities: [] }
-                                            }
-                                        });
-
-                                        setMode('REVIEW_FORM');
-                                    } catch (error) {
-                                        console.error("Magic parse failed:", error);
-                                        // Fallback to UPLOAD mode
-                                        setMode('UPLOAD');
-                                    } finally {
-                                        setIsMagicProcessing(false);
-                                    }
-                                }}
-                                disabled={isMagicProcessing}
-                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-xl shadow-lg shadow-purple-200 flex items-center gap-2 transform active:scale-95 transition-all disabled:opacity-50"
-                            >
-                                {isMagicProcessing ? (
-                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                                ) : (
-                                    <>
-                                        <Send className="w-5 h-5" />
-                                        Build My Trip
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* --- STATE 3: UPLOAD --- */}
-                {mode === 'UPLOAD' && (
-                    <div className="p-10 flex flex-col items-center justify-center h-full min-h-[500px]">
-                        <div className="mb-8 relative">
-                            <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 rounded-full"></div>
-                            <Sparkles className="w-16 h-16 text-blue-600 relative z-10" />
-                        </div>
-                        <h2 className="text-3xl font-black text-slate-800 mb-3 text-center">Start with your files</h2>
-                        <p className="text-slate-500 text-center mb-10 max-w-sm">Drop tickets & reservations here to auto-build your trip.</p>
-
-                        <div className="w-full">
-                            <MagicDropZone onFilesReady={handleFilesReady} compact={false} />
-                        </div>
-
-                        <button onClick={handleLegacyCreate} className="mt-8 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all transform active:scale-95 flex items-center gap-2">
-                            Start Manually (Skip Upload) <ChevronRight className="w-4 h-4 ml-1" />
+                        <button
+                            onClick={() => setMode('CONTEXT')}
+                            disabled={!destinationInput}
+                            className={`mt-8 px-10 py-4 rounded-xl font-bold text-lg shadow-lg flex items-center gap-2 transition-all transform active:scale-95 ${destinationInput ? 'bg-slate-800 text-white hover:bg-black hover:shadow-xl' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+                        >
+                            Next <ChevronRight className="w-5 h-5" />
                         </button>
                     </div>
                 )}
 
-                {/* --- STATE B: PROCESSING --- */}
+                {/* --- STATE 2: CONTEXT (Hero Upload + Manual) --- */}
+                {mode === 'CONTEXT' && (
+                    <div className="p-10 flex flex-col h-full min-h-[500px]">
+                        <h2 className="text-3xl font-black text-slate-800 mb-8 text-center flex items-center justify-center gap-2">
+                            Building trip for <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-500 underline decoration-emerald-200 underline-offset-4">{destinationInput}</span>
+                        </h2>
+
+                        {/* HERO: Magic Upload */}
+                        <div className="w-full mb-8">
+                            <MagicDropZone onFilesReady={handleFilesReady} compact={false} />
+                        </div>
+
+                        {/* Separator */}
+                        <div className="flex items-center gap-4 mb-8 w-full max-w-md mx-auto">
+                            <div className="h-px flex-1 bg-slate-200"></div>
+                            <span className="text-slate-400 font-bold text-sm uppercase">Or Describe It</span>
+                            <div className="h-px flex-1 bg-slate-200"></div>
+                        </div>
+
+                        {/* SECONDARY: Text Input */}
+                        <div className="w-full max-w-md mx-auto relative group">
+                            <textarea
+                                value={magicInput}
+                                onChange={(e) => setMagicInput(e.target.value)}
+                                placeholder="Any specific plans? e.g. 'Staying near Shibuya, focus on food and anime'..."
+                                className="w-full h-24 px-4 py-3 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-xl text-sm font-medium text-slate-700 outline-none resize-none transition-all"
+                            />
+                            <button
+                                onClick={handleManualDescription}
+                                disabled={!magicInput.trim() && !uploadedFiles.length}
+                                className="absolute bottom-3 right-3 p-2 bg-white rounded-lg shadow-sm border border-slate-100 hover:bg-blue-50 text-blue-600 transition-colors"
+                                title="Generate"
+                            >
+                                <Wand2 className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="text-center mt-4">
+                            <button onClick={handleLegacyCreate} className="text-slate-400 text-xs font-medium hover:text-slate-600 underline">
+                                Skip and create empty trip
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- STATE 3: PROCESSING --- */}
                 {mode === 'PROCESSING' && (
                     <div className="p-10 flex flex-col items-center justify-center h-full min-h-[500px]">
                         <ThinkingLoader
-                            texts={["Reading PDF...", "Extracting Dates...", "Identifying Hotels...", "Generating Trip Name...", "Checking Flights..."]}
+                            texts={["Analyzing destination...", "Reading extracted files...", "Generating smart itinerary...", "Enriching location data...", "Finalizing trip details..."]}
                             speed={1500}
                         />
                     </div>
                 )}
 
-                {/* --- STATE C: SMART REVIEW --- */}
+                {/* --- STATE 4: SMART REVIEW --- */}
                 {mode === 'REVIEW_FORM' && tripData && (
                     <div className="flex flex-col h-full">
                         {/* Header: Smart Form */}

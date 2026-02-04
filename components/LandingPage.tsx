@@ -33,7 +33,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         return (
                 <div className="min-h-screen w-full relative overflow-hidden font-rubik selection:bg-indigo-100 selection:text-indigo-900">
 
-                        {/* Video Background */}
+                        {/* Video Background - Updated Source */}
                         <div className="absolute inset-0 z-0">
                                 <video
                                         autoPlay
@@ -43,14 +43,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                         className="absolute inset-0 w-full h-full object-cover"
                                         poster="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1920&q=80"
                                 >
-                                        <source src="https://videos.pexels.com/video-files/3015510/3015510-uhd_2560_1440_24fps.mp4" type="video/mp4" />
+                                        {/* Using a reliable travel video URL */}
+                                        <source src="https://videos.pexels.com/video-files/5348902/5348902-hd_1920_1080_24fps.mp4" type="video/mp4" />
                                 </video>
-                                {/* Gradient Overlay */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/80 via-slate-900/70 to-purple-900/80" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                {/* Gradient Overlay - Adjusted for better video visibility */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/40 to-slate-900/50" />
+                                <div className="absolute inset-0 bg-black/20" />
                         </div>
 
-                        {/* Floating Particles Effect (CSS only) */}
+                        {/* Floating Particles Effect */}
                         <div className="absolute inset-0 z-[1] overflow-hidden pointer-events-none">
                                 {[...Array(20)].map((_, i) => (
                                         <div
@@ -66,17 +67,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                 ))}
                         </div>
 
+                        {/* Full Logo (Absolute Top-Left for Branding Presence) */}
+                        <div className="absolute top-6 left-6 z-20 hidden md:flex items-center gap-3 select-none">
+                                <div className="bg-gradient-to-tr from-blue-600 to-sky-500 text-white p-2.5 rounded-2xl shadow-lg shadow-blue-500/20 backdrop-blur-sm">
+                                        <Plane className="w-5 h-5" />
+                                </div>
+                                <div className="flex flex-col">
+                                        <span className="font-black text-xl leading-none text-white tracking-tight drop-shadow-md">Travel Planner AI</span>
+                                        <span className="text-[10px] font-bold text-sky-300 uppercase tracking-widest leading-none mt-0.5 drop-shadow-sm">Premium Edition</span>
+                                </div>
+                        </div>
+
                         {/* Main Content */}
                         <div className="relative z-10 min-h-screen flex flex-col md:flex-row">
 
                                 {/* LEFT SIDE: The Hook */}
                                 <div className="flex-1 flex flex-col justify-center px-8 md:px-20 py-12">
 
-                                        {/* Badge */}
-                                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 w-fit mb-8 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                                        {/* In-Content Branding Badge (Mobile/Hero Context) */}
+                                        <div className={`inline-flex md:hidden items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 w-fit mb-8 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
                                                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
                                                 <span className="text-xs font-bold text-white/90 tracking-wide uppercase">Travel Planner AI</span>
                                         </div>
+
+                                        {/* Desktop-only spacer to account for absolute logo */}
+                                        <div className="hidden md:block h-12"></div>
 
                                         {/* Headline */}
                                         <h1 className={`text-5xl md:text-7xl font-black text-white leading-[1.1] tracking-tight mb-6 transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
@@ -117,9 +132,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                         <div className={`w-full max-w-md bg-white/10 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] shadow-2xl border border-white/20 transition-all duration-1000 delay-500 hover:bg-white/15 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12'}`}>
 
                                                 <div className="text-center mb-10">
-                                                        {/* Brand Logo - Updated to Plane Gradient */}
-                                                        <div className="w-20 h-20 bg-gradient-to-tr from-blue-600 to-sky-500 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-blue-500/30 rotate-3 hover:rotate-0 transition-transform">
-                                                                <Plane className="w-10 h-10 text-white" />
+                                                        {/* Feature Icon in Card */}
+                                                        <div className="w-20 h-20 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-indigo-500/30 rotate-3 hover:rotate-0 transition-transform">
+                                                                <Users className="w-10 h-10 text-white" />
                                                         </div>
                                                         <h2 className="text-3xl font-black text-white mb-3">Start Your Journey</h2>
                                                         <p className="text-white/60">Join thousands of travelers planning smarter.</p>
@@ -167,6 +182,3 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 </div>
         );
 };
-
-
-
