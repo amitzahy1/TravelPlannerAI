@@ -9,7 +9,8 @@ import {
     Share2, Download, CloudRain, Sun, Moon,
     ChevronDown, ChevronUp, AlertCircle, Clock, Check,
     Plane, Car, Globe, Hotel, Utensils, Ticket, Plus, Sparkles, X,
-    ArrowLeft, Edit2, BedDouble, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, CheckCircle2
+    ArrowLeft, Edit2, BedDouble, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, CheckCircle2,
+    LayoutGrid, List
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR INTEGRATION REMOVED - No longer calling Google Calendar API
@@ -74,6 +75,7 @@ export const ItineraryView: React.FC<{
     const [externalEvents, setExternalEvents] = useState<TimelineEvent[]>([]);
     const [viewingCategory, setViewingCategory] = useState<'food' | 'attractions' | 'hotels' | null>(null);
     const [scheduleItem, setScheduleItem] = useState<{ item: any, type: 'food' | 'attraction' } | null>(null); // For the scheduler
+    const [viewMode, setViewMode] = useState<'expanded' | 'compact'>('expanded'); // Mobile view toggle
 
     // Calculate favorite counts (Task 7)
     const favoriteRestaurants = useMemo(() => {
@@ -954,6 +956,21 @@ export const ItineraryView: React.FC<{
             {/* 3. MAIN TIMELINE (Repositioned for Density) */}
             <div className="px-1 md:px-1 w-full space-y-6 relative z-10 -mt-2">
 
+                {/* View Toggle Button */}
+                <div className="flex justify-end mb-2">
+                    <button
+                        onClick={() => setViewMode(viewMode === 'expanded' ? 'compact' : 'expanded')}
+                        className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:border-blue-300 transition-all text-sm font-bold text-slate-600"
+                        title={viewMode === 'expanded' ? 'תצוגה מצומצמת' : 'תצוגה מורחבת'}
+                    >
+                        {viewMode === 'expanded' ? (
+                            <><LayoutGrid className="w-4 h-4" /> תצוגה מצומצמת</>
+                        ) : (
+                            <><List className="w-4 h-4" /> תצוגה מורחבת</>
+                        )}
+                    </button>
+                </div>
+
                 {/* Main Column: Timeline (Full width) */}
                 <div className="w-full space-y-6">
                     {/* TIMELINE GRID */}
@@ -961,7 +978,7 @@ export const ItineraryView: React.FC<{
                         timeline.length === 0 ? (
                             <div className="text-center py-20 text-slate-400">טוען לו"ז...</div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                            <div className={`grid gap-3 ${viewMode === 'compact' ? 'grid-cols-2 md:grid-cols-4 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4'}`}>
                                 {timeline.map((day, index) => {
                                     const [y, m, d] = day.dateIso.split('-');
                                     const dayNumber = index + 1;
@@ -971,6 +988,42 @@ export const ItineraryView: React.FC<{
                                     const theme = getCityTheme(day.locationContext);
                                     const headerColorClass = theme.bg;
 
+                                    // COMPACT VIEW - Slim horizontal cards
+                                    if (viewMode === 'compact') {
+                                        return (
+                                            <div
+                                                key={day.dateIso}
+                                                onClick={() => setSelectedDayIso(day.dateIso)}
+                                                className="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer overflow-hidden flex items-stretch h-[80px] relative group"
+                                            >
+                                                {/* Color Accent Strip */}
+                                                <div className={`w-1.5 ${headerColorClass} flex-shrink-0`}></div>
+
+                                                {/* Content */}
+                                                <div className="flex-1 p-2 flex flex-col justify-between min-w-0">
+                                                    {/* Top: Day & Date */}
+                                                    <div className="flex items-center justify-between gap-1">
+                                                        <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">יום {dayNumber}</span>
+                                                        <span className="text-xs font-bold text-slate-700">{day.displayDate}</span>
+                                                    </div>
+
+                                                    {/* Middle: Location */}
+                                                    <h3 className="text-xs font-bold text-slate-800 truncate leading-tight">{day.locationContext || 'יום בטיול'}</h3>
+
+                                                    {/* Bottom: Event Badges */}
+                                                    <div className="flex items-center gap-1 flex-wrap">
+                                                        {day.stats.flight > 0 && <span className="flex items-center gap-0.5 text-[9px] font-bold bg-blue-50 text-blue-600 px-1 py-0.5 rounded"><Plane className="w-2.5 h-2.5" />{day.stats.flight}</span>}
+                                                        {day.stats.hotel > 0 && <span className="flex items-center gap-0.5 text-[9px] font-bold bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded"><Hotel className="w-2.5 h-2.5" />{day.stats.hotel}</span>}
+                                                        {day.stats.food > 0 && <span className="flex items-center gap-0.5 text-[9px] font-bold bg-orange-50 text-orange-600 px-1 py-0.5 rounded"><Utensils className="w-2.5 h-2.5" />{day.stats.food}</span>}
+                                                        {day.stats.attr > 0 && <span className="flex items-center gap-0.5 text-[9px] font-bold bg-purple-50 text-purple-600 px-1 py-0.5 rounded"><Ticket className="w-2.5 h-2.5" />{day.stats.attr}</span>}
+                                                        {day.events.length === 0 && <span className="text-[9px] text-slate-300 font-medium">יום חופשי</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    // EXPANDED VIEW - Original full cards
                                     return (
                                         <div
                                             key={day.dateIso}

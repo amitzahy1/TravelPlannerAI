@@ -91,9 +91,10 @@ export const AIChatOverlay: React.FC<AIChatOverlayProps> = ({ trip }) => {
                 return (
                         <button
                                 onClick={() => setIsOpen(true)}
-                                className="fixed bottom-6 right-6 z-[200] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-4 rounded-full shadow-2xl shadow-blue-300 transition-all hover:scale-110 active:scale-95 animate-bounce-subtle"
+                                className="fixed bottom-20 md:bottom-6 left-4 md:left-auto md:right-6 z-[200] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-2.5 md:p-4 rounded-full shadow-xl md:shadow-2xl shadow-blue-300/50 transition-all hover:scale-110 active:scale-95"
+                                title="עוזר AI"
                         >
-                                <Sparkles className="w-8 h-8" />
+                                <Sparkles className="w-5 h-5 md:w-8 md:h-8" />
                         </button>
                 );
         }
@@ -127,8 +128,8 @@ export const AIChatOverlay: React.FC<AIChatOverlayProps> = ({ trip }) => {
                                         >
                                                 <div
                                                         className={`max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === 'user'
-                                                                        ? 'bg-blue-600 text-white rounded-br-none'
-                                                                        : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
+                                                                ? 'bg-blue-600 text-white rounded-br-none'
+                                                                : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
                                                                 }`}
                                                 >
                                                         {msg.role === 'assistant' ? (
@@ -170,8 +171,8 @@ export const AIChatOverlay: React.FC<AIChatOverlayProps> = ({ trip }) => {
                                                 onClick={handleSend}
                                                 disabled={!input.trim() || isTyping}
                                                 className={`p-2.5 rounded-lg mb-0.5 transition-all ${input.trim() && !isTyping
-                                                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md transform hover:-translate-y-0.5'
-                                                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md transform hover:-translate-y-0.5'
+                                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                                         }`}
                                         >
                                                 <Send className="w-4 h-4" />

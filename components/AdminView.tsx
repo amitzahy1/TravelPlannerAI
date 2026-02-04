@@ -660,13 +660,13 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('logistics')}
-                                    className={`px-6 py-2.5 rounded-lg text-base font-bold transition-all ${activeTab === 'logistics' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                                    className={`px-3 md:px-6 py-1.5 md:py-2.5 rounded-lg text-xs md:text-base font-bold transition-all whitespace-nowrap ${activeTab === 'logistics' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
                                 >
                                     לוגיסטיקה
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('ai')}
-                                    className={`px-6 py-2.5 rounded-lg text-base font-bold transition-all ${activeTab === 'ai' ? 'bg-white shadow text-purple-700' : 'text-slate-400 hover:text-purple-500'}`}
+                                    className={`px-3 md:px-6 py-1.5 md:py-2.5 rounded-lg text-xs md:text-base font-bold transition-all whitespace-nowrap ${activeTab === 'ai' ? 'bg-white shadow text-purple-700' : 'text-slate-400 hover:text-purple-500'}`}
                                 >
                                     <Sparkles className="w-4 h-4 inline-block ml-1" /> AI Magic
                                 </button>
@@ -690,17 +690,18 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             <button
                                 onClick={handleSaveAndClose}
                                 disabled={isSaving}
-                                className={`px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 ${isSaving ? 'opacity-70 cursor-wait' : ''}`}
+                                className={`px-3 md:px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs md:text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center gap-1 md:gap-2 ${isSaving ? 'opacity-70 cursor-wait' : ''}`}
                             >
                                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                {isSaving ? 'שומר ומעבד...' : 'שמור וסגור'}
+                                <span className="hidden md:inline">{isSaving ? 'שומר ומעבד...' : 'שמור וסגור'}</span>
+                                <span className="md:hidden">{isSaving ? '...' : 'שמור'}</span>
                             </button>
                             <button onClick={onClose} className="hidden md:flex p-2 text-slate-300 hover:bg-slate-50 hover:text-slate-500 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
                         </div>
                     </div>
 
                     {/* Content Scroll Area */}
-                    <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50/50">
+                    <div className="flex-1 overflow-y-auto p-3 md:p-8 bg-slate-50/50">
                         <div className="max-w-7xl mx-auto">
 
                             {/* TAB: OVERVIEW */}
