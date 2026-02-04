@@ -42,6 +42,15 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
     const [isSmartAddOpen, setIsSmartAddOpen] = useState(false);
     const [editingHotel, setEditingHotel] = useState<HotelBooking | null>(null);
     const [hotelToDelete, setHotelToDelete] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const newDocs = Array.from(e.target.files).map((f: File) => f.name);
+            const updatedTrip = { ...trip, documents: [...(trip.documents || []), ...newDocs] };
+            onUpdateTrip(updatedTrip);
+        }
+    };
 
 
     const handleNoteUpdate = (hotelId: string, newNote: string) => {
@@ -137,6 +146,64 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
 
             {isModalOpen && <HotelFormModal initialData={editingHotel} onClose={() => setIsModalOpen(false)} onSave={handleSaveHotel} />}
             {isSmartAddOpen && <SmartHotelAddModal onClose={() => setIsSmartAddOpen(false)} onSave={handleSmartAdd} />}
+
+            {/* Documents Section */}
+            <section className="max-w-6xl mx-auto pt-8 border-t border-slate-100">
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 className="text-2xl font-black text-slate-800">מסמכים מצורפים</h2>
+                        <p className="text-slate-500 text-sm">אישורי הזמנת מלון, שוברים וקבלות</p>
+                    </div>
+                    {onUpdateTrip && (
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-200"
+                        >
+                            <UploadCloud className="w-4 h-4" /> העלה קובץ
+                        </button>
+                    )}
+                    <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} />
+                </div>
+
+                {trip.documents && trip.documents.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {trip.documents.map((doc, idx) => {
+                            const isPdf = doc.toLowerCase().endsWith('.pdf');
+                            const isImage = doc.match(/\.(jpg|jpeg|png|webp)$/i);
+
+                            return (
+                                <div key={idx} className="group relative bg-white border border-slate-200 rounded-2xl p-3 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer aspect-[4/5] flex flex-col items-center justify-center text-center overflow-hidden">
+                                    {isImage ? (
+                                        <div className="absolute inset-0 bg-slate-100">
+                                            <img src="https://via.placeholder.com/300?text=Image" alt={doc} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+                                        </div>
+                                    ) : (
+                                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-sm z-10 ${isPdf ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
+                                            {isPdf ? <FileText className="w-8 h-8" /> : <ImageIcon className="w-8 h-8" />}
+                                        </div>
+                                    )}
+
+                                    <div className="relative z-10 w-full px-2">
+                                        <div className={`text-xs font-bold truncate w-full ${isImage ? 'text-white drop-shadow-md' : 'text-slate-700'}`}>{doc}</div>
+                                        <div className={`text-[10px] font-medium uppercase mt-1 ${isImage ? 'text-white/80' : 'text-slate-400'}`}>{isPdf ? 'PDF DOC' : 'IMAGE'}</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-3 border-dashed border-slate-100 hover:border-blue-200 bg-slate-50/50 hover:bg-blue-50/50 rounded-3xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer group min-h-[200px]"
+                    >
+                        <div className="bg-white p-4 rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform">
+                            <UploadCloud className="w-8 h-8 text-blue-400" />
+                        </div>
+                        <span className="text-slate-400 font-bold group-hover:text-blue-500 transition-colors">לחץ כאן להוספת קבצים</span>
+                    </div>
+                )}
+            </section>
 
             <ConfirmModal
                 isOpen={!!hotelToDelete}
