@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles, Calendar, Map, ArrowRight, Play, Pause } from 'lucide-react';
+import { Sparkles, Users, Map, ArrowRight, Play, Pause } from 'lucide-react';
 
 interface LandingPageProps {
         onLogin: () => void;
@@ -99,8 +99,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                                         AI-Powered
                                                 </div>
                                                 <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/80 text-sm">
-                                                        <Calendar className="w-4 h-4 text-blue-400" />
-                                                        Calendar Sync
+                                                        <Users className="w-4 h-4 text-blue-400" />
+                                                        Plan Together
                                                 </div>
                                                 <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/80 text-sm">
                                                         <Map className="w-4 h-4 text-emerald-400" />
@@ -132,8 +132,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                                 </button>
 
                                                 <p className="text-center text-xs text-white/40 mt-8 leading-relaxed">
-                                                        By joining, you agree to our Terms of Service.<br />
-                                                        We only access your calendar to add trip details.
+                                                        By joining, you agree to our Terms of Service.
                                                 </p>
                                         </div>
 
