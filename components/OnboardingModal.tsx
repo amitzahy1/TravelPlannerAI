@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sparkles, X, Check, MapPin, Calendar, Plane, Bed, Shield, Star, AlertTriangle, Trash2, Eye, EyeOff, Utensils, Ticket, AlertCircle, ChevronRight, Wand2, Bus } from 'lucide-react';
+import { Sparkles, X, Check, MapPin, Calendar, Plane, Bed, Shield, Star, AlertTriangle, Trash2, Eye, EyeOff, Utensils, Ticket, AlertCircle, ChevronRight, Wand2, Bus, Send } from 'lucide-react';
 import { Trip, StagedTripData, StagedWalletItem } from '../types';
 import { MagicDropZone } from './MagicDropZone';
-import { analyzeTripFiles, TripAnalysisResult } from '../services/aiService';
+import { analyzeTripFiles, TripAnalysisResult, generateWithFallback } from '../services/aiService';
 import { mapAnalysisToTrip } from '../services/tripService';
 import { ThinkingLoader } from './ThinkingLoader';
+import { VibePicker, VibeType } from './VibePicker';
 
 interface OnboardingModalProps {
     trips?: Trip[];
@@ -15,18 +16,21 @@ interface OnboardingModalProps {
     onClose?: () => void;       // Notify parent
 }
 
-type ViewMode = 'UPLOAD' | 'PROCESSING' | 'REVIEW_FORM';
+// Updated State Machine: VIBE -> MAGIC -> UPLOAD -> PROCESSING -> REVIEW
+type ViewMode = 'VIBE' | 'MAGIC' | 'UPLOAD' | 'PROCESSING' | 'REVIEW_FORM';
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], onSelectTrip, onCreateNew, onImportTrip, isOpen = false, onClose }) => {
     // We can still have internal state if we want, but for App.tsx we'll use the prop.
     // However, the component relies on internal setIsOpen(false) in handleClose.
     // We should call onClose instead.
 
-    // Strict State Machine: FILE-FIRST FLOW (Master Prompt Requirement)
-    // 1. UPLOAD: Show DropZone (Start here)
-    // 2. PROCESSING: Thinking Loader
-    // 3. REVIEW_FORM: Smart Form + Staging Area
-    const [mode, setMode] = useState<ViewMode>('UPLOAD');
+    // Strict State Machine: VIBE-FIRST FLOW (Dream Stream)
+    // 1. VIBE: Choose travel mood
+    // 2. MAGIC: Natural language input ("Tell me about your trip...")
+    // 3. UPLOAD: Show DropZone (optional)
+    // 4. PROCESSING: Thinking Loader
+    // 5. REVIEW_FORM: Smart Form + Staging Area
+    const [mode, setMode] = useState<ViewMode>('VIBE');
 
     // Data State
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -36,6 +40,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     const [formName, setFormName] = useState("");
     const [formDates, setFormDates] = useState("");
     const [formDestination, setFormDestination] = useState("");
+
+    // NEW: Dream Stream State
+    const [selectedVibe, setSelectedVibe] = useState<VibeType | null>(null);
+    const [magicInput, setMagicInput] = useState("");
+    const [isMagicProcessing, setIsMagicProcessing] = useState(false);
 
     useEffect(() => {
         if (tripData?.metadata) {
@@ -53,14 +62,16 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     const handleClose = () => {
         if (onClose) onClose();
 
-        // Reset
+        // Reset to initial state (VIBE)
         setTimeout(() => {
-            setMode('UPLOAD');
+            setMode('VIBE');
             setTripData(null);
             setUploadedFiles([]);
             setFormName("");
             setFormDates("");
             setFormDestination("");
+            setSelectedVibe(null);
+            setMagicInput("");
         }, 300);
     };
 
@@ -202,7 +213,139 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                     <X className="w-5 h-5 text-slate-500" />
                 </button>
 
-                {/* --- STATE A: UPLOAD --- */}
+                {/* --- STATE 1: VIBE PICKER (Dream Stream Start) --- */}
+                {mode === 'VIBE' && (
+                    <VibePicker
+                        onSelect={(vibe) => {
+                            setSelectedVibe(vibe);
+                            setMode('MAGIC');
+                        }}
+                        onSkip={() => setMode('UPLOAD')}
+                    />
+                )}
+
+                {/* --- STATE 2: MAGIC BAR (Natural Language Input) --- */}
+                {mode === 'MAGIC' && (
+                    <div className="p-10 flex flex-col items-center justify-center h-full min-h-[500px]">
+                        <div className="mb-8 relative">
+                            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 blur-3xl opacity-20 rounded-full"></div>
+                            <Wand2 className="w-16 h-16 text-purple-600 relative z-10" />
+                        </div>
+
+                        <h2 className="text-3xl font-black text-slate-800 mb-3 text-center">
+                            Tell us about your dream trip
+                        </h2>
+                        <p className="text-slate-500 text-center mb-8 max-w-md">
+                            Describe your trip in natural language. Our AI will understand and build it for you.
+                        </p>
+
+                        {/* Magic Input Bar */}
+                        <div className="w-full max-w-xl relative">
+                            <textarea
+                                value={magicInput}
+                                onChange={(e) => setMagicInput(e.target.value)}
+                                placeholder={`Example: "A week in Tokyo with my partner. We love anime, street food, and hidden gems. Budget around $3000."`}
+                                className="w-full h-32 px-6 py-4 bg-slate-50 border-2 border-slate-200 focus:border-purple-500 rounded-2xl text-lg text-slate-800 placeholder:text-slate-400 outline-none resize-none transition-all"
+                                disabled={isMagicProcessing}
+                            />
+
+                            {/* Selected Vibe Badge */}
+                            {selectedVibe && (
+                                <div className="absolute top-3 right-3 px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full capitalize">
+                                    {selectedVibe} vibe ✨
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-4 mt-6">
+                            <button
+                                onClick={() => setMode('UPLOAD')}
+                                className="px-6 py-3 text-slate-500 hover:text-slate-700 font-medium transition-colors"
+                            >
+                                Skip to File Upload
+                            </button>
+
+                            <button
+                                onClick={async () => {
+                                    if (!magicInput.trim()) {
+                                        setMode('UPLOAD');
+                                        return;
+                                    }
+
+                                    setIsMagicProcessing(true);
+                                    setMode('PROCESSING');
+
+                                    try {
+                                        // AI Parse the natural language input
+                                        const prompt = `Parse this trip description into structured data. Return JSON:
+{
+  "tripName": "string",
+  "destination": "main city/country",
+  "cities": ["city1", "city2"],
+  "startDate": "YYYY-MM-DD or empty",
+  "endDate": "YYYY-MM-DD or empty",
+  "vibe": "${selectedVibe || 'general'}",
+  "budget": number or null,
+  "travelers": number or null,
+  "interests": ["interest1", "interest2"]
+}
+
+User Input: "${magicInput}"`;
+
+                                        const response = await generateWithFallback(null, prompt, {}, 'FAST');
+                                        const parsed = JSON.parse(response.text);
+
+                                        // Set form data from AI
+                                        setFormName(parsed.tripName || "My Dream Trip");
+                                        setFormDestination(parsed.cities?.join(' - ') || parsed.destination || "");
+                                        if (parsed.startDate && parsed.endDate) {
+                                            setFormDates(`${parsed.startDate} - ${parsed.endDate}`);
+                                        }
+
+                                        // Create empty trip data structure
+                                        setTripData({
+                                            metadata: {
+                                                suggestedName: parsed.tripName,
+                                                destination: parsed.destination,
+                                                startDate: parsed.startDate,
+                                                endDate: parsed.endDate,
+                                                cities: parsed.cities || []
+                                            },
+                                            rawStagedData: {
+                                                tripMetadata: { suggestedName: parsed.tripName, suggestedDates: '', mainDestination: parsed.destination, uniqueCityNames: parsed.cities || [] },
+                                                processedFileIds: [],
+                                                unprocessedFiles: [],
+                                                categories: { transport: [], accommodation: [], wallet: [], dining: [], activities: [] }
+                                            }
+                                        });
+
+                                        setMode('REVIEW_FORM');
+                                    } catch (error) {
+                                        console.error("Magic parse failed:", error);
+                                        // Fallback to UPLOAD mode
+                                        setMode('UPLOAD');
+                                    } finally {
+                                        setIsMagicProcessing(false);
+                                    }
+                                }}
+                                disabled={isMagicProcessing}
+                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-xl shadow-lg shadow-purple-200 flex items-center gap-2 transform active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {isMagicProcessing ? (
+                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                                ) : (
+                                    <>
+                                        <Send className="w-5 h-5" />
+                                        Build My Trip
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- STATE 3: UPLOAD --- */}
                 {mode === 'UPLOAD' && (
                     <div className="p-10 flex flex-col items-center justify-center h-full min-h-[500px]">
                         <div className="mb-8 relative">
