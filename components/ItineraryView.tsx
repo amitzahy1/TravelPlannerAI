@@ -997,8 +997,33 @@ export const ItineraryView: React.FC<{
                                             <div
                                                 key={day.dateIso}
                                                 onClick={() => setSelectedDayIso(day.dateIso)}
-                                                className="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer overflow-hidden flex items-stretch h-[80px] relative group"
+                                                className="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer flex items-stretch h-[80px] relative group overflow-visible"
                                             >
+                                                {/* Mobile Flow Arrows (RTL 2-Column Logic) */}
+                                                {!isLastDay && (
+                                                    <>
+                                                        {/* Even Item (Right Column) -> Points Left to Odd Item */}
+                                                        {index % 2 === 0 && (
+                                                            <div className="md:hidden absolute -left-3 top-1/2 -translate-y-1/2 z-20 text-slate-400 drop-shadow-md bg-white rounded-full p-0.5 border border-slate-100">
+                                                                <ArrowLeft className="w-3 h-3 stroke-[3]" />
+                                                            </div>
+                                                        )}
+                                                        {/* Odd Item (Left Column) -> Points Down to Next Row */}
+                                                        {index % 2 !== 0 && (
+                                                            <div className="md:hidden absolute left-1/2 -bottom-3 -translate-x-1/2 z-20 text-slate-400 drop-shadow-md bg-white rounded-full p-0.5 border border-slate-100">
+                                                                <ChevronDown className="w-3 h-3 stroke-[3]" />
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+
+                                                {/* Desktop Flow Arrow (Simple Left Chevron for Web) */}
+                                                {!isLastDay && (
+                                                    <div className="hidden md:block absolute -left-3 top-1/2 -translate-y-1/2 z-10 text-slate-200 drop-shadow-sm bg-white rounded-full p-0.5 border border-slate-50">
+                                                        <ChevronLeft className="w-4 h-4" />
+                                                    </div>
+                                                )}
+
                                                 {/* Color Accent Strip */}
                                                 <div className={`w-1.5 ${headerColorClass} flex-shrink-0`}></div>
 

@@ -157,6 +157,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
     const [mapItems, setMapItems] = useState<MapItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeCity, setActiveCity] = useState<string | 'ALL'>('ALL');
+    const [routeCities, setRouteCities] = useState<{ name: string; code?: string; coords?: { lat: number; lng: number } }[]>([]);
 
     // Geocoding Cache
     const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number, lng: number }>>(() => {
@@ -325,6 +326,91 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         });
     }, [mapItems, trip]);
 
+    // 3.5. Build and geocode route cities
+    useEffect(() => {
+        if (!trip || items) return;
+
+        const buildAndGeocodeRoute = async () => {
+            const newRoute: { name: string; code?: string; coords?: { lat: number; lng: number } }[] = [];
+
+            // 1. Try flight segments first
+            const flightSegments = [...(trip.flights?.segments || [])].sort((a, b) => {
+                const dateA = parseTripDate(a.date)?.getTime() || 0;
+                const dateB = parseTripDate(b.date)?.getTime() || 0;
+                return dateA - dateB;
+            });
+
+            if (flightSegments.length > 0) {
+                flightSegments.forEach(seg => {
+                    if (seg.fromCity && (newRoute.length === 0 || newRoute[newRoute.length - 1].name.toLowerCase() !== seg.fromCity.toLowerCase())) {
+                        newRoute.push({ name: seg.fromCity, code: seg.fromCode });
+                    }
+                    if (seg.toCity && (newRoute.length === 0 || newRoute[newRoute.length - 1].name.toLowerCase() !== seg.toCity.toLowerCase())) {
+                        newRoute.push({ name: seg.toCity, code: seg.toCode });
+                    }
+                });
+            } else {
+                // 2. Fallback: Use hotels
+                const sortedHotels = [...(trip.hotels || [])].sort((a, b) => {
+                    const dateA = parseTripDate(a.checkInDate || '')?.getTime() || 0;
+                    const dateB = parseTripDate(b.checkInDate || '')?.getTime() || 0;
+                    return dateA - dateB;
+                });
+
+                sortedHotels.forEach(hotel => {
+                    const cityGuess = hotel.address?.split(',').slice(-2, -1)[0]?.trim()
+                        || hotel.address?.split(',')[1]?.trim();
+                    if (cityGuess && (newRoute.length === 0 || newRoute[newRoute.length - 1].name.toLowerCase() !== cityGuess.toLowerCase())) {
+                        newRoute.push({
+                            name: cityGuess,
+                            coords: hotel.lat && hotel.lng ? { lat: hotel.lat, lng: hotel.lng } : undefined
+                        });
+                    }
+                });
+            }
+
+            // 3. Last fallback: Use destination
+            if (newRoute.length === 0 && trip.destination) {
+                const destCities = trip.destination.split(/[-–,&]/).map(c => c.trim()).filter(Boolean);
+                destCities.forEach(city => {
+                    if (city && !newRoute.some(c => c.name.toLowerCase() === city.toLowerCase())) {
+                        newRoute.push({ name: city });
+                    }
+                });
+            }
+
+            // Geocode missing coords
+            for (const city of newRoute) {
+                if (city.coords) continue;
+
+                const query = city.code ? `${city.name} Airport` : city.name;
+
+                // Check cache first
+                if (geocodedCache[query]) {
+                    city.coords = geocodedCache[query];
+                } else if (geocodedCache[city.name]) {
+                    city.coords = geocodedCache[city.name];
+                } else {
+                    // Geocode
+                    const coords = await geocodeAddress(query);
+                    if (coords) {
+                        city.coords = coords;
+                        // Update cache
+                        setGeocodedCache(prev => {
+                            const updated = { ...prev, [query]: coords };
+                            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                            return updated;
+                        });
+                    }
+                }
+            }
+
+            setRouteCities(newRoute);
+        };
+
+        buildAndGeocodeRoute();
+    }, [trip, items, geocodedCache]);
+
     // 4. Render Map (Initialize)
     useEffect(() => {
         if (!mapContainerRef.current) return;
@@ -396,98 +482,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             bounds.extend([item.lat!, item.lng!]);
         });
 
-        // Plot Route (Only if showing ALL)
-        if (activeCity === 'ALL' && trip && !items) {
-            // Build ordered city route from multiple sources
-            const cityRoute: { name: string; code?: string; coords?: { lat: number; lng: number }; date?: Date }[] = [];
-
-            // 1. Try flight segments first (most reliable for order)
-            const flightSegments = [...(trip.flights?.segments || [])].sort((a, b) => {
-                return (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0);
-            });
-
-            if (flightSegments.length > 0) {
-                flightSegments.forEach(seg => {
-                    // Add departure city if not already last in route
-                    if (seg.fromCity && (cityRoute.length === 0 || cityRoute[cityRoute.length - 1].name.toLowerCase() !== seg.fromCity.toLowerCase())) {
-                        cityRoute.push({ name: seg.fromCity, code: seg.fromCode, date: parseTripDate(seg.date) || undefined });
-                    }
-                    // Add arrival city
-                    if (seg.toCity && (cityRoute.length === 0 || cityRoute[cityRoute.length - 1].name.toLowerCase() !== seg.toCity.toLowerCase())) {
-                        cityRoute.push({ name: seg.toCity, code: seg.toCode, date: parseTripDate(seg.date) || undefined });
-                    }
-                });
-            } else {
-                // 2. Fallback: Use hotels sorted by check-in date
-                const sortedHotels = [...(trip.hotels || [])].sort((a, b) => {
-                    const dateA = parseTripDate(a.checkInDate || '')?.getTime() || 0;
-                    const dateB = parseTripDate(b.checkInDate || '')?.getTime() || 0;
-                    return dateA - dateB;
-                });
-
-                sortedHotels.forEach(hotel => {
-                    // Extract city from hotel address
-                    const cityGuess = hotel.address?.split(',').slice(-2, -1)[0]?.trim()
-                        || hotel.address?.split(',')[1]?.trim()
-                        || hotel.name.split(',')[0];
-
-                    if (cityGuess && (cityRoute.length === 0 || cityRoute[cityRoute.length - 1].name.toLowerCase() !== cityGuess.toLowerCase())) {
-                        cityRoute.push({
-                            name: cityGuess,
-                            date: parseTripDate(hotel.checkInDate || '') || undefined,
-                            coords: hotel.lat && hotel.lng ? { lat: hotel.lat, lng: hotel.lng } : undefined
-                        });
-                    }
-                });
-
-                // 3. Last fallback: Use destination cities from trip.destination
-                if (cityRoute.length === 0 && trip.destination) {
-                    const destCities = trip.destination.split(/[-–,&]/).map(c => c.trim()).filter(Boolean);
-                    destCities.forEach(city => {
-                        if (city && !cityRoute.some(c => c.name.toLowerCase() === city.toLowerCase())) {
-                            cityRoute.push({ name: city });
-                        }
-                    });
-                }
-            }
-
-            // Geocode all cities in the route
-            const geocodeCities = async () => {
-                for (const city of cityRoute) {
-                    const query = city.code ? `${city.name} Airport` : city.name;
-                    // Try to find in valid items first
-                    const foundItem = validItems.find(i =>
-                        i.city?.toLowerCase() === city.name.toLowerCase() ||
-                        i.name?.toLowerCase().includes(city.name.toLowerCase())
-                    );
-                    if (foundItem?.lat && foundItem?.lng) {
-                        city.coords = { lat: foundItem.lat, lng: foundItem.lng };
-                    } else if (geocodedCache[query]) {
-                        city.coords = geocodedCache[query];
-                    } else {
-                        const coords = await geocodeAddress(query);
-                        if (coords) {
-                            city.coords = coords;
-                        }
-                    }
-                }
-            };
-
-            // Since we can't use async directly here, use what's already geocoded
-            cityRoute.forEach(city => {
-                const query = city.code ? `${city.name} Airport` : city.name;
-                const foundItem = validItems.find(i =>
-                    i.city?.toLowerCase() === city.name.toLowerCase() ||
-                    i.name?.toLowerCase().includes(city.name.toLowerCase())
-                );
-                if (foundItem?.lat && foundItem?.lng) {
-                    city.coords = { lat: foundItem.lat, lng: foundItem.lng };
-                } else if (geocodedCache[query]) {
-                    city.coords = geocodedCache[query];
-                } else if (geocodedCache[city.name]) {
-                    city.coords = geocodedCache[city.name];
-                }
-            });
+        // Plot Route (Only if showing ALL and we have geocoded route cities)
+        if (activeCity === 'ALL' && trip && !items && routeCities.length > 0) {
+            // Use pre-geocoded route cities from state
+            const cityRoute = routeCities;
 
             // Add numbered markers for each city stop
             let stopNumber = 0;
@@ -611,7 +609,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             geocodeAddress(trip.destination).then(c => c && map.setView([c.lat, c.lng], 10));
         }
 
-    }, [mapItems, activeCity, trip]);
+    }, [mapItems, activeCity, trip, routeCities]);
 
 
     // --- UI RENDER ---

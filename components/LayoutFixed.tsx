@@ -269,7 +269,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                         <div className="h-[70px] lg:h-[120px]"></div>
 
                         {/* Main Content */}
-                        <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
+                        <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-28 md:pb-6 relative z-10">
                                 {children}
                         </main>
 
