@@ -696,7 +696,20 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                 <span className="hidden md:inline">{isSaving ? 'שומר ומעבד...' : 'שמור וסגור'}</span>
                                 <span className="md:hidden">{isSaving ? '...' : 'שמור'}</span>
                             </button>
-                            <button onClick={onClose} className="hidden md:flex p-2 text-slate-300 hover:bg-slate-50 hover:text-slate-500 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
+
+                            {/* New Quick Upload AI Button - Visible on Mobile & Desktop */}
+                            <button
+                                onClick={() => setActiveTab('ai')}
+                                className="p-2 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-lg transition-colors"
+                                title="העלאת מסמכים עם AI"
+                            >
+                                <UploadCloud className="w-6 h-6" />
+                            </button>
+
+                            {/* Close Button - Now visible on mobile too */}
+                            <button onClick={onClose} className="flex p-2 text-slate-300 hover:bg-slate-50 hover:text-slate-500 rounded-lg transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
                         </div>
                     </div>
 

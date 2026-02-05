@@ -1,0 +1,16 @@
+{
+        "name": "email-processor",
+        "version": "1.0.0",
+        "description": "Cloudflare Worker for Travel Planner Pro",
+        "main": "src/index.ts",
+        "scripts": {
+                "test": "echo \"Error: no test specified\" && exit 1"
+        },
+        "dependencies": {
+                "jose": "^5.2.0"
+        },
+        "devDependencies": {
+                "@cloudflare/workers-types": "^4.20240117.0",
+                "typescript": "^5.3.3"
+        }
+}

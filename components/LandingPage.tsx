@@ -33,7 +33,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         return (
                 <div className="min-h-screen w-full relative overflow-hidden font-rubik selection:bg-indigo-100 selection:text-indigo-900">
 
-                        {/* Video Background - Updated Source */}
+                        {/* Video Background - Updated Source (Ship/Tropical) */}
                         <div className="absolute inset-0 z-0">
                                 <video
                                         autoPlay
@@ -41,14 +41,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                         loop
                                         playsInline
                                         className="absolute inset-0 w-full h-full object-cover"
-                                        poster="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1920&q=80"
+                                        poster="https://images.unsplash.com/photo-1599640845513-53343599d630?auto=format&fit=crop&w=1920&q=80"
                                 >
-                                        {/* Using a reliable travel video URL */}
+                                        {/* Ship sailing / Tropical Water - Free Stock Video */}
                                         <source src="https://videos.pexels.com/video-files/5348902/5348902-hd_1920_1080_24fps.mp4" type="video/mp4" />
                                 </video>
                                 {/* Gradient Overlay - Adjusted for better video visibility */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/40 to-slate-900/50" />
-                                <div className="absolute inset-0 bg-black/20" />
+                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-slate-900/40" />
+                                <div className="absolute inset-0 bg-black/10" />
                         </div>
 
                         {/* Floating Particles Effect */}
@@ -67,34 +67,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                 ))}
                         </div>
 
-                        {/* Full Logo (Absolute Top-Left for Branding Presence) */}
-                        <div className="absolute top-6 left-6 z-20 hidden md:flex items-center gap-3 select-none">
-                                <div className="bg-gradient-to-tr from-blue-600 to-sky-500 text-white p-2.5 rounded-2xl shadow-lg shadow-blue-500/20 backdrop-blur-sm">
+                        {/* Full Logo (Absolute Top-Left) - Fixed: Visible on Mobile now */}
+                        <div className="absolute top-4 left-4 md:top-6 md:left-6 z-20 flex items-center gap-3 select-none">
+                                <div className="bg-gradient-to-tr from-blue-600 to-sky-500 text-white p-2 md:p-2.5 rounded-2xl shadow-lg shadow-blue-500/20 backdrop-blur-sm transform scale-90 md:scale-100">
                                         <Plane className="w-5 h-5" />
                                 </div>
                                 <div className="flex flex-col">
-                                        <span className="font-black text-xl leading-none text-white tracking-tight drop-shadow-md">Travel Planner AI</span>
-                                        <span className="text-[10px] font-bold text-sky-300 uppercase tracking-widest leading-none mt-0.5 drop-shadow-sm">Premium Edition</span>
+                                        <span className="font-black text-lg md:text-xl leading-none text-white tracking-tight drop-shadow-md">Travel Planner AI</span>
+                                        <span className="text-[9px] md:text-[10px] font-bold text-sky-300 uppercase tracking-widest leading-none mt-0.5 drop-shadow-sm">Premium Edition</span>
                                 </div>
                         </div>
 
                         {/* Main Content */}
-                        <div className="relative z-10 min-h-screen flex flex-col md:flex-row">
+                        <div className="relative z-10 min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
 
                                 {/* LEFT SIDE: The Hook */}
-                                <div className="flex-1 flex flex-col justify-center px-8 md:px-20 py-12">
-
-                                        {/* In-Content Branding Badge (Mobile/Hero Context) */}
-                                        <div className={`inline-flex md:hidden items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 w-fit mb-8 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                                                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                                                <span className="text-xs font-bold text-white/90 tracking-wide uppercase">Travel Planner AI</span>
-                                        </div>
+                                <div className="flex-1 flex flex-col justify-center px-6 md:px-20 pt-24 md:pt-12 pb-8 md:pb-12 text-center md:text-left items-center md:items-start">
 
                                         {/* Desktop-only spacer to account for absolute logo */}
                                         <div className="hidden md:block h-12"></div>
 
                                         {/* Headline */}
-                                        <h1 className={`text-5xl md:text-7xl font-black text-white leading-[1.1] tracking-tight mb-6 transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                                        <h1 className={`text-4xl md:text-7xl font-black text-white leading-[1.1] tracking-tight mb-4 md:mb-6 transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
                                                 Your Dream Trip, <br />
                                                 <span
                                                         key={taglineIndex}
@@ -105,44 +99,44 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                         </h1>
 
                                         {/* Sub-headline */}
-                                        <p className={`text-lg md:text-xl text-white/70 leading-relaxed max-w-xl mb-12 transition-all duration-700 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                                        <p className={`text-base md:text-xl text-white/80 leading-relaxed max-w-xl mb-8 md:mb-12 transition-all duration-700 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
                                                 Stop wasting hours on research. Get a personalized itinerary with smart budget tracking in <span className="text-white font-bold">seconds</span>.
                                         </p>
 
                                         {/* Feature Pills */}
-                                        <div className={`flex flex-wrap gap-3 transition-all duration-700 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                                                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/80 text-sm">
-                                                        <Sparkles className="w-4 h-4 text-amber-400" />
+                                        <div className={`flex flex-wrap gap-2 md:gap-3 justify-center md:justify-start transition-all duration-700 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                                                <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/90 text-xs md:text-sm shadow-sm">
+                                                        <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-400" />
                                                         AI-Powered
                                                 </div>
-                                                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/80 text-sm">
-                                                        <Users className="w-4 h-4 text-blue-400" />
+                                                <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/90 text-xs md:text-sm shadow-sm">
+                                                        <Users className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-400" />
                                                         Plan Together
                                                 </div>
-                                                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/80 text-sm">
-                                                        <Map className="w-4 h-4 text-emerald-400" />
+                                                <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/90 text-xs md:text-sm shadow-sm">
+                                                        <Map className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-400" />
                                                         Live Maps
                                                 </div>
                                         </div>
                                 </div>
 
                                 {/* RIGHT SIDE: The Action */}
-                                <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-20">
+                                <div className="flex-1 flex flex-col items-center justify-start md:justify-center p-6 md:p-20 pt-0 md:pt-20">
 
-                                        <div className={`w-full max-w-md bg-white/10 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] shadow-2xl border border-white/20 transition-all duration-1000 delay-500 hover:bg-white/15 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12'}`}>
+                                        <div className={`w-full max-w-sm md:max-w-md bg-white/10 backdrop-blur-xl p-6 md:p-12 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-white/20 transition-all duration-1000 delay-500 hover:bg-white/15 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 md:translate-x-12'}`}>
 
-                                                <div className="text-center mb-10">
+                                                <div className="text-center mb-6 md:mb-10">
                                                         {/* Feature Icon in Card */}
-                                                        <div className="w-20 h-20 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-indigo-500/30 rotate-3 hover:rotate-0 transition-transform">
-                                                                <Users className="w-10 h-10 text-white" />
+                                                        <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-2xl mx-auto mb-4 md:mb-6 flex items-center justify-center shadow-lg shadow-indigo-500/30 rotate-3 hover:rotate-0 transition-transform">
+                                                                <Users className="w-8 h-8 md:w-10 md:h-10 text-white" />
                                                         </div>
-                                                        <h2 className="text-3xl font-black text-white mb-3">Start Your Journey</h2>
-                                                        <p className="text-white/60">Join thousands of travelers planning smarter.</p>
+                                                        <h2 className="text-2xl md:text-3xl font-black text-white mb-2 md:mb-3">Start Your Journey</h2>
+                                                        <p className="text-sm md:text-base text-white/70">Join thousands of travelers planning smarter.</p>
                                                 </div>
 
                                                 <button
                                                         onClick={onLogin}
-                                                        className="w-full flex items-center justify-center gap-4 py-4 px-6 bg-white rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all group"
+                                                        className="w-full flex items-center justify-center gap-3 md:gap-4 py-3.5 md:py-4 px-6 bg-white rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all group"
                                                 >
                                                         {/* Google SVG Icon */}
                                                         <svg className="w-6 h-6" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
