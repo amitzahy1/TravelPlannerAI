@@ -117,7 +117,7 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                                                         initial={{ opacity: 0, x: -20 }}
                                                         animate={{ opacity: 1, x: 0 }}
                                                         exit={{ opacity: 0, x: 20 }}
-                                                        className="w-full max-w-xl"
+                                                        className="w-full max-w-6xl overflow-y-auto max-h-[85vh] px-4 scrollbar-hide"
                                                 >
                                                         {analysisState === 'idle' ? (
                                                                 <div className="space-y-6">
@@ -157,61 +157,38 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                                                                         </GlassCard>
 
                                                                         {/* Platform Help Guide */}
-                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full mt-4">
                                                                                 {[
                                                                                         {
                                                                                                 name: 'Booking.com',
                                                                                                 icon: '🏨',
-                                                                                                steps: [
-                                                                                                        'כנסו ל"הזמנות שלי"',
-                                                                                                        'בחרו את המלון הרצוי',
-                                                                                                        'לחצו על "הצגת אישור"',
-                                                                                                        'בתפריט (3 נקודות) בחרו "הדפסה ל-PDF"'
-                                                                                                ]
+                                                                                                steps: ['הזמנות שלי', 'בחרו מלון', 'הצגת אישור', 'הדפסה ל-PDF']
                                                                                         },
                                                                                         {
                                                                                                 name: 'Airbnb',
                                                                                                 icon: '🏠',
-                                                                                                steps: [
-                                                                                                        'פתחו את "נסיעות"',
-                                                                                                        'לחצו על "פרטי נסיעה"',
-                                                                                                        'גללו ל"קבלת קבלה"',
-                                                                                                        'שמרו את הדף כ-PDF במכשיר'
-                                                                                                ]
+                                                                                                steps: ['נסיעות', 'פרטי נסיעה', 'קבלת קבלה', 'שמור כ-PDF']
                                                                                         },
                                                                                         {
                                                                                                 name: 'Skyscanner',
                                                                                                 icon: '✈️',
-                                                                                                steps: [
-                                                                                                        'פתחו את אימייל אישור ההזמנה',
-                                                                                                        'לחצו על "הדפס אישור"',
-                                                                                                        'בחרו במדפסת "שמור כ-PDF"',
-                                                                                                        'העלו את הקובץ לכאן'
-                                                                                                ]
+                                                                                                steps: ['אימייל אישור', 'הדפס אישור', 'שמור כ-PDF', 'העלו את הקובץ']
                                                                                         },
                                                                                         {
                                                                                                 name: 'Trip.com',
                                                                                                 icon: '🌏',
-                                                                                                steps: [
-                                                                                                        'כנסו ל"חשבון" -> "הזמנות"',
-                                                                                                        'לחצו על פרטי ההזמנה',
-                                                                                                        'בחרו באופציה "ייצא ל-PDF"',
-                                                                                                        'שמרו והעלו את הקובץ'
-                                                                                                ]
+                                                                                                steps: ['הזמנות', 'פרטי הזמנה', 'ייצא ל-PDF', 'שמור והעלו']
                                                                                         }
                                                                                 ].map((p) => (
-                                                                                        <div key={p.name} className="bg-white/60 border border-slate-200 p-5 rounded-[1.5rem] group hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
-                                                                                                <div className="flex items-center gap-4 mb-3">
-                                                                                                        <span className="text-4xl filter drop-shadow-sm">{p.icon}</span>
-                                                                                                        <div className="text-right">
-                                                                                                                <h4 className="font-black text-brand-navy text-lg">{p.name}</h4>
-                                                                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">מדריך שלב אחר שלב</p>
-                                                                                                        </div>
+                                                                                        <div key={p.name} className="bg-white/60 border border-slate-200 p-3 lg:p-4 rounded-2xl group hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
+                                                                                                <div className="flex items-center gap-2 mb-2">
+                                                                                                        <span className="text-2xl filter drop-shadow-sm">{p.icon}</span>
+                                                                                                        <h4 className="font-bold text-brand-navy text-xs lg:text-sm leading-tight">{p.name}</h4>
                                                                                                 </div>
-                                                                                                <ul className="space-y-2">
+                                                                                                <ul className="space-y-1">
                                                                                                         {p.steps.map((step, idx) => (
-                                                                                                                <li key={idx} className="flex items-start gap-2 text-sm text-slate-600 font-medium">
-                                                                                                                        <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-500 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                                                                                <li key={idx} className="flex items-start gap-1.5 text-[10px] lg:text-[11px] text-slate-500 font-bold leading-tight">
+                                                                                                                        <span className="w-4 h-4 rounded-full bg-blue-50 text-blue-500 text-[8px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
                                                                                                                                 {idx + 1}
                                                                                                                         </span>
                                                                                                                         <span>{step}</span>
@@ -251,7 +228,7 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                                                         initial={{ opacity: 0, x: 20 }}
                                                         animate={{ opacity: 1, x: 0 }}
                                                         exit={{ opacity: 0, x: -20 }}
-                                                        className="w-full max-w-xl"
+                                                        className="w-full max-w-6xl overflow-y-auto max-h-[85vh] px-4 scrollbar-hide"
                                                 >
                                                         <GlassCard className="p-8 text-center flex flex-col items-center">
                                                                 <div className="w-16 h-16 bg-gradient-to-tr from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-purple-500/20">
