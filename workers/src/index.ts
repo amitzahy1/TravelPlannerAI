@@ -77,8 +77,11 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
                 if (!token) throw new Error("Failed to authenticate with Firebase. Check logs.");
 
                 // 2. Map Sender to UID
-                const senderEmail = from.toLowerCase().trim();
-                logs.push(`Looking up user for email: ${senderEmail}`);
+                // FIX: Extract strictly the email address from "Name <email>" format. Supports aliases (e.g. user+tag@example.com)
+                const emailMatch = from.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+                const senderEmail = (emailMatch ? emailMatch[0] : from).toLowerCase().trim();
+
+                logs.push(`Looking up user for email: ${senderEmail} (extracted from ${from})`);
                 const uid = await getUserByEmail(senderEmail, env.FIREBASE_PROJECT_ID, token);
 
                 if (!uid) {

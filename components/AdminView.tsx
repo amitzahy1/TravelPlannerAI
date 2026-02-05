@@ -621,182 +621,172 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             </div>
                         ))}
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsWizardOpen(true);
-                            }}
-                            className="relative z-10 w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 font-bold text-xs hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 transition-all flex items-center justify-center gap-2 mt-4 cursor-pointer"
+                            onClick={() => onSave(trips)}
+                            disabled={isSaving}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-white shadow-lg transition-all ${isSaving ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-[1.02]'}`}
                         >
-                            <Plus className="w-4 h-4" /> טיול חדש
-                        </button>
-                    </div>
-
-                    <div className="p-4 border-t border-slate-200">
-                        <button onClick={() => setIsShareModalOpen(true)} className="w-full py-2 bg-indigo-50 text-indigo-600 rounded-lg font-bold text-xs hover:bg-indigo-100 flex items-center justify-center gap-2 transition-colors">
-                            <Share2 className="w-3.5 h-3.5" /> שיתוף וגיבוי
+                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            <span>{isSaving ? 'שומר...' : 'שמור שינויים'}</span>
                         </button>
                     </div>
                 </div>
 
-                {/* MAIN CONTENT AREA */}
-                <div className="flex-1 flex flex-col h-full overflow-hidden bg-white">
+                {/* Main Content Area */}
+                <div className="flex-grow flex overflow-hidden bg-white/50 rounded-t-3xl border-t border-x border-white/60 shadow-xl backdrop-blur-md">
 
-                    {/* STICKY HEADER */}
-                    <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50">
-                        <div className="flex items-center gap-4">
-                            {/* Mobile Hamburger */}
-                            <button
-                                onClick={() => setIsSidebarOpen(true)}
-                                className="md:hidden p-2 -mr-2 text-slate-500 hover:bg-slate-50 rounded-lg"
-                            >
-                                <Menu className="w-6 h-6" />
-                            </button>
-
-                            <div className="flex p-1 bg-slate-100 rounded-lg overflow-x-auto max-w-[200px] md:max-w-none scrollbar-hide">
+                    {/* Sidebar Navigation */}
+                    <div className={`
+                        w-64 bg-white border-l border-slate-100 flex-shrink-0 flex flex-col
+                        ${isSidebarOpen ? 'absolute inset-y-0 right-0 z-20 shadow-2xl' : 'hidden md:flex'}
+                    `}>
+                        <div className="p-6">
+                            <div className="space-y-1">
                                 <button
                                     onClick={() => setActiveTab('overview')}
-                                    className={`px-4 md:px-6 py-2 md:py-2.5 rounded-lg text-sm md:text-base font-bold transition-all whitespace-nowrap ${activeTab === 'overview' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                                    className={`w-full text-right px-4 py-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'overview' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
                                 >
-                                    סקירה
+                                    <Layout className="w-5 h-5" /> פרטים כלליים
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('logistics')}
-                                    className={`px-3 md:px-6 py-1.5 md:py-2.5 rounded-lg text-xs md:text-base font-bold transition-all whitespace-nowrap ${activeTab === 'logistics' ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                                    className={`w-full text-right px-4 py-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'logistics' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
                                 >
-                                    לוגיסטיקה
+                                    <Plane className="w-5 h-5" /> לוגיסטיקה
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('ai')}
-                                    className={`px-3 md:px-6 py-1.5 md:py-2.5 rounded-lg text-xs md:text-base font-bold transition-all whitespace-nowrap ${activeTab === 'ai' ? 'bg-white shadow text-purple-700' : 'text-slate-400 hover:text-purple-500'}`}
+                                    className={`w-full text-right px-4 py-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'ai' ? 'bg-purple-50 text-purple-700' : 'text-slate-600 hover:bg-slate-50'}`}
                                 >
-                                    <Sparkles className="w-4 h-4 inline-block ml-1" /> AI Magic
+                                    <Sparkles className="w-5 h-5" /> Magic Import
                                 </button>
                             </div>
                         </div>
 
-                        <div className="flex gap-2 items-center">
-                            {/* Collaborator Badge */}
-                            {activeTrip?.isShared && (
-                                <div className="hidden md:flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full mr-2 animate-fade-in" title="Shared Trip">
-                                    <Users className="w-3.5 h-3.5 text-indigo-600" />
-                                    <span className="text-xs font-extrabold text-indigo-700">
-                                        {(activeTrip.sharing?.collaborators?.length || 0) + 1} Editors
-                                    </span>
-                                </div>
-                            )}
-                            <button onClick={() => setIsShareModalOpen(true)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors md:hidden">
-                                <Share2 className="w-5 h-5 text-slate-600" />
-                            </button>
-
-                            <button
-                                onClick={handleSaveAndClose}
-                                disabled={isSaving}
-                                className={`px-3 md:px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs md:text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center gap-1 md:gap-2 ${isSaving ? 'opacity-70 cursor-wait' : ''}`}
-                            >
-                                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                <span className="hidden md:inline">{isSaving ? 'שומר ומעבד...' : 'שמור וסגור'}</span>
-                                <span className="md:hidden">{isSaving ? '...' : 'שמור'}</span>
-                            </button>
-
-                            {/* New Quick Upload AI Button - Visible on Mobile & Desktop */}
-                            <button
-                                onClick={() => setActiveTab('ai')}
-                                className="p-2 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-lg transition-colors"
-                                title="העלאת מסמכים עם AI"
-                            >
-                                <UploadCloud className="w-6 h-6" />
-                            </button>
-
-                            {/* Close Button - Now visible on mobile too */}
-                            <button onClick={onClose} className="flex p-2 text-slate-300 hover:bg-slate-50 hover:text-slate-500 rounded-lg transition-colors">
-                                <X className="w-6 h-6" />
-                            </button>
+                        {/* Trip List in Sidebar */}
+                        <div className="mt-auto p-4 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-2 px-2">
+                                <span className="text-xs font-bold text-slate-400 uppercase">הטיולים שלי</span>
+                                <button onClick={() => setIsWizardOpen(true)} className="p-1 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"><Plus className="w-4 h-4" /></button>
+                            </div>
+                            <div className="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
+                                {trips.map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => { setActiveTripId(t.id); onSwitchTrip(t.id); }}
+                                        className={`w-full text-right px-3 py-2 rounded-lg text-sm font-medium truncate transition-colors ${activeTripId === t.id ? 'bg-slate-100 text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        {t.name}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Content Scroll Area */}
-                    <div className="flex-1 overflow-y-auto p-3 md:p-8 bg-slate-50/50">
-                        <div className="max-w-7xl mx-auto">
+                    {/* Content Panel */}
+                    <div className="flex-1 overflow-y-auto p-4 md:p-8 relative scroll-smooth decoration-slice">
+                        {/* Mobile Sidebar Toggle */}
+                        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden absolute top-4 left-4 p-2 bg-white shadow-sm rounded-lg border border-slate-200 z-10">
+                            <Menu className="w-5 h-5 text-slate-600" />
+                        </button>
 
+                        <div className="max-w-4xl mx-auto pb-20">
                             {/* TAB: OVERVIEW */}
                             {activeTab === 'overview' && (
-                                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 animate-fade-in">
-
-                                    {/* Trip Name & Basic Info - Full Width/Top */}
-                                    <div className="md:col-span-12 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                        <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                                            <span className="bg-blue-100 p-1.5 rounded-lg text-blue-600"><Layout className="w-4 h-4" /></span> פרטים כלליים
-                                        </h3>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-slate-400 uppercase">שם הטיול</label>
-                                            <input
-                                                value={activeTrip?.name || ''}
-                                                onChange={e => handleUpdateTrip({ name: e.target.value })}
-                                                className="w-full text-xl font-bold bg-slate-50 border-b-2 border-slate-200 focus:border-blue-500 px-4 py-3 rounded-lg outline-none transition-colors"
-                                                placeholder="למשל: טיול משפחתי לתאילנד"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Dates - 6 Columns */}
-                                    <div className="md:col-span-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
-                                        <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                                            <span className="bg-purple-100 p-1.5 rounded-lg text-purple-600"><Calendar className="w-4 h-4" /></span> תאריכים
-                                        </h3>
-                                        <div className="flex gap-4 mb-auto">
-                                            <div className="flex-1 space-y-1">
-                                                <label className="text-xs font-bold text-slate-400 uppercase">התחלה</label>
-                                                <DateInput
-                                                    value={startDate}
-                                                    onChange={iso => handleDateChange('start', iso)}
-                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-purple-500 text-center"
-                                                    placeholder="DD/MM/YYYY"
-                                                />
+                                <div className="space-y-6 animate-fade-in">
+                                    {/* Trip Metadata Card */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div>
+                                                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                                                    <span className="bg-blue-100 p-1.5 rounded-lg text-blue-600"><Layout className="w-4 h-4" /></span> פרטים כלליים
+                                                </h3>
+                                                <p className="text-sm text-slate-500 mt-1">נהל את שם הטיול, יעדים ותאריכים</p>
                                             </div>
-                                            <div className="flex-1 space-y-1">
-                                                <label className="text-xs font-bold text-slate-400 uppercase">סיום</label>
-                                                <DateInput
-                                                    value={endDate}
-                                                    onChange={iso => handleDateChange('end', iso)}
-                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-purple-500 text-center"
-                                                    placeholder="DD/MM/YYYY"
-                                                />
-                                            </div>
+                                            {/* Share Button */}
+                                            <button
+                                                onClick={() => setIsShareModalOpen(true)}
+                                                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-bold border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                                            >
+                                                <Share2 className="w-4 h-4" />
+                                                <span>שיתוף והרשאות</span>
+                                            </button>
                                         </div>
-                                        <div className="mt-4 p-3 bg-purple-50 rounded-xl text-center text-sm font-bold text-purple-700 border border-purple-100">
-                                            {startDate && endDate ? `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}` : 'טרם נבחר טווח תאריכים'}
-                                        </div>
-                                    </div>
 
-                                    {/* Route - 6 Columns */}
-                                    <div className="md:col-span-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
-                                        <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                                            <span className="bg-orange-100 p-1.5 rounded-lg text-orange-600"><MapPin className="w-4 h-4" /></span> מסלול (ערים)
-                                        </h3>
-                                        <div className="flex flex-wrap gap-2 mb-4 min-h-[40px]">
-                                            {routeCities.map((city, idx) => (
-                                                <div key={idx} className="bg-white border text-sm border-slate-200 px-3 py-1.5 rounded-full font-bold text-slate-700 shadow-sm flex items-center gap-2 animate-scale-in">
-                                                    {city}
-                                                    <button onClick={() => removeCity(idx)} className="text-slate-300 hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
-                                                </div>
-                                            ))}
-                                            {routeCities.length === 0 && <span className="text-slate-400 text-sm italic py-1">עדיין לא הוגדרו יעדים...</span>}
-                                        </div>
-                                        <div className="flex gap-2 mt-auto">
-                                            <div className="relative flex-1">
+                                        <div className="space-y-5">
+                                            {/* Name Input */}
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">שם הטיול</label>
                                                 <input
-                                                    value={newCityInput}
-                                                    onChange={e => setNewCityInput(e.target.value)}
-                                                    onKeyDown={e => e.key === 'Enter' && addCity()}
-                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-orange-500 pr-16"
-                                                    placeholder="הוסף עיר..."
+                                                    className="w-full text-2xl font-black text-slate-800 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all placeholder:text-slate-300"
+                                                    value={activeTrip.name}
+                                                    onChange={(e) => handleUpdateTrip({ name: e.target.value })}
+                                                    placeholder='לדוגמה: "טיול יפן 2026"'
                                                 />
                                             </div>
-                                            <button onClick={addCity} className="p-3 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 font-bold transition-colors"><Plus className="w-5 h-5" /></button>
+
+                                            {/* Destination & Dates Grid */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {/* Destination Builder */}
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">מסלול (ערים)</label>
+                                                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                                                        <div className="flex flex-wrap gap-2 mb-2">
+                                                            {routeCities.map((city, idx) => (
+                                                                <div key={idx} className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm text-sm font-bold text-slate-700 animate-scale-in">
+                                                                    <span>{city}</span>
+                                                                    <button onClick={() => removeCity(idx)} className="text-slate-400 hover:text-red-500"><X className="w-3 h-3" /></button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <MapPin className="w-4 h-4 text-slate-400" />
+                                                            <input
+                                                                className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-slate-700 placeholder:text-slate-400"
+                                                                value={newCityInput}
+                                                                onChange={(e) => setNewCityInput(e.target.value)}
+                                                                onKeyDown={(e) => e.key === 'Enter' && addCity()}
+                                                                placeholder="הוסף עיר..."
+                                                            />
+                                                            <button onClick={addCity} className="bg-slate-200 hover:bg-slate-300 text-slate-600 p-1 rounded-md transition-colors"><Plus className="w-4 h-4" /></button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Date Range Parser */}
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">תאריכים</label>
+                                                    <div className="bg-slate-50 p-1 rounded-xl border border-slate-200 flex items-center justify-between relative group">
+                                                        <div className="flex-1 p-2 border-l border-slate-200">
+                                                            <span className="text-[10px] font-bold text-slate-400 block mb-1">התחלה</span>
+                                                            <DateInput
+                                                                value={startDate}
+                                                                onChange={(val) => handleDateChange('start', val)}
+                                                                className="w-full text-sm outline-none bg-transparent font-bold text-slate-800"
+                                                                placeholder="dd/mm/yyyy"
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1 p-2">
+                                                            <span className="text-[10px] font-bold text-slate-400 block mb-1">סיום</span>
+                                                            <DateInput
+                                                                value={endDate}
+                                                                onChange={(val) => handleDateChange('end', val)}
+                                                                className="w-full text-sm outline-none bg-transparent font-bold text-slate-800"
+                                                                placeholder="dd/mm/yyyy"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    {/* Result Preview */}
+                                                    <div className="mt-2 text-center">
+                                                        <span className="inline-block px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg border border-purple-100">
+                                                            {activeTrip.dates || "---"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Danger Zone - Full Width (Bottom) */}
+                                    {/* Danger Zone */}
                                     {(!activeTrip?.isShared || activeTrip.sharing?.role === 'owner') && (
                                         <div className="md:col-span-12 mt-4">
                                             <div className="p-4 bg-red-50/50 border border-red-100 rounded-2xl opacity-60 hover:opacity-100 transition-opacity flex justify-between items-center group">
@@ -990,7 +980,6 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                 <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                                                     <span className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600"><Hotel className="w-4 h-4" /></span> מלונות
                                                 </h3>
-                                                {/* AI Indicator for User Feedback */}
                                                 {isSaving && <span className="text-[10px] font-bold text-purple-600 animate-pulse bg-purple-50 px-2 py-0.5 rounded-full">AI Enriching...</span>}
                                             </div>
                                             <button
