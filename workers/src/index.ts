@@ -67,43 +67,56 @@ export default {
 };
 
 async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
-        console.log(`Received email from: ${from}`);
-        const logs: string[] = [];
+        console.log(`[EmailPipe] Received email from: ${from}`);
+        const logs: string[] = [`Processing email from ${from} at ${new Date().toISOString()}`];
 
         try {
                 // 1. Get Access Token for Firebase
+                logs.push("Authenticating with Firebase...");
                 const token = await getFirebaseAccessToken(env, logs);
                 if (!token) throw new Error("Failed to authenticate with Firebase. Check logs.");
 
                 // 2. Map Sender to UID
-                const senderEmail = from;
+                const senderEmail = from.toLowerCase().trim();
+                logs.push(`Looking up user for email: ${senderEmail}`);
                 const uid = await getUserByEmail(senderEmail, env.FIREBASE_PROJECT_ID, token);
 
                 if (!uid) {
-                        return { success: false, message: `User not found for email: ${senderEmail}`, logs };
+                        logs.push(`FAILED: User not found for ${senderEmail}`);
+                        console.error(`[EmailPipe] User lookup failed for ${senderEmail}`);
+                        return { success: false, message: `User not found for email: ${senderEmail}. Ensure you are registered with this email.`, logs };
                 }
+                logs.push(`Found UID: ${uid}`);
 
                 // 3. Parse Email Content
+                logs.push("Parsing email stream...");
                 const rawEmail = await streamToString(rawStream);
+                logs.push(`Raw email length: ${rawEmail.length} chars`);
 
                 // 4. Extract Trip Data with Gemini
+                logs.push("Extracting data with Gemini AI...");
                 const tripData = await extractTripDataWithGemini(rawEmail, env.GEMINI_API_KEY);
 
                 if (!tripData) {
-                        return { success: false, message: "No trip data found in email.", logs };
+                        logs.push("FAILED: Gemini returned no data");
+                        return { success: false, message: "Could not extract trip data from this email. Is it a booking confirmation?", logs };
                 }
+                logs.push(`Gemini extracted trip: ${tripData.name} to ${tripData.destination}`);
 
                 // 5. Write to Firestore
-                await writeTripToFirestore(uid, tripData, env.FIREBASE_PROJECT_ID, token);
+                logs.push("Saving to Firestore...");
+                const savedTrip = await writeTripToFirestore(uid, tripData, env.FIREBASE_PROJECT_ID, token);
+                logs.push("SUCCESS: Trip saved to Firestore");
 
-                return { success: true, message: `Successfully processed email for user ${uid}`, tripData, logs };
+                return { success: true, message: `Successfully created trip for user ${uid}`, tripId: savedTrip.id, logs };
 
         } catch (error: any) {
-                console.error("Error processing email:", error);
-                return { success: false, error: error.message, stack: error.stack, logs };
+                const errMsg = `Error at ${new Date().toISOString()}: ${error.message}`;
+                console.error("[EmailPipe] Fatal Error:", error);
+                logs.push(errMsg);
+                return { success: false, error: error.message, logs };
         }
 }
-
 
 // --- HELPERS: AUTH ---
 
@@ -146,7 +159,8 @@ async function getFirebaseAccessToken(env: Env, logs: string[]): Promise<string 
 
                 const data: any = await response.json();
                 return data.access_token;
-        } catch (e) {
+        } catch (e: any) {
+                logs.push(`Auth Error: ${e.message}`);
                 console.error("Auth Error:", e);
                 return null;
         }
@@ -175,19 +189,11 @@ async function getUserByEmail(email: string, projectId: string, token: string): 
 }
 
 async function writeTripToFirestore(uid: string, tripData: any, projectId: string, token: string) {
-        // Create a new document in the user's trips collection
-        // We'll map the clean JSON from Gemini to Firestore structure
-
-        // Firestore REST API Endpoint
-        // Structure: projects/{projectId}/databases/(default)/documents/users/{uid}/trips
         const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/trips`;
-
-        // Firestore requires a specific object format ("fields": { "key": { "stringValue": "val" } })
-        // We will use a lightweight helper or just do simple conversion for the MVP fields.
 
         const firestoreDoc = mapJsonToFirestore(tripData);
 
-        await fetch(url, {
+        const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                         'Content-Type': 'application/json',
@@ -195,12 +201,19 @@ async function writeTripToFirestore(uid: string, tripData: any, projectId: strin
                 },
                 body: JSON.stringify(firestoreDoc)
         });
+
+        const result: any = await response.json();
+        if (!response.ok) {
+                throw new Error(`Firestore Write Failed: ${JSON.stringify(result)}`);
+        }
+        // Return the document name (ID is usually at the end)
+        const nameParts = result.name.split('/');
+        return { id: nameParts[nameParts.length - 1] };
 }
 
 // --- HELPERS: GEMINI ---
 
 async function extractTripDataWithGemini(emailText: string, apiKey: string): Promise<any> {
-        // Gemini Flash 2.0 or 1.5
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const prompt = `
@@ -214,16 +227,12 @@ async function extractTripDataWithGemini(emailText: string, apiKey: string): Pro
 			"pnr": "string",
 			"airline": "string",
 			"flightNumber": "string"
-		},
-		"hotels": [
-			{ "name": "Hotel Name", "address": "string", "checkIn": "string", "checkOut": "string" }
-		]
+		}
 	}
 
 	Email Content:
 	${emailText.substring(0, 50000)} 
 	`;
-        // Limit text for context window if needed, though Flash has large context.
 
         const response = await fetch(url, {
                 method: 'POST',
@@ -260,26 +269,42 @@ async function streamToString(stream: ReadableStream): Promise<string> {
         return result;
 }
 
-// Simplified Mapper for Firestore REST (Keys need to be mapped to types)
+// Full Mapper for Firestore REST (Required arrays to prevent frontend crashes)
 function mapJsonToFirestore(data: any): any {
-        // Root object for Firestore create
+        const now = new Date().toISOString();
         return {
                 fields: {
                         name: { stringValue: data.name || "Imported Trip" },
                         destination: { stringValue: data.destination || "" },
                         dates: { stringValue: data.startDate ? `${data.startDate} - ${data.endDate}` : "" },
+                        coverImage: { stringValue: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80" },
                         isShared: { booleanValue: false },
-                        importedAt: { timestampValue: new Date().toISOString() },
-                        // Complex objects like flights/hotels usually stored as maps or arrays of maps
-                        // For MVP, we'll just store the raw JSON string or essential fields
+                        updatedAt: { timestampValue: now },
+                        createdAt: { timestampValue: now },
+                        importedAt: { timestampValue: now },
+                        // Required Arrays (Empty to satisfy TypeScript)
                         flights: {
                                 mapValue: {
                                         fields: {
                                                 pnr: { stringValue: data.flights?.pnr || "" },
-                                                passengerName: { stringValue: "Imported User" }
+                                                airline: { stringValue: data.flights?.airline || "" },
+                                                flightNumber: { stringValue: data.flights?.flightNumber || "" },
+                                                passengerName: { stringValue: "" },
+                                                segments: { arrayValue: { values: [] } }
                                         }
                                 }
-                        }
+                        },
+                        hotels: { arrayValue: { values: [] } },
+                        restaurants: { arrayValue: { values: [] } },
+                        attractions: { arrayValue: { values: [] } },
+                        itinerary: { arrayValue: { values: [] } },
+                        documents: { arrayValue: { values: [] } },
+                        weather: { arrayValue: { values: [] } },
+                        news: { arrayValue: { values: [] } },
+                        expenses: { arrayValue: { values: [] } },
+                        shoppingItems: { arrayValue: { values: [] } },
+                        secureNotes: { arrayValue: { values: [] } }
                 }
         };
 }
+

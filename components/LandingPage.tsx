@@ -43,7 +43,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                         className="absolute inset-0 w-full h-full object-cover"
                                         poster="https://images.unsplash.com/photo-1599640845513-53343599d630?auto=format&fit=crop&w=1920&q=80"
                                 >
-                                        <source src="/video-bg.mp4" type="video/mp4" />
+                                        <source src={`${import.meta.env.BASE_URL}video-bg.mp4`} type="video/mp4" />
                                         <source src="https://vjs.zencdn.net/v/oceans.mp4" type="video/mp4" />
                                 </video>
                                 {/* Gradient Overlay - Adjusted for better video visibility */}
