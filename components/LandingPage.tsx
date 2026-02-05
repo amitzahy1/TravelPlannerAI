@@ -17,9 +17,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
         // Cycle through taglines
         const taglines = [
-                "הטכנולוגיה שתקח אתכם רחוק יותר.",
-                "הופכים כל חלום למסלול מדויק.",
-                "העתיד של התכנון כבר כאן."
+                "מאחדים את כל ההזמנות למקום אחד.",
+                "רואים את כל המסלול על המפה.",
+                "מגלים חוויות חדשות עם AI."
         ];
         const [taglineIndex, setTaglineIndex] = useState(0);
 
@@ -47,7 +47,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                         <source src="https://vjs.zencdn.net/v/oceans.mp4" type="video/mp4" />
                                 </video>
                                 {/* Gradient Overlay - Adjusted for better video visibility */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-slate-900/40" />
+                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/40 to-slate-900/50" />
                                 <div className="absolute inset-0 bg-black/10" />
                         </div>
 
@@ -89,7 +89,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
                                         {/* Headline */}
                                         <h1 className={`text-4xl md:text-7xl font-black text-white leading-[1.1] tracking-tight mb-4 md:mb-6 transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                                                טיול החלומות שלך, <br />
+                                                לא עוד בלאגן בטיול, <br />
                                                 <span
                                                         key={taglineIndex}
                                                         className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-orange-400 animate-fade-in"
@@ -99,23 +99,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                         </h1>
 
                                         {/* Sub-headline */}
-                                        <p className={`text-base md:text-xl text-white/80 leading-relaxed max-w-xl mb-8 md:mb-12 transition-all duration-700 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                                                תפסיקו לבזבז שעות על מחקר. קבלו מסלול טיול מותאם אישית עם מעקב תקציב חכם תוך <span className="text-white font-bold">שניות</span>.
+                                        <p className={`text-base md:text-xl text-white/90 leading-relaxed max-w-xl mb-8 md:mb-12 transition-all duration-700 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                                                המערכת היחידה שיודעת <span className="text-amber-300 font-bold">לאחד את כל ההזמנות</span> שלכם (טיסות ומלונות), להציג את המסלול בצורה ברורה על המפה, ולעזור לכם לגלות מקומות מדהימים עם AI אישי.
                                         </p>
 
                                         {/* Feature Pills */}
                                         <div className={`flex flex-wrap gap-2 md:gap-3 justify-center md:justify-start transition-all duration-700 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                                                <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/90 text-xs md:text-sm shadow-sm">
-                                                        <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-400" />
-                                                        מבוסס AI
+                                                <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/90 text-xs md:text-sm shadow-sm group hover:bg-white/20 transition-all">
+                                                        <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                                                        איחוד נתונים אוטומטי
                                                 </div>
-                                                <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/90 text-xs md:text-sm shadow-sm">
-                                                        <Users className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-400" />
-                                                        תכנון משותף
+                                                <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/90 text-xs md:text-sm shadow-sm group hover:bg-white/20 transition-all">
+                                                        <Map className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                                                        תצוגת מסלול חכמה
                                                 </div>
-                                                <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/90 text-xs md:text-sm shadow-sm">
-                                                        <Map className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-400" />
-                                                        מפות חיות
+                                                <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/90 text-xs md:text-sm shadow-sm group hover:bg-white/20 transition-all">
+                                                        <Users className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-400 group-hover:scale-110 transition-transform" />
+                                                        גילוי חוויות ב-AI
                                                 </div>
                                         </div>
                                 </div>
