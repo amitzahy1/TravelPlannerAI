@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UploadCloud, Mail, FileText, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { UploadCloud, Mail, FileText, ArrowRight, Loader2, CheckCircle2, Printer, MousePointerClick, Download, Share, FileDown, Plane, Hotel, Home, Globe } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
-import { RippleButton } from '../ui/RippleButton';
 import { db } from '../../services/firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { collection, query, where, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
@@ -12,12 +11,68 @@ interface Step3SmartProps {
         onBack: () => void;
 }
 
+const platforms = [
+        {
+                id: 'booking',
+                name: 'Booking.com',
+                icon: Hotel,
+                color: 'bg-blue-600',
+                textColor: 'text-blue-600',
+                steps: [
+                        { icon: MousePointerClick, text: 'היכנסו ל"הזמנות שלי"', sub: 'באתר או באפליקציה' },
+                        { icon: FileText, text: 'בחרו את ההזמנה', sub: 'לחצו על "הצג אישור"' },
+                        { icon: Printer, text: 'לחצו על "הדפסה"', sub: 'בחלון שנפתח' },
+                        { icon: FileDown, text: 'שמרו כ-PDF', sub: 'בחרו "Save as PDF"' }
+                ]
+        },
+        {
+                id: 'airbnb',
+                name: 'Airbnb',
+                icon: Home,
+                color: 'bg-rose-500',
+                textColor: 'text-rose-500',
+                steps: [
+                        { icon: Plane, text: 'לכו ל"נסיעות"', sub: 'Trips' },
+                        { icon: MousePointerClick, text: 'פרטי נסיעה', sub: 'Details' },
+                        { icon: FileText, text: 'קבלת קבלה', sub: 'Get Receipt' },
+                        { icon: Download, text: 'הורידו כ-PDF', sub: 'Download PDF' }
+                ]
+        },
+        {
+                id: 'skyscanner',
+                name: 'Skyscanner',
+                icon: Plane,
+                color: 'bg-sky-500',
+                textColor: 'text-sky-500',
+                steps: [
+                        { icon: Mail, text: 'פתחו את המייל', sub: 'שקיבלתם מ-Skyscanner' },
+                        { icon: Printer, text: 'הדפסה (Print)', sub: 'מתפריט המייל' },
+                        { icon: FileDown, text: 'שמרו כ-PDF', sub: 'בחרו ביעד "Save as PDF"' },
+                        { icon: UploadCloud, text: 'העלו את הקובץ', sub: 'כאן למטה' }
+                ]
+        },
+        {
+                id: 'trip',
+                name: 'Trip.com',
+                icon: Globe,
+                color: 'bg-blue-500',
+                textColor: 'text-blue-500',
+                steps: [
+                        { icon: FileText, text: 'My Bookings', sub: 'All Bookings' },
+                        { icon: MousePointerClick, text: 'View Detail', sub: '' },
+                        { icon: Download, text: 'Email/Print', sub: '' },
+                        { icon: FileDown, text: 'Save PDF', sub: '' }
+                ]
+        }
+];
+
 export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBack }) => {
         const [activeTab, setActiveTab] = useState<'upload' | 'email'>('upload');
         const [isDragging, setIsDragging] = useState(false);
         const [files, setFiles] = useState<File[]>([]);
         const [analysisState, setAnalysisState] = useState<'idle' | 'analyzing'>('idle');
         const [analysisMessage, setAnalysisMessage] = useState("קורא את המסמך...");
+        const [activePlatform, setActivePlatform] = useState(platforms[0].id);
         const [emailStatus, setEmailStatus] = useState<'idle' | 'waiting' | 'detected'>('idle');
         const { user } = useAuth();
 
@@ -46,7 +101,6 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                 const startTime = Timestamp.now();
                 setEmailStatus('waiting');
 
-                // Listen for new trips from this user with source="email"
                 const q = query(
                         collection(db, 'users', user.uid, 'trips'),
                         where('source', '==', 'email'),
@@ -58,9 +112,8 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                 const unsubscribe = onSnapshot(q, (snapshot) => {
                         if (!snapshot.empty) {
                                 setEmailStatus('detected');
-                                // Delay slightly for effect then proceed
                                 setTimeout(() => {
-                                        onComplete([]); // Proceed with empty file list (it's in DB)
+                                        onComplete([]);
                                 }, 2000);
                         }
                 });
@@ -80,69 +133,80 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
         const handleFiles = (newFiles: File[]) => {
                 setFiles(newFiles);
                 setAnalysisState('analyzing');
-                // Simulate analysis for now
                 setTimeout(() => {
                         onComplete(newFiles);
                 }, 4000);
         };
 
+        const currentPlatform = platforms.find(p => p.id === activePlatform) || platforms[0];
+
         return (
-                <div className="w-full max-w-5xl mx-auto h-full flex flex-col" dir="rtl">
-                        <div className="text-center mb-6">
-                                <h2 className="text-3xl font-black text-brand-navy mb-2">בואו נעשה קצת קסמים</h2>
-                                <p className="text-slate-500">אנחנו נסרוק את המסמכים שלכם ונבנה את התוכנית עבורכם.</p>
+                <div className="w-full max-w-5xl mx-auto h-full flex flex-col pt-2" dir="rtl">
+
+                        {/* Header Area */}
+                        <div className="text-center mb-4 flex-shrink-0 px-4">
+                                <h2 className="text-2xl md:text-3xl font-black text-brand-navy mb-1">בואו נעשה קצת קסמים ✨</h2>
+                                <p className="text-slate-500 text-sm md:text-base">העלו את אישורי ההזמנה שלכם (PDF) וה-AI יבנה לכם את הטיול.</p>
                         </div>
 
-                        <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-                                {/* Tabs */}
-                                <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
-                                        <button
-                                                onClick={() => setActiveTab('upload')}
-                                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'upload' ? 'bg-white text-brand-action shadow-sm' : 'text-slate-500 hover:text-brand-navy'}`}
-                                        >
-                                                העלאת PDF
-                                        </button>
-                                        <button
-                                                onClick={() => setActiveTab('email')}
-                                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'email' ? 'bg-white text-brand-action shadow-sm' : 'text-slate-500 hover:text-brand-navy'}`}
-                                        >
-                                                העברת אימייל
-                                        </button>
+                        {/* Main Layout */}
+                        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+
+                                {/* Tabs Switcher */}
+                                <div className="flex justify-center mb-4 flex-shrink-0 px-4">
+                                        <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
+                                                <button
+                                                        onClick={() => setActiveTab('upload')}
+                                                        className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'upload' ? 'bg-white text-brand-action shadow-sm scale-105' : 'text-slate-400 hover:text-brand-navy'}`}
+                                                >
+                                                        <UploadCloud className="w-4 h-4" />
+                                                        העלאת PDF
+                                                </button>
+                                                <button
+                                                        onClick={() => setActiveTab('email')}
+                                                        className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'email' ? 'bg-white text-brand-action shadow-sm scale-105' : 'text-slate-400 hover:text-brand-navy'}`}
+                                                >
+                                                        <Mail className="w-4 h-4" />
+                                                        העברת אימייל
+                                                </button>
+                                        </div>
                                 </div>
 
-                                <AnimatePresence mode="wait">
-                                        {activeTab === 'upload' ? (
-                                                <motion.div
-                                                        key="upload"
-                                                        initial={{ opacity: 0, x: -20 }}
-                                                        animate={{ opacity: 1, x: 0 }}
-                                                        exit={{ opacity: 0, x: 20 }}
-                                                        className="w-full overflow-y-auto max-h-[75vh] px-4 scrollbar-hide pb-10"
-                                                >
-                                                        {analysisState === 'idle' ? (
-                                                                <div className="space-y-6">
-                                                                        <GlassCard
-                                                                                className={`
-                                                h-64 border-2 border-dashed flex flex-col items-center justify-center
-                                                transition-all duration-300
-                                                ${isDragging ? 'border-brand-action bg-brand-action/5 scale-[1.02]' : 'border-slate-300 hover:border-brand-action/50'}
+                                {/* Content Area - Scrollable */}
+                                <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8 scrollbar-hide">
+                                        <AnimatePresence mode="wait">
+                                                {activeTab === 'upload' ? (
+                                                        <motion.div
+                                                                key="upload"
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                exit={{ opacity: 0, y: -10 }}
+                                                                className="space-y-6 max-w-3xl mx-auto"
+                                                        >
+                                                                {analysisState === 'idle' ? (
+                                                                        <>
+                                                                                {/* Drop Zone */}
+                                                                                <GlassCard
+                                                                                        className={`
+                                                relative h-56 border-2 border-dashed flex flex-col items-center justify-center
+                                                transition-all duration-300 group
+                                                ${isDragging ? 'border-brand-action bg-brand-action/5 scale-[1.02]' : 'border-slate-300 hover:border-brand-action/50 hover:bg-white/80'}
                                             `}
-                                                                        >
-                                                                                <div
-                                                                                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                                                                                        onDragLeave={() => setIsDragging(false)}
-                                                                                        onDrop={handleDrop}
-                                                                                        className="w-full h-full flex flex-col items-center justify-center p-6"
                                                                                 >
-                                                                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3">
-                                                                                                <UploadCloud className="w-6 h-6 text-brand-action" />
-                                                                                        </div>
-                                                                                        <h3 className="text-lg font-bold text-brand-navy mb-1">גררו אישור הזמנה (PDF)</h3>
-                                                                                        <p className="text-slate-400 text-xs mb-4 text-center">
-                                                                                                טיסות, מלונות או מסלולים מ-Booking, Airbnb וכו'.
-                                                                                        </p>
+                                                                                        <div
+                                                                                                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                                                                                                onDragLeave={() => setIsDragging(false)}
+                                                                                                onDrop={handleDrop}
+                                                                                                className="absolute inset-0 z-10"
+                                                                                        />
 
-                                                                                        <label className="cursor-pointer group relative">
+                                                                                        <div className="w-16 h-16 bg-blue-50 group-hover:bg-blue-100 rounded-2xl flex items-center justify-center mb-4 transition-colors">
+                                                                                                <UploadCloud className="w-8 h-8 text-brand-action" />
+                                                                                        </div>
+                                                                                        <h3 className="text-xl font-bold text-brand-navy mb-1">גררו לכאן קבצים</h3>
+                                                                                        <p className="text-slate-400 text-sm mb-6">או בחרו קבצים מהמחשב (PDF בלבד)</p>
+
+                                                                                        <label className="relative z-20 cursor-pointer">
                                                                                                 <input
                                                                                                         type="file"
                                                                                                         accept=".pdf"
@@ -150,164 +214,159 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                                                                                                         onChange={(e) => e.target.files && handleFiles(Array.from(e.target.files))}
                                                                                                         className="sr-only"
                                                                                                 />
-                                                                                                <div className="bg-brand-action text-white px-10 py-3 rounded-2xl font-black text-sm hover:scale-105 active:scale-95 transition-all shadow-lg shadow-brand-action/20">
-                                                                                                        בחירת קבצים
+                                                                                                <div className="bg-brand-action text-white px-8 py-2.5 rounded-xl font-bold text-sm hover:bg-brand-action/90 shadow-lg shadow-brand-action/20 transition-all transform active:scale-95 flex items-center gap-2">
+                                                                                                        <UploadCloud className="w-4 h-4" /> בחירת קבצים
                                                                                                 </div>
                                                                                         </label>
+                                                                                </GlassCard>
+
+                                                                                {/* Separator */}
+                                                                                <div className="flex items-center gap-4 text-slate-300">
+                                                                                        <div className="h-px bg-slate-200 flex-1"></div>
+                                                                                        <span className="text-xs font-bold uppercase tracking-wider">איך מורידים את ה-PDF?</span>
+                                                                                        <div className="h-px bg-slate-200 flex-1"></div>
                                                                                 </div>
-                                                                        </GlassCard>
 
-                                                                        {/* Platform Help Guide */}
-                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
-                                                                                {[
-                                                                                        {
-                                                                                                name: 'Booking.com',
-                                                                                                icon: '🏨',
-                                                                                                steps: ['הזמנות שלי', 'בחרו מלון', 'הצגת אישור', 'הדפסה ל-PDF']
-                                                                                        },
-                                                                                        {
-                                                                                                name: 'Airbnb',
-                                                                                                icon: '🏠',
-                                                                                                steps: ['נסיעות', 'פרטי נסיעה', 'קבלת קבלה', 'שמור כ-PDF']
-                                                                                        },
-                                                                                        {
-                                                                                                name: 'Skyscanner',
-                                                                                                icon: '✈️',
-                                                                                                steps: ['אימייל אישור', 'הדפס אישור', 'שמור כ-PDF', 'העלו את הקובץ']
-                                                                                        },
-                                                                                        {
-                                                                                                name: 'Trip.com',
-                                                                                                icon: '🌏',
-                                                                                                steps: ['הזמנות', 'פרטי הזמנה', 'ייצא ל-PDF', 'שמור והעלו']
-                                                                                        }
-                                                                                ].map((p) => (
-                                                                                        <div key={p.name} className="bg-white/60 border border-slate-200 p-4 rounded-2xl group hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
-                                                                                                <div className="flex items-center gap-2 mb-2">
-                                                                                                        <span className="text-2xl filter drop-shadow-sm">{p.icon}</span>
-                                                                                                        <h4 className="font-black text-brand-navy text-sm leading-tight">{p.name}</h4>
-                                                                                                </div>
-                                                                                                <ul className="space-y-1">
-                                                                                                        {p.steps.map((step, idx) => (
-                                                                                                                <li key={idx} className="flex items-start gap-1.5 text-[11px] text-slate-500 font-bold leading-tight">
-                                                                                                                        <span className="w-4 h-4 rounded-full bg-blue-50 text-blue-500 text-[9px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                                                                                                {idx + 1}
-                                                                                                                        </span>
-                                                                                                                        <span>{step}</span>
-                                                                                                                </li>
-                                                                                                        ))}
-                                                                                                </ul>
+                                                                                {/* Platform Guides */}
+                                                                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                                                                        {/* Platform Selector Tabs */}
+                                                                                        <div className="flex overflow-x-auto p-2 gap-2 border-b border-slate-100 scrollbar-hide">
+                                                                                                {platforms.map(p => {
+                                                                                                        const Icon = p.icon;
+                                                                                                        const isActive = activePlatform === p.id;
+                                                                                                        return (
+                                                                                                                <button
+                                                                                                                        key={p.id}
+                                                                                                                        onClick={() => setActivePlatform(p.id)}
+                                                                                                                        className={`
+                                                                flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all text-sm
+                                                                ${isActive
+                                                                                                                                        ? `${p.color} text-white shadow-md`
+                                                                                                                                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}
+                                                            `}
+                                                                                                                >
+                                                                                                                        <Icon className="w-4 h-4" />
+                                                                                                                        {p.name}
+                                                                                                                </button>
+                                                                                                        );
+                                                                                                })}
                                                                                         </div>
-                                                                                ))}
-                                                                        </div>
-                                                                </div>
-                                                        ) : (
-                                                                <GlassCard className="h-80 flex flex-col items-center justify-center">
-                                                                        {/* Shimmering Skeleton Loader simulation */}
-                                                                        <div className="w-64 space-y-4 mb-8">
-                                                                                <div className="h-4 bg-slate-200 rounded-full w-3/4 animate-pulse mx-auto" />
-                                                                                <div className="h-4 bg-slate-200 rounded-full w-full animate-pulse" />
-                                                                                <div className="h-4 bg-slate-200 rounded-full w-5/6 animate-pulse mx-auto" />
-                                                                        </div>
 
-                                                                        <div className="flex flex-col items-center gap-3">
-                                                                                <Loader2 className="w-8 h-8 text-brand-action animate-spin" />
-                                                                                <motion.p
-                                                                                        key={analysisMessage}
-                                                                                        initial={{ opacity: 0, y: 10 }}
-                                                                                        animate={{ opacity: 1, y: 0 }}
-                                                                                        className="text-brand-navy font-bold text-lg"
-                                                                                >
-                                                                                        {analysisMessage}
-                                                                                </motion.p>
-                                                                        </div>
-                                                                </GlassCard>
-                                                        )}
-                                                </motion.div>
-                                        ) : (
-                                                <motion.div
-                                                        key="email"
-                                                        initial={{ opacity: 0, x: 20 }}
-                                                        animate={{ opacity: 1, x: 0 }}
-                                                        exit={{ opacity: 0, x: -20 }}
-                                                        className="w-full overflow-y-auto max-h-[75vh] px-4 scrollbar-hide pb-10"
-                                                >
-                                                        <GlassCard className="p-8 text-center flex flex-col items-center">
-                                                                <div className="w-16 h-16 bg-gradient-to-tr from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-purple-500/20">
-                                                                        <Mail className="w-8 h-8 text-white" />
-                                                                </div>
-                                                                <h3 className="text-xl font-bold text-brand-navy mb-4">העבירו לנו את אישור ההזמנה במייל</h3>
-                                                                <p className="text-slate-500 mb-6 text-sm">
-                                                                        שלחו את אישורי ההזמנה ישירות לסוכן ה-AI שלנו.
-                                                                </p>
-
-                                                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-3 w-full mb-6 group cursor-pointer hover:border-brand-action/30 transition-colors"
-                                                                        onClick={() => {
-                                                                                navigator.clipboard.writeText("travelplanneraiagent@gmail.com");
-                                                                        }}
-                                                                >
-                                                                        <code className="flex-1 font-mono text-slate-700 text-sm">travelplanneraiagent@gmail.com</code>
-                                                                        <span className="text-xs font-bold text-brand-action opacity-0 group-hover:opacity-100 transition-opacity uppercase">העתקה</span>
-                                                                </div>
-
-                                                                {/* Real-time Status Area */}
-                                                                <div className="w-full mb-8">
-                                                                        <AnimatePresence mode="wait">
-                                                                                {emailStatus === 'waiting' ? (
-                                                                                        <motion.div
-                                                                                                key="waiting"
-                                                                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                                                                animate={{ opacity: 1, scale: 1 }}
-                                                                                                className="flex flex-col items-center p-6 bg-blue-50/50 rounded-2xl border border-blue-100/50"
-                                                                                        >
-                                                                                                <div className="relative mb-3">
-                                                                                                        <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20" />
-                                                                                                        <div className="relative bg-blue-500 p-3 rounded-full">
-                                                                                                                <Loader2 className="w-6 h-6 text-white animate-spin" />
-                                                                                                        </div>
+                                                                                        {/* Guide Content */}
+                                                                                        <div className="p-6 bg-slate-50/50">
+                                                                                                <div className="flex flex-col md:flex-row items-start gap-4">
+                                                                                                        {currentPlatform.steps.map((step, idx) => {
+                                                                                                                const StepIcon = step.icon;
+                                                                                                                return (
+                                                                                                                        <div key={idx} className="flex-1 w-full bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center md:flex-col md:text-center gap-3">
+                                                                                                                                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${currentPlatform.color} bg-opacity-10 flex items-center justify-center flex-shrink-0`}>
+                                                                                                                                        <StepIcon className={`w-4 h-4 md:w-5 md:h-5 ${currentPlatform.textColor}`} />
+                                                                                                                                </div>
+                                                                                                                                <div className="flex-1">
+                                                                                                                                        <div className="font-bold text-brand-navy text-sm">{step.text}</div>
+                                                                                                                                        {step.sub && <div className="text-xs text-slate-400 mt-0.5">{step.sub}</div>}
+                                                                                                                                </div>
+                                                                                                                                {idx < currentPlatform.steps.length - 1 && (
+                                                                                                                                        <ArrowRight className="w-4 h-4 text-slate-300 md:hidden" />
+                                                                                                                                )}
+                                                                                                                        </div>
+                                                                                                                );
+                                                                                                        })}
                                                                                                 </div>
-                                                                                                <h4 className="text-blue-600 font-black text-lg">מחכה למייל שלכם...</h4>
-                                                                                                <p className="text-blue-400 text-sm">ברגע שתשלחו, הקסם יתחיל אוטומטית</p>
-                                                                                        </motion.div>
-                                                                                ) : emailStatus === 'detected' ? (
-                                                                                        <motion.div
-                                                                                                key="detected"
+                                                                                        </div>
+                                                                                </div>
+                                                                        </>
+                                                                ) : (
+                                                                        <GlassCard className="h-80 flex flex-col items-center justify-center">
+                                                                                <div className="flex flex-col items-center gap-6">
+                                                                                        <div className="relative">
+                                                                                                <div className="absolute inset-0 bg-brand-action rounded-full animate-ping opacity-20"></div>
+                                                                                                <div className="bg-white p-4 rounded-full shadow-xl relative z-10">
+                                                                                                        <Loader2 className="w-10 h-10 text-brand-action animate-spin" />
+                                                                                                </div>
+                                                                                        </div>
+                                                                                        <motion.p
+                                                                                                key={analysisMessage}
                                                                                                 initial={{ opacity: 0, y: 10 }}
                                                                                                 animate={{ opacity: 1, y: 0 }}
-                                                                                                className="flex flex-col items-center p-6 bg-emerald-50 rounded-2xl border border-emerald-100"
+                                                                                                className="text-brand-navy font-black text-xl text-center"
                                                                                         >
-                                                                                                <div className="bg-emerald-500 p-3 rounded-full mb-3 shadow-lg shadow-emerald-500/20">
-                                                                                                        <CheckCircle2 className="w-6 h-6 text-white" />
-                                                                                                </div>
-                                                                                                <h4 className="text-emerald-600 font-black text-lg">המייל התקבל! הקסם התחיל</h4>
-                                                                                                <p className="text-emerald-400 text-sm">מעבד את פרטי הטיול שלכם...</p>
-                                                                                        </motion.div>
-                                                                                ) : null}
-                                                                        </AnimatePresence>
-                                                                </div>
+                                                                                                {analysisMessage}
+                                                                                        </motion.p>
+                                                                                </div>
+                                                                        </GlassCard>
+                                                                )}
+                                                        </motion.div>
+                                                ) : (
+                                                        <motion.div
+                                                                key="email"
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                exit={{ opacity: 0, y: -10 }}
+                                                                className="max-w-2xl mx-auto"
+                                                        >
+                                                                <GlassCard className="p-8 text-center flex flex-col items-center relative overflow-hidden">
+                                                                        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
-                                                                <div className="text-right w-full bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-                                                                        <h4 className="font-black text-brand-navy text-lg mb-4 flex items-center gap-3">
-                                                                                <FileText className="w-6 h-6 text-brand-action" />
-                                                                                איך זה עובד?
-                                                                        </h4>
-                                                                        <ol className="space-y-4">
-                                                                                {[
-                                                                                        'פתחו את אימייל אישור ההזמנה שלכם (מ-Booking, Airbnb וכו\')',
-                                                                                        'לחצו על "העבר" (Forward)',
-                                                                                        'שלחו לכתובת שמופיעה למעלה',
-                                                                                        'אנחנו כבר נעדכן אתכם כאן ברגע שהמייל יגיע!'
-                                                                                ].map((step, i) => (
-                                                                                        <li key={i} className="flex items-center gap-3 text-slate-600 font-bold">
-                                                                                                <span className="w-8 h-8 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-brand-action shadow-sm">{i + 1}</span>
-                                                                                                <span className="text-sm">{step}</span>
-                                                                                        </li>
-                                                                                ))}
-                                                                        </ol>
-                                                                </div>
-                                                        </GlassCard>
-                                                </motion.div>
-                                        )}
-                                </AnimatePresence>
+                                                                        <div className="w-20 h-20 bg-gradient-to-tr from-purple-500 to-indigo-600 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-purple-500/20 rotate-3">
+                                                                                <Mail className="w-10 h-10 text-white" />
+                                                                        </div>
+
+                                                                        <h3 className="text-2xl font-black text-brand-navy mb-2">פשוט להעביר במייל 💌</h3>
+                                                                        <p className="text-slate-500 mb-8 font-medium">
+                                                                                יש לכם אישור הזמנה במייל? עשו <span className="font-bold text-slate-700">Forward</span> לכתובת שלנו:
+                                                                        </p>
+
+                                                                        <div
+                                                                                onClick={() => navigator.clipboard.writeText("travelplanneraiagent@gmail.com")}
+                                                                                className="bg-white border-2 border-slate-100 hover:border-purple-200 hover:shadow-lg rounded-2xl p-4 flex items-center gap-4 w-full mb-8 group cursor-pointer transition-all duration-300 transform hover:-translate-y-1"
+                                                                        >
+                                                                                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-purple-600 transition-colors">
+                                                                                        <Download className="w-5 h-5" />
+                                                                                </div>
+                                                                                <code className="flex-1 font-mono text-slate-700 font-bold text-left md:text-center text-sm md:text-base truncate">travelplanneraiagent@gmail.com</code>
+                                                                                <span className="text-xs font-black text-white bg-purple-600 px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all shadow-lg shadow-purple-200">העתק</span>
+                                                                        </div>
+
+                                                                        <div className="w-full bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                                                                                <div className="flex items-center gap-3 mb-4">
+                                                                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                                                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">סטטוס חיבור</span>
+                                                                                </div>
+
+                                                                                <AnimatePresence mode="wait">
+                                                                                        {emailStatus === 'waiting' ? (
+                                                                                                <motion.div
+                                                                                                        key="waiting"
+                                                                                                        initial={{ opacity: 0 }}
+                                                                                                        animate={{ opacity: 1 }}
+                                                                                                        className="flex items-center gap-3 text-brand-navy font-bold"
+                                                                                                >
+                                                                                                        <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+                                                                                                        אנחנו מחכים למייל שלכם...
+                                                                                                </motion.div>
+                                                                                        ) : emailStatus === 'detected' ? (
+                                                                                                <motion.div
+                                                                                                        key="detected"
+                                                                                                        initial={{ opacity: 0, scale: 0.9 }}
+                                                                                                        animate={{ opacity: 1, scale: 1 }}
+                                                                                                        className="flex items-center gap-3 text-emerald-600 font-black"
+                                                                                                >
+                                                                                                        <CheckCircle2 className="w-6 h-6" />
+                                                                                                        המייל התקבל! מתחילים לעבד...
+                                                                                                </motion.div>
+                                                                                        ) : (
+                                                                                                <div className="text-slate-400 text-sm font-medium">
+                                                                                                        שלחו מייל כדי לראות את הקסם קורה
+                                                                                                </div>
+                                                                                        )}
+                                                                                </AnimatePresence>
+                                                                        </div>
+                                                                </GlassCard>
+                                                        </motion.div>
+                                                )}
+                                        </AnimatePresence>
+                                </div>
                         </div>
                 </div>
         );
