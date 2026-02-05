@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { HashRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { AnimatePresence } from 'framer-motion';
 import { queryClient } from './services/queryClient';
 import { LayoutFixed as Layout } from './components/LayoutFixed';
 import { saveTrips, saveSingleTrip } from './services/storageService';
@@ -24,7 +24,14 @@ const BudgetView = React.lazy(() => import('./components/BudgetView').then(modul
 const ShoppingView = React.lazy(() => import('./components/ShoppingView').then(module => ({ default: module.ShoppingView })));
 import { JoinTripModal } from './components/JoinTripModal';
 import { AIChatOverlay } from './components/AIChatOverlay';
-import { OnboardingModal } from './components/OnboardingModal';
+import { MagicalWizard } from './components/onboarding/MagicalWizard';
+import { OnboardingModal } from './components/OnboardingModal'; // Keep for now as backup
+
+// ...
+
+// Main App Logic
+// ...
+// ... state
 
 // --- MAIN APP CONTENT (Decoupled) ---
 const AppContent: React.FC = () => {
@@ -116,6 +123,44 @@ const AppContent: React.FC = () => {
     );
   }
 
+  const handleWizardComplete = async (wizardData: any) => {
+    console.log("Wizard Complete:", wizardData);
+
+    const newTrip: Trip = {
+      id: crypto.randomUUID(),
+      name: wizardData.destination ? `Trip to ${wizardData.destination}` : "New Adventure",
+      destination: wizardData.destination || "",
+      dates: wizardData.startDate ? `${wizardData.startDate} - ${wizardData.endDate}` : "",
+      coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
+      flights: { passengerName: "", pnr: "", segments: [] },
+      hotels: [],
+      restaurants: [],
+      attractions: [],
+      itinerary: [],
+      documents: [], // TODO: Handle file uploads
+      secureNotes: [],
+      isShared: false,
+      ...(wizardData.cities && wizardData.cities.length > 0 ? {
+        itinerary: [{
+          id: crypto.randomUUID(),
+          day: 1,
+          date: wizardData.startDate || new Date().toISOString(),
+          title: `Day 1 in ${wizardData.cities[0]}`,
+          activities: []
+        }]
+      } : {})
+    };
+
+    try {
+      await saveTrips([...trips, newTrip], user?.uid);
+      setActiveTripId(newTrip.id);
+      setShowOnboarding(false); // Updated to use setShowOnboarding instead of undefined setIsOnboardingOpen
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+    } catch (error) {
+      console.error("Failed to save trip:", error);
+    }
+  };
+
   const renderContent = () => {
     if (!activeTrip) {
       return (
@@ -165,63 +210,18 @@ const AppContent: React.FC = () => {
         {renderContent()}
       </Layout>
 
-      {showOnboarding && (
-        <OnboardingModal
-          isOpen={showOnboarding}
-          onClose={() => setShowOnboarding(false)}
-          onImportTrip={(newTrip) => {
-            // Optimistic add handled by Refetch or manual QueryClient update if needed
-            // Ideally we save it, then the query refreshes.
-            saveTrips([...trips, newTrip], user?.uid).then(() => {
-              setActiveTripId(newTrip.id);
-              setShowOnboarding(false);
-              // Force refetch handled by react-query stale time or invalidation
-              queryClient.invalidateQueries({ queryKey: ['trips'] });
-            });
-          }}
-          onCreateNew={() => {
-            const newTrip: Trip = {
-              id: crypto.randomUUID(),
-              name: "New Trip",
-              dates: "",
-              destination: "",
-              coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
-              flights: { passengerName: "", pnr: "", segments: [] },
-              hotels: [],
-              restaurants: [],
-              attractions: [],
-              itinerary: [],
-              documents: [],
-              secureNotes: [],
-              isShared: false
-            };
-            saveTrips([...trips, newTrip], user?.uid).then(() => {
-              setActiveTripId(newTrip.id);
-              setShowOnboarding(false);
-              queryClient.invalidateQueries({ queryKey: ['trips'] });
-            });
-          }}
-        />
-      )}
-
-      {showAdmin && (
-        <React.Suspense fallback={null}>
-          <AdminView
-            data={trips}
-            currentTripId={activeTripId}
-            onSave={(newTrips) => saveTrips(newTrips, user?.uid).then(() => queryClient.invalidateQueries({ queryKey: ['trips'] }))}
-            onSwitchTrip={setActiveTripId}
-            onDeleteTrip={(id) => deleteTripMutation.mutate(id)}
-            onLeaveTrip={(id) => {
-              const trip = trips.find(t => t.id === id);
-              if (trip?.sharing?.shareId) {
-                leaveTripMutation.mutate({ tripId: id, shareId: trip.sharing.shareId });
-              }
-            }}
-            onClose={() => setShowAdmin(false)}
+      {/* Magical Onboarding Wizard */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <MagicalWizard
+            isOpen={showOnboarding}
+            onClose={() => setShowOnboarding(false)}
+            onComplete={handleWizardComplete}
           />
-        </React.Suspense>
-      )}
+        )}
+      </AnimatePresence>
+
+
 
       {joinShareId && (
         <JoinTripModal

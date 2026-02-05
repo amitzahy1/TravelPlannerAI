@@ -16,6 +16,12 @@ export default {
                                 'heebo': ['Heebo', 'sans-serif'],
                         },
                         colors: {
+                                // "Material You" Brand Colors
+                                brand: {
+                                        navy: '#0f172a', // Deep Slate
+                                        action: '#2563eb', // Google Blue
+                                        surface: '#ffffff',
+                                },
                                 // Semantic Glass Colors
                                 glass: {
                                         light: 'rgba(255, 255, 255, 0.65)',
@@ -36,11 +42,16 @@ export default {
                         },
                         animation: {
                                 'fade-in': 'fadeIn 0.4s ease-out forwards',
+                                'fade-in-up': 'fadeInUp 0.5s ease-out forwards', // Material Standard
                                 'scale-in': 'scaleIn 0.3s ease-out forwards',
                                 'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                                 'float': 'float 6s ease-in-out infinite',
                         },
                         keyframes: {
+                                fadeInUp: {
+                                        '0%': { opacity: '0', transform: 'translateY(15px)' },
+                                        '100%': { opacity: '1', transform: 'translateY(0)' },
+                                },
                                 fadeIn: {
                                         '0%': { opacity: '0', transform: 'translateY(10px)' },
                                         '100%': { opacity: '1', transform: 'translateY(0)' },
