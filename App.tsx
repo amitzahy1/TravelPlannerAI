@@ -44,7 +44,7 @@ const AppContent: React.FC = () => {
 
   // Local UI State
   const [currentTab, setCurrentTab] = useState('itinerary');
-  const [showAdmin, setShowAdmin] = useState(false);
+  // showAdmin removed - using 'trips' tab instead
   const [joinShareId, setJoinShareId] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -162,7 +162,8 @@ const AppContent: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (showAdmin) {
+    // Admin View is now a main tab ('trips')
+    if (currentTab === 'trips') {
       return (
         <React.Suspense fallback={
           <div className="flex flex-col items-center justify-center py-20">
@@ -182,7 +183,9 @@ const AppContent: React.FC = () => {
             }}
             onSwitchTrip={(id) => {
               setActiveTripId(id);
-              setShowAdmin(false);
+              // Ensure we stay on trips view or switch to itinerary? 
+              // User likely wants to manage the trip they just switched to, so we keep them here or move them.
+              // Let's keep them on 'trips' view for now as it acts as a dashboard.
             }}
             onDeleteTrip={(id) => deleteTripMutation.mutate(id)}
             onLeaveTrip={(id) => {
@@ -191,7 +194,7 @@ const AppContent: React.FC = () => {
                 leaveTripMutation.mutate({ tripId: id, shareId: tripToLeave.sharing.shareId });
               }
             }}
-            onClose={() => setShowAdmin(false)}
+            onClose={() => setCurrentTab('itinerary')} // Close goes back to main
           />
         </React.Suspense>
       );
@@ -238,7 +241,7 @@ const AppContent: React.FC = () => {
         onSwitchTrip={setActiveTripId}
         currentTab={currentTab}
         onSwitchTab={setCurrentTab}
-        onOpenAdmin={() => setShowAdmin(true)}
+        onOpenAdmin={() => setCurrentTab('trips')} // Backward compatibility for Layout props if needed, or remove completely if Layout accepts optional
         onUpdateTrip={(t) => updateTripMutation.mutate(t)}
         onDeleteTrip={(id) => deleteTripMutation.mutate(id)}
       >

@@ -67,6 +67,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
         }, [activeTrip]);
 
         const navItems = [
+                { id: 'trips', label: 'ניהול טיול', icon: Sparkles }, // NEW: Top priority
                 { id: 'itinerary', label: 'ראשי', icon: Map },
                 { id: 'flights', label: 'טיסות', icon: Plane },
                 { id: 'hotels', label: 'מלונות', icon: Hotel },
@@ -174,15 +175,9 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
 
                                                         <div className="w-px h-6 bg-slate-200 mx-2"></div>
 
-                                                        {/* 2. Tools (Admin, Wallet) */}
-                                                        <button
-                                                                onClick={onOpenAdmin}
-                                                                className="flex items-center gap-2 text-purple-700 bg-purple-50 hover:bg-purple-100 hover:text-purple-800 px-5 py-2.5 rounded-xl text-sm font-black transition-all border border-purple-200 shadow-sm hover:shadow-md"
-                                                        >
-                                                                <Sparkles className="w-4 h-4 text-purple-600" />
-                                                                <span>ניהול טיולים</span>
-                                                        </button>
+                                                        <div className="w-px h-6 bg-slate-200 mx-2"></div>
 
+                                                        {/* Tools (Wallet) - Admin moved to main nav */}
                                                         <button
                                                                 onClick={() => setIsWalletOpen(true)}
                                                                 className="flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-white px-3 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-slate-200 hover:shadow-sm"
@@ -228,7 +223,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         {/* 2. Key Actions */}
                                                         <div className="grid grid-cols-2 gap-3">
                                                                 <button
-                                                                        onClick={() => { onOpenAdmin(); setIsTripMenuOpen(false); }}
+                                                                        onClick={() => { onSwitchTab('trips'); setIsTripMenuOpen(false); }}
                                                                         className="flex flex-col items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 p-4 rounded-2xl transition-all"
                                                                 >
                                                                         <Sparkles className="w-6 h-6" />
@@ -320,7 +315,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                         transition={{ delay: 0.4, type: 'spring', stiffness: 300, damping: 20 }}
                                         whileHover={{ scale: 1.2, rotate: 90 }}
                                         whileTap={{ scale: 0.9 }}
-                                        onClick={onOpenAdmin}
+                                        onClick={() => onSwitchTab('trips')}
                                         className="dock-item bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30"
                                 >
                                         <Sparkles className="w-5 h-5" />
