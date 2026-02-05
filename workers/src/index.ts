@@ -282,6 +282,7 @@ function mapJsonToFirestore(data: any): any {
                         updatedAt: { timestampValue: now },
                         createdAt: { timestampValue: now },
                         importedAt: { timestampValue: now },
+                        source: { stringValue: "email" },
                         // Required Arrays (Empty to satisfy TypeScript)
                         flights: {
                                 mapValue: {

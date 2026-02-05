@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UploadCloud, Mail, FileText, ArrowRight, Loader2 } from 'lucide-react';
+import { UploadCloud, Mail, FileText, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import { RippleButton } from '../ui/RippleButton';
+import { db } from '../../services/firebaseConfig';
+import { useAuth } from '../../contexts/AuthContext';
+import { collection, query, where, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
 
 interface Step3SmartProps {
         onComplete: (files: File[]) => void;
@@ -15,6 +18,8 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
         const [files, setFiles] = useState<File[]>([]);
         const [analysisState, setAnalysisState] = useState<'idle' | 'analyzing'>('idle');
         const [analysisMessage, setAnalysisMessage] = useState("קורא את המסמך...");
+        const [emailStatus, setEmailStatus] = useState<'idle' | 'waiting' | 'detected'>('idle');
+        const { user } = useAuth();
 
         const analysisMessages = [
                 "קורא את המסמך...",
@@ -33,6 +38,35 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                         return () => clearInterval(interval);
                 }
         }, [analysisState]);
+
+        // Real-time Email Listener
+        useEffect(() => {
+                if (activeTab !== 'email' || !user) return;
+
+                const startTime = Timestamp.now();
+                setEmailStatus('waiting');
+
+                // Listen for new trips from this user with source="email"
+                const q = query(
+                        collection(db, 'users', user.uid, 'trips'),
+                        where('source', '==', 'email'),
+                        where('importedAt', '>=', startTime),
+                        orderBy('importedAt', 'desc'),
+                        limit(1)
+                );
+
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                        if (!snapshot.empty) {
+                                setEmailStatus('detected');
+                                // Delay slightly for effect then proceed
+                                setTimeout(() => {
+                                        onComplete([]); // Proceed with empty file list (it's in DB)
+                                }, 2000);
+                        }
+                });
+
+                return () => unsubscribe();
+        }, [activeTab, user, onComplete]);
 
         const handleDrop = (e: React.DragEvent) => {
                 e.preventDefault();
@@ -123,20 +157,67 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                                                                         </GlassCard>
 
                                                                         {/* Platform Help Guide */}
-                                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                                                                                 {[
-                                                                                        { name: 'Booking', icon: '🏨', guide: 'אישור הזמנה -> הדפסה ל-PDF' },
-                                                                                        { name: 'Airbnb', icon: '🏠', guide: 'פרטי טיול -> קבלת קבלה' },
-                                                                                        { name: 'Skyscanner', icon: '✈️', guide: 'ניהול הזמנה -> הורדת כרטיס' },
-                                                                                        { name: 'Trip.com', icon: '🌏', guide: 'אישור במייל -> שמירה כ-PDF' }
+                                                                                        {
+                                                                                                name: 'Booking.com',
+                                                                                                icon: '🏨',
+                                                                                                steps: [
+                                                                                                        'כנסו ל"הזמנות שלי"',
+                                                                                                        'בחרו את המלון הרצוי',
+                                                                                                        'לחצו על "הצגת אישור"',
+                                                                                                        'בתפריט (3 נקודות) בחרו "הדפסה ל-PDF"'
+                                                                                                ]
+                                                                                        },
+                                                                                        {
+                                                                                                name: 'Airbnb',
+                                                                                                icon: '🏠',
+                                                                                                steps: [
+                                                                                                        'פתחו את "נסיעות"',
+                                                                                                        'לחצו על "פרטי נסיעה"',
+                                                                                                        'גללו ל"קבלת קבלה"',
+                                                                                                        'שמרו את הדף כ-PDF במכשיר'
+                                                                                                ]
+                                                                                        },
+                                                                                        {
+                                                                                                name: 'Skyscanner',
+                                                                                                icon: '✈️',
+                                                                                                steps: [
+                                                                                                        'פתחו את אימייל אישור ההזמנה',
+                                                                                                        'לחצו על "הדפס אישור"',
+                                                                                                        'בחרו במדפסת "שמור כ-PDF"',
+                                                                                                        'העלו את הקובץ לכאן'
+                                                                                                ]
+                                                                                        },
+                                                                                        {
+                                                                                                name: 'Trip.com',
+                                                                                                icon: '🌏',
+                                                                                                steps: [
+                                                                                                        'כנסו ל"חשבון" -> "הזמנות"',
+                                                                                                        'לחצו על פרטי ההזמנה',
+                                                                                                        'בחרו באופציה "ייצא ל-PDF"',
+                                                                                                        'שמרו והעלו את הקובץ'
+                                                                                                ]
+                                                                                        }
                                                                                 ].map((p) => (
-                                                                                        <div key={p.name} className="bg-white/50 border border-slate-100 p-3 rounded-xl text-center group hover:bg-white transition-colors cursor-help relative">
-                                                                                                <span className="text-xl mb-1 block">{p.icon}</span>
-                                                                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{p.name}</span>
-                                                                                                {/* Tooltip-like guide */}
-                                                                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 bg-slate-800 text-white text-[10px] p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
-                                                                                                        {p.guide}
+                                                                                        <div key={p.name} className="bg-white/60 border border-slate-200 p-5 rounded-[1.5rem] group hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
+                                                                                                <div className="flex items-center gap-4 mb-3">
+                                                                                                        <span className="text-4xl filter drop-shadow-sm">{p.icon}</span>
+                                                                                                        <div className="text-right">
+                                                                                                                <h4 className="font-black text-brand-navy text-lg">{p.name}</h4>
+                                                                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">מדריך שלב אחר שלב</p>
+                                                                                                        </div>
                                                                                                 </div>
+                                                                                                <ul className="space-y-2">
+                                                                                                        {p.steps.map((step, idx) => (
+                                                                                                                <li key={idx} className="flex items-start gap-2 text-sm text-slate-600 font-medium">
+                                                                                                                        <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-500 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                                                                                                {idx + 1}
+                                                                                                                        </span>
+                                                                                                                        <span>{step}</span>
+                                                                                                                </li>
+                                                                                                        ))}
+                                                                                                </ul>
                                                                                         </div>
                                                                                 ))}
                                                                         </div>
@@ -182,21 +263,67 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                                                                 </p>
 
                                                                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-3 w-full mb-6 group cursor-pointer hover:border-brand-action/30 transition-colors"
-                                                                        onClick={() => navigator.clipboard.writeText("travelplanneraiagent@gmail.com")}
+                                                                        onClick={() => {
+                                                                                navigator.clipboard.writeText("travelplanneraiagent@gmail.com");
+                                                                        }}
                                                                 >
                                                                         <code className="flex-1 font-mono text-slate-700 text-sm">travelplanneraiagent@gmail.com</code>
                                                                         <span className="text-xs font-bold text-brand-action opacity-0 group-hover:opacity-100 transition-opacity uppercase">העתקה</span>
                                                                 </div>
 
-                                                                <div className="text-right w-full bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                                                                        <h4 className="font-bold text-brand-navy text-sm mb-2 flex items-center gap-2">
-                                                                                <FileText className="w-4 h-4 text-brand-action" />
-                                                                                הוראות:
+                                                                {/* Real-time Status Area */}
+                                                                <div className="w-full mb-8">
+                                                                        <AnimatePresence mode="wait">
+                                                                                {emailStatus === 'waiting' ? (
+                                                                                        <motion.div
+                                                                                                key="waiting"
+                                                                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                                                                animate={{ opacity: 1, scale: 1 }}
+                                                                                                className="flex flex-col items-center p-6 bg-blue-50/50 rounded-2xl border border-blue-100/50"
+                                                                                        >
+                                                                                                <div className="relative mb-3">
+                                                                                                        <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20" />
+                                                                                                        <div className="relative bg-blue-500 p-3 rounded-full">
+                                                                                                                <Loader2 className="w-6 h-6 text-white animate-spin" />
+                                                                                                        </div>
+                                                                                                </div>
+                                                                                                <h4 className="text-blue-600 font-black text-lg">מחכה למייל שלכם...</h4>
+                                                                                                <p className="text-blue-400 text-sm">ברגע שתשלחו, הקסם יתחיל אוטומטית</p>
+                                                                                        </motion.div>
+                                                                                ) : emailStatus === 'detected' ? (
+                                                                                        <motion.div
+                                                                                                key="detected"
+                                                                                                initial={{ opacity: 0, y: 10 }}
+                                                                                                animate={{ opacity: 1, y: 0 }}
+                                                                                                className="flex flex-col items-center p-6 bg-emerald-50 rounded-2xl border border-emerald-100"
+                                                                                        >
+                                                                                                <div className="bg-emerald-500 p-3 rounded-full mb-3 shadow-lg shadow-emerald-500/20">
+                                                                                                        <CheckCircle2 className="w-6 h-6 text-white" />
+                                                                                                </div>
+                                                                                                <h4 className="text-emerald-600 font-black text-lg">המייל התקבל! הקסם התחיל</h4>
+                                                                                                <p className="text-emerald-400 text-sm">מעבד את פרטי הטיול שלכם...</p>
+                                                                                        </motion.div>
+                                                                                ) : null}
+                                                                        </AnimatePresence>
+                                                                </div>
+
+                                                                <div className="text-right w-full bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                                                                        <h4 className="font-black text-brand-navy text-lg mb-4 flex items-center gap-3">
+                                                                                <FileText className="w-6 h-6 text-brand-action" />
+                                                                                איך זה עובד?
                                                                         </h4>
-                                                                        <ol className="list-decimal list-inside text-sm text-slate-600 space-y-1 pr-1">
-                                                                                <li>פתחו את אימייל אישור ההזמנה שלכם</li>
-                                                                                <li>העבירו (Forward) אותו לכתובת למעלה</li>
-                                                                                <li>חכו כ-30 שניות לקסם 🪄</li>
+                                                                        <ol className="space-y-4">
+                                                                                {[
+                                                                                        'פתחו את אימייל אישור ההזמנה שלכם (מ-Booking, Airbnb וכו\')',
+                                                                                        'לחצו על "העבר" (Forward)',
+                                                                                        'שלחו לכתובת שמופיעה למעלה',
+                                                                                        'אנחנו כבר נעדכן אתכם כאן ברגע שהמייל יגיע!'
+                                                                                ].map((step, i) => (
+                                                                                        <li key={i} className="flex items-center gap-3 text-slate-600 font-bold">
+                                                                                                <span className="w-8 h-8 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-brand-action shadow-sm">{i + 1}</span>
+                                                                                                <span>{step}</span>
+                                                                                        </li>
+                                                                                ))}
                                                                         </ol>
                                                                 </div>
                                                         </GlassCard>
