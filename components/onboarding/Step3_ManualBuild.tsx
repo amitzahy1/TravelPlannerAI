@@ -38,7 +38,7 @@ export const Step3_ManualBuild: React.FC<Step3ManualProps> = ({ onComplete, onBa
                                                         <Calendar className="w-4 h-4 text-brand-action" />
                                                         When are you going?
                                                 </label>
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                         <div className="relative">
                                                                 <input
                                                                         type="date"

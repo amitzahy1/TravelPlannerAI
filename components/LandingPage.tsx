@@ -43,8 +43,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                         className="absolute inset-0 w-full h-full object-cover"
                                         poster="https://images.unsplash.com/photo-1599640845513-53343599d630?auto=format&fit=crop&w=1920&q=80"
                                 >
-                                        {/* Ship sailing / Tropical Water - High Quality (Mixkit Stable) */}
-                                        <source src="https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-beach-paradise-4235-large.mp4" type="video/mp4" />
+                                        <source src="/video-bg.mp4" type="video/mp4" />
+                                        <source src="https://vjs.zencdn.net/v/oceans.mp4" type="video/mp4" />
                                 </video>
                                 {/* Gradient Overlay - Adjusted for better video visibility */}
                                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-slate-900/40" />
