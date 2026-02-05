@@ -87,15 +87,15 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
         };
 
         return (
-                <div className="w-full max-w-4xl mx-auto h-full flex flex-col" dir="rtl">
-                        <div className="text-center mb-8">
+                <div className="w-full max-w-5xl mx-auto h-full flex flex-col" dir="rtl">
+                        <div className="text-center mb-6">
                                 <h2 className="text-3xl font-black text-brand-navy mb-2">בואו נעשה קצת קסמים</h2>
                                 <p className="text-slate-500">אנחנו נסרוק את המסמכים שלכם ונבנה את התוכנית עבורכם.</p>
                         </div>
 
-                        <div className="flex-1 flex flex-col items-center justify-center">
+                        <div className="flex-1 flex flex-col items-center justify-center min-h-0">
                                 {/* Tabs */}
-                                <div className="flex bg-slate-100 p-1 rounded-xl mb-8">
+                                <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
                                         <button
                                                 onClick={() => setActiveTab('upload')}
                                                 className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'upload' ? 'bg-white text-brand-action shadow-sm' : 'text-slate-500 hover:text-brand-navy'}`}
@@ -117,47 +117,48 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                                                         initial={{ opacity: 0, x: -20 }}
                                                         animate={{ opacity: 1, x: 0 }}
                                                         exit={{ opacity: 0, x: 20 }}
-                                                        className="w-full max-w-6xl overflow-y-auto max-h-[85vh] px-4 scrollbar-hide"
+                                                        className="w-full overflow-y-auto max-h-[75vh] px-4 scrollbar-hide pb-10"
                                                 >
                                                         {analysisState === 'idle' ? (
                                                                 <div className="space-y-6">
                                                                         <GlassCard
                                                                                 className={`
-                                                h-72 border-2 border-dashed flex flex-col items-center justify-center
+                                                h-64 border-2 border-dashed flex flex-col items-center justify-center
                                                 transition-all duration-300
-                                                ${isDragging ? 'border-brand-action bg-brand-action/5 scale-105' : 'border-slate-300 hover:border-brand-action/50'}
+                                                ${isDragging ? 'border-brand-action bg-brand-action/5 scale-[1.02]' : 'border-slate-300 hover:border-brand-action/50'}
                                             `}
                                                                         >
                                                                                 <div
                                                                                         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                                                                                         onDragLeave={() => setIsDragging(false)}
                                                                                         onDrop={handleDrop}
-                                                                                        className="w-full h-full flex flex-col items-center justify-center p-8"
+                                                                                        className="w-full h-full flex flex-col items-center justify-center p-6"
                                                                                 >
-                                                                                        <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
-                                                                                                <UploadCloud className="w-8 h-8 text-brand-action" />
+                                                                                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3">
+                                                                                                <UploadCloud className="w-6 h-6 text-brand-action" />
                                                                                         </div>
-                                                                                        <h3 className="text-xl font-bold text-brand-navy mb-2">גררו אישור הזמנה (PDF)</h3>
-                                                                                        <p className="text-slate-400 text-sm mb-6 max-w-xs text-center">
+                                                                                        <h3 className="text-lg font-bold text-brand-navy mb-1">גררו אישור הזמנה (PDF)</h3>
+                                                                                        <p className="text-slate-400 text-xs mb-4 text-center">
                                                                                                 טיסות, מלונות או מסלולים מ-Booking, Airbnb וכו'.
                                                                                         </p>
-                                                                                        <div className="relative">
+
+                                                                                        <label className="cursor-pointer group relative">
                                                                                                 <input
                                                                                                         type="file"
                                                                                                         accept=".pdf"
                                                                                                         multiple
                                                                                                         onChange={(e) => e.target.files && handleFiles(Array.from(e.target.files))}
-                                                                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                                                                        className="sr-only"
                                                                                                 />
-                                                                                                <RippleButton variant="secondary" className="scale-90">
+                                                                                                <div className="bg-brand-action text-white px-10 py-3 rounded-2xl font-black text-sm hover:scale-105 active:scale-95 transition-all shadow-lg shadow-brand-action/20">
                                                                                                         בחירת קבצים
-                                                                                                </RippleButton>
-                                                                                        </div>
+                                                                                                </div>
+                                                                                        </label>
                                                                                 </div>
                                                                         </GlassCard>
 
                                                                         {/* Platform Help Guide */}
-                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full mt-4">
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
                                                                                 {[
                                                                                         {
                                                                                                 name: 'Booking.com',
@@ -180,15 +181,15 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                                                                                                 steps: ['הזמנות', 'פרטי הזמנה', 'ייצא ל-PDF', 'שמור והעלו']
                                                                                         }
                                                                                 ].map((p) => (
-                                                                                        <div key={p.name} className="bg-white/60 border border-slate-200 p-3 lg:p-4 rounded-2xl group hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
+                                                                                        <div key={p.name} className="bg-white/60 border border-slate-200 p-4 rounded-2xl group hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
                                                                                                 <div className="flex items-center gap-2 mb-2">
                                                                                                         <span className="text-2xl filter drop-shadow-sm">{p.icon}</span>
-                                                                                                        <h4 className="font-bold text-brand-navy text-xs lg:text-sm leading-tight">{p.name}</h4>
+                                                                                                        <h4 className="font-black text-brand-navy text-sm leading-tight">{p.name}</h4>
                                                                                                 </div>
                                                                                                 <ul className="space-y-1">
                                                                                                         {p.steps.map((step, idx) => (
-                                                                                                                <li key={idx} className="flex items-start gap-1.5 text-[10px] lg:text-[11px] text-slate-500 font-bold leading-tight">
-                                                                                                                        <span className="w-4 h-4 rounded-full bg-blue-50 text-blue-500 text-[8px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                                                                                <li key={idx} className="flex items-start gap-1.5 text-[11px] text-slate-500 font-bold leading-tight">
+                                                                                                                        <span className="w-4 h-4 rounded-full bg-blue-50 text-blue-500 text-[9px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
                                                                                                                                 {idx + 1}
                                                                                                                         </span>
                                                                                                                         <span>{step}</span>
@@ -228,14 +229,14 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                                                         initial={{ opacity: 0, x: 20 }}
                                                         animate={{ opacity: 1, x: 0 }}
                                                         exit={{ opacity: 0, x: -20 }}
-                                                        className="w-full max-w-6xl overflow-y-auto max-h-[85vh] px-4 scrollbar-hide"
+                                                        className="w-full overflow-y-auto max-h-[75vh] px-4 scrollbar-hide pb-10"
                                                 >
                                                         <GlassCard className="p-8 text-center flex flex-col items-center">
                                                                 <div className="w-16 h-16 bg-gradient-to-tr from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-purple-500/20">
                                                                         <Mail className="w-8 h-8 text-white" />
                                                                 </div>
                                                                 <h3 className="text-xl font-bold text-brand-navy mb-4">העבירו לנו את אישור ההזמנה במייל</h3>
-                                                                <p className="text-slate-500 mb-6">
+                                                                <p className="text-slate-500 mb-6 text-sm">
                                                                         שלחו את אישורי ההזמנה ישירות לסוכן ה-AI שלנו.
                                                                 </p>
 
@@ -298,7 +299,7 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                                                                                 ].map((step, i) => (
                                                                                         <li key={i} className="flex items-center gap-3 text-slate-600 font-bold">
                                                                                                 <span className="w-8 h-8 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-brand-action shadow-sm">{i + 1}</span>
-                                                                                                <span>{step}</span>
+                                                                                                <span className="text-sm">{step}</span>
                                                                                         </li>
                                                                                 ))}
                                                                         </ol>
