@@ -11,26 +11,30 @@ interface Step1Props {
 
 // Mock top destinations for "Chips"
 const POPULAR_DESTINATIONS = [
-        { name: "Thailand", flag: "🇹🇭" },
-        { name: "Japan", flag: "🇯🇵" },
-        { name: "Italy", flag: "🇮🇹" },
-        { name: "France", flag: "🇫🇷" },
-        { name: "USA", flag: "🇺🇸" },
-        { name: "Greece", flag: "🇬🇷" },
+        { name: "תאילנד", flag: "🇹🇭" },
+        { name: "יפן", flag: "🇯🇵" },
+        { name: "איטליה", flag: "🇮🇹" },
+        { name: "צרפת", flag: "🇫🇷" },
+        { name: "ארה\"ב", flag: "🇺🇸" },
+        { name: "יוון", flag: "🇬🇷" },
+        { name: "דובאי", flag: "🇦🇪" },
+        { name: "פורטוגל", flag: "🇵🇹" },
+        { name: "ספרד", flag: "ES" },
+        { name: "ישראל", flag: "🇮🇱" },
 ];
 
 export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData }) => {
         const [searchTerm, setSearchTerm] = useState(initialData?.destination || '');
 
-        const handleSearch = (e: React.FormEvent) => {
-                e.preventDefault();
+        const handleSearch = (e?: React.FormEvent) => {
+                if (e) e.preventDefault();
                 if (searchTerm.trim()) {
                         onNext({ destination: searchTerm });
                 }
         };
 
         return (
-                <div className="w-full max-w-2xl mx-auto text-center">
+                <div className="w-full max-w-2xl mx-auto text-center" dir="rtl">
                         {/* Header with staggered animation */}
                         <motion.div
                                 initial={{ opacity: 0, y: 20 }}
@@ -48,10 +52,10 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                 </motion.div>
 
                                 <h2 className="text-4xl md:text-5xl font-black text-brand-navy mb-4 tracking-tight">
-                                        Where is your next<br />adventure taking you?
+                                        לאן ההרפתקה הבאה<br />תיקח אתכם?
                                 </h2>
                                 <p className="text-lg text-slate-500 font-medium">
-                                        Start with a country or city. We'll handle the rest.
+                                        התחילו עם מדינה או עיר. אנחנו נדאג לכל השאר.
                                 </p>
                         </motion.div>
 
@@ -64,20 +68,20 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                 className="relative max-w-xl mx-auto mb-12"
                         >
                                 <div className="relative group">
-                                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 group-focus-within:text-brand-action transition-colors" />
+                                        <Search className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 group-focus-within:text-brand-action transition-colors" />
                                         <input
                                                 type="text"
                                                 value={searchTerm}
                                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                                placeholder="Try 'Tokyo' or 'Iceland'..."
-                                                className="w-full bg-white border border-slate-200 text-slate-800 text-xl font-medium placeholder:text-slate-300 rounded-2xl py-5 pl-14 pr-4 shadow-xl shadow-brand-navy/5 focus:outline-none focus:ring-4 focus:ring-brand-action/10 focus:border-brand-action/50 transition-all hover:shadow-2xl hover:shadow-brand-navy/10"
+                                                placeholder="נסו 'טוקיו' או 'איסלנד'..."
+                                                className="w-full bg-white border border-slate-200 text-slate-800 text-xl font-medium placeholder:text-slate-300 rounded-2xl py-5 pr-14 pl-4 shadow-xl shadow-brand-navy/5 focus:outline-none focus:ring-4 focus:ring-brand-action/10 focus:border-brand-action/50 transition-all hover:shadow-2xl hover:shadow-brand-navy/10 text-right"
                                                 autoFocus
                                         />
                                         {searchTerm && (
                                                 <button
                                                         type="button"
                                                         onClick={() => setSearchTerm('')}
-                                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                                                        className="absolute left-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
                                                 >
                                                         <X className="w-5 h-5" />
                                                 </button>
@@ -97,7 +101,7 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                                                 type="submit"
                                                                 className="px-10 py-4 text-lg shadow-brand-action/40"
                                                         >
-                                                                Continue to Plan
+                                                                המשך לתכנון
                                                         </RippleButton>
                                                 </motion.div>
                                         )}
@@ -120,8 +124,7 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                                 whileHover={{ scale: 1.05, backgroundColor: '#f1f5f9' }}
                                                 whileTap={{ scale: 0.95 }}
                                                 onClick={() => {
-                                                        setSearchTerm(dest.name);
-                                                        // Optional: auto-submit or just fill
+                                                        onNext({ destination: dest.name });
                                                 }}
                                                 className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-100 rounded-full shadow-sm text-slate-600 font-medium hover:border-brand-action/30 hover:text-brand-action transition-all"
                                         >

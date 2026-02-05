@@ -25,17 +25,17 @@ const cardVariants = {
 
 export const Step2_ChoosePath: React.FC<Step2Props> = ({ onSelect, onBack }) => {
         return (
-                <div className="w-full max-w-4xl mx-auto">
+                <div className="w-full max-w-4xl mx-auto" dir="rtl">
                         <motion.div
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className="text-center mb-12"
                         >
                                 <h2 className="text-3xl md:text-4xl font-black text-brand-navy mb-3">
-                                        How should we build this trip?
+                                        איך תרצו לבנות את הטיול?
                                 </h2>
                                 <p className="text-slate-500 font-medium">
-                                        Choose the path that suits you best.
+                                        בחרו את הדרך שמתאימה לכם ביותר.
                                 </p>
                         </motion.div>
 
@@ -57,20 +57,20 @@ export const Step2_ChoosePath: React.FC<Step2Props> = ({ onSelect, onBack }) => 
                                                 </div>
 
                                                 <h3 className="text-2xl font-bold text-brand-navy mb-3">
-                                                        Smart Import
+                                                        משיכה חכמה (Smart Import)
                                                 </h3>
                                                 <div className="bg-brand-action/10 text-brand-action px-3 py-1 rounded-full text-xs font-bold mb-4">
-                                                        RECOMMENDED
+                                                        מומלץ ✨
                                                 </div>
 
                                                 <p className="text-slate-500 leading-relaxed mb-8 flex-1">
-                                                        Upload your booking confirmations (PDFs) or forward your emails.
-                                                        Our AI will build your entire itinerary in seconds.
+                                                        העלו אישורי הזמנה (PDF) או העבירו אימיילים.
+                                                        ה-AI שלנו יבנה לכם את כל המסלול תוך שניות.
                                                 </p>
 
                                                 <div className="flex items-center text-brand-action font-bold group-hover:gap-2 transition-all">
-                                                        <span>Build it for me</span>
-                                                        <ArrowRight className="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        <span>בנה לי את הטיול</span>
+                                                        <ArrowRight className="w-4 h-4 mr-1 opacity-0 group-hover:opacity-100 transition-opacity transform rotate-180" />
                                                 </div>
                                         </GlassCard>
                                 </motion.div>
@@ -87,20 +87,20 @@ export const Step2_ChoosePath: React.FC<Step2Props> = ({ onSelect, onBack }) => 
                                                 </div>
 
                                                 <h3 className="text-2xl font-bold text-brand-navy mb-3">
-                                                        Manual Build
+                                                        תכנון ידני
                                                 </h3>
                                                 <div className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold mb-4 opacity-0">
-                                                        HIDDEN SPACER
+                                                        SPACER
                                                 </div>
 
                                                 <p className="text-slate-500 leading-relaxed mb-8 flex-1">
-                                                        Start from scratch. Pick your dates, add your cities, and craft the
-                                                        plan exactly how you want it, step by step.
+                                                        התחילו מאפס. בחרו תאריכים, הוסיפו ערים, ותכננו את הטיול
+                                                        בדיוק איך שאתם אוהבים, צעד אחר צעד.
                                                 </p>
 
                                                 <div className="flex items-center text-slate-600 font-bold group-hover:text-brand-navy group-hover:gap-2 transition-all">
-                                                        <span>I'll lead the way</span>
-                                                        <ArrowRight className="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        <span>אני אבנה בעצמי</span>
+                                                        <ArrowRight className="w-4 h-4 mr-1 opacity-0 group-hover:opacity-100 transition-opacity transform rotate-180" />
                                                 </div>
                                         </GlassCard>
                                 </motion.div>

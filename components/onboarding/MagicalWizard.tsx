@@ -20,7 +20,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
         // Animation variants for slide transition
         const slideVariants = {
                 enter: (direction: number) => ({
-                        x: direction > 0 ? 1000 : -1000,
+                        x: direction > 0 ? -1000 : 1000, // Reversed for RTL
                         opacity: 0,
                         scale: 0.95
                 }),
@@ -32,7 +32,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                 },
                 exit: (direction: number) => ({
                         zIndex: 0,
-                        x: direction < 0 ? 1000 : -1000,
+                        x: direction < 0 ? -1000 : 1000, // Reversed for RTL
                         opacity: 0,
                         scale: 0.95
                 })
@@ -66,7 +66,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
         if (!isOpen) return null;
 
         return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 font-rubik">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 font-rubik" dir="rtl">
                         {/* Backdrop */}
                         <motion.div
                                 initial={{ opacity: 0 }}
@@ -104,7 +104,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                         <AnimatePresence>
                                                                 {step > 0 && tripData.destination && (
                                                                         <motion.div
-                                                                                initial={{ opacity: 0, x: -20, scale: 0.8 }}
+                                                                                initial={{ opacity: 0, x: 20, scale: 0.8 }}
                                                                                 animate={{ opacity: 1, x: 0, scale: 1 }}
                                                                                 exit={{ opacity: 0, scale: 0.8 }}
                                                                                 className="flex items-center gap-1.5 px-2.5 py-1 md:gap-2 md:px-3 md:py-1.5 bg-slate-100 rounded-full text-[10px] md:text-xs font-bold text-brand-navy whitespace-nowrap"

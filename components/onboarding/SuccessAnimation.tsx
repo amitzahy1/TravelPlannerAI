@@ -71,9 +71,9 @@ export const SuccessAnimation: React.FC = () => {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.3 }}
                         >
-                                <h2 className="text-3xl font-black text-brand-navy mb-2">Trip Created!</h2>
+                                <h2 className="text-3xl font-black text-brand-navy mb-2">הטיול נוצר בהצלחה!</h2>
                                 <p className="text-slate-500 font-medium text-lg">
-                                        Pack your bags, we're going places.
+                                        תארזו מזוודות, אנחנו יוצאים לדרך.
                                 </p>
                         </motion.div>
                 </div>
