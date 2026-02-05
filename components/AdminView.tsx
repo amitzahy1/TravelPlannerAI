@@ -4,7 +4,7 @@ import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, 
 import { getAI, generateWithFallback } from '../services/aiService';
 import { MagicDropZone } from './MagicDropZone';
 import { ShareModal } from './ShareModal';
-import { OnboardingModal } from './OnboardingModal';
+
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../services/firebaseConfig';
 import { AlertTriangle, Calendar as CalIcon } from 'lucide-react';
@@ -13,6 +13,7 @@ import { AlertTriangle, Calendar as CalIcon } from 'lucide-react';
 // import { fetchCalendarEvents, mapEventsToTimeline } from '../services/calendarService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
+import { MagicalWizard } from './onboarding/MagicalWizard';
 
 
 interface TripSettingsModalProps {
@@ -1074,45 +1075,39 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                     />
                 )}
 
-                {/* New File-First Onboarding Modal */}
+                {/* New Magical Wizard for Trip Creation */}
                 {isWizardOpen && (
-                    <OnboardingModal
+                    <MagicalWizard
                         isOpen={true}
                         onClose={() => setIsWizardOpen(false)}
-                        onImportTrip={(newTrip) => {
-                            const updatedTrips = [...trips, newTrip];
-                            setTrips(updatedTrips);
-                            onSave(updatedTrips);
-                            setActiveTripId(newTrip.id);
-                            setIsWizardOpen(false);
-                        }}
-                        // Maintain legacy generic create support if needed, but onImportTrip handles the new flow
-                        onCreateNew={() => {
-                            // Fallback for "Manual" creation if the user clicked "Skip" in the modal
-                            // We can either let the modal handle the empty trip creation or trigger a simple default here.
-                            // The OnboardingModal's "handleLegacyCreate" logic actually calls onCreateNew if provided,
-                            // or we can make OnboardingModal return a blank trip via onImportTrip.
-                            // Current OnboardingModal implementation implementation calls onImportTrip with formatted data.
+                        onComplete={(wizardData) => {
+                            // Transform wizard data to Trip object
                             const newTrip: Trip = {
                                 id: crypto.randomUUID(),
-                                name: "New Trip",
-                                dates: "",
-                                destination: "",
+                                name: wizardData.destination ? `Trip to ${wizardData.destination}` : "New Adventure",
+                                destination: wizardData.destination || "",
+                                dates: wizardData.startDate ? `${wizardData.startDate} - ${wizardData.endDate}` : "",
                                 coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
-                                flights: { passengerName: "", pnr: "", segments: [] },
-                                hotels: [],
+                                flights: wizardData.flights || { passengerName: "", pnr: "", segments: [] },
+                                hotels: wizardData.hotels || [],
                                 restaurants: [],
                                 attractions: [],
                                 itinerary: [],
                                 documents: [],
                                 secureNotes: [],
-                                isShared: false
+                                isShared: false,
+                                ...(wizardData.cities && wizardData.cities.length > 0 ? {
+                                    itinerary: [{
+                                        id: crypto.randomUUID(),
+                                        day: 1,
+                                        date: wizardData.startDate || new Date().toISOString(),
+                                        title: `Day 1 in ${wizardData.cities[0]}`,
+                                        activities: []
+                                    }]
+                                } : {})
                             };
-                            const updatedTrips = [...trips, newTrip];
-                            setTrips(updatedTrips);
-                            onSave(updatedTrips);
-                            setActiveTripId(newTrip.id);
-                            setIsWizardOpen(false);
+
+                            handleCreateTrip(newTrip);
                         }}
                     />
                 )}
