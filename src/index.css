@@ -122,6 +122,9 @@
   @media (min-width: 768px) {
     .floating-dock {
       display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
     }
   }
 
