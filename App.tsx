@@ -162,6 +162,41 @@ const AppContent: React.FC = () => {
   };
 
   const renderContent = () => {
+    if (showAdmin) {
+      return (
+        <React.Suspense fallback={
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          </div>
+        }>
+          <AdminView
+            data={trips}
+            currentTripId={activeTripId || undefined}
+            onSave={async (updatedTrips) => {
+              try {
+                await saveTrips(updatedTrips, user?.uid);
+                queryClient.invalidateQueries({ queryKey: ['trips'] });
+              } catch (error) {
+                console.error("Failed to save trips:", error);
+              }
+            }}
+            onSwitchTrip={(id) => {
+              setActiveTripId(id);
+              setShowAdmin(false);
+            }}
+            onDeleteTrip={(id) => deleteTripMutation.mutate(id)}
+            onLeaveTrip={(id) => {
+              const tripToLeave = trips.find(t => t.id === id);
+              if (tripToLeave?.sharing?.shareId) {
+                leaveTripMutation.mutate({ tripId: id, shareId: tripToLeave.sharing.shareId });
+              }
+            }}
+            onClose={() => setShowAdmin(false)}
+          />
+        </React.Suspense>
+      );
+    }
+
     if (!activeTrip) {
       return (
         <div className="flex flex-col items-center justify-center h-full text-slate-400">
