@@ -43,8 +43,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                         className="absolute inset-0 w-full h-full object-cover"
                                         poster="https://images.unsplash.com/photo-1599640845513-53343599d630?auto=format&fit=crop&w=1920&q=80"
                                 >
-                                        {/* Ship sailing / Tropical Water - Free Stock Video */}
-                                        <source src="https://videos.pexels.com/video-files/5348902/5348902-hd_1920_1080_24fps.mp4" type="video/mp4" />
+                                        {/* Ship sailing / Tropical Water - High Quality */}
+                                        <source src="https://videos.pexels.com/video-files/3205634/3205634-uhd_2560_1440_30fps.mp4" type="video/mp4" />
                                 </video>
                                 {/* Gradient Overlay - Adjusted for better video visibility */}
                                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-slate-900/40" />
