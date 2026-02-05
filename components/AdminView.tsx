@@ -519,7 +519,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-0 md:p-6 animate-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center pt-20 pb-4 px-0 md:p-6 animate-fade-in" onClick={onClose}>
 
             <ConfirmModal
                 isOpen={!!tripToDelete}
