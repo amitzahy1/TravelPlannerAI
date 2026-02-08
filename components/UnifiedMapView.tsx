@@ -408,7 +408,59 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         buildAndGeocodeRoute();
     }, [trip, items, geocodedCache]);
 
-    // ... (Map Init useEffect skipped - no changes) ...
+    // 4. Initialize Map (Re-inserting logic that was lost)
+    useEffect(() => {
+        if (!mapContainerRef.current) return;
+        if (mapInstanceRef.current) return; // Already initialized
+
+        const map = L.map(mapContainerRef.current, {
+            zoomControl: false,
+            attributionControl: false
+        }).setView([15.123, 120.67], 5); // Default view (Philippines/Asia general)
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(map);
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // Marker Cluster Group
+        const markerClusterGroup = L.markerClusterGroup({
+            showCoverageOnHover: false,
+            maxClusterRadius: 40,
+            iconCreateFunction: (cluster) => {
+                return L.divIcon({
+                    html: `<div style="background-color: #3b82f6; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: 'Rubik'; font-size: 14px; border: 2px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">${cluster.getChildCount()}</div>`,
+                    className: '',
+                    iconSize: [32, 32]
+                });
+            }
+        });
+
+        // Route Layer Group
+        const routeGroup = L.layerGroup().addTo(map);
+
+        map.addLayer(markerClusterGroup);
+
+        mapInstanceRef.current = map;
+        markersRef.current = markerClusterGroup;
+        routeLayerRef.current = routeGroup;
+
+        // Force resize after init
+        setTimeout(() => map.invalidateSize(), 200);
+
+        // ResizeObserver for robust layout handling
+        const resizeObserver = new ResizeObserver(() => {
+            map.invalidateSize();
+        });
+        resizeObserver.observe(mapContainerRef.current);
+
+        return () => {
+            resizeObserver.disconnect();
+            map.remove();
+            mapInstanceRef.current = null;
+        };
+    }, []);
 
     // 5. Update Map Markers & View
     useEffect(() => {
@@ -418,7 +470,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
 
         if (!map || !markerLayer || !routeLayer) return;
 
-        setTimeout(() => map.invalidateSize(), 100);
+        // Ensure size is correct on update
+        map.invalidateSize();
 
         markerLayer.clearLayers();
         routeLayer.clearLayers();
