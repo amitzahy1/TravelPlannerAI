@@ -225,6 +225,23 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
 Role: You are the Lead Data Architect for a Travel App.
 Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
 
+--- EXPERT PARSING RULES (ISRAIR & LOW COST) ---
+You are dealing with MESSY PDF/TEXT outputs where columns often collapse.
+1. **VISUAL LAYOUT AWARENESS**:
+   - IF you see: "30.03.2026 19:30 23:05 Tel Aviv Tbilisi"
+   - INFER: Departure=19:30 (Tel Aviv), Arrival=23:05 (Tbilisi).
+   - The cities usually follow the times.
+2. **FLIGHT CODES**:
+   - Detect "6H" (Israir) followed by 3 digits (e.g., "6H 897", "6H:897", "6H897").
+   - Airline Code: "6H", Flight Number: "897".
+3. **EUROPEAN DATES (CRITICAL)**:
+   - Convert "DD.MM.YYYY" (e.g., 30.03.2026) -> "2026-03-30".
+   - Convert "DD/MM/YYYY" -> "YYYY-MM-DD".
+4. **PASSENGER LISTS**:
+   - Look for "1. Name Surname", "2. Name Surname".
+5. **NOISE FILTER**:
+   - IGNORE "Tax Invoice", "Vat", "Original", "Terms and Conditions".
+
 --- CRITICAL CONTEXT: ANCHOR YEAR 2026 ---
 1. **CURRENT REFERENCE**: Today is Jan 2026.
 2. **FUTURE BIAS**: All flights are for 2026 or 2027.
@@ -237,7 +254,7 @@ Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
 --- OUTPUT JSON SCHEMA ---
 Return ONLY raw JSON.
 For every date, you MUST provide:
-1. "rawText": The exact string you saw in the file (e.g., "28JAN 1930").
+1. "rawText": The exact string you saw in the file (e.g., "05/04/2026").
 2. "isoDate": The strictly formatted ISO string (YYYY-MM-DDTHH:mm:ss).
 
 Structure:
@@ -254,8 +271,8 @@ Structure:
       {
         "type": "flight",
         "data": {
-          "airline": "String",
-          "flightNumber": "String",
+          "airline": "String (e.g. Israir, El Al)",
+          "flightNumber": "String (e.g. 6H 897)",
           "totalPrice": Number,
           "currency": "String (e.g. USD, EUR, ILS)",
           "departure": {
