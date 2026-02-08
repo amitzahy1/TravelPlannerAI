@@ -21,7 +21,7 @@ export const useTrips = () => {
                 queryKey: TRIP_KEYS.lists(),
                 queryFn: async () => {
                         if (!user) return [];
-                        return await loadTrips(user.uid);
+                        return await loadTrips(user.uid, user.email || undefined);
                 },
                 enabled: !!user,
                 staleTime: 1000 * 60 * 5, // 5 min

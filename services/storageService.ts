@@ -1,6 +1,6 @@
 import { Trip } from '../types';
 import { INITIAL_DATA } from '../constants';
-import { getUserTrips, saveTrip, saveAllTrips, deleteTrip as firestoreDeleteTrip, deleteSharedTripRef, userHasTrips, getUserSharedTrips, getSharedTrip, updateSharedTrip, leaveSharedTrip } from './firestoreService';
+import { getUserTrips, getTripsByEmail, saveTrip, saveAllTrips, deleteTrip as firestoreDeleteTrip, deleteSharedTripRef, userHasTrips, getUserSharedTrips, getSharedTrip, updateSharedTrip, leaveSharedTrip } from './firestoreService';
 
 const STORAGE_KEY = 'travel_app_data_v1';
 
@@ -41,10 +41,10 @@ export const saveTripsToLocal = (trips: Trip[]): void => {
 };
 
 /**
- * Load trips - uses Firestore if userId provided, otherwise localStorage
+ * Load trips - Hybrid Strategy (UID + Email)
  * CRITICAL: New users MUST start with empty trips, not demo data
  */
-export const loadTrips = async (userId?: string): Promise<Trip[]> => {
+export const loadTrips = async (userId?: string, userEmail?: string): Promise<Trip[]> => {
   if (!userId) {
     console.log('📦 [StorageService] No userId - loading from localStorage');
     const localTrips = loadTripsFromLocal();
@@ -53,20 +53,35 @@ export const loadTrips = async (userId?: string): Promise<Trip[]> => {
   }
 
   try {
-    console.log(`🔥 [StorageService] Loading trips for user: ${userId}`);
+    console.log(`🔥 [StorageService] Loading trips for user: ${userId} (Email: ${userEmail})`);
 
-    // 1. Fetch Private Trips
-    // 1. Fetch Private Trips
-    const rawPrivateTrips = await getUserTrips(userId);
+    // 1. Fetch Private Trips (Standard UID Query)
+    const uidPromise = getUserTrips(userId);
+
+    // 2. Fetch Orphaned Trips (Email Query)
+    const emailPromise = userEmail ? getTripsByEmail(userEmail) : Promise.resolve([]);
+
+    const [rawPrivateTrips, emailTrips] = await Promise.all([uidPromise, emailPromise]);
+
+    // MERGE STRATEGY: Combine lines based on ID to remove duplicates
+    const allRawTripsMap = new Map<string, Trip>();
+
+    [...rawPrivateTrips, ...emailTrips].forEach(t => {
+      allRawTripsMap.set(t.id, t);
+    });
+
+    const mergedRawTrips = Array.from(allRawTripsMap.values());
+    console.log(`🔥 [StorageService] Merged: ${rawPrivateTrips.length} UID trips + ${emailTrips.length} Email trips => ${mergedRawTrips.length} Total Unique`);
+
     // FORCE OWNERSHIP & PRIVATE STATUS: Private trips in my collection are MINE.
     // We override isShared to false to fix "Zombie Legacy Trips" that think they are shared but have no sharing data.
-    const privateTrips = rawPrivateTrips.map(t => ({
+    const privateTrips = mergedRawTrips.map(t => ({
       ...t,
       userId,
       isShared: false,
       sharing: undefined
     }));
-    console.log(`🔥 [StorageService] Found ${privateTrips.length} private trips (Sanitized)`);
+    console.log(`🔥 [StorageService] Finalized ${privateTrips.length} private trips`);
 
     // 2. Fetch Shared Trips (Project Genesis 2.0)
     const sharedRefs = await getUserSharedTrips(userId);

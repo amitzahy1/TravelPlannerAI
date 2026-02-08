@@ -55,6 +55,33 @@ export const getUserTrips = async (userId: string): Promise<Trip[]> => {
 };
 
 /**
+ * Get trips by ownerEmail (Collection Group Query)
+ * Solves "Orphaned Data" where Worker uses a different UID than Frontend
+ */
+import { collectionGroup, where } from 'firebase/firestore';
+
+export const getTripsByEmail = async (email: string): Promise<Trip[]> => {
+  if (!email) return [];
+  try {
+    const tripsQuery = query(
+      collectionGroup(db, 'trips'),
+      where('ownerEmail', '==', email),
+      orderBy('updatedAt', 'desc')
+    );
+
+    const querySnapshot = await getDocs(tripsQuery);
+    const trips: Trip[] = [];
+    querySnapshot.forEach((doc) => {
+      trips.push({ ...doc.data(), id: doc.id } as Trip);
+    });
+    return trips;
+  } catch (error) {
+    console.warn('⚠️ [FirestoreService] CollectionGroup query failed (requires index?):', error);
+    return [];
+  }
+};
+
+/**
  * Save or update a single trip for a user
  */
 export const saveTrip = async (userId: string, trip: Trip): Promise<void> => {

@@ -477,7 +477,11 @@ function mapJsonToFirestore(data: any): any {
         const stringFields = ['name', 'destination', 'startDate', 'endDate', 'dates', 'coverImage', 'source', 'ownerEmail', 'userId', 'status'];
         const timeFields = ['createdAt', 'updatedAt', 'importedAt'];
         stringFields.forEach(k => { if (data[k]) fields[k] = { stringValue: data[k] } });
-        timeFields.forEach(k => { if (data[k]) fields[k] = { timestampValue: data[k] || new Date().toISOString() } });
+
+        // CRITICAL FIX: Always ensure timestamps exist, otherwise Firestore orderBy() hides the doc
+        timeFields.forEach(k => {
+                fields[k] = { timestampValue: data[k] || new Date().toISOString() };
+        });
         ['hotels', 'restaurants', 'attractions', 'itinerary', 'documents'].forEach(k => {
                 const arr = data[k] || [];
                 fields[k] = { arrayValue: { values: arr.map((item: any) => ({ mapValue: { fields: mapSimpleObject(item) } })) } };
