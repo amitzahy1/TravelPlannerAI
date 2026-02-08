@@ -142,23 +142,33 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
                 let finalTripId = "";
                 let finalAction = "";
 
+                // ENRICH DATA: Explicitly link ownership for Frontend Visibility
+                const enrichedData = {
+                        ...analysis.data,
+                        ownerEmail: senderEmail,
+                        userId: uid,
+                        status: 'confirmed',
+                        collaborators: [],
+                        source: 'email_import'
+                };
+
                 if (analysis.action === 'update' && analysis.tripId) {
                         logs.push(`Updating Trip ${analysis.tripId}...`);
                         const originalTrip = await getTripById(uid, analysis.tripId, env.FIREBASE_PROJECT_ID, token);
 
                         if (originalTrip) {
-                                const mergedTrip = mergeTripData(originalTrip, analysis.data);
+                                const mergedTrip = mergeTripData(originalTrip, enrichedData);
                                 await updateTrip(uid, analysis.tripId, mergedTrip, env.FIREBASE_PROJECT_ID, token);
                                 finalTripId = analysis.tripId;
                                 finalAction = "update";
                         } else {
                                 // Fallback to create if ID invalid
                                 finalAction = 'create';
-                                finalTripId = await createTrip(uid, analysis.data, env.FIREBASE_PROJECT_ID, token);
+                                finalTripId = await createTrip(uid, enrichedData, env.FIREBASE_PROJECT_ID, token);
                         }
                 } else {
                         logs.push("Creating New Trip...");
-                        finalTripId = await createTrip(uid, analysis.data, env.FIREBASE_PROJECT_ID, token);
+                        finalTripId = await createTrip(uid, enrichedData, env.FIREBASE_PROJECT_ID, token);
                         finalAction = "create";
                 }
 
@@ -464,7 +474,7 @@ async function updateTrip(uid: string, tripId: string, data: any, projectId: str
 
 function mapJsonToFirestore(data: any): any {
         const fields: any = {};
-        const stringFields = ['name', 'destination', 'startDate', 'endDate', 'dates', 'coverImage', 'source'];
+        const stringFields = ['name', 'destination', 'startDate', 'endDate', 'dates', 'coverImage', 'source', 'ownerEmail', 'userId', 'status'];
         const timeFields = ['createdAt', 'updatedAt', 'importedAt'];
         stringFields.forEach(k => { if (data[k]) fields[k] = { stringValue: data[k] } });
         timeFields.forEach(k => { if (data[k]) fields[k] = { timestampValue: data[k] || new Date().toISOString() } });
@@ -472,6 +482,16 @@ function mapJsonToFirestore(data: any): any {
                 const arr = data[k] || [];
                 fields[k] = { arrayValue: { values: arr.map((item: any) => ({ mapValue: { fields: mapSimpleObject(item) } })) } };
         });
+
+        // Explicitly handle collaborators (Array of Strings)
+        if (data.collaborators && Array.isArray(data.collaborators)) {
+                fields.collaborators = {
+                        arrayValue: { values: data.collaborators.map((c: string) => ({ stringValue: c })) }
+                };
+        } else {
+                fields.collaborators = { arrayValue: { values: [] } };
+        }
+
         if (data.flights) {
                 fields.flights = {
                         mapValue: {
