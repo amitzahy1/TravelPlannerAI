@@ -321,10 +321,22 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
         });
 
         const json: any = await res.json();
+
+        if (!res.ok) {
+                console.error("Gemini API Error:", json);
+                throw new Error(`Gemini API Error: ${res.statusText} - ${JSON.stringify(json)}`);
+        }
+
         try {
+                if (!json.candidates || !json.candidates[0] || !json.candidates[0].content) {
+                        throw new Error(`Gemini Validation Error: No candidates returned. Response: ${JSON.stringify(json)}`);
+                }
                 const txt = json.candidates[0].content.parts[0].text;
                 return JSON.parse(txt);
-        } catch (e) { console.error(e); return null; }
+        } catch (e: any) {
+                console.error("Gemini Parse Error:", e);
+                throw new Error(`Gemini Parse Error: ${e.message}`);
+        }
 }
 
 // --- FIRESTORE MAPPING ---
