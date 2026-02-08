@@ -60,16 +60,20 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
         const logs: string[] = [`Processing email from ${from} at ${new Date().toISOString()}`];
 
         try {
-                // 1. Auth & User Lookup
+                // 1. Auth
                 logs.push("Authenticating...");
                 const token = await getFirebaseAccessToken(env, logs);
                 if (!token) throw new Error("Firebase Auth Failed");
 
                 const senderEmail = extractEmail(from);
                 const uid = await getUserByEmail(senderEmail, env.FIREBASE_PROJECT_ID, token);
+
                 if (!uid) {
+                        console.error(`User not found for ${senderEmail}`);
                         return { success: false, message: `User not found: ${senderEmail}`, logs };
                 }
+
+                await logToSystem(uid, env.FIREBASE_PROJECT_ID, token, "Email Received", { from: senderEmail, subject: "N/A" });
                 logs.push(`Identify User: ${uid}`);
 
                 // 2. Parse Email
@@ -79,13 +83,12 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
                 const email = await parser.parse(rawBuffer);
 
                 const textBody = email.text || email.html || "";
-                // Filter meaningful attachments
                 const attachments = email.attachments.filter(att =>
                         att.mimeType === "application/pdf" || att.mimeType.startsWith("image/")
                 );
                 logs.push(`Attachments found: ${attachments.length}`);
 
-                // 3. Get Existing Trips (Fetch summaries for context)
+                // 3. Get Existing Trips
                 const existingTrips = await getUserFutureTrips(uid, env.FIREBASE_PROJECT_ID, token);
 
                 // 4. Gemini Extraction
@@ -97,7 +100,12 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
                         env.GEMINI_API_KEY
                 );
 
-                if (!analysis) throw new Error("Gemini Analysis Failed");
+                if (!analysis) {
+                        await logToSystem(uid, env.FIREBASE_PROJECT_ID, token, "Gemini Analysis Failed", { error: "Returned null" });
+                        throw new Error("Gemini Analysis Failed");
+                }
+
+                await logToSystem(uid, env.FIREBASE_PROJECT_ID, token, "AI Analysis Complete", { action: analysis.action, tripId: analysis.tripId || "NEW", dataPreview: analysis.data.name });
                 logs.push(`Action: ${analysis.action.toUpperCase()} ${analysis.tripId ? `(ID: ${analysis.tripId})` : ''}`);
 
                 let finalTripId = analysis.tripId;
@@ -112,10 +120,12 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
                                 const mergedTrip = mergeTripData(originalTrip, analysis.data);
                                 logs.push("Merging data...");
                                 await updateTrip(uid, analysis.tripId, mergedTrip, env.FIREBASE_PROJECT_ID, token);
+                                await logToSystem(uid, env.FIREBASE_PROJECT_ID, token, "Trip Updated (Merge)", { tripId: analysis.tripId });
                                 logs.push("Merger saved.");
                         } else {
-                                // Fallback if trip not found
+                                // Fallback
                                 logs.push("Trip not found, creating new instead.");
+                                await logToSystem(uid, env.FIREBASE_PROJECT_ID, token, "Merge Failed - Trip Not Found", { targetId: analysis.tripId });
                                 finalAction = 'create';
                                 finalTripId = await createTrip(uid, analysis.data, env.FIREBASE_PROJECT_ID, token);
                         }
@@ -123,12 +133,14 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
                         // --- CREATE FLOW ---
                         logs.push("Creating new trip...");
                         finalTripId = await createTrip(uid, analysis.data, env.FIREBASE_PROJECT_ID, token);
+                        await logToSystem(uid, env.FIREBASE_PROJECT_ID, token, "New Trip Created", { tripId: finalTripId });
                 }
 
                 return { success: true, action: finalAction, tripId: finalTripId, logs };
 
         } catch (error: any) {
                 console.error("Fatal Error:", error);
+                // Try logging failure if we have token/uid, otherwise just return
                 logs.push(`Error: ${error.message}`);
                 return { success: false, error: error.message, logs };
         }
@@ -268,6 +280,8 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
        - Return action="update" with tripId.
        - Else action="create".
 
+    IMPORTANT: For FLIGHTS, ALWAYS extract "departureTime" and "arrivalTime" in HH:mm format (24h).
+
     OUTPUT JSON:
     {
        "action": "create" | "update",
@@ -279,7 +293,7 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
            "endDate": "YYYY-MM-DD",
            "flights": { 
                "pnr": "string", "airline": "string", 
-               "segments": [ { "from": "TLV", "to": "LHR", "date": "...", "flight": "..." } ] 
+               "segments": [ { "from": "TLV", "to": "LHR", "date": "...", "departureTime": "10:00", "arrivalTime": "14:30", "flight": "..." } ] 
            },
            "hotels": [ { "name": "...", "address": "...", "checkIn": "...", "checkOut": "..." } ]
        }
@@ -425,6 +439,27 @@ function mapSimpleObject(obj: any) {
         }
         return f;
 }
+// --- LOGGING ---
+
+async function logToSystem(uid: string, projectId: string, token: string, message: string, details: any = {}) {
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/system_logs`;
+        try {
+                await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({
+                                fields: {
+                                        type: { stringValue: "EMAIL_IMPORT_DEBUG" },
+                                        timestamp: { timestampValue: new Date().toISOString() },
+                                        message: { stringValue: message },
+                                        details: { stringValue: JSON.stringify(details).substring(0, 1500) } // Limit size
+                                }
+                        })
+                });
+        } catch (e) { console.error("Log failed", e); }
+}
+
+// ... existing createTrip / updateTrip ...
 
 function unmapSimpleObject(fields: any) {
         const obj: any = {};

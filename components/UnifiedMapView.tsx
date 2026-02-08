@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Trip } from '../types';
 import { Loader2, Map as MapIcon, Navigation } from 'lucide-react';
 
