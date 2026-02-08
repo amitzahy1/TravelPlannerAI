@@ -104,7 +104,7 @@ export const ItineraryView: React.FC<{
     // Updated: Use locationContext (city) instead of "מלון"
     const generateDayTitle = (day: DayPlan, trip: Trip, dayIndex: number, totalDays: number): string => {
         const events = day.events;
-        const cityContext = day.locationContext || trip.destinationEnglish || trip.destination.split('-')[0].trim();
+        const cityContext = day.locationContext || trip.destinationEnglish || (trip.destination || '').split('-')[0].trim();
 
         // Priority 1: Flight Day - Show flight direction
         const flightEvent = events.find(e => e.type === 'flight');
@@ -178,13 +178,13 @@ export const ItineraryView: React.FC<{
     // SMART City Extraction - finds actual city from hotel address
     // Prioritizes: known cities from trip/flights > last address segments > hotel name
     const extractRobustCity = (address: string, hotelName: string, trip: Trip): string => {
-        if (!address && !hotelName) return trip.destination.split('-')[0].trim();
+        if (!address && !hotelName) return (trip.destination || '').split('-')[0].trim();
 
         // Build known cities database from trip data
         const knownCities = new Set<string>();
 
         // From trip destination (e.g., "Georgia - Tbilisi & Batumi")
-        trip.destination.split(/[-&,]/).forEach(part => {
+        (trip.destination || '').split(/[-&,]/).forEach(part => {
             const city = part.trim().toLowerCase();
             if (city && city.length > 2 && !['and', 'the'].includes(city)) {
                 knownCities.add(city);
@@ -247,7 +247,7 @@ export const ItineraryView: React.FC<{
         }
 
         // Result Candidate
-        let candidate = trip.destination.split('-')[0].trim();
+        let candidate = (trip.destination || '').split('-')[0].trim();
 
         // Fallback: check if hotel name contains a known city
         const hotelLower = hotelName.toLowerCase();
@@ -272,9 +272,10 @@ export const ItineraryView: React.FC<{
             endDate.setDate(startDate.getDate() + 7);
             endDate.setHours(12, 0, 0, 0);
 
-            if (trip.dates) {
-                // Trip dates might be "DD/MM/YYYY - DD/MM/YYYY" OR "08 Aug 2026 - ..." OR ISO
-                const rangeParts = trip.dates.split(' - ').map(s => s.trim());
+            // Trip dates might be "DD/MM/YYYY - DD/MM/YYYY" OR "08 Aug 2026 - ..." OR ISO
+            const dateStr = trip.dates || '';
+            if (dateStr.includes(' - ')) {
+                const rangeParts = dateStr.split(' - ').map(s => s.trim());
                 if (rangeParts.length === 2) {
                     const s = parseDateString(rangeParts[0]);
                     const e = parseDateString(rangeParts[1]);
@@ -460,7 +461,7 @@ export const ItineraryView: React.FC<{
             const sortedTimeline = Array.from(dayMap.values()).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
             // Sticky Location Logic variables
-            const defaultLocation = trip.destinationEnglish || trip.destination.split('-')[0].trim();
+            const defaultLocation = trip.destinationEnglish || (trip.destination || '').split('-')[0].trim();
             let currentStickyLocation = defaultLocation;
 
             // Generate dynamic titles
