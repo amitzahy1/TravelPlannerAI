@@ -237,6 +237,16 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
        - Return action="update" with tripId.
        - Else action="create".
 
+    --- INVOICE & UNSTRUCTURED DATA PARSING RULES ---
+    1. **Israir / Low Cost Invoices**: 
+       - Look for single-line flight strings like: "Dep: 30/03/2026 TEL AVIV 6H:897 Arv: 30/03/2026 TBILISI"
+       - **Flight Numbers**: "6H:897" means Airline="6H", Flight="897". Remove the colon.
+       - **Dates**: Expect European format (DD/MM/YYYY). Convert to YYYY-MM-DD.
+    2. **Inferred Return Date**: 
+       - If only one flight is listed but a "Baggage" or "Service" line exists for a later date (e.g., "06/04/2026"), USE THAT DATE as the Trip End Date.
+    3. **Missing Locations**:
+       - If "TEL AVIV" or "TBILISI" appear near "Dep/Arv", infer them as Origin/Destination.
+
     IMPORTANT: For FLIGHTS, ALWAYS extract "departureTime" and "arrivalTime" in HH:mm format (24h).
 
     OUTPUT JSON:
