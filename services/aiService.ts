@@ -298,6 +298,12 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
     !f.name.endsWith('.eml')
   );
 
+  // --- TRACE LOGGING: STATE CHECK ---
+  console.group("🔥 [AI Service] RESETTING STATE (New Analysis Request)");
+  console.log(`📦 Incoming Files: ${safeFiles.length}`);
+  safeFiles.forEach(f => console.log(`   - ${f.name} (${f.size} bytes, ${f.type})`));
+  console.groupEnd();
+
   if (safeFiles.length === 0) {
     throw new Error("No valid files to analyze (PDF/Image/Text only).");
   }
@@ -321,6 +327,8 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
       contentParts.push({
         inlineData: { mimeType, data: base64 }
       });
+      // Trace Logic
+      console.log(`📤 [AI Service] Added File content: ${file.name} (Prefix: ${base64.substring(0, 15)}...)`);
     } catch (e) {
       console.warn(`Skipping file ${file.name} `);
     }

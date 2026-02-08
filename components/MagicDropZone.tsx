@@ -77,6 +77,8 @@ export const MagicDropZone: React.FC<MagicDropZoneProps> = ({ activeTrip, onUpda
     } finally {
       setIsProcessing(false);
       setIsDragging(false);
+      // Reset input to allow selecting same file again
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
