@@ -10,6 +10,9 @@ import { StagedTripData } from "../types";
 const GOOGLE_MODELS = {
   // --- TIER 1: Heavy Reasoning (Files, Complex Analysis) ---
   SMART_CANDIDATES: [
+    // 0. User Choice (Fast & Capable)
+    "gemini-3-flash-preview",
+
     // 1. The Bleeding Edge
     "gemini-3-pro-preview",
 
