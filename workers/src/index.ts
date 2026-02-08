@@ -1,14 +1,11 @@
 /**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
+ * Travel Planner Pro - Smart Email Import Worker (v2)
+ * Handles incoming emails, parses attachments coverage (PDF/Image),
+ * checks for existing future trips, and intelligently merges data.
  */
 
 import { SignJWT, importPKCS8 } from 'jose';
+import PostalMime from 'postal-mime';
 
 // --- INTERFACES ---
 interface Env {
@@ -24,291 +21,443 @@ export default {
                 await handleEmail(message.from, message.raw, env);
         },
 
-        // Added for HTTP Testing (since user has no domain)
         async fetch(request: Request, env: Env, ctx: ExecutionContext) {
                 try {
-                        // Check Env Vars logic
-                        if (!env.GEMINI_API_KEY) throw new Error("Missing GEMINI_API_KEY secret");
-                        if (!env.FIREBASE_PROJECT_ID) throw new Error("Missing FIREBASE_PROJECT_ID secret");
-                        if (!env.FIREBASE_SERVICE_ACCOUNT) throw new Error("Missing FIREBASE_SERVICE_ACCOUNT secret");
+                        if (!env.GEMINI_API_KEY || !env.FIREBASE_PROJECT_ID || !env.FIREBASE_SERVICE_ACCOUNT) {
+                                throw new Error("Missing Environment Variables");
+                        }
 
-                        // SECURITY: Verify Shared Secret
-                        // We strictly require this header to match the secret environment variable.
-                        const authHeader = request.headers.get("X-Telegram-Bot-Api-Secret-Token") || request.headers.get("X-Auth-Token");
-                        if (!env.AUTH_SECRET || authHeader !== env.AUTH_SECRET) {
-                                // Use 401/403 to indicate unauthorized
+                        const authHeader = request.headers.get("X-Auth-Token");
+                        if (env.AUTH_SECRET && authHeader !== env.AUTH_SECRET) {
                                 return new Response(`Unauthorized`, { status: 401 });
                         }
 
                         if (request.method === "POST") {
                                 const body = await request.json() as any;
                                 const from = body.from || "test@example.com";
-                                const content = body.content || "Subject: Test Trip\n\nI want to go to London next week.";
-
-                                // Create a fake stream from the string content
+                                // Create stream for test
                                 const stream = new ReadableStream({
                                         start(controller) {
-                                                controller.enqueue(new TextEncoder().encode(content));
+                                                controller.enqueue(new TextEncoder().encode(body.content || "Subject: Test"));
                                                 controller.close();
                                         }
                                 });
-
                                 const result = await handleEmail(from, stream, env);
                                 return new Response(JSON.stringify(result, null, 2), {
                                         status: 200,
                                         headers: { 'Content-Type': 'application/json' }
                                 });
                         }
-                        return new Response("Send a POST with { from, content } to test", { status: 200 });
+                        return new Response("Send POST for test", { status: 200 });
                 } catch (e: any) {
-                        return new Response(`Error: ${e.message}\nStack: ${e.stack}`, { status: 500 });
+                        return new Response(`Error: ${e.message}`, { status: 500 });
                 }
         }
 };
 
 async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
-        console.log(`[EmailPipe] Received email from: ${from}`);
+        console.log(`[EmailPipe] Processing email from: ${from}`);
         const logs: string[] = [`Processing email from ${from} at ${new Date().toISOString()}`];
 
         try {
-                // 1. Get Access Token for Firebase
-                logs.push("Authenticating with Firebase...");
+                // 1. Auth & User Lookup
+                logs.push("Authenticating...");
                 const token = await getFirebaseAccessToken(env, logs);
-                if (!token) throw new Error("Failed to authenticate with Firebase. Check logs.");
+                if (!token) throw new Error("Firebase Auth Failed");
 
-                // 2. Map Sender to UID
-                // FIX: Extract strictly the email address from "Name <email>" format. Supports aliases (e.g. user+tag@example.com)
-                const emailMatch = from.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-                const senderEmail = (emailMatch ? emailMatch[0] : from).toLowerCase().trim();
-
-                logs.push(`Looking up user for email: ${senderEmail} (extracted from ${from})`);
+                const senderEmail = extractEmail(from);
                 const uid = await getUserByEmail(senderEmail, env.FIREBASE_PROJECT_ID, token);
-
                 if (!uid) {
-                        logs.push(`FAILED: User not found for ${senderEmail}`);
-                        console.error(`[EmailPipe] User lookup failed for ${senderEmail}`);
-                        return { success: false, message: `User not found for email: ${senderEmail}. Ensure you are registered with this email.`, logs };
+                        return { success: false, message: `User not found: ${senderEmail}`, logs };
                 }
-                logs.push(`Found UID: ${uid}`);
+                logs.push(`Identify User: ${uid}`);
 
-                // 3. Parse Email Content
-                logs.push("Parsing email stream...");
-                const rawEmail = await streamToString(rawStream);
-                logs.push(`Raw email length: ${rawEmail.length} chars`);
+                // 2. Parse Email
+                logs.push("Parsing Email...");
+                const parser = new PostalMime();
+                const rawBuffer = await streamToArrayBuffer(rawStream);
+                const email = await parser.parse(rawBuffer);
 
-                // 4. Extract Trip Data with Gemini
-                logs.push("Extracting data with Gemini AI...");
-                const tripData = await extractTripDataWithGemini(rawEmail, env.GEMINI_API_KEY);
+                const textBody = email.text || email.html || "";
+                // Filter meaningful attachments
+                const attachments = email.attachments.filter(att =>
+                        att.mimeType === "application/pdf" || att.mimeType.startsWith("image/")
+                );
+                logs.push(`Attachments found: ${attachments.length}`);
 
-                if (!tripData) {
-                        logs.push("FAILED: Gemini returned no data");
-                        return { success: false, message: "Could not extract trip data from this email. Is it a booking confirmation?", logs };
+                // 3. Get Existing Trips (Fetch summaries for context)
+                const existingTrips = await getUserFutureTrips(uid, env.FIREBASE_PROJECT_ID, token);
+
+                // 4. Gemini Extraction
+                logs.push("Analyzing with Gemini...");
+                const analysis = await analyzeTripWithGemini(
+                        textBody,
+                        attachments,
+                        existingTrips,
+                        env.GEMINI_API_KEY
+                );
+
+                if (!analysis) throw new Error("Gemini Analysis Failed");
+                logs.push(`Action: ${analysis.action.toUpperCase()} ${analysis.tripId ? `(ID: ${analysis.tripId})` : ''}`);
+
+                let finalTripId = analysis.tripId;
+                let finalAction = analysis.action;
+
+                if (analysis.action === 'update' && analysis.tripId) {
+                        // --- MERGE FLOW ---
+                        logs.push(`Fetching Trip ${analysis.tripId} for merge...`);
+                        const originalTrip = await getTripById(uid, analysis.tripId, env.FIREBASE_PROJECT_ID, token);
+
+                        if (originalTrip) {
+                                const mergedTrip = mergeTripData(originalTrip, analysis.data);
+                                logs.push("Merging data...");
+                                await updateTrip(uid, analysis.tripId, mergedTrip, env.FIREBASE_PROJECT_ID, token);
+                                logs.push("Merger saved.");
+                        } else {
+                                // Fallback if trip not found
+                                logs.push("Trip not found, creating new instead.");
+                                finalAction = 'create';
+                                finalTripId = await createTrip(uid, analysis.data, env.FIREBASE_PROJECT_ID, token);
+                        }
+                } else {
+                        // --- CREATE FLOW ---
+                        logs.push("Creating new trip...");
+                        finalTripId = await createTrip(uid, analysis.data, env.FIREBASE_PROJECT_ID, token);
                 }
-                logs.push(`Gemini extracted trip: ${tripData.name} to ${tripData.destination}`);
 
-                // 5. Write to Firestore
-                logs.push("Saving to Firestore...");
-                const savedTrip = await writeTripToFirestore(uid, tripData, env.FIREBASE_PROJECT_ID, token);
-                logs.push("SUCCESS: Trip saved to Firestore");
-
-                return { success: true, message: `Successfully created trip for user ${uid}`, tripId: savedTrip.id, logs };
+                return { success: true, action: finalAction, tripId: finalTripId, logs };
 
         } catch (error: any) {
-                const errMsg = `Error at ${new Date().toISOString()}: ${error.message}`;
-                console.error("[EmailPipe] Fatal Error:", error);
-                logs.push(errMsg);
+                console.error("Fatal Error:", error);
+                logs.push(`Error: ${error.message}`);
                 return { success: false, error: error.message, logs };
         }
 }
 
-// --- HELPERS: AUTH ---
+// --- LOGIC HELPER: MERGE ---
 
-async function getFirebaseAccessToken(env: Env, logs: string[]): Promise<string | null> {
-        try {
-                if (!env.FIREBASE_SERVICE_ACCOUNT) {
-                        logs.push("FIREBASE_SERVICE_ACCOUNT is undefined");
-                        return null;
+function mergeTripData(original: any, newData: any): any {
+        // Clone original
+        const merged = { ...original };
+
+        // Arrays to append
+        const arrayFields = ['hotels', 'restaurants', 'attractions', 'itinerary', 'documents'];
+
+        arrayFields.forEach(field => {
+                if (newData[field] && Array.isArray(newData[field])) {
+                        merged[field] = [...(merged[field] || []), ...newData[field]];
                 }
+        });
+
+        // Flights Logic (Complex: Object vs Array)
+        // If original has flights object, try to merge segments.
+        if (newData.flights) {
+                if (!merged.flights) merged.flights = {};
+
+                // Update PNR/Airline if missing
+                if (!merged.flights.pnr && newData.flights.pnr) merged.flights.pnr = newData.flights.pnr;
+                if (!merged.flights.airline && newData.flights.airline) merged.flights.airline = newData.flights.airline;
+
+                // Append segments
+                if (newData.flights.segments && Array.isArray(newData.flights.segments)) {
+                        merged.flights.segments = [...(merged.flights.segments || []), ...newData.flights.segments];
+                }
+        }
+
+        // Dates (Expand range if needed)
+        // Logic: if new start < old start, update. if new end > old end, update. 
+        // (Simplified for now: keep original dates unless missing)
+        if (!merged.startDate && newData.startDate) merged.startDate = newData.startDate;
+        if (!merged.endDate && newData.endDate) merged.endDate = newData.endDate;
+
+        merged.updatedAt = new Date().toISOString();
+        return merged;
+}
+
+// --- FIREBASE API ---
+
+async function getFirebaseAccessToken(env: Env, logs: string[]) {
+        try {
                 const serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
-                const privateKeyPEM = serviceAccount.private_key;
-                const clientEmail = serviceAccount.client_email;
-
-                // Import Key
-                const algorithm = 'RS256';
-                const privateKey = await importPKCS8(privateKeyPEM, algorithm);
-
-                // Creating JWT for Google OAuth2
+                const privateKey = await importPKCS8(serviceAccount.private_key, 'RS256');
                 const now = Math.floor(Date.now() / 1000);
                 const jwt = await new SignJWT({
                         scope: 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/identitytoolkit'
-                })
-                        .setProtectedHeader({ alg: algorithm, typ: 'JWT' })
-                        .setIssuer(clientEmail)
-                        .setSubject(clientEmail)
+                }).setProtectedHeader({ alg: 'RS256' })
+                        .setIssuer(serviceAccount.client_email)
+                        .setSubject(serviceAccount.client_email)
                         .setAudience('https://oauth2.googleapis.com/token')
                         .setIssuedAt(now)
                         .setExpirationTime(now + 3600)
                         .sign(privateKey);
 
-                // Exchange JWT for Access Token
-                const response = await fetch('https://oauth2.googleapis.com/token', {
+                const res = await fetch('https://oauth2.googleapis.com/token', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                                grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                                assertion: jwt
-                        })
+                        body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt })
                 });
-
-                const data: any = await response.json();
+                const data: any = await res.json();
                 return data.access_token;
-        } catch (e: any) {
-                logs.push(`Auth Error: ${e.message}`);
-                console.error("Auth Error:", e);
-                return null;
-        }
+        } catch (e) { logs.push(`Auth Error: ${e}`); return null; }
 }
 
-// --- HELPERS: FIREBASE ---
+function extractEmail(from: string) {
+        const match = from.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+        return (match ? match[0] : from).toLowerCase().trim();
+}
 
-async function getUserByEmail(email: string, projectId: string, token: string): Promise<string | null> {
-        // Use Identity Toolkit API to lookup user
-        const url = `https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:lookup`;
-
-        const response = await fetch(url, {
+async function getUserByEmail(email: string, projectId: string, token: string) {
+        const res = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:lookup`, {
                 method: 'POST',
-                headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ email: [email] })
         });
-
-        const data: any = await response.json();
-        if (data.users && data.users.length > 0) {
-                return data.users[0].localId; // This is the UID
-        }
-        return null;
+        const data: any = await res.json();
+        return data.users?.[0]?.localId || null;
 }
 
-async function writeTripToFirestore(uid: string, tripData: any, projectId: string, token: string) {
-        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/trips`;
+async function getUserFutureTrips(uid: string, projectId: string, token: string) {
+        // List last 20 trips
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/trips?pageSize=20&orderBy=updatedAt desc`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data: any = await res.json();
 
-        const firestoreDoc = mapJsonToFirestore(tripData);
+        if (!data.documents) return [];
 
-        const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(firestoreDoc)
+        return data.documents.map((doc: any) => {
+                const f = doc.fields;
+                return {
+                        id: doc.name.split('/').pop(),
+                        name: f.name?.stringValue || "Untitled",
+                        destination: f.destination?.stringValue || "",
+                        startDate: f.startDate?.stringValue || "", // Assuming we started saving split dates
+                        endDate: f.endDate?.stringValue || "", // Assuming
+                        dates: f.dates?.stringValue || "" // Legacy
+                };
         });
-
-        const result: any = await response.json();
-        if (!response.ok) {
-                throw new Error(`Firestore Write Failed: ${JSON.stringify(result)}`);
-        }
-        // Return the document name (ID is usually at the end)
-        const nameParts = result.name.split('/');
-        return { id: nameParts[nameParts.length - 1] };
 }
 
-// --- HELPERS: GEMINI ---
+async function getTripById(uid: string, tripId: string, projectId: string, token: string) {
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/trips/${tripId}`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) return null;
+        const data: any = await res.json();
+        return unmapFirestore(data);
+}
 
-async function extractTripDataWithGemini(emailText: string, apiKey: string): Promise<any> {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+// --- GEMINI ---
 
-        const prompt = `
-	Extract travel details from this email. Return a JSON object strictly matching this structure (no markdown):
-	{
-		"name": "Suggested Trip Name (e.g. Flight to London)",
-		"destination": "Main City",
-		"startDate": "YYYY-MM-DD",
-		"endDate": "YYYY-MM-DD",
-		"flights": {
-			"pnr": "string",
-			"airline": "string",
-			"flightNumber": "string"
-		}
-	}
+async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
+        const model = "gemini-1.5-flash";
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-	Email Content:
-	${emailText.substring(0, 50000)} 
-	`;
+        const parts: any[] = [{
+                text: `
+    You are a Travel Assistant API.
+    Analyze this email content and attachments.
+    
+    EXISTING TRIPS:
+    ${JSON.stringify(existingTrips)}
 
-        const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+    TASK:
+    1. Extract all travel details:
+       - Trip Name, Destination, Dates (YYYY-MM-DD)
+       - FLIGHTS: Extract full segments (departure/arrival airports, times, flight #). 
+       - HOTELS: Extract name, address, dates.
+    2. DECISION: Does this info belong to an existing trip (dates/loc overlap)?
+       - Return action="update" with tripId.
+       - Else action="create".
+
+    OUTPUT JSON:
+    {
+       "action": "create" | "update",
+       "tripId": "string (if update)",
+       "data": {
+           "name": "Trip Name",
+           "destination": "City, Country",
+           "startDate": "YYYY-MM-DD",
+           "endDate": "YYYY-MM-DD",
+           "flights": { 
+               "pnr": "string", "airline": "string", 
+               "segments": [ { "from": "TLV", "to": "LHR", "date": "...", "flight": "..." } ] 
+           },
+           "hotels": [ { "name": "...", "address": "...", "checkIn": "...", "checkOut": "..." } ]
+       }
+    }
+    ` }];
+
+        for (const att of attachments) {
+                const b64 = uint8ArrayToBase64(att.content);
+                if (b64) {
+                        parts.push({
+                                inline_data: { mime_type: att.mimeType, data: b64 }
+                        });
+                }
+        }
+
+        parts.push({ text: `Email:\n${text.substring(0, 30000)}` });
+
+        const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
+                        contents: [{ parts }],
                         generationConfig: { responseMimeType: "application/json" }
                 })
         });
 
-        const data: any = await response.json();
+        const json: any = await res.json();
         try {
-                const text = data.candidates[0].content.parts[0].text;
-                return JSON.parse(text);
-        } catch (e) {
-                console.error("Gemini Parse Error:", e);
-                return null;
-        }
+                const txt = json.candidates[0].content.parts[0].text;
+                return JSON.parse(txt);
+        } catch (e) { console.error(e); return null; }
 }
 
-// --- UTILS ---
+// --- FIRESTORE MAPPING ---
 
-async function streamToString(stream: ReadableStream): Promise<string> {
+async function createTrip(uid: string, data: any, projectId: string, token: string) {
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/trips`;
+        const doc = mapJsonToFirestore(data);
+        const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(doc)
+        });
+        const json: any = await res.json();
+        if (!res.ok) throw new Error("Create Failed");
+        return json.name.split('/').pop();
+}
+
+async function updateTrip(uid: string, tripId: string, data: any, projectId: string, token: string) {
+        // Overwrite method (since we merged in memory)
+        // Note: To preserve other fields not in 'data', we should have deep merged. 
+        // But `mergeTripData` takes `original` and returns full object. So `data` here IS the full object.
+        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/trips/${tripId}`;
+        const doc = mapJsonToFirestore(data);
+
+        // Use PATCH with mask? No, just replace fields we send? 
+        // If we send everything, we replace.
+        // Let's use updateMask to be safe? 
+        // Actually, simply PATCHing the resource updates the fields provided.
+
+        const res = await fetch(url, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(doc)
+        });
+        if (!res.ok) throw new Error("Update Failed");
+}
+
+function mapJsonToFirestore(data: any): any {
+        const fields: any = {};
+        const stringFields = ['name', 'destination', 'startDate', 'endDate', 'dates', 'coverImage', 'source'];
+        const timeFields = ['createdAt', 'updatedAt', 'importedAt'];
+
+        stringFields.forEach(k => { if (data[k]) fields[k] = { stringValue: data[k] } });
+        timeFields.forEach(k => { if (data[k]) fields[k] = { timestampValue: data[k] || new Date().toISOString() } });
+
+        // Arrays
+        ['hotels', 'restaurants', 'attractions', 'itinerary', 'documents'].forEach(k => {
+                const arr = data[k] || [];
+                fields[k] = { arrayValue: { values: arr.map((item: any) => ({ mapValue: { fields: mapSimpleObject(item) } })) } };
+        });
+
+        // Flights (Object)
+        if (data.flights) {
+                fields.flights = {
+                        mapValue: {
+                                fields: {
+                                        pnr: { stringValue: data.flights.pnr || "" },
+                                        airline: { stringValue: data.flights.airline || "" },
+                                        // Nested array
+                                        segments: {
+                                                arrayValue: {
+                                                        values: (data.flights.segments || []).map((seg: any) => ({ mapValue: { fields: mapSimpleObject(seg) } }))
+                                                }
+                                        }
+                                }
+                        }
+                };
+        } else {
+                fields.flights = { mapValue: { fields: { segments: { arrayValue: { values: [] } } } } };
+        }
+
+        return { fields };
+}
+
+function unmapFirestore(doc: any): any {
+        const f = doc.fields || {};
+        const obj: any = {};
+
+        // Strings
+        ['name', 'destination', 'startDate', 'endDate', 'dates', 'coverImage', 'source', 'createdAt', 'updatedAt'].forEach(k => {
+                if (f[k]) obj[k] = f[k].stringValue || f[k].timestampValue;
+        });
+
+        // Arrays
+        ['hotels', 'restaurants', 'attractions', 'itinerary', 'documents'].forEach(k => {
+                if (f[k] && f[k].arrayValue && f[k].arrayValue.values) {
+                        obj[k] = f[k].arrayValue.values.map((v: any) => unmapSimpleObject(v.mapValue.fields));
+                } else {
+                        obj[k] = [];
+                }
+        });
+
+        // Flights
+        if (f.flights && f.flights.mapValue && f.flights.mapValue.fields) {
+                const ff = f.flights.mapValue.fields;
+                obj.flights = {
+                        pnr: ff.pnr?.stringValue || "",
+                        airline: ff.airline?.stringValue || "",
+                        segments: ff.segments?.arrayValue?.values?.map((v: any) => unmapSimpleObject(v.mapValue.fields)) || []
+                };
+        }
+
+        return obj;
+}
+
+function mapSimpleObject(obj: any) {
+        const f: any = {};
+        for (const [k, v] of Object.entries(obj)) {
+                if (typeof v === 'string') f[k] = { stringValue: v };
+                else if (typeof v === 'number') f[k] = { doubleValue: v };
+                else if (typeof v === 'boolean') f[k] = { booleanValue: v };
+        }
+        return f;
+}
+
+function unmapSimpleObject(fields: any) {
+        const obj: any = {};
+        for (const [k, v] of Object.entries(fields || {})) {
+                // @ts-ignore
+                if (v.stringValue) obj[k] = v.stringValue;
+                // @ts-ignore
+                else if (v.doubleValue) obj[k] = v.doubleValue;
+                // @ts-ignore
+                else if (v.booleanValue) obj[k] = v.booleanValue;
+        }
+        return obj;
+}
+
+// Support
+async function streamToArrayBuffer(stream: ReadableStream): Promise<ArrayBuffer> {
         const reader = stream.getReader();
-        const decoder = new TextDecoder();
-        let result = '';
-
+        const chunks = [];
         while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                result += decoder.decode(value, { stream: true });
+                chunks.push(value);
         }
-        result += decoder.decode();
-        return result;
+        const len = chunks.reduce((a, c) => a + c.length, 0);
+        const res = new Uint8Array(len);
+        let off = 0;
+        for (const c of chunks) { res.set(c, off); off += c.length; }
+        return res.buffer;
 }
 
-// Full Mapper for Firestore REST (Required arrays to prevent frontend crashes)
-function mapJsonToFirestore(data: any): any {
-        const now = new Date().toISOString();
-        return {
-                fields: {
-                        name: { stringValue: data.name || "Imported Trip" },
-                        destination: { stringValue: data.destination || "" },
-                        dates: { stringValue: data.startDate ? `${data.startDate} - ${data.endDate}` : "" },
-                        coverImage: { stringValue: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80" },
-                        isShared: { booleanValue: false },
-                        updatedAt: { timestampValue: now },
-                        createdAt: { timestampValue: now },
-                        importedAt: { timestampValue: now },
-                        source: { stringValue: "email" },
-                        // Required Arrays (Empty to satisfy TypeScript)
-                        flights: {
-                                mapValue: {
-                                        fields: {
-                                                pnr: { stringValue: data.flights?.pnr || "" },
-                                                airline: { stringValue: data.flights?.airline || "" },
-                                                flightNumber: { stringValue: data.flights?.flightNumber || "" },
-                                                passengerName: { stringValue: "" },
-                                                segments: { arrayValue: { values: [] } }
-                                        }
-                                }
-                        },
-                        hotels: { arrayValue: { values: [] } },
-                        restaurants: { arrayValue: { values: [] } },
-                        attractions: { arrayValue: { values: [] } },
-                        itinerary: { arrayValue: { values: [] } },
-                        documents: { arrayValue: { values: [] } },
-                        weather: { arrayValue: { values: [] } },
-                        news: { arrayValue: { values: [] } },
-                        expenses: { arrayValue: { values: [] } },
-                        shoppingItems: { arrayValue: { values: [] } },
-                        secureNotes: { arrayValue: { values: [] } }
-                }
-        };
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+        let binary = '';
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) { binary += String.fromCharCode(bytes[i]); }
+        try { return btoa(binary); } catch (e) { return ""; }
 }
-

@@ -655,7 +655,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                 onClick={() => setActiveTab('logistics')}
                                 className={`w-full text-right px-4 py-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'logistics' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
                             >
-                                <Plane className="w-5 h-5" /> לוגיסטיקה
+                                <Plane className="w-5 h-5" /> מלונות וטיסות
                             </button>
                             <button
                                 onClick={() => setActiveTab('ai')}

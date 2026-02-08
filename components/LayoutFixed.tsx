@@ -177,7 +177,16 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
 
                                                         <div className="w-px h-6 bg-slate-200 mx-2"></div>
 
-                                                        {/* Tools (Wallet) - Admin moved to main nav */}
+                                                        {/* Tools (Wallet & New Trip) */}
+                                                        <button
+                                                                onClick={() => onOpenAdmin()} // Reuse Admin/Wizard opener
+                                                                title="צור טיול חדש"
+                                                                className="flex items-center gap-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-blue-100 hover:shadow-sm"
+                                                        >
+                                                                <Plus className="w-4 h-4" />
+                                                                <span className="hidden xl:inline">טיול חדש</span>
+                                                        </button>
+
                                                         <button
                                                                 onClick={() => setIsWalletOpen(true)}
                                                                 className="flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-white px-3 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-slate-200 hover:shadow-sm"

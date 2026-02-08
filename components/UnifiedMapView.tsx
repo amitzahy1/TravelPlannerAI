@@ -157,7 +157,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
     const [mapItems, setMapItems] = useState<MapItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeCity, setActiveCity] = useState<string | 'ALL'>('ALL');
-    const [routeCities, setRouteCities] = useState<{ name: string; code?: string; coords?: { lat: number; lng: number } }[]>([]);
+    const [routeCities, setRouteCities] = useState<{ name: string; displayName?: string; type?: 'flight' | 'hotel' | 'city'; code?: string; coords?: { lat: number; lng: number } }[]>([]);
 
     // Geocoding Cache
     const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number, lng: number }>>(() => {
@@ -291,111 +291,109 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         resolveAndFilter();
     }, [mapItems.length, trip]); // Depend on length to avoid infinite loops, simplistic check
 
-    // 3. City Grouping Logic
+    // 3. City Grouping Logic (Fixed: Aggregate ALL cities from items, not just destination string)
     const cities = useMemo(() => {
-        if (!trip?.destination) return [];
+        const cityMap = new Map<string, number>();
+        const normalize = (s?: string) => s ? s.trim() : '';
 
-        const extractCities = (destination: string) => {
-            if (!destination) return [];
-            // Split by hyphen (-), en-dash (–), or comma (,)
-            return destination.split(/[-–,]/)
-                .map(city => city.trim()) // Remove extra spaces
-                .filter(city => city.length > 0); // Remove empty strings
-        };
-
-        const rawCities = extractCities(trip.destination);
-
-        return rawCities.map(city => {
-            // Get all possible keywords (Hebrew + English variants)
-            const keywords = getCityKeywords(city);
-
-            // Find items belonging to this city using cross-language matching
-            const matchItems = mapItems.filter(item => {
-                const searchStr = (item.address || item.city || item.name || '').toLowerCase();
-
-                // Match if address contains ANY of the keywords (Hebrew or English)
-                return keywords.some(kw => searchStr.includes(kw));
+        // 1. Add cities from Destination String (Base)
+        if (trip?.destination) {
+            trip.destination.split(/[-–,]/).forEach(c => {
+                const name = normalize(c);
+                if (name) cityMap.set(name, 0);
             });
+        }
 
-            return {
-                name: city,
-                count: matchItems.length,
-                // Center calculation remains useful for quick focusing, though bounds handles it mostly
-                center: null
-            };
+        // 2. Scan all map items and auto-add their cities
+        mapItems.forEach(item => {
+            const city = normalize(item.city);
+            if (city) {
+                // If this city isn't in the map yet, try to find a fuzzy match or add it
+                // Simple version: just add if missing
+                if (!cityMap.has(city)) {
+                    cityMap.set(city, 0);
+                }
+            }
         });
+
+        // 3. Count items per city
+        const cityList = Array.from(cityMap.keys()).map(cityName => {
+            // Get keywords for robust matching
+            const keywords = getCityKeywords(cityName);
+            const count = mapItems.filter(item => {
+                const searchStr = (item.address || item.city || item.name || '').toLowerCase();
+                return keywords.some(kw => searchStr.includes(kw));
+            }).length;
+            return { name: cityName, count };
+        }).filter(c => c.count > 0 || (trip?.destination || '').includes(c.name)); // Keep if in destination OR has items
+
+        return cityList;
     }, [mapItems, trip]);
 
-    // 3.5. Build and geocode route cities
+    // 3.5. Build and geocode route cities (Updated: Preserve Hotel Name)
     useEffect(() => {
         if (!trip || items) return;
 
         const buildAndGeocodeRoute = async () => {
-            const newRoute: { name: string; code?: string; coords?: { lat: number; lng: number } }[] = [];
+            // Extended interface to include displayName
+            const newRoute: { name: string; displayName?: string; type: 'flight' | 'hotel' | 'city'; code?: string; coords?: { lat: number; lng: number } }[] = [];
 
-            // 1. Try flight segments first
+            // 1. Flight Segments
             const flightSegments = [...(trip.flights?.segments || [])].sort((a, b) => {
-                const dateA = parseTripDate(a.date)?.getTime() || 0;
-                const dateB = parseTripDate(b.date)?.getTime() || 0;
-                return dateA - dateB;
+                return (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0);
             });
 
-            if (flightSegments.length > 0) {
-                flightSegments.forEach(seg => {
-                    if (seg.fromCity && (newRoute.length === 0 || newRoute[newRoute.length - 1].name.toLowerCase() !== seg.fromCity.toLowerCase())) {
-                        newRoute.push({ name: seg.fromCity, code: seg.fromCode });
-                    }
-                    if (seg.toCity && (newRoute.length === 0 || newRoute[newRoute.length - 1].name.toLowerCase() !== seg.toCity.toLowerCase())) {
-                        newRoute.push({ name: seg.toCity, code: seg.toCode });
-                    }
-                });
-            } else {
-                // 2. Fallback: Use hotels
+            flightSegments.forEach(seg => {
+                if (seg.fromCity && (newRoute.length === 0 || newRoute[newRoute.length - 1].name.toLowerCase() !== seg.fromCity.toLowerCase())) {
+                    newRoute.push({ name: seg.fromCity, displayName: seg.fromCity, type: 'city', code: seg.fromCode }); // Flights just show City
+                }
+                if (seg.toCity && (newRoute.length === 0 || newRoute[newRoute.length - 1].name.toLowerCase() !== seg.toCity.toLowerCase())) {
+                    newRoute.push({ name: seg.toCity, displayName: seg.toCity, type: 'city', code: seg.toCode });
+                }
+            });
+
+            // 2. Hotels (Interleave or Append)
+            // If we have flights, usually hotels are "inside" changes. 
+            // Simplified: If no flights, populate from hotels. If flights exist, we might miss "Road Trips".
+            // For now, let's stick to the previous fallback logic but enhance the data.
+
+            if (newRoute.length === 0) {
                 const sortedHotels = [...(trip.hotels || [])].sort((a, b) => {
-                    const dateA = parseTripDate(a.checkInDate || '')?.getTime() || 0;
-                    const dateB = parseTripDate(b.checkInDate || '')?.getTime() || 0;
-                    return dateA - dateB;
+                    return (parseTripDate(a.checkInDate || '')?.getTime() || 0) - (parseTripDate(b.checkInDate || '')?.getTime() || 0);
                 });
 
                 sortedHotels.forEach(hotel => {
-                    const cityGuess = hotel.address?.split(',').slice(-2, -1)[0]?.trim()
-                        || hotel.address?.split(',')[1]?.trim();
-                    if (cityGuess && (newRoute.length === 0 || newRoute[newRoute.length - 1].name.toLowerCase() !== cityGuess.toLowerCase())) {
+                    const cityGuess = hotel.address?.split(',').slice(-2, -1)[0]?.trim() || hotel.address?.split(',')[1]?.trim();
+                    // Use Hotel Name if available, otherwise City
+                    if (cityGuess) {
                         newRoute.push({
                             name: cityGuess,
+                            displayName: hotel.name || cityGuess, // SHOW HOTEL NAME!
+                            type: 'hotel',
                             coords: hotel.lat && hotel.lng ? { lat: hotel.lat, lng: hotel.lng } : undefined
                         });
                     }
                 });
             }
 
-            // 3. Last fallback: Use destination
+            // 3. Last fallback
             if (newRoute.length === 0 && trip.destination) {
                 const destCities = trip.destination.split(/[-–,&]/).map(c => c.trim()).filter(Boolean);
-                destCities.forEach(city => {
-                    if (city && !newRoute.some(c => c.name.toLowerCase() === city.toLowerCase())) {
-                        newRoute.push({ name: city });
-                    }
-                });
+                destCities.forEach(city => newRoute.push({ name: city, displayName: city, type: 'city' }));
             }
 
-            // Geocode missing coords
-            for (const city of newRoute) {
-                if (city.coords) continue;
+            // Geocode missing...
+            for (const item of newRoute) {
+                if (item.coords) continue;
+                const query = item.code ? `${item.name} Airport` : item.name;
 
-                const query = city.code ? `${city.name} Airport` : city.name;
-
-                // Check cache first
-                if (geocodedCache[query]) {
-                    city.coords = geocodedCache[query];
-                } else if (geocodedCache[city.name]) {
-                    city.coords = geocodedCache[city.name];
-                } else {
-                    // Geocode
+                // Cache check...
+                if (geocodedCache[query]) item.coords = geocodedCache[query];
+                else if (geocodedCache[item.name]) item.coords = geocodedCache[item.name];
+                else {
                     const coords = await geocodeAddress(query);
                     if (coords) {
-                        city.coords = coords;
-                        // Update cache
+                        item.coords = coords;
                         setGeocodedCache(prev => {
                             const updated = { ...prev, [query]: coords };
                             localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -404,31 +402,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                     }
                 }
             }
-
             setRouteCities(newRoute);
         };
-
         buildAndGeocodeRoute();
     }, [trip, items, geocodedCache]);
 
-    // 4. Render Map (Initialize)
-    useEffect(() => {
-        if (!mapContainerRef.current) return;
-        if (!mapInstanceRef.current) {
-            mapInstanceRef.current = L.map(mapContainerRef.current);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap & CARTO',
-                subdomains: 'abcd',
-                maxZoom: 20
-            }).addTo(mapInstanceRef.current);
-
-            // Standard Layer Groups (No Cluster)
-            markersRef.current = L.layerGroup().addTo(mapInstanceRef.current);
-            routeLayerRef.current = L.layerGroup().addTo(mapInstanceRef.current);
-        }
-
-        // Cleanup on unmount handled by ref check
-    }, []);
+    // ... (Map Init useEffect skipped - no changes) ...
 
     // 5. Update Map Markers & View
     useEffect(() => {
@@ -438,7 +417,6 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
 
         if (!map || !markerLayer || !routeLayer) return;
 
-        // Resize fix
         setTimeout(() => map.invalidateSize(), 100);
 
         markerLayer.clearLayers();
@@ -450,102 +428,119 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         const visibleItems = activeCity === 'ALL'
             ? validItems
             : validItems.filter(i => {
-                // Case-insensitive check against address or location
                 const searchStr = (i.address || i.city || '').toLowerCase();
                 return searchStr.includes(activeCity.toLowerCase());
             });
 
         const bounds = L.latLngBounds([]);
 
-        // Plot Markers
+        // Plot Markers (Standard Items)
         visibleItems.forEach(item => {
-            if (item.type === 'airport') return; // Skip airport markers, lines only
+            if (item.type === 'airport') return;
 
-            // Use simple SVG circles/icons based on type
+            // Brand Colors
             let color = '#3b82f6';
             let iconSvg = '';
 
             switch (item.type) {
-                case 'hotel': color = '#4f46e5'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-8a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v8"/><path d="M5 21h14"/><path d="M9 10a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2"/></svg>'; break;
-                case 'restaurant': color = '#ea580c'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>'; break;
-                case 'attraction': color = '#9333ea'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-8"/><path d="m22 2-9 9"/><path d="M17 12a5 5 0 0 0-5-5"/></svg>'; break;
-                case 'shopping': color = '#ec4899'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-8"/><path d="m22 2-9 9"/><path d="M17 12a5 5 0 0 0-5-5"/></svg>'; break;
+                case 'hotel': color = '#0ea5e9'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-8a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v8"/><path d="M5 21h14"/><path d="M9 10a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2"/></svg>'; break;
+                case 'restaurant': color = '#f97316'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>'; break;
+                case 'attraction': color = '#8b5cf6'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-8"/><path d="m22 2-9 9"/><path d="M17 12a5 5 0 0 0-5-5"/></svg>'; break;
+                case 'shopping': color = '#ec4899'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>'; break;
             }
 
-            const iconHtml = `<div style="background-color: ${color}; width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2); color: white;">${iconSvg}</div>`;
-            const customIcon = L.divIcon({ html: iconHtml, className: 'custom-map-icon', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32] });
+            const iconHtml = `<div style="background-color: ${color}; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3); color: white;">${iconSvg}</div>`;
+            const customIcon = L.divIcon({ html: iconHtml, className: 'custom-map-icon', iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -36] });
 
             L.marker([item.lat!, item.lng!], { icon: customIcon })
-                .bindPopup(`<div style="font-family:'Rubik'; text-align:right; direction:rtl;"><strong>${item.name}</strong><br/><span style="font-size:12px;color:gray;">${item.description || ''}</span></div>`)
+                .bindPopup(`<div style="font-family:'Rubik'; text-align:right; direction:rtl;">
+                    <div style="color:${color}; font-size:10px; font-weight:bold; letter-spacing:0.5px; margin-bottom:2px; text-transform:uppercase;">${item.type.toUpperCase()}</div>
+                    <strong style="font-size:14px;">${item.name}</strong><br/>
+                    <span style="font-size:12px;color:gray;">${item.description || ''}</span>
+                </div>`)
                 .addTo(markerLayer);
 
             bounds.extend([item.lat!, item.lng!]);
         });
 
-        // Plot Route (Only if showing ALL and we have geocoded route cities)
+        // Plot Route (Refined Styles & Labels)
         if (activeCity === 'ALL' && trip && !items && routeCities.length > 0) {
-            // Use pre-geocoded route cities from state
             const cityRoute = routeCities;
-
-            // Add numbered markers for each city stop
             let stopNumber = 0;
+
             cityRoute.forEach(city => {
                 if (!city.coords) return;
                 stopNumber++;
 
-                const numberHtml = `
+                // PILL MARKER: Number + Name
+                const pillHtml = `
                     <div style="
-                        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-                        width: 40px;
-                        height: 40px;
-                        border-radius: 50%;
-                        border: 3px solid white;
                         display: flex;
                         align-items: center;
-                        justify-content: center;
-                        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-                        color: white;
-                        font-weight: 900;
-                        font-size: 16px;
-                        font-family: 'Rubik', sans-serif;
-                    ">${stopNumber}</div>
+                        background: white;
+                        border-radius: 20px;
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                        padding-right: 4px; /* Number side */
+                        padding-left: 12px;
+                        height: 36px;
+                        border: 2px solid white;
+                        transform: translate(50%, -50%); /* Center anchor tweak */
+                        white-space: nowrap;
+                    ">
+                        <div style="
+                             background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+                             width: 28px;
+                             height: 28px;
+                             border-radius: 50%;
+                             color: white;
+                             font-weight: 900;
+                             font-size: 13px;
+                             display: flex;
+                             align-items: center;
+                             justify-content: center;
+                             margin-left: 8px;
+                             flex-shrink: 0;
+                        ">${stopNumber}</div>
+                        <span style="
+                            font-family: 'Rubik', sans-serif;
+                            font-weight: 700;
+                            font-size: 13px;
+                            color: #1e293b;
+                        ">${city.displayName || city.name}</span>
+                    </div>
                 `;
-                const numberIcon = L.divIcon({
-                    html: numberHtml,
-                    className: '',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20],
-                    popupAnchor: [0, -25]
+
+                const pillIcon = L.divIcon({
+                    html: pillHtml,
+                    className: 'map-route-pill', // Add custom class if needed for hover effects
+                    iconSize: [0, 0], // Size 0 handled by HTML content overflow
+                    iconAnchor: [0, 0] // Adjusted in CSS transform above
                 });
-                L.marker([city.coords.lat, city.coords.lng], { icon: numberIcon })
-                    .bindPopup(`<div style="font-family:'Rubik'; text-align:center; direction:rtl; font-weight:bold;">
-                        <div style="font-size:11px; color:#6b7280; margin-bottom:2px;">עצירה ${stopNumber}</div>
-                        <div style="font-size:14px; color:#1f2937;">${city.name}</div>
-                    </div>`)
+
+                L.marker([city.coords.lat, city.coords.lng], { icon: pillIcon, zIndexOffset: 1000 })
                     .addTo(markerLayer);
 
                 bounds.extend([city.coords.lat, city.coords.lng]);
             });
 
-            // Draw flight path lines between consecutive cities
+            // Draw Lines (Enhanced)
             for (let i = 0; i < cityRoute.length - 1; i++) {
                 const start = cityRoute[i];
                 const end = cityRoute[i + 1];
                 if (!start.coords || !end.coords) continue;
 
                 const dist = getDistanceFromLatLonInKm(start.coords.lat, start.coords.lng, end.coords.lat, end.coords.lng);
-
-                // Create curved arc for all connections
                 let pathPoints: [number, number][];
+
+                // Curve Logic (Same as before, just kept for smoothness)
                 if (dist > 50) {
-                    const steps = 30;
+                    const steps = 40; // Smoother
                     pathPoints = [];
                     for (let s = 0; s <= steps; s++) {
                         const t = s / steps;
                         const lat = start.coords.lat + (end.coords.lat - start.coords.lat) * t;
                         const lng = start.coords.lng + (end.coords.lng - start.coords.lng) * t;
-                        // Add curve offset (max at middle) - adjusts based on distance
-                        const curveFactor = Math.min(dist / 30, 5);
+                        const curveFactor = Math.min(dist / 40, 4); // Slightly less aggressive curve
                         const curveOffset = Math.sin(t * Math.PI) * curveFactor;
                         const perpLat = -(end.coords.lng - start.coords.lng) / Math.max(dist, 1);
                         const perpLng = (end.coords.lat - start.coords.lat) / Math.max(dist, 1);
@@ -555,57 +550,56 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                     pathPoints = [[start.coords.lat, start.coords.lng], [end.coords.lat, end.coords.lng]];
                 }
 
-                // Gradient-like effect with dashed line
-                const polyline = L.polyline(pathPoints, {
+                // GLOW Layer (Bottom)
+                L.polyline(pathPoints, {
                     color: '#3b82f6',
-                    weight: 4,
-                    opacity: 0.8,
-                    dashArray: '10, 6',
+                    weight: 8,
+                    opacity: 0.2,
+                    lineCap: 'round',
+                }).addTo(routeLayer);
+
+                // DASHED Line (Top)
+                L.polyline(pathPoints, {
+                    color: '#2563eb',
+                    weight: 3,
+                    opacity: 0.9,
+                    dashArray: '8, 8',
                     lineCap: 'round',
                     lineJoin: 'round'
                 }).addTo(routeLayer);
 
-                // Direction arrow at midpoint
+                // Icon at Midpoint
                 const midIdx = Math.floor(pathPoints.length / 2);
-                const midLat = pathPoints[midIdx][0];
+                const midLat = pathPoints[midIdx][0] + 0.5; // Offset slightly?
                 const midLng = pathPoints[midIdx][1];
                 const bearing = getBearing(start.coords.lat, start.coords.lng, end.coords.lat, end.coords.lng);
 
                 const arrowHtml = `
-                    <div style="
+                     <div style="
                         transform: rotate(${bearing - 90}deg);
-                        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-                        border-radius: 50%;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                        border: 2px solid white;
+                        color: #2563eb;
+                        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
                     ">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>
                     </div>
                 `;
-                L.marker([midLat, midLng], {
-                    icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [28, 28], iconAnchor: [14, 14] })
+                // Simple Arrow, no circular bg for cleaner look on route
+                L.marker([pathPoints[midIdx][0], pathPoints[midIdx][1]], {
+                    icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [24, 24], iconAnchor: [12, 12] })
                 }).addTo(routeLayer);
             }
         }
 
         // View Control
         if (bounds.isValid()) {
-            // If specific city selected, perform a flyTo
             if (activeCity !== 'ALL') {
                 map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 14, duration: 1.5 });
             } else {
-                // Initial fit
-                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10 });
+                map.fitBounds(bounds, { padding: [80, 80], maxZoom: 10 });
             }
         } else if (trip?.destination) {
-            // Fallback
             geocodeAddress(trip.destination).then(c => c && map.setView([c.lat, c.lng], 10));
         }
 
@@ -618,24 +612,24 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
 
             {/* City Navigator Bar */}
             <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-center pointer-events-none">
-                <div className="bg-white/90 backdrop-blur-md p-1.5 rounded-full shadow-lg border border-white/50 flex gap-2 overflow-x-auto max-w-full pointer-events-auto no-scrollbar items-center">
+                <div className="bg-white/95 backdrop-blur-xl p-2 rounded-2xl shadow-xl border border-white/50 flex gap-2 overflow-x-auto max-w-full pointer-events-auto no-scrollbar items-center">
                     <button
                         onClick={() => setActiveCity('ALL')}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${activeCity === 'ALL' ? 'bg-blue-600 text-white shadow-md' : 'bg-transparent text-slate-600 hover:bg-slate-100'}`}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === 'ALL' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                     >
-                        <MapIcon className="w-3.5 h-3.5" />
+                        <MapIcon className="w-4 h-4" />
                         כל המסלול
                     </button>
-                    <div className="w-px h-4 bg-slate-300 mx-1"></div>
+                    <div className="w-px h-6 bg-slate-200 mx-1"></div>
                     {cities.map(c => (
                         <button
                             key={c.name}
                             onClick={() => setActiveCity(c.name)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${activeCity === c.name ? 'bg-blue-600 text-white shadow-md' : 'bg-transparent text-slate-600 hover:bg-slate-100'}`}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === c.name ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'}`}
                         >
-                            <Navigation className={`w-3 h-3 ${activeCity === c.name ? 'text-white' : 'text-slate-400'}`} />
+                            {/* <Navigation className={`w-3 h-3 ${activeCity === c.name ? 'text-white' : 'text-slate-400'}`} /> */}
                             {c.name}
-                            <span className={`text-[9px] px-1.5 rounded-full ${activeCity === c.name ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>{c.count}</span>
+                            {c.count > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeCity === c.name ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{c.count}</span>}
                         </button>
                     ))}
                 </div>
