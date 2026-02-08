@@ -241,7 +241,7 @@ const AppContent: React.FC = () => {
         onSwitchTrip={setActiveTripId}
         currentTab={currentTab}
         onSwitchTab={setCurrentTab}
-        onOpenAdmin={() => setCurrentTab('trips')} // Backward compatibility for Layout props if needed, or remove completely if Layout accepts optional
+        onOpenAdmin={() => setShowOnboarding(true)}
         onUpdateTrip={(t) => updateTripMutation.mutate(t)}
         onDeleteTrip={(id) => deleteTripMutation.mutate(id)}
       >

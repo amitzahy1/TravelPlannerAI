@@ -604,7 +604,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             geocodeAddress(trip.destination).then(c => c && map.setView([c.lat, c.lng], 10));
         }
 
-    }, [mapItems, activeCity, trip, routeCities]);
+        // Force resize to ensure map renders correctly in tabs/modals
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 500);
+
+    }, [mapItems, activeCity, trip, routeCities, height]); // Added height to dependencies
 
 
     // --- UI RENDER ---
@@ -643,7 +651,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 </div>
             )}
 
-            <div ref={mapContainerRef} style={{ height, width: '100%' }} className="z-10 bg-slate-50" />
+            <div ref={mapContainerRef} style={{ height, width: '100%' }} className="z-10 bg-slate-50 relative" />
         </div>
     );
 };
