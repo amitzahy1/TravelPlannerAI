@@ -370,7 +370,11 @@ Structure:
                         // Success! Parse and return
                         console.log(`✅ Success with ${model}`);
                         const txt = candidate.content.parts[0].text;
-                        const frontendData = JSON.parse(txt);
+                        const cleanedTxt = cleanJSON(txt); // Sanitize
+                        const frontendData = JSON.parse(cleanedTxt);
+
+                        // --- DEBUG LOGGING (User Request) ---
+                        console.log("🔍 [Worker Extracted]:", JSON.stringify(frontendData).substring(0, 1000));
 
                         // --- MAPPING: FRONTEND SCHEMA -> WORKER SCHEMA ---
                         // We map the robust Frontend output back to the simple Worker format
@@ -468,6 +472,12 @@ async function saveToProcessingQueue(uid: string, projectId: string, token: stri
         }).catch(e => console.error("Failed to save to queue", e));
 }
 
+// --- HELPER: CLEAN JSON (CRITICAL FOR GEMINI) ---
+function cleanJSON(text: string): string {
+        if (!text) return "{}";
+        return text.replace(/```json/g, '').replace(/```/g, '').trim();
+}
+
 // --- LOGIC HELPER: TEMPORAL MATCHING (Feb 2026) ---
 function findOverlappingTrip(userId: string, newStart: string, newEnd: string, existingTrips: any[]): string | null {
         if (!newStart || !newEnd || !existingTrips || existingTrips.length === 0) return null;
@@ -493,6 +503,7 @@ function findOverlappingTrip(userId: string, newStart: string, newEnd: string, e
         }
         return null;
 }
+
 
 // --- LOGIC HELPER: MERGE (Unchanged) ---
 function mergeTripData(original: any, newData: any): any {
@@ -621,7 +632,10 @@ function mapJsonToFirestore(data: any): any {
         const fields: any = {};
         const stringFields = ['name', 'destination', 'startDate', 'endDate', 'dates', 'coverImage', 'source', 'ownerEmail', 'userId', 'status'];
         const timeFields = ['createdAt', 'updatedAt', 'importedAt'];
-        stringFields.forEach(k => { if (data[k]) fields[k] = { stringValue: data[k] } });
+
+        stringFields.forEach(k => {
+                if (data[k] !== undefined && data[k] !== null) fields[k] = { stringValue: String(data[k]) }
+        });
 
         // CRITICAL FIX: Always ensure timestamps exist, otherwise Firestore orderBy() hides the doc
         timeFields.forEach(k => {
