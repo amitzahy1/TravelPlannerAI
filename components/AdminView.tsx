@@ -15,6 +15,7 @@ import { AlertTriangle, Calendar as CalIcon } from 'lucide-react';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
 import { MagicalWizard } from './onboarding/MagicalWizard';
+import { UnifiedMapView } from './UnifiedMapView';
 
 
 interface TripSettingsModalProps {
@@ -795,6 +796,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Map View */}
+                                <div className="bg-white p-1 rounded-2xl shadow-sm border border-slate-200">
+                                    <UnifiedMapView trip={activeTrip} height="400px" />
                                 </div>
 
                                 {/* Danger Zone */}
