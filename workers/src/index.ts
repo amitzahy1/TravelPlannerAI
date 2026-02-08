@@ -61,12 +61,14 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
 
         try {
                 // 1. Auth
-                logs.push("Authenticating...");
-                const token = await getFirebaseAccessToken(env, logs);
-                if (!token) throw new Error("Firebase Auth Failed");
+                logs.push("Step 1: Authenticating...");
+                const token = await getFirebaseAccessToken(env, logs).catch(e => { throw new Error(`Auth Failed: ${e.message}`) });
+                if (!token) throw new Error("Firebase Auth Token is null");
+                logs.push("Step 1: Auth OK");
 
                 const senderEmail = extractEmail(from);
-                const uid = await getUserByEmail(senderEmail, env.FIREBASE_PROJECT_ID, token);
+                logs.push(`Step 1.1: Lookup User ${senderEmail}...`);
+                const uid = await getUserByEmail(senderEmail, env.FIREBASE_PROJECT_ID, token).catch(e => { throw new Error(`User Lookup Failed: ${e.message}`) });
 
                 if (!uid) {
                         console.error(`User not found for ${senderEmail}`);
@@ -77,10 +79,13 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
                 logs.push(`Identify User: ${uid}`);
 
                 // 2. Parse Email
-                logs.push("Parsing Email...");
+                logs.push("Step 2: Parsing Email...");
                 const parser = new PostalMime();
-                const rawBuffer = await streamToArrayBuffer(rawStream);
-                const email = await parser.parse(rawBuffer);
+                const rawBuffer = await streamToArrayBuffer(rawStream).catch(e => { throw new Error(`Stream Read Failed: ${e.message}`) });
+                logs.push(`Step 2: Buffer Size: ${rawBuffer.byteLength}`);
+
+                const email = await parser.parse(rawBuffer).catch(e => { throw new Error(`Mime Parse Failed: ${e.message}`) });
+                logs.push("Step 2: Parse OK");
 
                 const textBody = email.text || email.html || "";
                 const attachments = email.attachments.filter(att =>
@@ -89,16 +94,23 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env) {
                 logs.push(`Attachments found: ${attachments.length}`);
 
                 // 3. Get Existing Trips
-                const existingTrips = await getUserFutureTrips(uid, env.FIREBASE_PROJECT_ID, token);
+                logs.push("Step 3: Fetching Existing Trips...");
+                const existingTrips = await getUserFutureTrips(uid, env.FIREBASE_PROJECT_ID, token).catch(e => {
+                        logs.push(`Step 3 Error: ${e.message}`);
+                        return []; // Recoverable?
+                });
+                logs.push(`Step 3: Found ${existingTrips.length} trips`);
 
                 // 4. Gemini Extraction
-                logs.push("Analyzing with Gemini...");
+                logs.push("Step 4: Analyzing with Gemini...");
                 const analysis = await analyzeTripWithGemini(
                         textBody,
                         attachments,
                         existingTrips,
                         env.GEMINI_API_KEY
-                );
+                ).catch(e => { throw new Error(`Gemini Analysis Crashed: ${e.message}`) });
+
+                logs.push("Step 4: Gemini returned. Checking result...");
 
                 if (!analysis) {
                         await logToSystem(uid, env.FIREBASE_PROJECT_ID, token, "Gemini Analysis Failed", { error: "Returned null" });
