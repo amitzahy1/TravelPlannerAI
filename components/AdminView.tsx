@@ -822,8 +822,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
 
 
-                        {/* TAB: SYSTEM LOGS */}
-                        {activeTab === 'logs' && (
+                        {/* TAB: SYSTEM LOGS - Admin Only */}
+                        {activeTab === 'logs' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (
                             <div className="animate-fade-in">
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
                                     <h3 className="text-lg font-black text-slate-800 mb-2">לוגים של מערכת (Debug)</h3>
