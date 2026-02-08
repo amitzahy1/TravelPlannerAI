@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
 import { Loader2, Map as MapIcon, Navigation } from 'lucide-react';
 
@@ -424,18 +427,27 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // Marker Cluster Group
-        const markerClusterGroup = L.markerClusterGroup({
-            showCoverageOnHover: false,
-            maxClusterRadius: 40,
-            iconCreateFunction: (cluster) => {
-                return L.divIcon({
-                    html: `<div style="background-color: #3b82f6; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: 'Rubik'; font-size: 14px; border: 2px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">${cluster.getChildCount()}</div>`,
-                    className: '',
-                    iconSize: [32, 32]
-                });
-            }
-        });
+        // Marker Cluster Group - Safety Check
+        let markerClusterGroup: L.MarkerClusterGroup | L.LayerGroup;
+
+        // @ts-ignore
+        if (typeof L.markerClusterGroup === 'function') {
+            // @ts-ignore
+            markerClusterGroup = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                maxClusterRadius: 40,
+                iconCreateFunction: (cluster: any) => {
+                    return L.divIcon({
+                        html: `<div style="background-color: #3b82f6; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: 'Rubik'; font-size: 14px; border: 2px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">${cluster.getChildCount()}</div>`,
+                        className: '',
+                        iconSize: [32, 32]
+                    });
+                }
+            });
+        } else {
+            console.warn('Leaflet MarkerCluster plugin not found. Falling back to LayerGroup.');
+            markerClusterGroup = L.layerGroup();
+        }
 
         // Route Layer Group
         const routeGroup = L.layerGroup().addTo(map);

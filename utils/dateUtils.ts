@@ -60,36 +60,58 @@ export const formatTimeOnly = (isoString?: string) => {
  * Extract time (HH:MM) from various formats including malformed ISO strings
  * Handles: "2026-02-15T00:30:00", "00:30", "2026-02-15T00:30:00+04:00", etc.
  */
+/**
+ * Robustly format flight time from multiple inputs:
+ * - "HH:MM" string
+ * - ISO Date string
+ * - Firestore Timestamp object (has .toDate())
+ * - Date object
+ */
+export const formatFlightTime = (input: any): string => {
+        if (!input) return '00:00';
+
+        // 1. Handle Firestore Timestamp / Object with toDate
+        if (typeof input === 'object' && typeof input.toDate === 'function') {
+                try {
+                        const date = input.toDate();
+                        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                } catch (e) { console.error("Timestamp parse fail", e); }
+        }
+
+        // 2. Handle standard Date object
+        if (input instanceof Date) {
+                return input.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        // 3. Handle Strings
+        if (typeof input === 'string') {
+                // "10:00" or "10:00:00"
+                if (input.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
+                        return input.substring(0, 5);
+                }
+
+                // ISO String "2026-01-01T10:00:00"
+                if (input.includes('T')) {
+                        try {
+                                const date = new Date(input);
+                                if (!isNaN(date.getTime())) {
+                                        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                }
+                        } catch (e) { }
+                }
+        }
+
+        console.warn("formatFlightTime could not parse:", input);
+        return '00:00';
+};
+
+/**
+ * Extract time (HH:MM) from various formats including malformed ISO strings
+ * Handles: "2026-02-15T00:30:00", "00:30", "2026-02-15T00:30:00+04:00", etc.
+ * @deprecated Use formatFlightTime for UI display
+ */
 export const parseFlightTime = (timeString?: string): string => {
-        if (!timeString) return '';
-
-        // Already HH:MM format
-        if (timeString.match(/^\d{1,2}:\d{2}$/)) {
-                const [h, m] = timeString.split(':');
-                return `${h.padStart(2, '0')}:${m}`;
-        }
-
-        // Try to extract from ISO (look for T followed by time)
-        const timeMatch = timeString.match(/T(\d{1,2}):(\d{2})/);
-        if (timeMatch) {
-                const h = parseInt(timeMatch[1]);
-                const m = parseInt(timeMatch[2]);
-                if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
-                        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                }
-        }
-
-        // Try parsing as Date
-        try {
-                const date = new Date(timeString);
-                if (!isNaN(date.getTime())) {
-                        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-                }
-        } catch (e) {
-                // Ignore
-        }
-
-        return '';
+        return formatFlightTime(timeString);
 };
 
 /**

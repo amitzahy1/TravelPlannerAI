@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Trip, FlightSegment } from '../types';
 import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check } from 'lucide-react';
-import { formatDateTime, formatDateOnly, parseFlightTime, calculateFlightDuration, parseDateToIso } from '../utils/dateUtils';
+import { formatDateTime, formatDateOnly, parseFlightTime, calculateFlightDuration, parseDateToIso, formatFlightTime } from '../utils/dateUtils';
 
 // --- Assets & Helpers ---
 
@@ -226,6 +226,13 @@ interface FlightCardProps {
 }
 
 const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
+  // DEBUG: Diagnose 00:00 issue
+  console.log('✈️ FlightCard Render:', {
+    dep: segment.departureTime,
+    arr: segment.arrivalTime,
+    type: typeof segment.departureTime
+  });
+
   const logoUrl = getAirlineLogo(segment.airline, segment.flightNumber);
 
   // Use the new timezone-aware duration calculator
@@ -233,15 +240,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
     ? segment.duration
     : calculateFlightDuration(segment.departureTime || '', segment.arrivalTime || '');
 
-  // Extract display times - handle both ISO and raw formats
-  const getDisplayTime = (timeStr?: string): string => {
-    if (!timeStr) return '00:00';
-    const parsed = parseFlightTime(timeStr);
-    return parsed || '00:00';
-  };
-
-  const depTime = getDisplayTime(segment.departureTime);
-  const arrTime = getDisplayTime(segment.arrivalTime);
+  // Extract display times using ROBUST utility
+  // We use formatFlightTime directly imported from utils (it replaced parseFlightTime logic)
+  const depTime = formatFlightTime(segment.departureTime);
+  const arrTime = formatFlightTime(segment.arrivalTime);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow p-6 mb-4 relative overflow-hidden group">

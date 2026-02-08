@@ -179,7 +179,7 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
 // --- GEMINI (ROBUST) ---
 
 async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
-        const model = "gemini-1.5-flash";
+        const model = "gemini-1.5-flash-latest";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
         // Safety Settings: BLOCK_NONE (Critical for reliability)

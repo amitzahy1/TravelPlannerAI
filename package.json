@@ -17,6 +17,7 @@
     "firebase": "^12.8.0",
     "framer-motion": "^12.31.0",
     "leaflet": "1.9.4",
+    "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^0.562.0",
     "openai": "^6.16.0",
     "postcss": "^8.5.6",
