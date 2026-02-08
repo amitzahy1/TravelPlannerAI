@@ -220,51 +220,91 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
                 { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
         ];
 
+        // --- FRONTEND GOLDEN PROMPT (IDENTICAL COPY) ---
+        const SYSTEM_PROMPT = `
+Role: You are the Lead Data Architect for a Travel App.
+Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
+
+--- CRITICAL CONTEXT: ANCHOR YEAR 2026 ---
+1. **CURRENT REFERENCE**: Today is Jan 2026.
+2. **FUTURE BIAS**: All flights are for 2026 or 2027.
+3. **MISSING YEAR RULE**: If a document says "04 Feb" and contains NO year, assign **2026**.
+4. **THE "1930" TRAP (CRITICAL)**: In airline tickets, a 4-digit number after a month (e.g., "28JAN 1930") is OFTEN THE TIME (19:30), NOT THE YEAR 1930.
+   - CHECK: Is the number between 0000 and 2359? Treat as TIME.
+   - CHECK: Is the number 2025, 2026, 2027? Treat as YEAR.
+   - NEVER output a year before 2025.
+
+--- OUTPUT JSON SCHEMA ---
+Return ONLY raw JSON.
+For every date, you MUST provide:
+1. "rawText": The exact string you saw in the file (e.g., "28JAN 1930").
+2. "isoDate": The strictly formatted ISO string (YYYY-MM-DDTHH:mm:ss).
+
+Structure:
+{
+  "tripMetadata": {
+    "suggestedName": "String",
+    "mainDestination": "String",
+    "uniqueCityNames": ["City1"]
+  },
+  "processedFileIds": ["file1.pdf"],
+  "unprocessedFiles": [],
+  "categories": {
+    "transport": [
+      {
+        "type": "flight",
+        "data": {
+          "airline": "String",
+          "flightNumber": "String",
+          "totalPrice": Number,
+          "currency": "String (e.g. USD, EUR, ILS)",
+          "departure": {
+            "city": "String",
+            "iata": "ABC",
+            "rawDateText": "String (DEBUG)",
+            "isoDate": "YYYY-MM-DDTHH:mm:ss",
+            "displayTime": "HH:MM"
+          },
+          "arrival": {
+             "city": "String",
+             "iata": "ABC",
+             "rawDateText": "String (DEBUG)",
+             "isoDate": "YYYY-MM-DDTHH:mm:ss",
+             "displayTime": "HH:MM"
+          }
+        },
+        "sourceFileIds": []
+      }
+    ],
+    "accommodation": [
+      {
+         "type": "hotel",
+         "data": {
+            "hotelName": "String",
+            "address": "String",
+            "checkIn": "YYYY-MM-DD",
+            "checkOut": "YYYY-MM-DD",
+            "totalPrice": Number,
+            "currency": "String",
+            "bookingId": "String"
+         }
+      }
+    ],
+    "wallet": [],
+    "dining": [],
+    "activities": []
+  }
+}
+`;
+
         const parts: any[] = [{
-                text: `
-    You are a Travel Assistant API.
-    Analyze this email content and attachments.
-    
-    EXISTING TRIPS:
-    ${JSON.stringify(existingTrips)}
+                text: `${SYSTEM_PROMPT}
 
-    TASK:
-    1. Extract all travel details:
-       - Trip Name, Destination, Dates (YYYY-MM-DD)
-       - FLIGHTS: Extract full segments (departure/arrival airports, times, flight #). 
-       - HOTELS: Extract name, address, dates.
-    2. DECISION: Does this info belong to an existing trip (dates/loc overlap)?
-       - Return action="update" with tripId.
-       - Else action="create".
+    --- WORKER CONTEXT ---
+    You are running in a background worker.
+    Analyze the EMAIL CONTENT and ATTACHMENTS below using the rules above.
 
-    --- INVOICE & UNSTRUCTURED DATA PARSING RULES ---
-    1. **Israir / Low Cost Invoices**: 
-       - Look for single-line flight strings like: "Dep: 30/03/2026 TEL AVIV 6H:897 Arv: 30/03/2026 TBILISI"
-       - **Flight Numbers**: "6H:897" means Airline="6H", Flight="897". Remove the colon.
-       - **Dates**: Expect European format (DD/MM/YYYY). Convert to YYYY-MM-DD.
-    2. **Inferred Return Date**: 
-       - If only one flight is listed but a "Baggage" or "Service" line exists for a later date (e.g., "06/04/2026"), USE THAT DATE as the Trip End Date.
-    3. **Missing Locations**:
-       - If "TEL AVIV" or "TBILISI" appear near "Dep/Arv", infer them as Origin/Destination.
-
-    IMPORTANT: For FLIGHTS, ALWAYS extract "departureTime" and "arrivalTime" in HH:mm format (24h).
-
-    OUTPUT JSON:
-    {
-       "action": "create" | "update",
-       "tripId": "string (if update)",
-       "data": {
-           "name": "Trip Name",
-           "destination": "City, Country",
-           "startDate": "YYYY-MM-DD",
-           "endDate": "YYYY-MM-DD",
-           "flights": { 
-               "pnr": "string", "airline": "string", 
-               "segments": [ { "from": "TLV", "to": "LHR", "date": "...", "departureTime": "10:00", "arrivalTime": "14:30", "flight": "..." } ] 
-           },
-           "hotels": [ { "name": "...", "address": "...", "checkIn": "...", "checkOut": "..." } ]
-       }
-    }
+    OUTPUT: Return the JSON structure defined in the schema above.
     ` }];
 
         for (const att of attachments) {
@@ -276,13 +316,16 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
                 }
         }
 
-        parts.push({ text: `Email:\n${text.substring(0, 30000)}` });
+        parts.push({
+                text: `Email: \n${text.substring(0, 30000)
+                        } `
+        });
 
         // --- FALLBACK LOOP ---
         let lastError = null;
 
         for (const model of CANDIDATES) {
-                console.log(`🤖 Attempting model: ${model}`);
+                console.log(`🤖 Attempting model: ${model} `);
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
                 try {
@@ -327,7 +370,51 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
                         // Success! Parse and return
                         console.log(`✅ Success with ${model}`);
                         const txt = candidate.content.parts[0].text;
-                        return JSON.parse(txt);
+                        const frontendData = JSON.parse(txt);
+
+                        // --- MAPPING: FRONTEND SCHEMA -> WORKER SCHEMA ---
+                        // We map the robust Frontend output back to the simple Worker format
+                        // so legacy logic (and temporal matching) continues to work.
+
+                        // 1. Extract Dates
+                        const transportDates = frontendData.categories?.transport?.map((t: any) => t.data.departure?.isoDate).filter(Boolean) || [];
+                        const hotelDates = frontendData.categories?.accommodation?.map((h: any) => h.data.checkIn).filter(Boolean) || [];
+                        const allDates = [...transportDates, ...hotelDates].sort();
+
+                        const startDate = allDates[0] ? allDates[0].split('T')[0] : (frontendData.tripMetadata?.startDate || "");
+                        const endDate = allDates.length > 0 ? allDates[allDates.length - 1].split('T')[0] : (frontendData.tripMetadata?.endDate || "");
+
+                        // 2. Map Flights
+                        const segments = frontendData.categories?.transport?.map((t: any) => ({
+                                from: t.data.departure?.city || t.data.departure?.iata || "",
+                                to: t.data.arrival?.city || t.data.arrival?.iata || "",
+                                date: t.data.departure?.isoDate ? t.data.departure?.isoDate.split('T')[0] : "",
+                                departureTime: t.data.departure?.displayTime || "00:00",
+                                arrivalTime: t.data.arrival?.displayTime || "00:00",
+                                flight: t.data.flightNumber || "",
+                                airline: t.data.airline || ""
+                        })) || [];
+
+                        // 3. Map Hotels
+                        const hotels = frontendData.categories?.accommodation?.map((h: any) => ({
+                                name: h.data.hotelName,
+                                address: h.data.address,
+                                checkInDate: h.data.checkIn,
+                                checkOutDate: h.data.checkOut
+                        })) || [];
+
+                        return {
+                                action: "create", // Default, will be overridden by Temporal Matching
+                                tripId: "",
+                                data: {
+                                        name: frontendData.tripMetadata?.suggestedName || "New Trip",
+                                        destination: frontendData.tripMetadata?.mainDestination || "",
+                                        startDate,
+                                        endDate,
+                                        flights: { segments: segments }, // Worker expects 'flights' object with segments array
+                                        hotels: hotels
+                                }
+                        };
 
                 } catch (e: any) {
                         console.error(`❌ Crash with ${model}:`, e);
