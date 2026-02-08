@@ -179,8 +179,15 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
 // --- GEMINI (ROBUST) ---
 
 async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
-        const model = "gemini-1.5-flash-latest";
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        // --- MODEL CONFIGURATION (Feb 2026) ---
+        // Mirroring frontend FAST_CANDIDATES for maximum reliability
+        const CANDIDATES = [
+                "gemini-3-flash-preview",  // 1. Fastest
+                "gemini-2.5-flash",        // 2. Stable
+                "gemini-2.5-flash-lite",   // 3. Ultra Lite
+                "gemini-1.5-flash-latest"  // 4. Veteran Fallback
+        ];
 
         // Safety Settings: BLOCK_NONE (Critical for reliability)
         const safetySettings = [
@@ -239,45 +246,66 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
 
         parts.push({ text: `Email:\n${text.substring(0, 30000)}` });
 
-        const res = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                        contents: [{ parts }],
-                        safetySettings, // Apply Safety Settings
-                        generationConfig: { responseMimeType: "application/json" }
-                })
-        });
+        // --- FALLBACK LOOP ---
+        let lastError = null;
 
-        const json: any = await res.json();
+        for (const model of CANDIDATES) {
+                console.log(`🤖 Attempting model: ${model}`);
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-        if (!res.ok) {
-                console.error("Gemini API Error:", json);
-                throw new Error(`Gemini API Error: ${res.statusText} - ${JSON.stringify(json)}`);
+                try {
+                        const res = await fetch(url, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                        contents: [{ parts }],
+                                        safetySettings, // Apply Safety Settings
+                                        generationConfig: { responseMimeType: "application/json" }
+                                })
+                        });
+
+                        const json: any = await res.json();
+
+                        if (!res.ok) {
+                                // If 404 (Model not found) or 503 (Overloaded), continue to next
+                                console.warn(`⚠️ Model ${model} failed: ${res.status} ${JSON.stringify(json)}`);
+                                lastError = new Error(`Gemini API Error (${model}): ${res.statusText}`);
+                                continue;
+                        }
+
+                        // Strict Validation
+                        if (!json.candidates || json.candidates.length === 0) {
+                                lastError = new Error(`Gemini (${model}) No Candidates.`);
+                                continue;
+                        }
+
+                        const candidate = json.candidates[0];
+
+                        // Safety Check
+                        if (candidate.finishReason === "SAFETY") {
+                                lastError = new Error(`Gemini (${model}) Blocked due to SAFETY.`);
+                                continue;
+                        }
+
+                        if (!candidate.content || !candidate.content.parts) {
+                                lastError = new Error(`Gemini (${model}) Empty content. FinishReason: ${candidate.finishReason}`);
+                                continue;
+                        }
+
+                        // Success! Parse and return
+                        console.log(`✅ Success with ${model}`);
+                        const txt = candidate.content.parts[0].text;
+                        return JSON.parse(txt);
+
+                } catch (e: any) {
+                        console.error(`❌ Crash with ${model}:`, e);
+                        lastError = e;
+                        // Move to next candidate
+                }
         }
 
-        // Strict Validation
-        if (!json.candidates || json.candidates.length === 0) {
-                throw new Error(`Gemini No Candidates. Full Response: ${JSON.stringify(json)}`);
-        }
-
-        const candidate = json.candidates[0];
-
-        // Safety Check
-        if (candidate.finishReason === "SAFETY") {
-                throw new Error(`Gemini Blocked content due to SAFETY. Ratings: ${JSON.stringify(candidate.safetyRatings)}`);
-        }
-
-        if (!candidate.content || !candidate.content.parts) {
-                throw new Error(`Gemini returned empty content. FinishReason: ${candidate.finishReason}`);
-        }
-
-        try {
-                const txt = candidate.content.parts[0].text;
-                return JSON.parse(txt);
-        } catch (e: any) {
-                throw new Error(`Gemini JSON Parse Error: ${e.message}`);
-        }
+        // If all failed
+        throw lastError || new Error("All Gemini models failed to process the email.");
 }
 
 // --- FIREBASE / HELPERS remains similar but optimized ---

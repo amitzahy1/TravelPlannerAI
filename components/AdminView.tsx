@@ -133,6 +133,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     // --- Derived State for Route Builder ---
     const [routeCities, setRouteCities] = useState<string[]>([]);
     const [newCityInput, setNewCityInput] = useState('');
+    const [showMap, setShowMap] = useState(false);
 
     // --- Derived State for Date Range ---
     const [startDate, setStartDate] = useState('');
@@ -798,10 +799,23 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                     </div>
                                 </div>
 
-                                {/* Map View */}
-                                <div className="bg-white p-1 rounded-2xl shadow-sm border border-slate-200">
-                                    <UnifiedMapView trip={activeTrip} height="400px" />
+                                {/* Map View Toggle */}
+                                <div className="flex justify-start mb-2">
+                                    <button
+                                        onClick={() => setShowMap(!showMap)}
+                                        className="text-sm font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 border border-blue-100"
+                                    >
+                                        <MapPin className="w-4 h-4" />
+                                        {showMap ? 'הסתר מפה' : 'הצג מפה בוועדה'}
+                                    </button>
                                 </div>
+
+                                {/* Map View - Conditional */}
+                                {showMap && (
+                                    <div className="bg-white p-1 rounded-2xl shadow-sm border border-slate-200 animate-fade-in">
+                                        <UnifiedMapView trip={activeTrip} height="400px" />
+                                    </div>
+                                )}
 
                                 {/* Danger Zone */}
                                 {(!activeTrip?.isShared || activeTrip.sharing?.role === 'owner') && (
