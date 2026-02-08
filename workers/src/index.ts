@@ -152,6 +152,18 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
                         source: 'email_import'
                 };
 
+                // --- TEMPORAL MATCHING OVERRIDE (Feb 2026) ---
+                // If Gemini says "create" (or gave a tripId), double-check dates.
+                // We trust strict date overlap more than AI hallucination.
+                if (enrichedData.startDate && enrichedData.endDate) {
+                        const overlapId = findOverlappingTrip(uid, enrichedData.startDate, enrichedData.endDate, existingTrips);
+                        if (overlapId) {
+                                logs.push(`🕒 Temporal Match: Found existing trip ${overlapId}. Overriding action to 'update'.`);
+                                analysis.action = 'update';
+                                analysis.tripId = overlapId;
+                        }
+                }
+
                 if (analysis.action === 'update' && analysis.tripId) {
                         logs.push(`Updating Trip ${analysis.tripId}...`);
                         const originalTrip = await getTripById(uid, analysis.tripId, env.FIREBASE_PROJECT_ID, token);
@@ -359,6 +371,32 @@ async function saveToProcessingQueue(uid: string, projectId: string, token: stri
         }).catch(e => console.error("Failed to save to queue", e));
 }
 
+// --- LOGIC HELPER: TEMPORAL MATCHING (Feb 2026) ---
+function findOverlappingTrip(userId: string, newStart: string, newEnd: string, existingTrips: any[]): string | null {
+        if (!newStart || !newEnd || !existingTrips || existingTrips.length === 0) return null;
+
+        try {
+                const startA = new Date(newStart).getTime();
+                const endA = new Date(newEnd).getTime();
+
+                for (const trip of existingTrips) {
+                        if (!trip.startDate || !trip.endDate) continue;
+
+                        const startB = new Date(trip.startDate).getTime();
+                        const endB = new Date(trip.endDate).getTime();
+
+                        // Formula: (StartA <= EndB) AND (EndA >= StartB)
+                        if (startA <= endB && endA >= startB) {
+                                console.log(`🕒 Match Found! New: ${newStart}-${newEnd} overlaps with Trip ${trip.id} (${trip.startDate}-${trip.endDate})`);
+                                return trip.id;
+                        }
+                }
+        } catch (e) {
+                console.warn("Date comparison error:", e);
+        }
+        return null;
+}
+
 // --- LOGIC HELPER: MERGE (Unchanged) ---
 function mergeTripData(original: any, newData: any): any {
         const merged = { ...original };
@@ -376,8 +414,18 @@ function mergeTripData(original: any, newData: any): any {
                         merged.flights.segments = [...(merged.flights.segments || []), ...newData.flights.segments];
                 }
         }
-        if (!merged.startDate && newData.startDate) merged.startDate = newData.startDate;
-        if (!merged.endDate && newData.endDate) merged.endDate = newData.endDate;
+        // SMART DATE EXPANSION: Extend trip duration if new events fall outside current bounds
+        if (newData.startDate) {
+                if (!merged.startDate || new Date(newData.startDate) < new Date(merged.startDate)) {
+                        merged.startDate = newData.startDate;
+                }
+        }
+        if (newData.endDate) {
+                if (!merged.endDate || new Date(newData.endDate) > new Date(merged.endDate)) {
+                        merged.endDate = newData.endDate;
+                }
+        }
+
         merged.updatedAt = new Date().toISOString();
         return merged;
 }
