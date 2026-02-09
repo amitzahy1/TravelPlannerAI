@@ -65,8 +65,9 @@ export const getTripsByEmail = async (email: string): Promise<Trip[]> => {
   try {
     const tripsQuery = query(
       collectionGroup(db, 'trips'),
-      where('ownerEmail', '==', email),
-      orderBy('updatedAt', 'desc')
+      where('ownerEmail', '==', email)
+      // Removed orderBy to avoid requiring a composite index (orderBy('updatedAt'))
+      // We will sort in memory below.
     );
 
     const querySnapshot = await getDocs(tripsQuery);
@@ -74,7 +75,17 @@ export const getTripsByEmail = async (email: string): Promise<Trip[]> => {
     querySnapshot.forEach((doc) => {
       trips.push({ ...doc.data(), id: doc.id } as Trip);
     });
-    return trips;
+
+    // Sort in memory (Handle Timestamp or ISO String)
+    return trips.sort((a, b) => {
+      const getMillis = (t: any) => {
+        if (!t) return 0;
+        if (t.toMillis) return t.toMillis(); // Firestore Timestamp
+        if (t.seconds) return t.seconds * 1000; // Raw seconds
+        return new Date(t).getTime(); // ISO String or Date
+      };
+      return getMillis((b as any).updatedAt) - getMillis((a as any).updatedAt);
+    });
   } catch (error) {
     console.warn('⚠️ [FirestoreService] CollectionGroup query failed (requires index?):', error);
     return [];
