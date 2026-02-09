@@ -272,6 +272,14 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
         return btoa(binary);
 }
 
+// 4. Robust Time Extraction
+const extractTimeFromText = (text: string | undefined): string => {
+        if (!text) return "12:00";
+        // Look for HH:MM pattern
+        const match = text.match(/([0-1]?[0-9]|2[0-3]):[0-5][0-9]/);
+        return match ? match[0].padStart(5, '0') : "12:00";
+};
+
 // --- THE CORE LOGIC ---
 
 async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
@@ -365,9 +373,20 @@ Mission: Extract travel data from the provided document into STRICT JSON.
         const rawFlights = frontendData.categories?.transport || [];
 
         // User Code Mapping Logic
+        // User Code Mapping Logic
         const segments = rawFlights.map((item: any) => {
                 const data = item.data || item;
                 const depDate = fixDate(data.departure?.isoDate);
+
+                // Robust Time Extraction
+                const depTime = (data.departure?.displayTime && data.departure?.displayTime !== "00:00")
+                        ? data.departure.displayTime
+                        : extractTimeFromText(JSON.stringify(data));
+
+                const arrTime = (data.arrival?.displayTime && data.arrival?.displayTime !== "00:00")
+                        ? data.arrival.displayTime
+                        : "12:00"; // Default arrival to noon if missing
+
                 return {
                         airline: data.airline || "Unknown",
                         flight: data.flightNumber || "",
@@ -375,15 +394,16 @@ Mission: Extract travel data from the provided document into STRICT JSON.
                         from: data.departure?.iata || data.departure?.city || "",
                         to: data.arrival?.iata || data.arrival?.city || "",
                         date: depDate,
-                        departureTime: data.departure?.displayTime || "00:00",
-                        arrivalTime: data.arrival?.displayTime || "00:00"
+                        departureTime: depTime,
+                        arrivalTime: arrTime
                 };
         });
 
         const mainFlight = segments.length > 0 ? {
                 airline: segments[0].airline,
-                pnr: segments[0].pnr
-        } : { airline: "", pnr: "" };
+                pnr: segments[0].pnr,
+                segments: segments // <--- CRITICAL FIX: Nest segments here
+        } : { airline: "", pnr: "", segments: [] };
 
         // תיקון תאריכים אם חסרים
         const dates = segments.map((s: any) => s.date).filter(Boolean).sort();
@@ -398,8 +418,7 @@ Mission: Extract travel data from the provided document into STRICT JSON.
                 endDate: endDate,
                 status: 'confirmed',
                 source: 'email_import',
-                flights: mainFlight,
-                segments: segments,
+                flights: mainFlight, // Structure is now: { airline, pnr, segments: [...] }
                 hotels: [],
                 documents: [],
                 createdAt: new Date().toISOString(),
