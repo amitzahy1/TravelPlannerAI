@@ -230,9 +230,9 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
 
         // --- MODEL CONFIGURATION (MATCHING FRONTEND) ---
         const CANDIDATES = [
-                "gemini-3-pro-preview",    // 1. Bleeding Edge (Reasoning)
-                "gemini-3-flash-preview",  // 2. Fast & Capable
-                "gemini-2.5-pro",          // 3. Standard
+                "gemini-3-pro-preview",    // 1. PRIMARY: The best reasoning/vision model
+                "gemini-2.5-pro",          // 2. BACKUP: Strong stable model
+                "gemini-3-flash-preview",  // 3. FALLBACK: Fast but less detailed
                 "gemini-1.5-pro-latest"    // 4. Backup
         ];
 
@@ -362,7 +362,7 @@ Return ONLY raw JSON. No markdown. Structure matches the app's 'StagedTripData'.
                 const b64 = uint8ArrayToBase64(att.content);
                 if (b64) {
                         parts.push({
-                                inline_data: { mime_type: att.mimeType, data: b64 }
+                                inlineData: { mimeType: att.mimeType, data: b64 }
                         });
                 }
         }
