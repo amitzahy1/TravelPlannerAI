@@ -1,36 +1,22 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { StagedTripData } from "../types";
 
-// --- CONFIGURATION: FINAL & TESTED (Jan 28, 2026) ---
-// Contains ONLY models confirmed to exist in documentation.
+// --- CONFIGURATION: PERFECT PARSING SETUP (Updated) ---
+// שינוי קריטי: ה-Pro חייב להיות ראשון ב-SMART כדי להבטיח יכולות Vision והיגיון
 const GOOGLE_MODELS = {
   // --- TIER 1: Heavy Reasoning (Files, Complex Analysis) ---
   SMART_CANDIDATES: [
-    // 0. The Bleeding Edge
-    "gemini-3-pro-preview",
-
-    // 1. User Choice (Fast & Capable)
-    "gemini-3-flash-preview",
-
-    // 2. The new Standard (2.5)
-    "gemini-2.5-pro",
-
-    // 3. Specific Backup (If latest alias fails)
+    "gemini-3-pro-preview",    // 1. PRIMARY: The best reasoning/vision model
+    "gemini-2.5-pro",          // 2. BACKUP: Strong stable model
+    "gemini-3-flash-preview",  // 3. FALLBACK: Fast but less detailed
     "gemini-1.5-pro-latest",
   ],
 
-  // --- TIER 2: Speed & Chat (Fast Conversations & Vibe Checks) ---
+  // --- TIER 2: Speed & Chat (Fast Conversations) ---
   FAST_CANDIDATES: [
-    // 1. Fastest & Newest (Assistant / Vibe)
     "gemini-3-flash-preview",
-
-    // 2. Stable & Fast (High Reliability)
     "gemini-2.5-flash",
-
-    // 3. Ultra Lite (New addition)
     "gemini-2.5-flash-lite",
-
-    // 4. Veteran (Fallback)
     "gemini-1.5-flash-latest"
   ]
 };
