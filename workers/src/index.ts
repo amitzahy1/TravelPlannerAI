@@ -10,6 +10,7 @@
 
 import { SignJWT, importPKCS8 } from 'jose';
 import PostalMime from 'postal-mime';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // --- INTERFACES ---
 interface Env {
@@ -201,162 +202,122 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
 // --- GEMINI (ROBUST) ---
 
 
-// --- SHARED LOIGIC: VALIDATION (Keep in sync with Frontend) ---
-function validateWorkerTripData(data: any): any {
-        const validated = { ...data };
+// --- UTILS: ROBUST PARSING ENGINE ---
 
-        // 1. Time Logic: Arrival > Departure
-        if (validated.categories?.transport) {
-                validated.categories.transport = validated.categories.transport.map((item: any) => {
-                        if (item.type === 'flight' && item.data.departure?.isoDate && item.data.arrival?.isoDate) {
-                                const dep = new Date(item.data.departure.isoDate);
-                                const arr = new Date(item.data.arrival.isoDate);
-                                if (arr < dep) {
-                                        console.log(`⚠️ Worker detected Arrival before Departure. Adjusting.`);
-                                        const originalArrTime = item.data.arrival.isoDate.split('T')[1] || "00:00:00";
-                                        const depDate = new Date(dep);
-                                        depDate.setDate(depDate.getDate() + 1);
-                                        const newDateStr = depDate.toISOString().split('T')[0];
-                                        item.data.arrival.isoDate = `${newDateStr}T${originalArrTime}`;
-                                }
-                        }
-                        return item;
-                });
+// 1. Aggressive JSON Cleaning
+const cleanJSON = (text: string): string => {
+        if (!text) return "{}";
+        // Remove Markdown, remove JSON comments if any, and clean spaces
+        let cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        // Fix for cases where the model adds text before/after the JSON
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+                cleaned = cleaned.substring(firstBrace, lastBrace + 1);
         }
-        return validated;
-}
+        return cleaned;
+};
+
+// 2. Smart Date Fixing (Converts everything to ISO)
+const fixDate = (d: string | undefined): string => {
+        if (!d) return "";
+        d = d.trim();
+
+        // If it's already in ISO format (2026-03-30)
+        if (d.match(/^\d{4}-\d{2}-\d{2}/)) return d.split('T')[0];
+
+        // If it's in Israeli/European format (30/03/2026 or 30.03.2026)
+        const eurMatch = d.match(/^(\d{1,2})[/.\\-](\d{1,2})[/.\\-](\d{2,4})/);
+        if (eurMatch) {
+                const year = eurMatch[3].length === 2 ? `20${eurMatch[3]}` : eurMatch[3];
+                return `${year}-${eurMatch[2].padStart(2, '0')}-${eurMatch[1].padStart(2, '0')}`;
+        }
+        return d; // Return original if failed, for manual handling
+};
+
+// 3. Safe Extraction
+// Function that knows how to take info even if it's inside 'data' or direct
+const safeGet = (obj: any, path: string[]) => {
+        let current = obj;
+        // Try searching in the normal path
+        for (const key of path) {
+                if (!current) break;
+                current = current[key];
+        }
+        if (current) return current;
+
+        // Try searching without 'data' (for structure hallucinations)
+        if (path.includes('data')) {
+                const newPath = path.filter(k => k !== 'data');
+                current = obj;
+                for (const key of newPath) {
+                        if (!current) break;
+                        current = current[key];
+                }
+                return current;
+        }
+        return undefined;
+};
+
+// --- THE CORE LOGIC ---
 
 async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
+        const genAI = new GoogleGenerativeAI(apiKey);
 
-        // --- MODEL CONFIGURATION (MATCHING FRONTEND) ---
+        // CONFIGURATION: PRO MODEL FIRST
         const CANDIDATES = [
-                "gemini-3-pro-preview",    // 1. PRIMARY: The best reasoning/vision model
-                "gemini-2.5-pro",          // 2. BACKUP: Strong stable model
-                "gemini-3-flash-preview",  // 3. FALLBACK: Fast but less detailed
-                "gemini-1.5-pro-latest"    // 4. Backup
+                "gemini-2.0-pro-exp-02-05", // MANDATORY: The strongest model for PDF analysis
+                "gemini-1.5-pro-latest",
+                "gemini-2.0-flash"
         ];
 
-        // Safety Settings
-        const safetySettings = [
-                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
-        ];
-
-        // --- UNIVERSAL PROMPT (Identical to Frontend) ---
         const SYSTEM_PROMPT = `
-Role: You are an elite Travel Data Architect & NDC Specialist.
-Mission: Extract unstructured travel data into a PERFECT JSON format, strictly adhering to IATA & ISO standards.
+Role: You are an elite Travel Data Architect.
+Mission: Extract travel data from the provided document into STRICT JSON.
 
---- PHASE 1: VISUAL & LINGUISTIC CALIBRATION ---
-1. **RTL & Bi-Directional Handling (Hebrew/Arabic)**:
-   - DETECT: If document is Hebrew/Arabic, activate "Visual Anchoring".
-   - RULE: Text flows Right-to-Left, BUT numbers (Prices, Flight Nos, Dates) flow Left-to-Right.
-   - TRAP: Do NOT reverse digits (e.g., "897" must stay "897", not "798").
-   - CONTEXT: "תל אביב - לונדון" implies Origin: TLV, Dest: LHR.
-2. **Document Classification**:
-   - Identify: E-Ticket, Invoice (Tax Receipt), Boarding Pass, or Itinerary.
-   - Noise Filter: Ignore "Terms & Conditions", ads, and irrelevant legal text.
+--- CRITICAL RULES FOR ISRAELI/PDF DOCS ---
+1. **Dates**: Input "30.03.2026" or "30/03/2026" MUST become "2026-03-30".
+2. **Time**: Look for "19:30" or "1930". "1930" after a date is TIME, NOT YEAR.
+3. **Structure**: Even if the text looks like CSV ("Service, Details, Date..."), parse it as a Flight Object.
+4. **Missing Info**: If "From" is missing but "TEL AVIV" appears, assume TLV.
 
---- PHASE 2: ADVANCED DATA EXTRACTION (NDC STANDARDS) ---
-Extract the following entities using Semantic Pattern Matching:
-
-A. **FLIGHTS (The Segment Logic)**:
-   - **PNR/Ref**: Look for 6-char alphanumeric codes (e.g., "6YJ82K"). Differentiate from Ticket Number (13 digits).
-   - **Carrier**: Identify Airline Name & Code (e.g., "LY", "6H").
-   - **Connection Logic**: If multiple flights appear on consecutive times, group them into one trip but separate segments.
-   - **Terminals**: Extract "Term" or "T" + number.
-
-B. **DATES & TIMES (ISO 8601 Strict)**:
-   - **Format**: Convert ALL dates to "YYYY-MM-DD".
-   - **Time**: Convert ALL times to "HH:MM" (24h).
-   - **Year Inference**: If year is missing (e.g., "28 NOV"), infer based on the current context (Future bias: 2026/2027).
-   - **The "1930" Trap**: "1930" after a date is TIME (19:30), NOT Year.
-
-C. **ACCOMMODATION (GERS Mapping Prep)**:
-   - Name: Exact hotel name.
-   - Address: Full address for Overture Maps matching.
-   - Dates: Check-in/Check-out.
-
-D. **FINANCIALS**:
-   - Extract Total Price and Currency code (USD, ILS, EUR).
-   - Identify "Vat/Tax" if separated.
-
---- PHASE 3: VALIDATION & SANITY CHECK (The Contract) ---
-Before outputting JSON, verify:
-1. Is Arrival Time logically *after* Departure Time? (Handle +1 day).
-2. Are city codes (IATA) consistent with city names?
-3. Is the PNR distinct from the Flight Number?
-
---- PHASE 4: STRICT JSON OUTPUT ---
-Return ONLY raw JSON. No markdown. Structure matches the app's 'StagedTripData'.
-
+--- JSON OUTPUT SCHEMA ---
 {
   "tripMetadata": {
-    "suggestedName": "String (e.g., 'Trip to Thailand')",
-    "mainDestination": "String (City, Country)",
+    "suggestedName": "String",
+    "mainDestination": "String",
     "startDate": "YYYY-MM-DD",
-    "endDate": "YYYY-MM-DD",
-    "uniqueCityNames": ["String"]
+    "endDate": "YYYY-MM-DD"
   },
-  "processedFileIds": [],
   "categories": {
     "transport": [
       {
         "type": "flight",
-        "confidence": 0.95,
         "data": {
-          "airline": "String",
-          "flightNumber": "String",
-          "pnr": "String",
+          "airline": "String (e.g. Israir, El Al)",
+          "flightNumber": "String (e.g. 6H 897)",
+          "pnr": "String (Booking Ref)",
           "departure": {
             "city": "String",
-            "iata": "ABC",
-            "isoDate": "YYYY-MM-DDTHH:mm:ss",
+            "iata": "String",
+            "isoDate": "YYYY-MM-DD",
             "displayTime": "HH:MM"
           },
           "arrival": {
              "city": "String",
-             "iata": "ABC",
-             "isoDate": "YYYY-MM-DDTHH:mm:ss",
+             "iata": "String",
+             "isoDate": "YYYY-MM-DD",
              "displayTime": "HH:MM"
-          },
-          "price": { "amount": Number, "currency": "ILS/USD" }
+          }
         }
       }
     ],
-    "accommodation": [
-      {
-         "type": "hotel",
-         "confidence": 0.95,
-         "data": {
-            "hotelName": "String",
-            "address": "String",
-            "checkIn": { "isoDate": "YYYY-MM-DD", "time": "HH:MM" },
-            "checkOut": { "isoDate": "YYYY-MM-DD", "time": "HH:MM" },
-            "bookingId": "String",
-            "price": { "amount": Number, "currency": "String" }
-         }
-      }
-    ],
-    "wallet": [], 
-    "dining": [],
-    "activities": []
+    "accommodation": []
   }
 }
 `;
 
-        const parts: any[] = [{
-                text: `${SYSTEM_PROMPT}
-
-    --- WORKER CONTEXT ---
-    You are running in a background worker.
-    Analyze the EMAIL CONTENT and ATTACHMENTS below using the rules above.
-
-    OUTPUT: Return the JSON structure defined in the schema above.
-    ` }];
+        const parts: any[] = [{ text: SYSTEM_PROMPT }, { text: `Email Body: ${text}` }];
 
         for (const att of attachments) {
                 const b64 = uint8ArrayToBase64(att.content);
@@ -367,128 +328,83 @@ Return ONLY raw JSON. No markdown. Structure matches the app's 'StagedTripData'.
                 }
         }
 
-        parts.push({
-                text: `Email: \n${text.substring(0, 30000)
-                        } `
-        });
+        let frontendData: any = null;
 
-        // --- FALLBACK LOOP ---
-        let lastError = null;
-
-        for (const model of CANDIDATES) {
-                console.log(`🤖 Attempting model: ${model} `);
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
+        // Retry Loop
+        for (const modelName of CANDIDATES) {
                 try {
-                        const res = await fetch(url, {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                        contents: [{ parts }],
-                                        safetySettings, // Apply Safety Settings
-                                        generationConfig: { responseMimeType: "application/json" }
-                                })
+                        const model = genAI.getGenerativeModel({
+                                model: modelName,
+                                generationConfig: { responseMimeType: "application/json" }
                         });
 
-                        const json: any = await res.json();
+                        const result = await model.generateContent({ contents: [{ role: "user", parts }] });
+                        const rawText = result.response.text();
+                        frontendData = JSON.parse(cleanJSON(rawText));
 
-                        if (!res.ok) {
-                                // If 404 (Model not found) or 503 (Overloaded), continue to next
-                                console.warn(`⚠️ Model ${model} failed: ${res.status} ${JSON.stringify(json)}`);
-                                lastError = new Error(`Gemini API Error (${model}): ${res.statusText}`);
-                                continue;
-                        }
-
-                        // Strict Validation
-                        if (!json.candidates || json.candidates.length === 0) {
-                                lastError = new Error(`Gemini (${model}) No Candidates.`);
-                                continue;
-                        }
-
-                        const candidate = json.candidates[0];
-
-                        // Safety Check
-                        if (candidate.finishReason === "SAFETY") {
-                                lastError = new Error(`Gemini (${model}) Blocked due to SAFETY.`);
-                                continue;
-                        }
-
-                        if (!candidate.content || !candidate.content.parts) {
-                                lastError = new Error(`Gemini (${model}) Empty content. FinishReason: ${candidate.finishReason}`);
-                                continue;
-                        }
-
-                        // Success! Parse and return
-                        console.log(`✅ Success with ${model}`);
-                        const txt = candidate.content.parts[0].text;
-                        const cleanedTxt = cleanJSON(txt); // Sanitize
-                        let frontendData = JSON.parse(cleanedTxt);
-
-                        // --- VALIDATION ---
-                        frontendData = validateWorkerTripData(frontendData);
-
-                        // --- DEBUG LOGGING (User Request) ---
-                        console.log("🔍 [Worker Extracted]:", JSON.stringify(frontendData).substring(0, 1000));
-
-                        // --- MAPPING: FRONTEND SCHEMA -> WORKER SCHEMA ---
-                        // We map the robust Frontend output back to the simple Worker format
-                        // so legacy logic (and temporal matching) continues to work.
-
-                        // 1. Extract Dates
-                        const transportDates = frontendData.categories?.transport?.map((t: any) => t.data.departure?.isoDate).filter(Boolean) || [];
-                        const hotelDates = frontendData.categories?.accommodation?.map((h: any) => h.data.checkIn?.isoDate).filter(Boolean) || [];
-                        const allDates = [...transportDates, ...hotelDates].sort();
-
-                        const startDate = allDates[0] ? allDates[0].split('T')[0] : (frontendData.tripMetadata?.startDate || "");
-                        const endDate = allDates.length > 0 ? allDates[allDates.length - 1].split('T')[0] : (frontendData.tripMetadata?.endDate || "");
-
-                        // 2. Map Flights
-                        const segments = frontendData.categories?.transport?.map((t: any) => ({
-                                from: t.data.departure?.city || t.data.departure?.iata || "",
-                                to: t.data.arrival?.city || t.data.arrival?.iata || "",
-                                date: t.data.departure?.isoDate ? t.data.departure?.isoDate.split('T')[0] : "",
-                                departureTime: t.data.departure?.displayTime || "00:00",
-                                arrivalTime: t.data.arrival?.displayTime || "00:00",
-                                flight: t.data.flightNumber || "",
-                                airline: t.data.airline || "",
-                                pnr: t.data.pnr || "" // New Field
-                        })) || [];
-
-                        // 3. Map Hotels
-                        const hotels = frontendData.categories?.accommodation?.map((h: any) => ({
-                                name: h.data.hotelName,
-                                address: h.data.address,
-                                checkInDate: h.data.checkIn?.isoDate || h.data.checkIn,
-                                checkOutDate: h.data.checkOut?.isoDate || h.data.checkOut,
-                                bookingId: h.data.bookingId || ""
-                        })) || [];
-
-                        return {
-                                action: "create", // Default, will be overridden by Temporal Matching
-                                tripId: "",
-                                data: {
-                                        name: frontendData.tripMetadata?.suggestedName || "New Trip",
-                                        destination: frontendData.tripMetadata?.mainDestination || "",
-                                        startDate,
-                                        endDate,
-                                        flights: {
-                                                pnr: segments[0]?.pnr || "",
-                                                airline: segments[0]?.airline || "",
-                                                segments: segments
-                                        },
-                                        hotels: hotels
-                                }
-                        };
-
-                } catch (e: any) {
-                        console.error(`❌ Crash with ${model}:`, e);
-                        lastError = e;
-                        // Move to next candidate
+                        if (frontendData) break; // Success
+                } catch (e) {
+                        console.warn(`Model ${modelName} failed, trying next...`);
                 }
         }
 
-        // If all failed
-        throw lastError || new Error("All Gemini models failed to process the email.");
+        if (!frontendData) throw new Error("All AI models failed to parse document.");
+
+        // --- THE FIX: ROBUST MAPPING TO FIRESTORE SCHEMA ---
+
+        // 1. Normalize Hierarchy (Handle empty transport)
+        const rawFlights = frontendData.categories?.transport || [];
+
+        // 2. Smart Mapping (Using fixDate and safeGet)
+        const segments = rawFlights.map((item: any) => {
+                // Double support: inside item.data OR direct
+                const data = item.data || item;
+
+                const depDate = fixDate(data.departure?.isoDate);
+                const arrDate = fixDate(data.arrival?.isoDate) || depDate; // If no arrival date, assume same day
+
+                return {
+                        airline: data.airline || "Unknown Airline",
+                        flight: data.flightNumber || "",
+                        pnr: data.pnr || "",
+                        from: data.departure?.iata || data.departure?.city || "",
+                        to: data.arrival?.iata || data.arrival?.city || "",
+                        date: depDate, // Now strictly ISO
+                        departureTime: data.departure?.displayTime || "00:00",
+                        arrivalTime: data.arrival?.displayTime || "00:00"
+                };
+        });
+
+        // 3. Create Main Flight Object (Takes info from first segment)
+        const mainFlight = segments.length > 0 ? {
+                airline: segments[0].airline,
+                pnr: segments[0].pnr
+        } : { airline: "", pnr: "" };
+
+        // 4. Calculate Trip Dates
+        const sortedDates = segments.map((s: any) => s.date).filter(Boolean).sort();
+        const startDate = sortedDates[0] || fixDate(frontendData.tripMetadata?.startDate) || new Date().toISOString().split('T')[0];
+        const endDate = sortedDates[sortedDates.length - 1] || fixDate(frontendData.tripMetadata?.endDate) || startDate;
+
+        const finalTripData = {
+                name: frontendData.tripMetadata?.suggestedName || "New Trip",
+                destination: frontendData.tripMetadata?.mainDestination || segments[0]?.to || "Unknown",
+                startDate: startDate,
+                endDate: endDate,
+                status: 'confirmed',
+                source: 'email_import',
+                flights: mainFlight, // Note: This was missing before
+                segments: segments,
+                hotels: [], // Fill with similar logic if needed
+                documents: [],
+                // ... other fields handled by createTrip/mergeTripData defaults
+        };
+
+        return {
+                action: "create",
+                tripId: "",
+                data: finalTripData
+        };
 }
 
 // --- FIREBASE / HELPERS remains similar but optimized ---
@@ -532,11 +448,7 @@ async function saveToProcessingQueue(uid: string, projectId: string, token: stri
         }).catch(e => console.error("Failed to save to queue", e));
 }
 
-// --- HELPER: CLEAN JSON (CRITICAL FOR GEMINI) ---
-function cleanJSON(text: string): string {
-        if (!text) return "{}";
-        return text.replace(/```json/g, '').replace(/```/g, '').trim();
-}
+
 
 // --- LOGIC HELPER: TEMPORAL MATCHING (Feb 2026) ---
 function findOverlappingTrip(userId: string, newStart: string, newEnd: string, existingTrips: any[]): string | null {
