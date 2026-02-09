@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Trip, FlightSegment } from '../types';
-import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check } from 'lucide-react';
+import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check, Lock, ShieldCheck } from 'lucide-react';
 import { formatDateTime, formatDateOnly, parseFlightTime, calculateFlightDuration, parseDateToIso, formatFlightTime } from '../utils/dateUtils';
 
 // --- Assets & Helpers ---
@@ -437,6 +437,20 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
           <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} />
         </div>
 
+        {/* Privacy Notice Banner */}
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <div className="bg-white p-1.5 rounded-full shadow-sm text-blue-600 mt-0.5">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-blue-900">הגנת פרטיות מופעלת</h4>
+            <p className="text-xs text-blue-700 mt-1">
+              המסמכים שלך נשמרים בצורה מאובטחת ומקומית. לצורך הגנה על המידע האישי שלך, לא ניתן לפתוח את המסמכים ישירות מהממשק.
+              הם משמשים את ה-AI לניתוח הנתונים בלבד.
+            </p>
+          </div>
+        </div>
+
         {documents && documents.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {documents.map((doc, idx) => {
@@ -444,11 +458,11 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
               const isImage = doc.match(/\.(jpg|jpeg|png|webp)$/i);
 
               return (
-                <div key={idx} className="group relative bg-white border border-slate-200 rounded-2xl p-3 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer aspect-[4/5] flex flex-col items-center justify-center text-center overflow-hidden">
+                <div key={idx} className="group relative bg-white border border-slate-200 rounded-2xl p-3 aspect-[4/5] flex flex-col items-center justify-center text-center overflow-hidden opacity-90 hover:opacity-100 transition-opacity">
                   {isImage ? (
                     <div className="absolute inset-0 bg-slate-100">
-                      <img src="https://via.placeholder.com/300?text=Image" alt={doc} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+                      <img src="https://via.placeholder.com/300?text=Protected" alt="Protected Document" className="w-full h-full object-cover blur-sm opacity-50" />
+                      <div className="absolute inset-0 bg-slate-100/50"></div>
                     </div>
                   ) : (
                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-sm z-10 ${isPdf ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
@@ -461,11 +475,11 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
                     <div className={`text-[10px] font-medium uppercase mt-1 ${isImage ? 'text-white/80' : 'text-slate-400'}`}>{isPdf ? 'PDF DOC' : 'IMAGE'}</div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="bg-white/90 backdrop-blur text-slate-800 rounded-full p-2 shadow-sm hover:bg-white">
-                      <Download className="w-4 h-4" />
-                    </button>
+                  {/* Actions - Locked */}
+                  <div className="absolute top-2 right-2 z-20">
+                    <div className="bg-slate-100/80 backdrop-blur text-slate-400 rounded-full p-1.5 shadow-sm" title="קובץ מוגן">
+                      <Lock className="w-3 h-3" />
+                    </div>
                   </div>
                 </div>
               );

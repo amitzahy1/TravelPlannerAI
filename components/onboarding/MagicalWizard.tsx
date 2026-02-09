@@ -183,7 +183,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                         >
                                                                 {tripData.method === 'smart' ? (
                                                                         <Step3_SmartImport
-                                                                                onComplete={(files) => handleStep3Complete({ files })}
+                                                                                onComplete={(data) => handleStep3Complete(data)}
                                                                                 onBack={handleStep3Back}
                                                                         />
                                                                 ) : (

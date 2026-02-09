@@ -126,26 +126,73 @@ const AppContent: React.FC = () => {
   const handleWizardComplete = async (wizardData: any) => {
     console.log("Wizard Complete:", wizardData);
 
+    const analysis = wizardData.analysisResult;
+    const rawData = analysis?.rawStagedData;
+
+    // Map Flights
+    const flightSegments = rawData?.categories?.transport?.map((t: any) => ({
+      fromCode: t.data.departure?.iata || "",
+      fromCity: t.data.departure?.city || "",
+      toCode: t.data.arrival?.iata || "",
+      toCity: t.data.arrival?.city || "",
+      departureTime: t.data.departure?.displayTime || "",
+      arrivalTime: t.data.arrival?.displayTime || "",
+      flightNumber: t.data.flightNumber || "",
+      airline: t.data.airline || "",
+      duration: "",
+      date: t.data.departure?.isoDate || "",
+      price: t.data.price?.amount
+    })) || [];
+
+    const flightPnr = rawData?.categories?.transport?.[0]?.data?.pnr || "";
+
+    // Map Hotels
+    const hotels = rawData?.categories?.accommodation?.map((h: any) => ({
+      id: crypto.randomUUID(),
+      name: h.data.hotelName || "Hotel",
+      address: h.data.address || "",
+      checkInDate: h.data.checkIn?.isoDate || "",
+      checkOutDate: h.data.checkOut?.isoDate || "",
+      nights: 0, // Calculate if needed
+      bookingSource: 'Direct',
+      confirmationCode: h.data.bookingId || "",
+      price: h.data.price?.amount ? `${h.data.price.amount} ${h.data.price.currency || ''}` : "",
+      lat: 0, lng: 0
+    })) || [];
+
+    // Determine Metadata from AI or Wizard Input
+    const dest = analysis?.metadata?.destination || wizardData.destination || "";
+    const name = analysis?.metadata?.suggestedName || (dest ? `Trip to ${dest}` : "New Adventure");
+    const dates = (analysis?.metadata?.startDate && analysis?.metadata?.endDate)
+      ? `${analysis.metadata.startDate} - ${analysis.metadata.endDate}`
+      : (wizardData.startDate ? `${wizardData.startDate} - ${wizardData.endDate}` : "");
+
     const newTrip: Trip = {
       id: crypto.randomUUID(),
-      name: wizardData.destination ? `Trip to ${wizardData.destination}` : "New Adventure",
-      destination: wizardData.destination || "",
-      dates: wizardData.startDate ? `${wizardData.startDate} - ${wizardData.endDate}` : "",
+      name,
+      destination: dest,
+      dates,
       coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
-      flights: { passengerName: "", pnr: "", segments: [] },
-      hotels: [],
+      flights: {
+        passengerName: user?.displayName || "",
+        pnr: flightPnr,
+        segments: flightSegments
+      },
+      hotels,
       restaurants: [],
       attractions: [],
       itinerary: [],
-      documents: [], // TODO: Handle file uploads
+      documents: [], // TODO: Upload files to Storage and link here
       secureNotes: [],
       isShared: false,
-      ...(wizardData.cities && wizardData.cities.length > 0 ? {
+      // Create initial itinerary days based on dates
+      ...(dates ? {
+        // Simple logic: create a day for the start date
         itinerary: [{
           id: crypto.randomUUID(),
           day: 1,
-          date: wizardData.startDate || new Date().toISOString(),
-          title: `Day 1 in ${wizardData.cities[0]}`,
+          date: analysis?.metadata?.startDate || wizardData.startDate || new Date().toISOString(),
+          title: `Arrival in ${dest}`,
           activities: []
         }]
       } : {})
@@ -154,7 +201,7 @@ const AppContent: React.FC = () => {
     try {
       await saveTrips([...trips, newTrip], user?.uid);
       setActiveTripId(newTrip.id);
-      setShowOnboarding(false); // Updated to use setShowOnboarding instead of undefined setIsOnboardingOpen
+      setShowOnboarding(false);
       queryClient.invalidateQueries({ queryKey: ['trips'] });
     } catch (error) {
       console.error("Failed to save trip:", error);

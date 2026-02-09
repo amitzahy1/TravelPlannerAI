@@ -200,18 +200,43 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
 
 // --- GEMINI (ROBUST) ---
 
+
+// --- SHARED LOIGIC: VALIDATION (Keep in sync with Frontend) ---
+function validateWorkerTripData(data: any): any {
+        const validated = { ...data };
+
+        // 1. Time Logic: Arrival > Departure
+        if (validated.categories?.transport) {
+                validated.categories.transport = validated.categories.transport.map((item: any) => {
+                        if (item.type === 'flight' && item.data.departure?.isoDate && item.data.arrival?.isoDate) {
+                                const dep = new Date(item.data.departure.isoDate);
+                                const arr = new Date(item.data.arrival.isoDate);
+                                if (arr < dep) {
+                                        console.log(`⚠️ Worker detected Arrival before Departure. Adjusting.`);
+                                        const originalArrTime = item.data.arrival.isoDate.split('T')[1] || "00:00:00";
+                                        const depDate = new Date(dep);
+                                        depDate.setDate(depDate.getDate() + 1);
+                                        const newDateStr = depDate.toISOString().split('T')[0];
+                                        item.data.arrival.isoDate = `${newDateStr}T${originalArrTime}`;
+                                }
+                        }
+                        return item;
+                });
+        }
+        return validated;
+}
+
 async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
 
-        // --- MODEL CONFIGURATION (Feb 2026) ---
-        // Mirroring frontend FAST_CANDIDATES for maximum reliability
+        // --- MODEL CONFIGURATION (MATCHING FRONTEND) ---
         const CANDIDATES = [
-                "gemini-3-flash-preview",  // 1. Fastest
-                "gemini-2.5-flash",        // 2. Stable
-                "gemini-2.5-flash-lite",   // 3. Ultra Lite
-                "gemini-1.5-flash-latest"  // 4. Veteran Fallback
+                "gemini-3-pro-preview",    // 1. Bleeding Edge (Reasoning)
+                "gemini-3-flash-preview",  // 2. Fast & Capable
+                "gemini-2.5-pro",          // 3. Standard
+                "gemini-1.5-pro-latest"    // 4. Backup
         ];
 
-        // Safety Settings: BLOCK_NONE (Critical for reliability)
+        // Safety Settings
         const safetySettings = [
                 { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
                 { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -220,94 +245,103 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
                 { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" }
         ];
 
-        // --- FRONTEND GOLDEN PROMPT (IDENTICAL COPY) ---
+        // --- UNIVERSAL PROMPT (Identical to Frontend) ---
         const SYSTEM_PROMPT = `
-Role: You are the Lead Data Architect for a Travel App.
-Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
+Role: You are an elite Travel Data Architect & NDC Specialist.
+Mission: Extract unstructured travel data into a PERFECT JSON format, strictly adhering to IATA & ISO standards.
 
---- EXPERT PARSING RULES (ISRAIR & LOW COST) ---
-You are dealing with MESSY PDF/TEXT outputs where columns often collapse.
-1. **VISUAL LAYOUT AWARENESS**:
-   - IF you see: "30.03.2026 19:30 23:05 Tel Aviv Tbilisi"
-   - INFER: Departure=19:30 (Tel Aviv), Arrival=23:05 (Tbilisi).
-   - The cities usually follow the times.
-2. **FLIGHT CODES**:
-   - Detect "6H" (Israir) followed by 3 digits (e.g., "6H 897", "6H:897", "6H897").
-   - Airline Code: "6H", Flight Number: "897".
-3. **EUROPEAN DATES (CRITICAL)**:
-   - Convert "DD.MM.YYYY" (e.g., 30.03.2026) -> "2026-03-30".
-   - Convert "DD/MM/YYYY" -> "YYYY-MM-DD".
-4. **PASSENGER LISTS**:
-   - Look for "1. Name Surname", "2. Name Surname".
-5. **NOISE FILTER**:
-   - IGNORE "Tax Invoice", "Vat", "Original", "Terms and Conditions".
+--- PHASE 1: VISUAL & LINGUISTIC CALIBRATION ---
+1. **RTL & Bi-Directional Handling (Hebrew/Arabic)**:
+   - DETECT: If document is Hebrew/Arabic, activate "Visual Anchoring".
+   - RULE: Text flows Right-to-Left, BUT numbers (Prices, Flight Nos, Dates) flow Left-to-Right.
+   - TRAP: Do NOT reverse digits (e.g., "897" must stay "897", not "798").
+   - CONTEXT: "תל אביב - לונדון" implies Origin: TLV, Dest: LHR.
+2. **Document Classification**:
+   - Identify: E-Ticket, Invoice (Tax Receipt), Boarding Pass, or Itinerary.
+   - Noise Filter: Ignore "Terms & Conditions", ads, and irrelevant legal text.
 
---- CRITICAL CONTEXT: ANCHOR YEAR 2026 ---
-1. **CURRENT REFERENCE**: Today is Jan 2026.
-2. **FUTURE BIAS**: All flights are for 2026 or 2027.
-3. **MISSING YEAR RULE**: If a document says "04 Feb" and contains NO year, assign **2026**.
-4. **THE "1930" TRAP (CRITICAL)**: In airline tickets, a 4-digit number after a month (e.g., "28JAN 1930") is OFTEN THE TIME (19:30), NOT THE YEAR 1930.
-   - CHECK: Is the number between 0000 and 2359? Treat as TIME.
-   - CHECK: Is the number 2025, 2026, 2027? Treat as YEAR.
-   - NEVER output a year before 2025.
+--- PHASE 2: ADVANCED DATA EXTRACTION (NDC STANDARDS) ---
+Extract the following entities using Semantic Pattern Matching:
 
---- OUTPUT JSON SCHEMA ---
-Return ONLY raw JSON.
-For every date, you MUST provide:
-1. "rawText": The exact string you saw in the file (e.g., "05/04/2026").
-2. "isoDate": The strictly formatted ISO string (YYYY-MM-DDTHH:mm:ss).
+A. **FLIGHTS (The Segment Logic)**:
+   - **PNR/Ref**: Look for 6-char alphanumeric codes (e.g., "6YJ82K"). Differentiate from Ticket Number (13 digits).
+   - **Carrier**: Identify Airline Name & Code (e.g., "LY", "6H").
+   - **Connection Logic**: If multiple flights appear on consecutive times, group them into one trip but separate segments.
+   - **Terminals**: Extract "Term" or "T" + number.
 
-Structure:
+B. **DATES & TIMES (ISO 8601 Strict)**:
+   - **Format**: Convert ALL dates to "YYYY-MM-DD".
+   - **Time**: Convert ALL times to "HH:MM" (24h).
+   - **Year Inference**: If year is missing (e.g., "28 NOV"), infer based on the current context (Future bias: 2026/2027).
+   - **The "1930" Trap**: "1930" after a date is TIME (19:30), NOT Year.
+
+C. **ACCOMMODATION (GERS Mapping Prep)**:
+   - Name: Exact hotel name.
+   - Address: Full address for Overture Maps matching.
+   - Dates: Check-in/Check-out.
+
+D. **FINANCIALS**:
+   - Extract Total Price and Currency code (USD, ILS, EUR).
+   - Identify "Vat/Tax" if separated.
+
+--- PHASE 3: VALIDATION & SANITY CHECK (The Contract) ---
+Before outputting JSON, verify:
+1. Is Arrival Time logically *after* Departure Time? (Handle +1 day).
+2. Are city codes (IATA) consistent with city names?
+3. Is the PNR distinct from the Flight Number?
+
+--- PHASE 4: STRICT JSON OUTPUT ---
+Return ONLY raw JSON. No markdown. Structure matches the app's 'StagedTripData'.
+
 {
   "tripMetadata": {
-    "suggestedName": "String",
-    "mainDestination": "String",
-    "uniqueCityNames": ["City1"]
+    "suggestedName": "String (e.g., 'Trip to Thailand')",
+    "mainDestination": "String (City, Country)",
+    "startDate": "YYYY-MM-DD",
+    "endDate": "YYYY-MM-DD",
+    "uniqueCityNames": ["String"]
   },
-  "processedFileIds": ["file1.pdf"],
-  "unprocessedFiles": [],
+  "processedFileIds": [],
   "categories": {
     "transport": [
       {
         "type": "flight",
+        "confidence": 0.95,
         "data": {
-          "airline": "String (e.g. Israir, El Al)",
-          "flightNumber": "String (e.g. 6H 897)",
-          "totalPrice": Number,
-          "currency": "String (e.g. USD, EUR, ILS)",
+          "airline": "String",
+          "flightNumber": "String",
+          "pnr": "String",
           "departure": {
             "city": "String",
             "iata": "ABC",
-            "rawDateText": "String (DEBUG)",
             "isoDate": "YYYY-MM-DDTHH:mm:ss",
             "displayTime": "HH:MM"
           },
           "arrival": {
              "city": "String",
              "iata": "ABC",
-             "rawDateText": "String (DEBUG)",
              "isoDate": "YYYY-MM-DDTHH:mm:ss",
              "displayTime": "HH:MM"
-          }
-        },
-        "sourceFileIds": []
+          },
+          "price": { "amount": Number, "currency": "ILS/USD" }
+        }
       }
     ],
     "accommodation": [
       {
          "type": "hotel",
+         "confidence": 0.95,
          "data": {
             "hotelName": "String",
             "address": "String",
-            "checkIn": "YYYY-MM-DD",
-            "checkOut": "YYYY-MM-DD",
-            "totalPrice": Number,
-            "currency": "String",
-            "bookingId": "String"
+            "checkIn": { "isoDate": "YYYY-MM-DD", "time": "HH:MM" },
+            "checkOut": { "isoDate": "YYYY-MM-DD", "time": "HH:MM" },
+            "bookingId": "String",
+            "price": { "amount": Number, "currency": "String" }
          }
       }
     ],
-    "wallet": [],
+    "wallet": [], 
     "dining": [],
     "activities": []
   }
@@ -388,7 +422,10 @@ Structure:
                         console.log(`✅ Success with ${model}`);
                         const txt = candidate.content.parts[0].text;
                         const cleanedTxt = cleanJSON(txt); // Sanitize
-                        const frontendData = JSON.parse(cleanedTxt);
+                        let frontendData = JSON.parse(cleanedTxt);
+
+                        // --- VALIDATION ---
+                        frontendData = validateWorkerTripData(frontendData);
 
                         // --- DEBUG LOGGING (User Request) ---
                         console.log("🔍 [Worker Extracted]:", JSON.stringify(frontendData).substring(0, 1000));
@@ -399,7 +436,7 @@ Structure:
 
                         // 1. Extract Dates
                         const transportDates = frontendData.categories?.transport?.map((t: any) => t.data.departure?.isoDate).filter(Boolean) || [];
-                        const hotelDates = frontendData.categories?.accommodation?.map((h: any) => h.data.checkIn).filter(Boolean) || [];
+                        const hotelDates = frontendData.categories?.accommodation?.map((h: any) => h.data.checkIn?.isoDate).filter(Boolean) || [];
                         const allDates = [...transportDates, ...hotelDates].sort();
 
                         const startDate = allDates[0] ? allDates[0].split('T')[0] : (frontendData.tripMetadata?.startDate || "");
@@ -413,15 +450,17 @@ Structure:
                                 departureTime: t.data.departure?.displayTime || "00:00",
                                 arrivalTime: t.data.arrival?.displayTime || "00:00",
                                 flight: t.data.flightNumber || "",
-                                airline: t.data.airline || ""
+                                airline: t.data.airline || "",
+                                pnr: t.data.pnr || "" // New Field
                         })) || [];
 
                         // 3. Map Hotels
                         const hotels = frontendData.categories?.accommodation?.map((h: any) => ({
                                 name: h.data.hotelName,
                                 address: h.data.address,
-                                checkInDate: h.data.checkIn,
-                                checkOutDate: h.data.checkOut
+                                checkInDate: h.data.checkIn?.isoDate || h.data.checkIn,
+                                checkOutDate: h.data.checkOut?.isoDate || h.data.checkOut,
+                                bookingId: h.data.bookingId || ""
                         })) || [];
 
                         return {
@@ -432,7 +471,11 @@ Structure:
                                         destination: frontendData.tripMetadata?.mainDestination || "",
                                         startDate,
                                         endDate,
-                                        flights: { segments: segments }, // Worker expects 'flights' object with segments array
+                                        flights: {
+                                                pnr: segments[0]?.pnr || "",
+                                                airline: segments[0]?.airline || "",
+                                                segments: segments
+                                        },
                                         hotels: hotels
                                 }
                         };

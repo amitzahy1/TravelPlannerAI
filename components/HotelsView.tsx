@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip, HotelBooking } from '../types';
-import { Hotel, MapPin, Calendar, ExternalLink, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X, Save, DollarSign, Image as ImageIcon, Link as LinkIcon, Globe, Sparkles, Loader2, Navigation, Search, UploadCloud, FileText, Coffee, ShieldCheck } from 'lucide-react';
+import { Hotel, MapPin, Calendar, ExternalLink, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X, Save, DollarSign, Image as ImageIcon, Link as LinkIcon, Globe, Sparkles, Loader2, Navigation, Search, UploadCloud, FileText, Coffee, ShieldCheck, Lock } from 'lucide-react';
 import { getAI, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
@@ -178,6 +178,20 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                     <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} />
                 </div>
 
+                {/* Privacy Notice Banner */}
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex items-start gap-3">
+                    <div className="bg-white p-1.5 rounded-full shadow-sm text-blue-600 mt-0.5">
+                        <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-blue-900">הגנת פרטיות מופעלת</h4>
+                        <p className="text-xs text-blue-700 mt-1">
+                            המסמכים שלך נשמרים בצורה מאובטחת ומקומית. לצורך הגנה על המידע האישי שלך, לא ניתן לפתוח את המסמכים ישירות מהממשק.
+                            הם משמשים את ה-AI לניתוח הנתונים בלבד.
+                        </p>
+                    </div>
+                </div>
+
                 {trip.documents && trip.documents.length > 0 ? (
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {trip.documents.map((doc, idx) => {
@@ -185,15 +199,18 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                             const isImage = doc.match(/\.(jpg|jpeg|png|webp)$/i);
 
                             return (
-                                <div key={idx} className="group relative bg-white border border-slate-200 rounded-2xl p-3 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer aspect-[4/5] flex flex-col items-center justify-center text-center overflow-hidden">
+                                <div key={idx} className="group relative bg-white border border-slate-200 rounded-2xl p-3 aspect-[4/5] flex flex-col items-center justify-center text-center overflow-hidden opacity-90 hover:opacity-100 transition-opacity">
                                     {isImage ? (
                                         <div className="absolute inset-0 bg-slate-100">
-                                            <img src="https://via.placeholder.com/300?text=Image" alt={doc} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+                                            <img src="https://via.placeholder.com/300?text=Protected" alt="Protected Document" className="w-full h-full object-cover blur-sm opacity-50" />
+                                            <div className="absolute inset-0 bg-slate-100/50"></div>
                                         </div>
                                     ) : (
                                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-sm z-10 ${isPdf ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
                                             {isPdf ? <FileText className="w-8 h-8" /> : <ImageIcon className="w-8 h-8" />}
+                                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm border border-slate-100">
+                                                <Lock className="w-3 h-3 text-slate-400" />
+                                            </div>
                                         </div>
                                     )}
 

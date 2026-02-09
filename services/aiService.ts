@@ -1,20 +1,16 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { StagedTripData } from "../types";
 
-// --- CONFIGURATION (Feb 2026 Repair) ---
-// STRICT HIERARCHY: SMART = PRO, FAST = FLASH.
-
 // --- CONFIGURATION: FINAL & TESTED (Jan 28, 2026) ---
 // Contains ONLY models confirmed to exist in documentation.
-// Prevents 404 latency from guessing names.
 const GOOGLE_MODELS = {
   // --- TIER 1: Heavy Reasoning (Files, Complex Analysis) ---
   SMART_CANDIDATES: [
-    // 0. User Choice (Fast & Capable)
-    "gemini-3-flash-preview",
-
-    // 1. The Bleeding Edge
+    // 0. The Bleeding Edge
     "gemini-3-pro-preview",
+
+    // 1. User Choice (Fast & Capable)
+    "gemini-3-flash-preview",
 
     // 2. The new Standard (2.5)
     "gemini-2.5-pro",
@@ -38,11 +34,6 @@ const GOOGLE_MODELS = {
     "gemini-1.5-flash-latest"
   ]
 };
-
-// --- CANDIDATE CHAINS ---
-// (Mapped for backward compatibility if needed, but using direct arrays below)
-const CANDIDATES_SMART = GOOGLE_MODELS.SMART_CANDIDATES;
-const CANDIDATES_FAST = GOOGLE_MODELS.FAST_CANDIDATES;
 
 // --- CLIENT MANAGER ---
 let genAI: GoogleGenerativeAI | null = null;
@@ -121,14 +112,13 @@ export const generateWithFallback = async (
   const googleAI = getGoogleClient();
   if (!googleAI) throw new Error("Google AI Client not initialized");
 
-  // Select Model Chain
-  const candidates = intent === 'SMART' || intent === 'ANALYZE'
+  // Select Model Chain based on Intent
+  const candidates = (intent === 'SMART' || intent === 'ANALYZE')
     ? GOOGLE_MODELS.SMART_CANDIDATES
     : GOOGLE_MODELS.FAST_CANDIDATES;
 
-  // Safety Fallback: Add FAST models to SMART chain as last resort
+  // Safety Fallback: Add FAST models to SMART chain end
   if (intent === 'SMART' || intent === 'ANALYZE') {
-    // Create a unique set to avoid duplicates if they overlap
     candidates.push(...GOOGLE_MODELS.FAST_CANDIDATES);
   }
 
@@ -146,53 +136,18 @@ export const generateWithFallback = async (
       // Remove rigid responseSchema to prevent 400 validation errors
       delete generationConfig.responseSchema;
 
-      // NOTE: Removed 'thinking_level' injection as it causes 400 Bad Request on standard models.
-
       const model = googleAI.getGenerativeModel({
         model: modelId,
         generationConfig
       });
 
-      // SDK Adapter: Ensure contents are in correct format [ Critical Fix ]
-      // API requires: { role: string, parts: { text: string }[] }[]
-      let adaptedContents: any[] = [];
-
-      if (!contents) {
-        adaptedContents = [{ role: 'user', parts: [{ text: '' }] }];
-      } else if (typeof contents === 'string') {
-        adaptedContents = [{ role: 'user', parts: [{ text: contents }] }];
-      } else if (Array.isArray(contents)) {
-        if (contents.length === 0) {
-          adaptedContents = [{ role: 'user', parts: [{ text: '' }] }];
-        }
-        // Case 1: Array of strings ["prompt"]
-        else if (typeof contents[0] === 'string') {
-          adaptedContents = [{ role: 'user', parts: contents.map(t => ({ text: t })) }];
-        }
-        // Case 2: Array of parts without role [{ text: '...' }] or [{ inlineData: ... }]
-        else if (contents[0].text || contents[0].inlineData) {
-          adaptedContents = [{ role: 'user', parts: contents }];
-        }
-        // Case 3: Proper Content objects [{ role: 'user', parts: [...] }]
-        else if (contents[0].role && contents[0].parts) {
-          adaptedContents = contents;
-        }
-        // Fallback
-        else {
-          adaptedContents = [{ role: 'user', parts: [{ text: JSON.stringify(contents) }] }];
-        }
-      } else {
-        // Object fallback
-        adaptedContents = [{ role: 'user', parts: [{ text: JSON.stringify(contents) }] }];
-      }
+      // Adapter for content format
+      const adaptedContents = Array.isArray(contents) ? contents : [{ role: 'user', parts: contents }];
 
       const result = await model.generateContent({ contents: adaptedContents });
       const response = await result.response;
-      let text = response.text();
-
-      // Clean & Verify
-      text = cleanJSON(text);
-      JSON.parse(text); // Validation check
+      let text = cleanJSON(response.text());
+      JSON.parse(text); // Verify JSON
 
       console.log(`✅ [AI Service] Success with ${modelId}`);
       return { text, model: modelId };
@@ -200,7 +155,6 @@ export const generateWithFallback = async (
     } catch (error: any) {
       console.warn(`⚠️ [AI Service] Failed ${modelId}:`, error.message);
       lastError = error;
-      // Continue to next candidate...
     }
   }
 
@@ -215,92 +169,101 @@ export const generateWithFallback = async (
  * This prompt arranges hotels and visas in the correct place.
  */
 export const SYSTEM_PROMPT_ANALYZE_TRIP = `
-Role: You are the Lead Data Architect for a Travel App.
-Mission: Parse uploaded travel documents into a STRICTLY STRUCTURED JSON format.
+Role: You are an elite Travel Data Architect & NDC Specialist.
+Mission: Extract unstructured travel data into a PERFECT JSON format, strictly adhering to IATA & ISO standards.
 
---- EXPERT PARSING RULES (ISRAIR & LOW COST) ---
-You are dealing with MESSY PDF/TEXT outputs where columns often collapse.
-1. **VISUAL LAYOUT AWARENESS**:
-   - IF you see: "30.03.2026 19:30 23:05 Tel Aviv Tbilisi"
-   - INFER: Departure=19:30 (Tel Aviv), Arrival=23:05 (Tbilisi).
-   - The cities usually follow the times.
-2. **FLIGHT CODES**:
-   - Detect "6H" (Israir) followed by 3 digits (e.g., "6H 897", "6H:897", "6H897").
-   - Airline Code: "6H", Flight Number: "897".
-3. **EUROPEAN DATES (CRITICAL)**:
-   - Convert "DD.MM.YYYY" (e.g., 30.03.2026) -> "2026-03-30".
-   - Convert "DD/MM/YYYY" -> "YYYY-MM-DD".
-4. **PASSENGER LISTS**:
-   - Look for "1. Name Surname", "2. Name Surname".
-5. **NOISE FILTER**:
-   - IGNORE "Tax Invoice", "Vat", "Original", "Terms and Conditions".
+--- PHASE 1: VISUAL & LINGUISTIC CALIBRATION ---
+1. **RTL & Bi-Directional Handling (Hebrew/Arabic)**:
+   - DETECT: If document is Hebrew/Arabic, activate "Visual Anchoring".
+   - RULE: Text flows Right-to-Left, BUT numbers (Prices, Flight Nos, Dates) flow Left-to-Right.
+   - TRAP: Do NOT reverse digits (e.g., "897" must stay "897", not "798").
+   - CONTEXT: "תל אביב - לונדון" implies Origin: TLV, Dest: LHR.
+2. **Document Classification**:
+   - Identify: E-Ticket, Invoice (Tax Receipt), Boarding Pass, or Itinerary.
+   - Noise Filter: Ignore "Terms & Conditions", ads, and irrelevant legal text.
 
---- CRITICAL CONTEXT: ANCHOR YEAR 2026 ---
-1. **CURRENT REFERENCE**: Today is Jan 2026.
-2. **FUTURE BIAS**: All flights are for 2026 or 2027.
-3. **MISSING YEAR RULE**: If a document says "04 Feb" and contains NO year, assign **2026**.
-4. **THE "1930" TRAP (CRITICAL)**: In airline tickets, a 4-digit number after a month (e.g., "28JAN 1930") is OFTEN THE TIME (19:30), NOT THE YEAR 1930.
-   - CHECK: Is the number between 0000 and 2359? Treat as TIME.
-   - CHECK: Is the number 2025, 2026, 2027? Treat as YEAR.
-   - NEVER output a year before 2025.
+--- PHASE 2: ADVANCED DATA EXTRACTION (NDC STANDARDS) ---
+Extract the following entities using Semantic Pattern Matching:
 
---- OUTPUT JSON SCHEMA ---
-Return ONLY raw JSON.
-For every date, you MUST provide:
-1. "rawText": The exact string you saw in the file (e.g., "05/04/2026").
-2. "isoDate": The strictly formatted ISO string (YYYY-MM-DDTHH:mm:ss).
+A. **FLIGHTS (The Segment Logic)**:
+   - **PNR/Ref**: Look for 6-char alphanumeric codes (e.g., "6YJ82K"). Differentiate from Ticket Number (13 digits).
+   - **Carrier**: Identify Airline Name & Code (e.g., "LY", "6H").
+   - **Connection Logic**: If multiple flights appear on consecutive times, group them into one trip but separate segments.
+   - **Terminals**: Extract "Term" or "T" + number.
 
-Structure:
+B. **DATES & TIMES (ISO 8601 Strict)**:
+   - **Format**: Convert ALL dates to "YYYY-MM-DD".
+   - **Time**: Convert ALL times to "HH:MM" (24h).
+   - **Year Inference**: If year is missing (e.g., "28 NOV"), infer based on the current context (Future bias: 2026/2027).
+   - **The "1930" Trap**: "1930" after a date is TIME (19:30), NOT Year.
+
+C. **ACCOMMODATION (GERS Mapping Prep)**:
+   - Name: Exact hotel name.
+   - Address: Full address for Overture Maps matching.
+   - Dates: Check-in/Check-out.
+
+D. **FINANCIALS**:
+   - Extract Total Price and Currency code (USD, ILS, EUR).
+   - Identify "Vat/Tax" if separated.
+
+--- PHASE 3: VALIDATION & SANITY CHECK (The Contract) ---
+Before outputting JSON, verify:
+1. Is Arrival Time logically *after* Departure Time? (Handle +1 day).
+2. Are city codes (IATA) consistent with city names?
+3. Is the PNR distinct from the Flight Number?
+
+--- PHASE 4: STRICT JSON OUTPUT ---
+Return ONLY raw JSON. No markdown. Structure matches the app's 'StagedTripData'.
+
 {
   "tripMetadata": {
-    "suggestedName": "String",
-    "mainDestination": "String",
-    "uniqueCityNames": ["City1"]
+    "suggestedName": "String (e.g., 'Trip to Thailand')",
+    "mainDestination": "String (City, Country)",
+    "startDate": "YYYY-MM-DD",
+    "endDate": "YYYY-MM-DD",
+    "uniqueCityNames": ["String"]
   },
-  "processedFileIds": ["file1.pdf"],
-  "unprocessedFiles": [],
+  "processedFileIds": [],
   "categories": {
     "transport": [
       {
         "type": "flight",
+        "confidence": 0.95,
         "data": {
-          "airline": "String (e.g. Israir, El Al)",
-          "flightNumber": "String (e.g. 6H 897)",
-          "totalPrice": Number,
-          "currency": "String (e.g. USD, EUR, ILS)",
+          "airline": "String",
+          "flightNumber": "String",
+          "pnr": "String",
           "departure": {
             "city": "String",
             "iata": "ABC",
-            "rawDateText": "String (DEBUG)",
             "isoDate": "YYYY-MM-DDTHH:mm:ss",
             "displayTime": "HH:MM"
           },
           "arrival": {
              "city": "String",
              "iata": "ABC",
-             "rawDateText": "String (DEBUG)",
              "isoDate": "YYYY-MM-DDTHH:mm:ss",
              "displayTime": "HH:MM"
-          }
-        },
-        "sourceFileIds": []
+          },
+          "price": { "amount": Number, "currency": "ILS/USD" }
+        }
       }
     ],
     "accommodation": [
       {
          "type": "hotel",
+         "confidence": 0.95,
          "data": {
             "hotelName": "String",
             "address": "String",
-            "checkIn": "YYYY-MM-DD",
-            "checkOut": "YYYY-MM-DD",
-            "totalPrice": Number,
-            "currency": "String",
-            "bookingId": "String"
+            "checkIn": { "isoDate": "YYYY-MM-DD", "time": "HH:MM" },
+            "checkOut": { "isoDate": "YYYY-MM-DD", "time": "HH:MM" },
+            "bookingId": "String",
+            "price": { "amount": Number, "currency": "String" }
          }
       }
     ],
-    "wallet": [],
+    "wallet": [], 
     "dining": [],
     "activities": []
   }
@@ -308,54 +271,76 @@ Structure:
 `;
 
 /**
- * 📄 ANALYZE TRIP FILES
- * The main function calling AI
+ * 📄 ANALYZE TRIP FILES - THE MASTER PARSER
  */
-export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResult> => {
-  // 1. Dangerous File Filtering (Email files crash the API)
-  const safeFiles = files.filter(f =>
-    !f.type.includes('message/rfc822') &&
-    !f.name.endsWith('.eml')
-  );
+// --- PHASE 3: VALIDATION & SANITY CHECK ---
+export const validateTripData = (data: TripAnalysisResult): TripAnalysisResult => {
+  const validated = { ...data };
 
-  // --- TRACE LOGGING: STATE CHECK ---
-  console.group("🔥 [AI Service] RESETTING STATE (New Analysis Request)");
-  console.log(`📦 Incoming Files: ${safeFiles.length}`);
-  safeFiles.forEach(f => console.log(`   - ${f.name} (${f.size} bytes, ${f.type})`));
-  console.groupEnd();
+  // 1. Time Logic: Arrival > Departure
+  if (validated.rawStagedData?.categories?.transport) {
+    validated.rawStagedData.categories.transport = validated.rawStagedData.categories.transport.map((item: any) => {
+      // Check if it's a flight and has both dates
+      if (item.type === 'flight' && item.data.departure?.isoDate && item.data.arrival?.isoDate) {
+        const dep = new Date(item.data.departure.isoDate);
+        const arr = new Date(item.data.arrival.isoDate);
 
-  if (safeFiles.length === 0) {
-    throw new Error("No valid files to analyze (PDF/Image/Text only).");
+        // If Arrival is before Departure (and not just equal), it's likely a +1 day flight
+        if (arr < dep) {
+          console.warn(`⚠️ Detected Arrival before Departure for ${item.data.flightNumber || 'Flight'}. Adjusting to next day.`);
+          // WE preserve the airline's claimed arrival TIME, just bump the DATE of departure + 1 day
+          // Wait, logic check: if dep is 23:00 and arr is 01:00, arr < dep is true. 
+          // We want arr to be next day.
+
+          const originalArrTime = item.data.arrival.isoDate.split('T')[1] || "00:00:00";
+          const depDate = new Date(dep);
+          depDate.setDate(depDate.getDate() + 1);
+          const newDateStr = depDate.toISOString().split('T')[0];
+
+          item.data.arrival.isoDate = `${newDateStr}T${originalArrTime}`;
+        }
+      }
+      return item;
+    });
   }
 
-  // 2. Build Request
-  console.log("📝 [AI Service] System Prompt (Preview):", SYSTEM_PROMPT_ANALYZE_TRIP.substring(0, 300) + "...");
+  // 2. City Consistency
+  const metadata = validated.metadata;
+  if (metadata.destination && !metadata.cities.includes(metadata.destination)) {
+    metadata.cities.push(metadata.destination);
+  }
+
+  return validated;
+};
+
+/**
+ * 📄 ANALYZE TRIP FILES - THE MASTER PARSER
+ */
+export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResult> => {
+  const safeFiles = files.filter(f => !f.type.includes('message/rfc822') && !f.name.endsWith('.eml'));
+  if (safeFiles.length === 0) throw new Error("No valid files to analyze.");
+
+  // 1. Build Request with the UNIVERSAL PROMPT
   const contentParts: any[] = [{ text: SYSTEM_PROMPT_ANALYZE_TRIP }];
 
   for (const file of safeFiles) {
     try {
       const base64 = await readFileAsBase64(file);
+      // MIME Type Normalization for Vision Models
       let mimeType = file.type;
-
-      // Fix missing mime types
       if (!mimeType) {
         if (file.name.endsWith('.pdf')) mimeType = 'application/pdf';
+        else if (file.name.match(/\.(jpg|jpeg)$/i)) mimeType = 'image/jpeg';
         else if (file.name.endsWith('.png')) mimeType = 'image/png';
-        else if (file.name.endsWith('.jpg')) mimeType = 'image/jpeg';
         else mimeType = 'text/plain';
       }
-
-      contentParts.push({
-        inlineData: { mimeType, data: base64 }
-      });
-      // Trace Logic
-      console.log(`📤 [AI Service] Added File content: ${file.name} (Prefix: ${base64.substring(0, 15)}...)`);
+      contentParts.push({ inlineData: { mimeType, data: base64 } });
     } catch (e) {
-      console.warn(`Skipping file ${file.name} `);
+      console.warn(`Skipping file ${file.name}`);
     }
   }
 
-  // 3. Send with "SMART" intent (Pro Only!)
+  // 2. Send to "SMART" chain (Starts with gemini-3-pro-preview)
   const response = await generateWithFallback(
     null,
     [{ role: 'user', parts: contentParts }],
@@ -363,114 +348,55 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
     'SMART'
   );
 
-  // --- LOGGING UPGRADE START ---
-  console.log("🔍 [AI Raw Response]:", response.text); // See what the model output
-
-  let raw;
+  // 3. Validation & Self-Healing (Pydantic Simulation)
+  let raw: any;
   try {
     raw = JSON.parse(cleanJSON(response.text));
 
-    // Flight specific check
-    if (raw.categories?.transport) {
-      console.table(raw.categories.transport.map((t: any) => ({
-        airline: t.data.airline,
-        rawDep: t.data.departure?.rawDateText, // What the model saw
-        isoDep: t.data.departure?.isoDate,     // What the model decided
-        rawArr: t.data.arrival?.rawDateText
-      })));
-    }
-  } catch (e) {
-    console.error("❌ [JSON Parse Error]:", e);
-    console.log("Bad JSON Content:", response.text);
-    throw e;
-  }
-  // --- LOGGING UPGRADE END ---
+    // Ensure structure exists
+    if (!raw.categories) raw.categories = { transport: [], accommodation: [] };
 
-  // Legacy deterministic date calculation removed as per new instruction.
-  // We trust the AI's "tripMetadata" regarding dates, or infer from items if missing.
+    // Date Fixer Utility
+    const fixDate = (d: string) => {
+      if (!d) return "";
+      if (d.includes('/')) {
+        const parts = d.split('/'); // DD/MM/YYYY -> YYYY-MM-DD
+        if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      return d;
+    };
 
-  const extractDates = (items: any[]) => {
-    const dates: number[] = [];
-    if (!items || !Array.isArray(items)) return dates;
-    items.forEach(item => {
-      // Try strict fields first
-      const d = item.data?.isoDate || item.data?.checkInDate || item.data?.date || item.data?.departure?.isoDate;
-      if (d) {
-        const ts = new Date(d).getTime();
-        if (!isNaN(ts)) dates.push(ts);
-      }
-      // Accommodation Check-out
-      if (item.data?.checkOutDate) {
-        const ts = new Date(item.data.checkOutDate).getTime();
-        if (!isNaN(ts)) dates.push(ts);
-      }
+    // Apply fixes
+    raw.categories.transport?.forEach((t: any) => {
+      if (t.data?.departure?.isoDate) t.data.departure.isoDate = fixDate(t.data.departure.isoDate);
+      if (t.data?.arrival?.isoDate) t.data.arrival.isoDate = fixDate(t.data.arrival.isoDate);
     });
 
-    return dates;
-  };
-
-  const allDates: number[] = [
-    ...extractDates(raw.categories?.transport),
-    ...extractDates(raw.categories?.accommodation),
-    ...extractDates(raw.categories?.wallet)
-  ];
-
-  let startDate = "";
-  let endDate = "";
-
-  if (allDates.length > 0) {
-    // Sort and pick min/max
-    allDates.sort((a, b) => a - b);
-    startDate = new Date(allDates[0]).toISOString().split('T')[0];
-    endDate = new Date(allDates[allDates.length - 1]).toISOString().split('T')[0];
-  } else {
-    // Fallback to AI Metadata if extraction failed (unlikely)
-    startDate = raw.tripMetadata?.startDate || "";
-    endDate = raw.tripMetadata?.endDate || "";
+  } catch (e) {
+    console.error("JSON Parsing Failed:", e);
+    throw new Error("Failed to parse AI response.");
   }
 
-  return {
+  // 4. Map to App State
+  const transportDates = raw.categories.transport?.map((t: any) => t.data.departure?.isoDate).filter(Boolean) || [];
+  const hotelDates = raw.categories.accommodation?.map((h: any) => h.data.checkIn?.isoDate).filter(Boolean) || [];
+  const allDates = [...transportDates, ...hotelDates].sort();
+
+  const initialResult = {
     metadata: {
-      suggestedName: raw.tripMetadata?.suggestedName || "New Trip",
+      suggestedName: raw.tripMetadata?.suggestedName || "New Imported Trip",
       destination: raw.tripMetadata?.mainDestination || "Unknown",
-      startDate,
-      endDate,
+      startDate: allDates[0] || raw.tripMetadata?.startDate || "",
+      endDate: allDates[allDates.length - 1] || raw.tripMetadata?.endDate || "",
       cities: raw.tripMetadata?.uniqueCityNames || []
     },
-    // Fix: Return processed/unprocessed files
     processedFileIds: raw.processedFileIds || [],
-    unprocessedFiles: raw.unprocessedFiles || [],
-    rawStagedData: {
-      tripMetadata: raw.tripMetadata,
-      processedFileIds: raw.processedFileIds || [],
-      unprocessedFiles: raw.unprocessedFiles || [],
-      categories: {
-        transport: raw.categories?.transport || [],
-        // Fix: Normalize Accommodation Data Structure (AI returns flat, UI expects nested)
-        accommodation: raw.categories?.accommodation?.map((item: any) => {
-          // Normalize Data Source (Handle both nested item.data and flat item)
-          const d = item.data || item;
-
-          return {
-            type: 'hotel',
-            data: {
-              hotelName: d.hotelName || d.propertyName || d.name || "Unknown Hotel",
-              address: d.address || d.location,
-              checkInDate: d.checkIn?.isoDate || d.checkInDate || d.checkIn,
-              checkOutDate: d.checkOut?.isoDate || d.checkOutDate || d.checkOut,
-              displayTime: d.displayTime || "15:00",
-              bookingId: d.bookingId || d.confirmationCode
-            },
-            sourceFileIds: item.sourceFileIds || [],
-            confidence: 0.9
-          };
-        }) || [],
-        dining: raw.categories?.dining || [],
-        activities: raw.categories?.activities || [],
-        wallet: raw.categories?.wallet || []
-      }
-    }
+    unprocessedFiles: [],
+    rawStagedData: raw
   };
+
+  // 5. Final Validation Check (New Logic)
+  return validateTripData(initialResult);
 };
 
 export const getDestinationRestaurants = async (destination: string, preferences?: string): Promise<any[]> => {

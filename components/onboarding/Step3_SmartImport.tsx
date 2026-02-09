@@ -5,9 +5,10 @@ import { GlassCard } from '../ui/GlassCard';
 import { db } from '../../services/firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { collection, query, where, onSnapshot, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { analyzeTripFiles, TripAnalysisResult } from '../../services/aiService';
 
 interface Step3SmartProps {
-        onComplete: (files: File[]) => void;
+        onComplete: (data: any) => void;
         onBack: () => void;
 }
 
@@ -130,12 +131,18 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete, onBac
                 }
         };
 
-        const handleFiles = (newFiles: File[]) => {
+        const handleFiles = async (newFiles: File[]) => {
                 setFiles(newFiles);
                 setAnalysisState('analyzing');
-                setTimeout(() => {
-                        onComplete(newFiles);
-                }, 4000);
+                try {
+                        const result = await analyzeTripFiles(newFiles);
+                        // Pass both the files and the result
+                        onComplete({ files: newFiles, analysisResult: result });
+                } catch (error) {
+                        console.error("Analysis Failed", error);
+                        setAnalysisMessage("שגיאה בניתוח הקבצים. נסו שוב.");
+                        setAnalysisState('idle');
+                }
         };
 
         const currentPlatform = platforms.find(p => p.id === activePlatform) || platforms[0];
