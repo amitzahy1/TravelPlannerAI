@@ -259,28 +259,42 @@ const safeGet = (obj: any, path: string[]) => {
         return undefined;
 };
 
+// --- HELPERS ---
+
+// פונקציה להמרת קבצים ל-Base64 כדי שג'מיני יקרא אותם
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+}
+
 // --- THE CORE LOGIC ---
 
 async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // CONFIGURATION: PRO MODEL FIRST
+        // User requested specifically this model
         const CANDIDATES = [
-                "gemini-3-pro-preview",    // 1. PRIMARY: The best reasoning/vision model
-                "gemini-2.5-pro",          // 2. BACKUP: Strong stable model
-                "gemini-3-flash-preview",  // 3. FALLBACK: Fast but less detailed
-                "gemini-1.5-pro-latest"    // 4. Backup
+                "gemini-2.0-pro-exp-02-05",
+                "gemini-1.5-pro-latest",
+                "gemini-2.0-flash"
         ];
 
         const SYSTEM_PROMPT = `
 Role: You are an elite Travel Data Architect.
 Mission: Extract travel data from the provided document into STRICT JSON.
 
---- CRITICAL RULES FOR ISRAELI/PDF DOCS ---
-1. **Dates**: Input "30.03.2026" or "30/03/2026" MUST become "2026-03-30".
-2. **Time**: Look for "19:30" or "1930". "1930" after a date is TIME, NOT YEAR.
-3. **Structure**: Even if the text looks like CSV ("Service, Details, Date..."), parse it as a Flight Object.
-4. **Missing Info**: If "From" is missing but "TEL AVIV" appears, assume TLV.
+--- CRITICAL RULES ---
+1. **Visual Parsing**: Read the PDF tables row by row.
+2. **Dates**: Convert "30.03.2026" to "2026-03-30".
+3. **Implicit Info**: 
+   - "TLV" -> Tel Aviv.
+   - "TBS" / "TBILISI" -> Tbilisi, Georgia.
+   - If airline is "6H" -> "Israir".
 
 --- JSON OUTPUT SCHEMA ---
 {
@@ -293,45 +307,41 @@ Mission: Extract travel data from the provided document into STRICT JSON.
   "categories": {
     "transport": [
       {
-        "type": "flight",
         "data": {
-          "airline": "String (e.g. Israir, El Al)",
-          "flightNumber": "String (e.g. 6H 897)",
-          "pnr": "String (Booking Ref)",
-          "departure": {
-            "city": "String",
-            "iata": "String",
-            "isoDate": "YYYY-MM-DD",
-            "displayTime": "HH:MM"
-          },
-          "arrival": {
-             "city": "String",
-             "iata": "String",
-             "isoDate": "YYYY-MM-DD",
-             "displayTime": "HH:MM"
-          }
+          "airline": "String",
+          "flightNumber": "String",
+          "pnr": "String",
+          "departure": { "city": "String", "iata": "String", "isoDate": "YYYY-MM-DD", "displayTime": "HH:MM" },
+          "arrival": { "city": "String", "iata": "String", "isoDate": "YYYY-MM-DD", "displayTime": "HH:MM" }
         }
       }
-    ],
-    "accommodation": []
+    ]
   }
 }
 `;
 
-        const parts: any[] = [{ text: SYSTEM_PROMPT }, { text: `Email Body: ${text}` }];
+        // 1. בניית ה-Parts כולל הקבצים (זה החלק שהיה חסר!)
+        const parts: any[] = [{ text: SYSTEM_PROMPT }, { text: `Email Context: ${text}` }];
 
-        for (const att of attachments) {
-                const b64 = uint8ArrayToBase64(att.content);
-                if (b64) {
+        if (attachments && attachments.length > 0) {
+                for (const att of attachments) {
+                        // המרה ל-Base64 כדי שג'מיני יראה את הקובץ
+                        // Note: PostalMime returns Uint8Array, checking compat
+                        const buffer = att.content.buffer ? att.content.buffer : att.content;
+                        const base64Data = arrayBufferToBase64(buffer);
                         parts.push({
-                                inlineData: { mimeType: att.mimeType, data: b64 }
+                                inlineData: {
+                                        mimeType: att.mimeType || "application/pdf",
+                                        data: base64Data
+                                }
                         });
                 }
+        } else {
+                console.warn("No attachments found! Gemini might fail to read the ticket.");
         }
 
+        // 2. קריאה ל-Gemini
         let frontendData: any = null;
-
-        // Retry Loop
         for (const modelName of CANDIDATES) {
                 try {
                         const model = genAI.getGenerativeModel({
@@ -342,63 +352,57 @@ Mission: Extract travel data from the provided document into STRICT JSON.
                         const result = await model.generateContent({ contents: [{ role: "user", parts }] });
                         const rawText = result.response.text();
                         frontendData = JSON.parse(cleanJSON(rawText));
-
-                        if (frontendData) break; // Success
+                        if (frontendData) break;
                 } catch (e) {
                         console.warn(`Model ${modelName} failed, trying next...`);
                 }
         }
 
-        if (!frontendData) throw new Error("All AI models failed to parse document.");
+        if (!frontendData) throw new Error("AI failed to extract data.");
 
-        // --- THE FIX: ROBUST MAPPING TO FIRESTORE SCHEMA ---
-
-        // 1. Normalize Hierarchy (Handle empty transport)
+        // 3. מיפוי הנתונים (Mapping)
         const rawFlights = frontendData.categories?.transport || [];
 
-        // 2. Smart Mapping (Using fixDate and safeGet)
+        // User Code Mapping Logic
         const segments = rawFlights.map((item: any) => {
-                // Double support: inside item.data OR direct
                 const data = item.data || item;
-
                 const depDate = fixDate(data.departure?.isoDate);
-                const arrDate = fixDate(data.arrival?.isoDate) || depDate; // If no arrival date, assume same day
-
                 return {
-                        airline: data.airline || "Unknown Airline",
+                        airline: data.airline || "Unknown",
                         flight: data.flightNumber || "",
                         pnr: data.pnr || "",
                         from: data.departure?.iata || data.departure?.city || "",
                         to: data.arrival?.iata || data.arrival?.city || "",
-                        date: depDate, // Now strictly ISO
+                        date: depDate,
                         departureTime: data.departure?.displayTime || "00:00",
                         arrivalTime: data.arrival?.displayTime || "00:00"
                 };
         });
 
-        // 3. Create Main Flight Object (Takes info from first segment)
         const mainFlight = segments.length > 0 ? {
                 airline: segments[0].airline,
                 pnr: segments[0].pnr
         } : { airline: "", pnr: "" };
 
-        // 4. Calculate Trip Dates
-        const sortedDates = segments.map((s: any) => s.date).filter(Boolean).sort();
-        const startDate = sortedDates[0] || fixDate(frontendData.tripMetadata?.startDate) || new Date().toISOString().split('T')[0];
-        const endDate = sortedDates[sortedDates.length - 1] || fixDate(frontendData.tripMetadata?.endDate) || startDate;
+        // תיקון תאריכים אם חסרים
+        const dates = segments.map((s: any) => s.date).filter(Boolean).sort();
+        const startDate = dates[0] || fixDate(frontendData.tripMetadata?.startDate) || new Date().toISOString().split('T')[0];
+        // אם יש טיסה חזור, קח את התאריך שלה, אחרת +7 ימים
+        const endDate = dates[dates.length - 1] || fixDate(frontendData.tripMetadata?.endDate) || startDate;
 
         const finalTripData = {
-                name: frontendData.tripMetadata?.suggestedName || "New Trip",
+                name: frontendData.tripMetadata?.suggestedName || `Trip to ${segments[0]?.to || "Unknown"}`,
                 destination: frontendData.tripMetadata?.mainDestination || segments[0]?.to || "Unknown",
                 startDate: startDate,
                 endDate: endDate,
                 status: 'confirmed',
                 source: 'email_import',
-                flights: mainFlight, // Note: This was missing before
+                flights: mainFlight,
                 segments: segments,
-                hotels: [], // Fill with similar logic if needed
+                hotels: [],
                 documents: [],
-                // ... other fields handled by createTrip/mergeTripData defaults
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
         };
 
         return {
