@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+        <title>Proxy Test</title>
+        <style>
+                body {
+                        font-family: sans-serif;
+                        padding: 20px;
+                }
+        </style>
+</head>
+
+<body>
+        <h1>Proxy Test</h1>
+        <div id="status">Testing...</div>
+        <ul id="results"></ul>
+        <script>
+                const proxies = [
+                        '', // Direct connection
+                        'https://api.allorigins.win/raw?url=',
+                        'https://thingproxy.freeboard.io/fetch/',
+                        'https://corsproxy.io/?'
+                ];
+                // Note: Using encoded target URL because script.js encodes it.
+                const target = encodeURIComponent('https://fantasy.premierleague.com/api/bootstrap-static/');
+
+                async function testOne(proxy) {
+                        const li = document.createElement('li');
+                        li.textContent = `⏳ Testing ${proxy}...`;
+                        document.getElementById('results').appendChild(li);
+
+                        try {
+                                const start = performance.now();
+                                const url = proxy + target;
+                                console.log(`Fetching ${url}`);
+
+                                const response = await fetch(url);
+                                const duration = performance.now() - start;
+
+                                if (response.ok) {
+                                        const text = await response.text();
+                                        try {
+                                                const data = JSON.parse(text);
+                                                // Validate it looks like FPL data (has 'elements' array)
+                                                if (data.elements && Array.isArray(data.elements)) {
+                                                        li.textContent = `✅ ${proxy} SUCCESS (${duration.toFixed(0)}ms) - ${data.elements.length} players found.`;
+                                                        li.style.color = 'green';
+                                                } else {
+                                                        li.textContent = `⚠️ ${proxy} HTTP 200 but unexpected JSON format.`;
+                                                        li.style.color = 'orange';
+                                                }
+                                        } catch (e) {
+                                                li.textContent = `⚠️ ${proxy} HTTP 200 but not JSON: ${text.substring(0, 100)}...`;
+                                                li.style.color = 'orange';
+                                        }
+                                } else {
+                                        li.textContent = `❌ ${proxy} HTTP ERROR: ${response.status} ${response.statusText}`;
+                                        li.style.color = 'red';
+                                }
+                        } catch (e) {
+                                li.textContent = `❌ ${proxy} NETWORK ERROR: ${e.message}`;
+                                li.style.color = 'red';
+                        }
+                }
+
+                async function runTests() {
+                        for (const p of proxies) {
+                                await testOne(p);
+                        }
+                        document.getElementById('status').textContent = 'Done';
+                }
+
+                runTests();
+        </script>
+</body>
+
+</html>
