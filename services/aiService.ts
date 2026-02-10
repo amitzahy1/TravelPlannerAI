@@ -1,8 +1,6 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { StagedTripData } from "../types";
 
 // --- CONFIGURATION: PERFECT PARSING SETUP (Updated) ---
-// שינוי קריטי: ה-Pro חייב להיות ראשון ב-SMART כדי להבטיח יכולות Vision והיגיון
 const GOOGLE_MODELS = {
   // --- TIER 1: Heavy Reasoning (Files, Complex Analysis) ---
   SMART_CANDIDATES: [
@@ -20,27 +18,6 @@ const GOOGLE_MODELS = {
     "gemini-1.5-flash-latest"
   ]
 };
-
-// --- CLIENT MANAGER ---
-let genAI: GoogleGenerativeAI | null = null;
-
-export const getGoogleClient = () => {
-  if (genAI) return genAI;
-  const key = import.meta.env.VITE_GEMINI_API_KEY;
-  if (key) {
-    try {
-      genAI = new GoogleGenerativeAI(key);
-    } catch (e) {
-      console.error("Invalid Google Client init", e);
-    }
-  }
-  return genAI;
-};
-
-/**
- * @deprecated Use generateWithFallback directly. Kept for backward compat.
- */
-export const getAI = getGoogleClient;
 
 // --- TYPES ---
 
@@ -87,7 +64,7 @@ const readFileAsBase64 = (file: File): Promise<string> => {
 
 /**
  * 🔄 GENERATE WITH FALLBACK (THE WATERFALL)
- * The function that guarantees 100% success.
+ * The function that guarantees 100% success via Backend Proxy.
  */
 export const generateWithFallback = async (
   _unused: any, // Backward compat
@@ -95,9 +72,6 @@ export const generateWithFallback = async (
   config: any = {},
   intent: AIIntent = 'SMART'
 ): Promise<any> => {
-  const googleAI = getGoogleClient();
-  if (!googleAI) throw new Error("Google AI Client not initialized");
-
   // Select Model Chain based on Intent
   const candidates = (intent === 'SMART' || intent === 'ANALYZE')
     ? GOOGLE_MODELS.SMART_CANDIDATES
@@ -110,29 +84,37 @@ export const generateWithFallback = async (
 
   let lastError = null;
 
+  // Use Worker URL from env or default to relative path (assuming same domain proxy or configured URL)
+  // In dev, Vite proxy might handle /api, or we use full URL.
+  const WORKER_URL = import.meta.env.VITE_WORKER_URL || "https://travelplannerai.amitzahy.workers.dev";
+
   // The Loop (Waterfall)
   for (const modelId of candidates) {
     try {
-      console.log(`🤖 [AI Service] Attempting model: ${modelId} (Intent: ${intent})`);
+      console.log(`🤖 [AI Service] Attempting model: ${modelId} (Intent: ${intent}) via Proxy`);
 
-      const generationConfig = {
-        ...config,
-        responseMimeType: 'application/json', // Mandatory!
-      };
-      // Remove rigid responseSchema to prevent 400 validation errors
-      delete generationConfig.responseSchema;
-
-      const model = googleAI.getGenerativeModel({
-        model: modelId,
-        generationConfig
-      });
-
-      // Adapter for content format
       const adaptedContents = Array.isArray(contents) ? contents : [{ role: 'user', parts: contents }];
 
-      const result = await model.generateContent({ contents: adaptedContents });
-      const response = await result.response;
-      let text = cleanJSON(response.text());
+      const response = await fetch(`${WORKER_URL}/api/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // "X-Auth-Token": "..." // If we implement auth later
+        },
+        body: JSON.stringify({
+          prompt: adaptedContents,
+          Model: modelId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Worker Error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // The worker returns { text, model }
+      let text = cleanJSON(data.text);
       JSON.parse(text); // Verify JSON
 
       console.log(`✅ [AI Service] Success with ${modelId}`);

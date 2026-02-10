@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Trip } from '../types';
 import { Send, Bot, User, X, Loader2, Sparkles, Maximize2, Minimize2 } from 'lucide-react';
-import { getAI, AI_MODEL, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
+import { SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 
 interface TripAssistantProps {
   trip: Trip;
@@ -37,8 +37,6 @@ export const TripAssistant: React.FC<TripAssistantProps> = ({ trip, onClose }) =
     setIsLoading(true);
 
     try {
-      const ai = getAI();
-
       const prompt = `${SYSTEM_PROMPT}
 
 You are a helpful travel assistant for a specific trip.
@@ -52,7 +50,7 @@ Instructions:
 3. If not found, suggest adding it or say you don't know.
 4. Reply in Hebrew, friendly and concise.`;
 
-      const response = await generateWithFallback(ai, prompt);
+      const response = await generateWithFallback(null, prompt);
 
       setMessages(prev => [...prev, { role: 'model', text: response.text || 'מצטער, לא הצלחתי למצוא את המידע.' }]);
     } catch (e) {

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Trip, ManualExpense, HotelBooking, Ticket } from '../types';
 import { Wallet, TrendingUp, DollarSign, PieChart as PieChartIcon, ShoppingBag, Utensils, Hotel, Ticket as TicketIcon, Plane, Plus, Trash2, X, Save, Car, Bus, ArrowRight, ChevronRight, UploadCloud, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { getAI, AI_MODEL, generateWithFallback, analyzeReceipt } from '../services/aiService';
+import { generateWithFallback, analyzeReceipt } from '../services/aiService';
 
 interface BudgetViewProps {
     trip: Trip;
@@ -323,7 +323,7 @@ const CategoryDetailModal: React.FC<{
                 const base64Data = (reader.result as string).split(',')[1];
 
                 // Use new Centralized Vision Function
-                const response = await analyzeReceipt(base64Data, file.type, 'TOTAL_ONLY');
+                const response = await analyzeReceipt(base64Data, file.type, 'TOTAL');
                 const textContent = response.text;
 
                 let data;

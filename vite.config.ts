@@ -6,8 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    // Set base path for GitHub Pages deployment
-    base: mode === 'production' ? '/TravelPlannerAI/' : '/',
+    // IMPORTANT: Relative base path ensures assets load from any folder
+    base: './',
     server: {
       port: 3000,
       host: '0.0.0.0',

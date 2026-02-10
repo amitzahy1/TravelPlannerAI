@@ -3,7 +3,7 @@ import { Trip, Attraction, AttractionCategory } from '../types';
 import { MapPin, Ticket, Star, Landmark, Sparkles, Filter, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid, Heart } from 'lucide-react';
 // cleaned imports
 import { getAttractionImage } from '../services/imageMapper';
-import { getAI, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
+import { SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
 import { ThinkingLoader } from './ThinkingLoader';
@@ -106,7 +106,6 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setIsSearching(true);
         setSearchResults(null);
         try {
-            const ai = getAI();
             const prompt = `Search Query: "${textQuery}"
             Destination Context: ${trip.destination}
 
@@ -119,7 +118,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
              OUTPUT JSON ONLY:
             { "results": [{ "name", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl", "business_status", "verification_needed" }] } `;
 
-            const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SMART');
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SMART');
             const data = JSON.parse(response.text || '{}');
             if (data.results) {
                 const valid = data.results.filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search - attr - ${i} `, categoryTitle: 'תוצאות חיפוש' }));
@@ -146,18 +145,15 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setResearchProgress({ current: 0, total: cities.length });
 
         try {
-            const ai = getAI();
             let accumulatedCategories: AttractionCategory[] = [...aiCategories];
 
             for (let i = 0; i < cities.length; i++) {
                 setResearchProgress({ current: i + 1, total: cities.length });
                 const city = cities[i];
 
-                // Check if we already have this city (crude check via region or title)
-                // Actually easier to just fetch all and merge
                 try {
                     const prompt = createResearchPrompt(city);
-                    const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
+                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
                     const rawData = JSON.parse(response.text || '{}');
                     const categoriesList = rawData.categories || (Array.isArray(rawData) ? rawData : []);
 
@@ -225,86 +221,6 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setLoadingRecs(true);
         setRecError('');
         try {
-            const ai = getAI();
-            const target = specificCity || trip.destinationEnglish || trip.destination;
-            // --- ATTRACTION CURATOR ALGORITHM (Strict Quota System) ---
-            const prompt = `
-            Role: You are the Lead Product Architect and Senior AI Engineer at Google Travel.
-                Mission: Re - engineer the Attraction Discovery Engine to implement the "Curator Algorithm" - a strict, quota - based recommendation system.
-
-            ** PART 1: THE LOGIC RULES **
-                1. ** Scope Authority:** Search primarily in "${target}".IF(and only if) the city is small / village, AUTOMATICALLY expand radius to 20km to find quality spots(e.g.waterfalls, nature).
-            2. ** Quality > Quantity:** Return ** UP TO 6 ** recommendations.If only 3 amazing places exist, return 3. Do NOT fill with mediocrity.
-            3. ** NO HALLUCINATIONS:** If a category has no real results in this area, return an empty list.Better empty than fake.
-            3. ** Quality Firewall:**
-                - REJECT: Generic playgrounds, small unremarkable city parks, administrative buildings, or "tourist traps"(souvenir shops).
-               - PRIORITIZE: "Must-See Landmarks", "Cultural Heritage", "Natural Wonders", "Unique Local Experiences".
-            4. ** Context Verification:** You are searching for "${target}".Ensure this is a real location.If misspelled, infer the correct city.If unknown, return empty.
-
-            ** PART 2: THE "PERFECT DEFINITION MATRIX"(Output strictly these 10 categories):**
-
-                1. ** "אתרי חובה" ** (Icons & Landmarks)
-                - Hebrew Title: "אתרי חובה"
-                    - Persona: The Eiffel Tower equivalent.The most famous spots.
-               - Multi - Lingual Rule: The JSON 'title' field MUST be "אתרי חובה".
-
-            2. ** "טבע ונופים" ** (Nature & Views)
-                - Hebrew Title: "טבע ונופים"
-                    - Persona: Breath of Fresh Air.Viewpoints, botanical gardens, waterfalls.
-               - Multi - Lingual Rule: The JSON 'title' field MUST be "טבע ונופים".
-
-            3. ** "מוזיאונים ותרבות" ** (Heritage & Art)
-                - Hebrew Title: "מוזיאונים ותרבות"
-                    - Persona: Heritage & Art.Galleries, history museums.
-               - Multi - Lingual Rule: The JSON 'title' field MUST be "מוזיאונים ותרבות".
-
-            4. ** "קניות ושווקים" ** (Retail Therapy)
-            - Hebrew Title: "קניות ושווקים"
-                - Persona: Malls, floating markets, shopping streets.
-               - Multi - Lingual Rule: The JSON 'title' field MUST be "קניות ושווקים".
-
-            5. ** "אקסטרים ופעילויות" ** (Adrenaline)
-                - Hebrew Title: "אקסטרים ופעילויות"
-                    - Persona: Ziplines, ATV tours, surfing.
-               - Multi - Lingual Rule: The JSON 'title' field MUST be "אקסטרים ופעילויות".
-
-            6. ** "חופים ומים" ** (Sun & Sea)
-                - Hebrew Title: "חופים ומים"
-                    - Persona: Beaches, islands, boat tours.
-               - Multi - Lingual Rule: The JSON 'title' field MUST be "חופים ומים".
-
-            7. ** "למשפחות וילדים" ** (Kids' Joy)
-                - Hebrew Title: "למשפחות וילדים"
-                    - Persona: Zoos, aquariums, theme parks.
-               - Multi - Lingual Rule: The JSON 'title' field MUST be "למשפחות וילדים".
-
-            8. ** "היסטוריה ודת" ** (Spiritual)
-                - Hebrew Title: "היסטוריה ודת"
-                    - Persona: Temples, Shrines, Churches.
-               - Multi - Lingual Rule: The JSON 'title' field MUST be "היסטוריה ודת".
-
-            9. ** "חיי לילה ואווירה" ** (Night Vibes)
-            - Hebrew Title: "חיי לילה ואווירה"
-                - Persona: Night markets, neon streets, light shows.
-               - Multi - Lingual Rule: The JSON 'title' field MUST be "חיי לילה ואווירה".
-
-            10. ** "פינות נסתרות" ** (Hidden Gems)
-            - Hebrew Title: "פינות נסתרות"
-                - Persona: Unknown alleys, local hangouts.
-                - Multi - Lingual Rule: The JSON 'title' field MUST be "פינות נסתרות".
-
-            ** PART 3: DATA INTEGRITY **
-            - ** CRITICAL:** Return pure JSON.
-            - ** Titles:** The 'title' field in the JSON categories MUST be the Hebrew string.
-            - ** Type Mapping:** Map 'type' field to one of: [Landmark, Nature, Culture, Shopping, Extreme, Beach, Family, Spiritual, Nightlife, Hidden].
-            
-            ** PART 4: AUTHORITY SOURCES ONLY **
-                - The 'recommendationSource' field must be a REAL authority.
-            - ** ALLOWED:** [UNESCO, TripAdvisor, Lonely Planet, Atlas Obscura, TimeOut, Google Review, Local Legend].
-            - ** BANNED:** Generic names.
-            `;
-
-            // Replaced Schema with Prompt Instruction for standard SDK
             const promptWithJsonInstruction = prompt + `
             
             OUTPUT JSON ONLY(Strict Format):
@@ -320,7 +236,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 ]
             } `;
 
-            const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json' }, 'SEARCH');
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json' }, 'SEARCH');
 
             const textContent = response.text;
             console.log("🔍 [AI ATTRACTIONS Raw Response]:", textContent?.substring(0, 500) + "...");

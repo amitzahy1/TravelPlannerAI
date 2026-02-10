@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Trip, ShoppingItem, VatStatus } from '../types';
 import { ShoppingBag, FileText, Camera, Plus, Trash2, CheckCircle2, AlertCircle, Stamp, ArrowLeft, DollarSign, Image as ImageIcon, X, Loader2, Sparkles, UploadCloud, Search, List, Receipt, Calendar } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { getAI, AI_MODEL, generateWithFallback, analyzeReceipt } from '../services/aiService';
+import { generateWithFallback, analyzeReceipt } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 
 interface ShoppingViewProps {
@@ -103,7 +103,7 @@ export const ShoppingView: React.FC<ShoppingViewProps> = ({ trip, onUpdateTrip }
 
                 try {
                     // Use new Centralized Vision Function
-                    const response = await analyzeReceipt(base64Data, file.type, 'DETAILED_SHOPPING');
+                    const response = await analyzeReceipt(base64Data, file.type, 'FULL');
                     const textContent = response.text;
 
                     let data;

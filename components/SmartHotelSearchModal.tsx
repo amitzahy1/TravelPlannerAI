@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { HotelBooking } from '../types';
 import { Sparkles, X, Loader2, Search, Hotel, Plus } from 'lucide-react';
-import { getAI, generateWithFallback } from '../services/aiService';
+import { generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 
 // Helper: Input Component for DD/MM/YYYY
@@ -51,9 +51,8 @@ export const SmartHotelSearchModal: React.FC<{ onClose: () => void; onSave: (dat
                 if (!query.trim()) return;
                 setIsSearching(true);
                 try {
-                        const ai = getAI();
                         const prompt = `Find details for hotel "${query}". Return JSON: { name, address, googleMapsUrl, description, imageUrl, locationVibe }. Verify address is real.`;
-                        const response = await generateWithFallback(ai, [prompt], { responseMimeType: 'application/json' }, 'FAST');
+                        const response = await generateWithFallback(null, [prompt], { responseMimeType: 'application/json' }, 'FAST');
 
                         const text = typeof response.text === 'function' ? response.text() : response.text;
                         let data = {};

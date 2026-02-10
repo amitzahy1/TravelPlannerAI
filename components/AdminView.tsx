@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment } from '../types';
 import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal } from 'lucide-react';
-import { getAI, generateWithFallback } from '../services/aiService';
+import { generateWithFallback } from '../services/aiService';
 import { MagicDropZone } from './MagicDropZone';
 import { ShareModal } from './ShareModal';
 import { SystemLogs } from './SystemLogs';
@@ -287,7 +287,6 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         if (!needsEnrichment) return currentTrip;
 
         try {
-            const ai = getAI();
             const hotelsToEnrich = currentTrip.hotels.map(h => ({ id: h.id, name: h.name, knownAddress: h.address }));
 
             const prompt = `
@@ -299,7 +298,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
           `;
 
             const response = await generateWithFallback(
-                ai,
+                null,
                 [prompt],
                 { responseMimeType: 'application/json' },
                 'SMART'

@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip, HotelBooking } from '../types';
 import { Hotel, MapPin, Calendar, ExternalLink, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X, Save, DollarSign, Image as ImageIcon, Link as LinkIcon, Globe, Sparkles, Loader2, Navigation, Search, UploadCloud, FileText, Coffee, ShieldCheck, Lock } from 'lucide-react';
-import { getAI, generateWithFallback } from '../services/aiService';
+import { generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -263,10 +263,9 @@ const HotelCard: React.FC<{
     const analyzeLocation = async () => {
         setAnalyzing(true);
         try {
-            const ai = getAI();
             const prompt = `Analyze location: "${data.name}", "${data.address}". Short Hebrew "Vibe Check" (max 15 words). e.g. "מרכזי, קרוב לרכבת, אזור בילויים".`;
             // Using FAST intent as requested for "Vibe"
-            const response = await generateWithFallback(ai, [prompt], {}, 'FAST');
+            const response = await generateWithFallback(null, [prompt], {}, 'FAST');
             if (response.text) onSaveVibe(response.text);
         } catch (e) { console.error(e); } finally { setAnalyzing(false); }
     };
@@ -467,7 +466,6 @@ const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBo
     const processContent = async (text: string, files?: FileList) => {
         setIsProcessing(true);
         try {
-            const ai = getAI();
             const contentParts: any[] = [
                 {
                     text: `Extract a SINGLE Hotel Booking from this content.
@@ -496,7 +494,7 @@ const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBo
             }
 
             const response = await generateWithFallback(
-                ai,
+                null,
                 [{ role: 'user', parts: contentParts }],
                 { responseMimeType: 'application/json' }
             );

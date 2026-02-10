@@ -3,7 +3,7 @@ import { Trip, Restaurant, RestaurantIconType, RestaurantCategory } from '../typ
 import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel, Heart } from 'lucide-react';
 // cleaned imports
 import { getFoodImage } from '../services/imageMapper';
-import { getAI, SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
+import { SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
 import { ThinkingLoader } from './ThinkingLoader';
@@ -160,23 +160,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setRecError('');
 
         try {
-            const ai = getAI();
-            const prompt = `Search Query: "${textQuery}"
-            Destination Context: ${trip.destination}
-            
-            Mission: Find the best matches for this specific query.
-            - If specific name: Find it.
-            - If category: Find top rated examples.
-            - If vague ("dinner"): Recommend popular spots.
-
-            CRITICAL: 'cuisine' field MUST be one of: [Ramen, Pizza, Burger, Sushi, Asian Fusion, Fine Dining, Cafe, Steakhouse, Seafood, Georgian, Dessert, Nightlife]. Map inferred cuisine to closest match.
-            Description in Hebrew. Names in English.
-            
-            OUTPUT JSON ONLY:
-            { "results": [ { "name", "nameEnglish", "description", "location", "googleRating", "cuisine", "iconType", "isHotelRestaurant", "recommendationSource", "googleMapsUrl", "business_status", "verification_needed" } ] }`;
-
             // Removed Schema enforcement to match Pro Enforcer pattern
-            const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
 
             const textContent = response.text;
             try {
@@ -223,7 +208,6 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setResearchProgress({ current: 0, total: cities.length });
 
         try {
-            const ai = getAI();
             let accumulatedCategories: RestaurantCategory[] = [...aiCategories];
 
             for (let i = 0; i < cities.length; i++) {
@@ -232,7 +216,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                 try {
                     const prompt = createResearchPrompt(city);
-                    const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SMART');
+                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SMART');
                     const rawData = JSON.parse(response.text || '{}');
                     const categoriesList = rawData.categories || (Array.isArray(rawData) ? rawData : []);
 
@@ -299,7 +283,6 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setLoadingRecs(true);
         setRecError('');
         try {
-            const ai = getAI();
             const currentYear = new Date().getFullYear();
             const prevYear = currentYear - 1;
 
@@ -404,7 +387,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
               ]
             }`;
 
-            const response = await generateWithFallback(ai, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SMART');
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SMART');
 
             const textContent = response.text;
             console.log("🔍 [AI Raw Response Preview]:", textContent?.substring(0, 500) + "...");

@@ -10,7 +10,9 @@
         },
         "dependencies": {
                 "jose": "^5.2.0",
-                "postal-mime": "^2.7.3"
+                "postal-mime": "^2.7.3",
+                "google-auth-library": "^9.0.0",
+                "@google/generative-ai": "^0.2.0"
         },
         "devDependencies": {
                 "@cloudflare/workers-types": "^4.20240117.0",
