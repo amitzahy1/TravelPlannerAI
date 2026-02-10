@@ -185,7 +185,7 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
                         const parser = new PostalMime();
                         email = await parser.parse(rawBuffer);
                         textBody = email.text || email.html || "";
-                        attachments = (email.attachments || []).filter(att =>
+                        attachments = (email.attachments || []).filter((att: any) =>
                                 att.mimeType === "application/pdf" || att.mimeType.startsWith("image/")
                         );
                 } catch (parseError: any) {
@@ -393,25 +393,34 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
 
         const SYSTEM_PROMPT = `
 Role: You are an elite Travel Data Architect.
-Mission: Extract unstructured travel data into a strict JSON format.
+Mission: Extract unstructured travel data (PDF/Email) into a strict JSON format.
 
---- EXTRACTION RULES ---
-1. **Scope**: Identify Flights, Hotels, and Car Rentals.
-2. **Location**: You MUST extract 'City' and 'Country' for every accommodation and car rental.
-3. **Budget**: Extract 'Price' (Amount) and 'Currency' for every item found.
-4. **Dates**: Convert ALL dates to ISO 8601 (YYYY-MM-DD). Convert "30.03.2026" -> "2026-03-30".
-5. **Times**: Extract HH:MM.
-6. **Implicit Info**: 
-   - "TLV" -> Tel Aviv, Israel.
-   - "TBS" / "TBILISI" -> Tbilisi, Georgia.
-   - If airline is "6H" -> "Israir".
+--- CRITICAL RULES ---
+1. **OCR & Language**: The input may be in Hebrew, English, or mixed. You MUST OCR the attached PDFs deeply.
+   - If you see "26 ינואר", translate to "2026-01-26".
+   - If year is missing, assume **2026** (unless context implies otherwise).
+2. **Locations**:
+   - NEVER return "Unknown". Infer from context (e.g., "Ben Gurion" -> Tel Aviv).
+   - "TLV" = Tel Aviv, Israel.
+   - "TBS" / "TBILISI" = Tbilisi, Georgia.
+   - "BATUMI" = Batumi, Georgia.
+3. **Flights (Specific Mappings)**:
+   - "LY" / "El Al" -> Airline: "El Al", Code: "LY".
+   - "6H" / "Israir" -> Airline: "Israir", Code: "6H".
+   - "A3" / "Aegean" -> Airline: "Aegean", Code: "A3".
+   - "IZ" / "Arkia" -> Airline: "Arkia", Code: "IZ".
+   - Extract EXACT flight numbers (e.g., "LY5103").
+   - **Times**: Convert all to 24h format (HH:MM).
+4. **Dates**:
+   - OUTPUT MUST BE ISO 8601 (YYYY-MM-DD).
+   - "04/00" is INVALID. If day/month is ambiguous, look for duration or other dates.
 
---- OUTPUT SCHEMA (STRICT) ---
+--- OUTPUT SCHEMA (STRICT JSON) ---
 {
   "tripMetadata": {
-    "suggestedName": "String",
-    "mainDestination": "String",
-    "mainCountry": "String",
+    "suggestedName": "String (e.g., 'Weekend in Georgia')",
+    "mainDestination": "String (City)",
+    "mainCountry": "String (Country)",
     "startDate": "YYYY-MM-DD",
     "endDate": "YYYY-MM-DD"
   },
@@ -420,11 +429,11 @@ Mission: Extract unstructured travel data into a strict JSON format.
       {
         "airline": "String",
         "flightNumber": "String",
-        "pnr": "String",
-        "totalPrice": 0,
-        "currency": "String",
-        "departure": { "city": "String", "iata": "String", "isoDate": "YYYY-MM-DD", "time": "HH:MM" },
-        "arrival": { "city": "String", "iata": "String", "isoDate": "YYYY-MM-DD", "time": "HH:MM" }
+        "pnr": "String (Booking Reference)",
+        "totalPrice": Number,
+        "currency": "String (USD/ILS/EUR)",
+        "departure": { "city": "String", "iata": "String (3 chars)", "isoDate": "YYYY-MM-DD", "time": "HH:MM" },
+        "arrival": { "city": "String", "iata": "String (3 chars)", "isoDate": "YYYY-MM-DD", "time": "HH:MM" }
       }
     ],
     "hotels": [
@@ -435,8 +444,7 @@ Mission: Extract unstructured travel data into a strict JSON format.
         "country": "String",
         "checkIn": "YYYY-MM-DD",
         "checkOut": "YYYY-MM-DD",
-        "confirmationCode": "String",
-        "price": 0,
+        "price": Number,
         "currency": "String"
       }
     ],
@@ -444,11 +452,9 @@ Mission: Extract unstructured travel data into a strict JSON format.
       {
         "provider": "String",
         "pickupLocation": "String",
-        "city": "String",
-        "country": "String",
         "pickupDate": "YYYY-MM-DD",
         "dropoffDate": "YYYY-MM-DD",
-        "price": 0,
+        "price": Number,
         "currency": "String"
       }
     ]
@@ -735,7 +741,7 @@ function extractEmail(from: string) {
 }
 
 async function getUserByEmail(email: string, projectId: string, token: string) {
-        // Normalize email
+        // 1. Normalize email
         const cleanEmail = email.toLowerCase().trim();
         const emailsToTry = [cleanEmail];
 
@@ -746,15 +752,53 @@ async function getUserByEmail(email: string, projectId: string, token: string) {
                 emailsToTry.push(cleanEmail.replace('@googlemail.com', '@gmail.com'));
         }
 
-        const res = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:lookup`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ email: emailsToTry }) // API supports array of emails
-        });
+        // 2. Try Firebase Auth Lookup (Primary)
+        try {
+                const res = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:lookup`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ email: emailsToTry })
+                });
+                const data: any = await res.json();
+                if (data.users?.[0]?.localId) return data.users[0].localId;
+        } catch (e) { console.warn("Auth Lookup Failed", e); }
 
-        const data: any = await res.json();
-        // Return first found user
-        return data.users?.[0]?.localId || null;
+        // 3. Fallback: Query Firestore 'users' collection (Secondary Emails / Aliases)
+        // Check if email matches 'email' field OR is in 'aliases' array
+        console.log(`[Lookup] Auth failed for ${cleanEmail}, trying Firestore...`);
+
+        try {
+                // Query: email == cleanEmail
+                const qUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+                const queryBody = {
+                        structuredQuery: {
+                                from: [{ collectionId: "users" }],
+                                where: {
+                                        compositeFilter: {
+                                                op: "OR",
+                                                filters: [
+                                                        { fieldFilter: { field: { fieldPath: "email" }, op: "EQUAL", value: { stringValue: cleanEmail } } },
+                                                        { fieldFilter: { field: { fieldPath: "aliases" }, op: "ARRAY_CONTAINS", value: { stringValue: cleanEmail } } }
+                                                ]
+                                        }
+                                },
+                                limit: 1
+                        }
+                };
+
+                const fsRes = await fetch(qUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify(queryBody)
+                });
+
+                const fsData: any = await fsRes.json();
+                if (fsData[0]?.document?.name) {
+                        return fsData[0].document.name.split('/').pop();
+                }
+        } catch (e) { console.warn("Firestore Lookup Failed", e); }
+
+        return null; // User truly not found
 }
 
 async function getUserFutureTrips(uid: string, projectId: string, token: string) {
