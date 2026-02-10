@@ -136,13 +136,14 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
                 // 1. Auth (Blocking, Required)
                 logs.push("Step 1: Authenticating...");
                 token = await getFirebaseAccessToken(env, logs) || "";
+                console.log(`[Pipeline] Step 1 Result: token=${token ? 'OK' : 'FAILED'}`);
                 if (!token) throw new Error("Firebase Auth Token is null");
 
                 const senderEmail = extractEmail(from);
                 uid = await getUserByEmail(senderEmail, env.FIREBASE_PROJECT_ID, token);
 
                 if (!uid) {
-                        console.error(`User not found for ${senderEmail}`);
+                        console.error(`[Pipeline] Step 1b FAILED: User not found for ${senderEmail}`);
                         return { success: false, message: `User not found: ${senderEmail}`, logs };
                 }
 
@@ -161,6 +162,7 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
                 );
 
                 logs.push(`Body Length: ${textBody.length}, Attachments: ${attachments.length}`);
+                console.log(`[Pipeline] Step 2 Done: body=${textBody.length} chars, attachments=${attachments.length}`);
 
                 // 3. Get Context
                 const existingTrips = await getUserFutureTrips(uid, env.FIREBASE_PROJECT_ID, token).catch(() => []);
@@ -449,12 +451,16 @@ Mission: Extract unstructured travel data into a strict JSON format.
                         const rawText = result.response.text();
                         frontendData = JSON.parse(cleanJSON(rawText));
                         if (frontendData) break;
-                } catch (e) {
-                        console.warn(`Model ${modelName} failed, trying next...`);
+                } catch (e: any) {
+                        console.warn(`[Gemini] Model ${modelName} failed: ${e.message}`);
                 }
         }
 
-        if (!frontendData) throw new Error("AI failed to extract data.");
+        if (!frontendData) {
+                console.error(`[Pipeline] ALL Gemini models failed! Tried: ${CANDIDATES.join(', ')}`);
+                throw new Error("AI failed to extract data.");
+        }
+        console.log(`[Pipeline] Step 4 Done: Gemini returned data. Keys: ${Object.keys(frontendData).join(', ')}`);
 
         // --- MAPPING ENGINE (Golden Schema v2.1) ---
 
@@ -734,7 +740,11 @@ async function createTrip(uid: string, data: any, projectId: string, token: stri
                 body: JSON.stringify(doc)
         });
         const json: any = await res.json();
-        if (!res.ok) throw new Error("Create Failed");
+        if (!res.ok) {
+                console.error(`[Firestore] CREATE FAILED: ${res.status} ${res.statusText}`, JSON.stringify(json));
+                throw new Error(`Create Failed: ${res.status} - ${JSON.stringify(json).substring(0, 500)}`);
+        }
+        console.log(`[Pipeline] Step 5 Done: Trip created with ID ${json.name.split('/').pop()}`);
         return json.name.split('/').pop();
 }
 
@@ -746,7 +756,12 @@ async function updateTrip(uid: string, tripId: string, data: any, projectId: str
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(doc)
         });
-        if (!res.ok) throw new Error("Update Failed");
+        if (!res.ok) {
+                const errBody = await res.text();
+                console.error(`[Firestore] UPDATE FAILED: ${res.status}`, errBody);
+                throw new Error(`Update Failed: ${res.status} - ${errBody.substring(0, 500)}`);
+        }
+        console.log(`[Pipeline] Step 5 Done: Trip ${tripId} updated`);
 }
 
 function mapJsonToFirestore(data: any): any {
