@@ -353,6 +353,18 @@ A. FLIGHTS — Extract ALL of these fields:
    - "TBS" / "TBILISI" → City: "Tbilisi", IATA: "TBS"
    - "BUS" / "BATUMI" → City: "Batumi", IATA: "BUS"
    - "ATH" / "ATHENS" → City: "Athens", IATA: "ATH"
+   - "SKG" → City: "Thessaloniki", "RHO" → City: "Rhodes", "HER" → City: "Heraklion"
+   - "LCA" → City: "Larnaca", "PFO" → City: "Paphos"
+   - "IST" → City: "Istanbul", "AYT" → City: "Antalya"
+   - "CDG" → City: "Paris", "FCO" → City: "Rome", "BCN" → City: "Barcelona"
+   - "BKK" → City: "Bangkok", "HKT" → City: "Phuket"
+   - If IATA code is not in this list, use the IATA code as city name — NEVER return "Unknown"
+   
+   ⚠️ MULTI-SEGMENT RULE (CRITICAL):
+   - Each flight LEG must be a SEPARATE transport entry.
+   - A round-trip (TLV→ATH outbound, ATH→TLV return) MUST produce TWO transport entries.
+   - One-way = 1 entry. Round-trip = 2 entries. Multi-city = one entry per leg.
+   - Read EVERY page of PDFs — outbound is often on page 1, return on page 2.
 
 B. HOTELS — Extract ALL of these fields:
    - hotelName (exact name as written)

@@ -399,43 +399,46 @@ Mission: Extract unstructured travel data (PDF/Email) into a strict JSON format.
 
 --- CRITICAL RULES ---
 1. **OCR & Language**: The input may be in Hebrew, English, or mixed. You MUST OCR the attached PDFs deeply.
+   - Read EVERY page of the PDF. Flight itineraries often have outbound on one page and return on another.
    - If you see "26 ינואר", translate to "2026-01-26".
    - If year is missing, assume **2026** (unless context implies otherwise).
 2. **Locations**:
-   - NEVER return "Unknown". Infer from context (e.g., "Ben Gurion" -> Tel Aviv).
-   - "TLV" = Tel Aviv, Israel.
-   - "TBS" / "TBILISI" = Tbilisi, Georgia.
-   - "BATUMI" = Batumi, Georgia.
-3. **Flights (Specific Mappings)**:
-   - "LY" / "El Al" -> Airline: "El Al", Code: "LY".
-   - "6H" / "Israir" -> Airline: "Israir", Code: "6H".
-   - "A3" / "Aegean" -> Airline: "Aegean", Code: "A3".
-   - "IZ" / "Arkia" -> Airline: "Arkia", Code: "IZ".
-   - Extract EXACT flight numbers (e.g., "LY5103").
-   - **Times**: Convert all to 24h format (HH:MM).
+   - NEVER return "Unknown". Always infer from context, IATA codes, or airline routes.
+   - IATA Code Mappings: TLV=Tel Aviv, TBS=Tbilisi, BUS=Batumi, ATH=Athens, SKG=Thessaloniki, RHO=Rhodes, HER=Heraklion, LCA=Larnaca, PFO=Paphos, IST=Istanbul, SAW=Istanbul Sabiha, AYT=Antalya, CDG=Paris, FCO=Rome, BCN=Barcelona, BKK=Bangkok, HKT=Phuket.
+   - If you cannot determine the city from IATA, use the IATA code itself — do NOT write "Unknown".
+3. **Flights — MULTI-SEGMENT RULE (CRITICAL)**:
+   - **Each flight LEG must be a SEPARATE entry in the flights array.**
+   - A round-trip itinerary (e.g., TLV→ATH on Apr 6, ATH→TLV on Apr 10) MUST produce TWO separate entries.
+   - One-way = 1 entry. Round-trip = 2 entries. Multi-city = one entry per leg.
+   - Airline Mappings: "LY"/"El Al"→Airline:"El Al",Code:"LY". "6H"/"Israir"→Airline:"Israir",Code:"6H". "A3"/"Aegean"→Airline:"Aegean",Code:"A3". "IZ"/"Arkia"→Airline:"Arkia",Code:"IZ". "W6"/"Wizz Air"→Airline:"Wizz Air",Code:"W6". "FR"/"Ryanair"→Airline:"Ryanair",Code:"FR".
+   - Extract EXACT flight numbers including airline prefix (e.g., "6H103", "LY5103").
+   - **Times**: Convert all to 24h format (HH:MM). Never return "00:00" unless the actual departure is midnight.
 4. **Dates**:
    - OUTPUT MUST BE ISO 8601 (YYYY-MM-DD).
    - "04/00" is INVALID. If day/month is ambiguous, look for duration or other dates.
+   - startDate = earliest flight departure date. endDate = latest flight/hotel date.
 
 --- OUTPUT SCHEMA (STRICT JSON) ---
 {
   "tripMetadata": {
-    "suggestedName": "String (e.g., 'Weekend in Georgia')",
-    "mainDestination": "String (City)",
+    "suggestedName": "String (e.g., 'Weekend in Athens')",
+    "mainDestination": "String (City, NOT the origin)",
     "mainCountry": "String (Country)",
-    "startDate": "YYYY-MM-DD",
-    "endDate": "YYYY-MM-DD"
+    "startDate": "YYYY-MM-DD (earliest departure)",
+    "endDate": "YYYY-MM-DD (latest return/checkout)"
   },
   "categories": {
     "flights": [
       {
-        "airline": "String",
-        "flightNumber": "String",
-        "pnr": "String (Booking Reference)",
-        "totalPrice": Number,
-        "currency": "String (USD/ILS/EUR)",
-        "departure": { "city": "String", "iata": "String (3 chars)", "isoDate": "YYYY-MM-DD", "time": "HH:MM" },
-        "arrival": { "city": "String", "iata": "String (3 chars)", "isoDate": "YYYY-MM-DD", "time": "HH:MM" }
+        "airline": "String (full name)",
+        "flightNumber": "String (e.g., '6H103' — include airline prefix)",
+        "pnr": "String (6-char booking reference, NOT ticket number)",
+        "passengerName": "String (SURNAME/FIRSTNAME as on ticket)",
+        "totalPrice": "Number",
+        "currency": "String (ILS/USD/EUR)",
+        "baggage": "String (e.g., '23kg x 2', 'Cabin only')",
+        "departure": { "city": "String", "iata": "String (3 chars)", "isoDate": "YYYY-MM-DD", "time": "HH:MM (24h)" },
+        "arrival": { "city": "String", "iata": "String (3 chars)", "isoDate": "YYYY-MM-DD", "time": "HH:MM (24h)" }
       }
     ],
     "hotels": [
@@ -446,7 +449,7 @@ Mission: Extract unstructured travel data (PDF/Email) into a strict JSON format.
         "country": "String",
         "checkIn": "YYYY-MM-DD",
         "checkOut": "YYYY-MM-DD",
-        "price": Number,
+        "price": "Number",
         "currency": "String"
       }
     ],
@@ -456,12 +459,20 @@ Mission: Extract unstructured travel data (PDF/Email) into a strict JSON format.
         "pickupLocation": "String",
         "pickupDate": "YYYY-MM-DD",
         "dropoffDate": "YYYY-MM-DD",
-        "price": Number,
+        "price": "Number",
         "currency": "String"
       }
     ]
   }
 }
+
+--- EXAMPLE ---
+A round-trip Israir PDF: TLV→ATH on 2026-04-06 at 08:30, ATH→TLV on 2026-04-10 at 14:15.
+Expected output flights array with TWO entries:
+[
+  { "airline": "Israir", "flightNumber": "6H103", ..., "departure": { "city": "Tel Aviv", "iata": "TLV", "isoDate": "2026-04-06", "time": "08:30" }, "arrival": { "city": "Athens", "iata": "ATH", ... } },
+  { "airline": "Israir", "flightNumber": "6H104", ..., "departure": { "city": "Athens", "iata": "ATH", "isoDate": "2026-04-10", "time": "14:15" }, "arrival": { "city": "Tel Aviv", "iata": "TLV", ... } }
+]
 `;
 
         // 1. בניית ה-Parts כולל הקבצים (זה החלק שהיה חסר!)
@@ -507,8 +518,33 @@ Mission: Extract unstructured travel data (PDF/Email) into a strict JSON format.
                 throw new Error("AI failed to extract data.");
         }
         console.log(`[Pipeline] Step 4 Done: Gemini returned data. Keys: ${Object.keys(frontendData).join(', ')}`);
+        console.log(`[Pipeline] Flights found: ${frontendData.categories?.flights?.length || 0}`);
+        if (frontendData.categories?.flights) {
+                frontendData.categories.flights.forEach((f: any, i: number) => {
+                        console.log(`[Pipeline] Flight ${i}: ${f.departure?.iata || '?'} → ${f.arrival?.iata || '?'} on ${f.departure?.isoDate || '?'} at ${f.departure?.time || '?'}, flight=${f.flightNumber || '?'}`);
+                });
+        }
 
-        // --- MAPPING ENGINE (Golden Schema v2.1) ---
+        // --- IATA→City Fallback Map ---
+        const IATA_CITY_MAP: Record<string, string> = {
+                TLV: 'Tel Aviv', TBS: 'Tbilisi', BUS: 'Batumi', ATH: 'Athens',
+                SKG: 'Thessaloniki', RHO: 'Rhodes', HER: 'Heraklion', LCA: 'Larnaca',
+                PFO: 'Paphos', IST: 'Istanbul', SAW: 'Istanbul', AYT: 'Antalya',
+                CDG: 'Paris', FCO: 'Rome', BCN: 'Barcelona', BKK: 'Bangkok',
+                HKT: 'Phuket', SIN: 'Singapore', DXB: 'Dubai', JFK: 'New York',
+                LHR: 'London', AMS: 'Amsterdam', FRA: 'Frankfurt', MUC: 'Munich',
+                VIE: 'Vienna', PRG: 'Prague', BUD: 'Budapest', SOF: 'Sofia',
+                OTP: 'Bucharest', WAW: 'Warsaw', MAD: 'Madrid', LIS: 'Lisbon',
+        };
+
+        const resolveCity = (city: string | undefined, iata: string | undefined): string => {
+                if (city && city !== 'Unknown' && city.trim()) return city;
+                if (iata && IATA_CITY_MAP[iata.toUpperCase()]) return IATA_CITY_MAP[iata.toUpperCase()];
+                if (iata && iata.trim()) return iata; // Use raw IATA as last resort
+                return 'Unknown';
+        };
+
+        // --- MAPPING ENGINE (Golden Schema v2.2) ---
 
         // 1. Process Flights
         const aiFlights = frontendData.categories?.flights || [];
@@ -521,17 +557,22 @@ Mission: Extract unstructured travel data (PDF/Email) into a strict JSON format.
 
                 const arrTime = (f.arrival?.time && f.arrival?.time !== "00:00")
                         ? f.arrival.time
-                        : "12:00";
+                        : extractTimeFromText(JSON.stringify(f.arrival || {}));
 
                 return {
                         airline: f.airline || "Unknown",
                         flight: f.flightNumber || "",
                         pnr: f.pnr || "",
-                        from: f.departure?.city || f.departure?.iata || "Unknown",
-                        to: f.arrival?.city || f.arrival?.iata || "Unknown",
+                        passengerName: f.passengerName || "",
+                        baggage: f.baggage || "",
+                        from: resolveCity(f.departure?.city, f.departure?.iata),
+                        to: resolveCity(f.arrival?.city, f.arrival?.iata),
+                        fromCode: f.departure?.iata || "",
+                        toCode: f.arrival?.iata || "",
                         date: depDate || new Date().toISOString().split('T')[0],
                         departureTime: depTime,
                         arrivalTime: arrTime,
+                        arrivalDate: fixDate(f.arrival?.isoDate) || depDate || "",
                         price: f.totalPrice || 0,
                         currency: f.currency || "USD"
                 };
@@ -564,10 +605,21 @@ Mission: Extract unstructured travel data (PDF/Email) into a strict JSON format.
                 currency: c.currency || "USD"
         }));
 
-        // 4. Construct Final Object
-        const dates = processedSegments.map((s: any) => s.date).filter(Boolean).sort();
-        const startDate = dates[0] || fixDate(frontendData.tripMetadata?.startDate) || new Date().toISOString().split('T')[0];
-        const endDate = dates[dates.length - 1] || fixDate(frontendData.tripMetadata?.endDate) || startDate;
+        // 4. Construct Final Object — collect ALL dates from flights + hotels
+        const allDates = [
+                ...processedSegments.map((s: any) => s.date),
+                ...processedSegments.map((s: any) => s.arrivalDate),
+                ...processedHotels.flatMap((h: any) => [h.checkIn, h.checkOut])
+        ].filter(Boolean).sort();
+        const startDate = allDates[0] || fixDate(frontendData.tripMetadata?.startDate) || new Date().toISOString().split('T')[0];
+        const endDate = allDates[allDates.length - 1] || fixDate(frontendData.tripMetadata?.endDate) || startDate;
+
+        // Build display-friendly dates string for frontend
+        const displayDates = startDate !== endDate ? `${startDate} - ${endDate}` : startDate;
+        console.log(`[Pipeline] Trip dates: ${startDate} → ${endDate} (from ${allDates.length} date points)`);
+
+        // Compute total flight price across all segments
+        const totalFlightPrice = aiFlights.reduce((sum: number, f: any) => sum + (f.totalPrice || 0), 0);
 
         const finalTripData: any = {
                 name: frontendData.tripMetadata?.suggestedName || `Trip to ${processedSegments[0]?.to || "Unknown"}`,
@@ -575,6 +627,7 @@ Mission: Extract unstructured travel data (PDF/Email) into a strict JSON format.
                 country: frontendData.tripMetadata?.mainCountry || "",
                 startDate: startDate,
                 endDate: endDate,
+                dates: displayDates,
                 status: 'confirmed',
                 source: 'email_import',
 
@@ -587,7 +640,8 @@ Mission: Extract unstructured travel data (PDF/Email) into a strict JSON format.
                 flights: processedSegments.length > 0 ? {
                         airline: processedSegments[0].airline,
                         pnr: processedSegments[0].pnr,
-                        totalPrice: aiFlights[0]?.totalPrice || 0,
+                        passengerName: processedSegments[0].passengerName || "",
+                        totalPrice: totalFlightPrice || aiFlights[0]?.totalPrice || 0,
                         currency: aiFlights[0]?.currency || "USD",
                         segments: processedSegments
                 } : undefined,
