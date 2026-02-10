@@ -168,7 +168,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                     tripMetadata: { suggestedName: parsed.tripName, suggestedDates: '', mainDestination: parsed.destination, uniqueCityNames: parsed.cities || [] },
                     processedFileIds: [],
                     unprocessedFiles: [],
-                    categories: { transport: [], accommodation: [], wallet: [], dining: [], activities: [] }
+                    categories: { transport: [], accommodation: [], carRental: [], wallet: [], dining: [], activities: [] }
                 }
             });
 
@@ -222,7 +222,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                     description: "Imported via AI",
                     location: i.data.address || '',
                     reservationTime: i.data.displayTime || '',
-                    iconType: 'ramen'
+                    iconType: 'ramen' as const
                 }))
             }],
             attractions: [{
@@ -366,7 +366,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                                 tripMetadata: { suggestedName: `${destinationInput} Adventure`, suggestedDates: formDates, mainDestination: destinationInput, uniqueCityNames: [] },
                                 processedFileIds: [],
                                 unprocessedFiles: [],
-                                categories: { transport: [], accommodation: [], wallet: [], dining: [], activities: [] }
+                                categories: { transport: [], accommodation: [], carRental: [], wallet: [], dining: [], activities: [] }
                             }
                         });
                         setFormName(`${destinationInput} Adventure`);

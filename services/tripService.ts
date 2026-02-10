@@ -2,109 +2,184 @@ import { Trip, FlightSegment, HotelBooking, SecureNote, Restaurant, Attraction }
 import { TripAnalysisResult } from './aiService';
 
 /**
- * Converts the AI TripAnalysisResult into a partial Trip object.
- * This logic was extracted from OnboardingModal to be reusable.
+ * Maps the AI TripAnalysisResult into a partial Trip object.
+ * Handles ALL field name variations from different AI outputs.
+ * 
+ * Key fixes over v1:
+ * - Hotel dates: reads from BOTH checkIn.isoDate AND checkInDate (backwards compat)
+ * - Hotel price: reads from BOTH price.amount AND totalPrice
+ * - Car rental: maps to transport segments (type: car_rental)
+ * - Passenger/guest names: properly mapped
+ * - Booking source detection
  */
 export const mapAnalysisToTrip = (analysis: TripAnalysisResult): Partial<Trip> => {
         const categories = analysis.rawStagedData.categories || {
                 transport: [],
                 accommodation: [],
+                carRental: [],
                 wallet: [],
                 dining: [],
                 activities: []
         };
 
+        // --- FLIGHTS ---
         const flights: FlightSegment[] = categories.transport
                 .filter(i => i.type === 'flight')
                 .flatMap(i => {
-                        // Normalize Data structure (Handle both nested and flat structures)
-                        const depData = i.data.departure || {};
-                        const arrData = i.data.arrival || {};
+                        const d = i.data || {};
+                        const dep = d.departure || {};
+                        const arr = d.arrival || {};
 
-                        // Fallback for flat structure (backward compatibility)
-                        const flatDate = i.data.isoDate || i.data.date || i.data.departureDate;
+                        // Priority chain for dates: nested ISO > flat ISO > current date
+                        const departureDate = dep.isoDate || d.departureDate || d.isoDate || d.date || "";
+                        const arrivalDate = arr.isoDate || d.arrivalDate || departureDate;
 
-                        // Priority: Nested ISO > Flat ISO > Current Date Fallback
-                        const finalDepartureDate = depData.isoDate || flatDate || new Date().toISOString();
-                        const finalArrivalDate = arrData.isoDate || finalDepartureDate;
+                        // Priority chain for times: nested displayTime > flat time > extract from ISO
+                        const departureTime = dep.displayTime || dep.time || d.departureTime || departureDate.split('T')[1]?.substring(0, 5) || '00:00';
+                        const arrivalTime = arr.displayTime || arr.time || d.arrivalTime || arrivalDate.split('T')[1]?.substring(0, 5) || '00:00';
 
                         return [{
-                                fromCode: depData.iata || i.data.fromCode || 'ORG',
-                                toCode: arrData.iata || i.data.toCode || 'DST',
-                                date: finalDepartureDate, // Critical: Full ISO string
-                                airline: i.data.airline || 'Unknown Airline',
-                                flightNumber: i.data.flightNumber || '',
-                                // Extract time from ISO or use display time
-                                departureTime: depData.displayTime || finalDepartureDate.split('T')[1]?.substring(0, 5) || '00:00',
-                                arrivalTime: arrData.displayTime || finalArrivalDate.split('T')[1]?.substring(0, 5) || '00:00',
-                                fromCity: depData.city || i.data.fromCity || '',
-                                toCity: arrData.city || i.data.toCity || '',
-                                duration: i.data.duration || "0h",
-                                price: i.data.totalPrice || 0,
-                                currency: i.data.currency || 'USD'
+                                fromCode: dep.iata || d.fromCode || 'ORG',
+                                toCode: arr.iata || d.toCode || 'DST',
+                                date: departureDate.split('T')[0], // Ensure date-only
+                                airline: d.airline || d.airlineName || 'Unknown Airline',
+                                flightNumber: d.flightNumber || d.flight || '',
+                                departureTime,
+                                arrivalTime,
+                                fromCity: dep.city || d.fromCity || d.from || '',
+                                toCity: arr.city || d.toCity || d.to || '',
+                                duration: d.duration || "0h",
+                                terminal: d.terminal || dep.terminal || '',
+                                gate: d.gate || dep.gate || '',
+                                baggage: d.baggage || '',
+                                price: d.price?.amount || d.totalPrice || 0,
                         }];
                 });
 
-        const hotels: HotelBooking[] = categories.accommodation.map(i => ({
-                id: crypto.randomUUID(),
-                name: i.data.hotelName || '',
-                checkInDate: (i.data.checkInDate || '').split('T')[0],
-                checkOutDate: (i.data.checkOutDate || '').split('T')[0],
-                address: i.data.address || '',
-                confirmationCode: i.data.bookingId || "",
-                roomType: "",
-                nights: 1,
-                costNumeric: i.data.totalPrice || 0,
-                price: i.data.totalPrice ? `${i.data.totalPrice} ${i.data.currency || ''}` : '',
-                locationVibe: ""
-        }));
+        // --- HOTELS ---
+        // CRITICAL FIX: Handle BOTH checkIn.isoDate (from new prompt) AND checkInDate (from old prompt)
+        const hotels: HotelBooking[] = categories.accommodation.map(i => {
+                const d: any = i.data || {};
 
+                // Date extraction with multiple fallback paths
+                const checkInDate = d.checkInDate
+                        || d.checkIn?.isoDate
+                        || (typeof d.checkIn === 'string' ? d.checkIn : '')
+                        || '';
+                const checkOutDate = d.checkOutDate
+                        || d.checkOut?.isoDate
+                        || (typeof d.checkOut === 'string' ? d.checkOut : '')
+                        || '';
+
+                // Price extraction with multiple fallback paths
+                const priceAmount = d.totalPrice
+                        || d.price?.amount
+                        || (typeof d.price === 'number' ? d.price : 0)
+                        || d.costNumeric
+                        || 0;
+                const priceCurrency = d.currency
+                        || d.price?.currency
+                        || 'USD';
+
+                // Calculate nights
+                let nights = 1;
+                if (checkInDate && checkOutDate) {
+                        const diff = new Date(checkOutDate).getTime() - new Date(checkInDate).getTime();
+                        if (diff > 0) nights = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                }
+
+                return {
+                        id: crypto.randomUUID(),
+                        name: d.hotelName || d.name || '',
+                        checkInDate: checkInDate.split('T')[0],
+                        checkOutDate: checkOutDate.split('T')[0],
+                        address: d.address || '',
+                        confirmationCode: d.bookingId || d.confirmationCode || '',
+                        roomType: d.roomType || '',
+                        nights,
+                        costNumeric: priceAmount,
+                        price: priceAmount ? `${priceAmount} ${priceCurrency}` : '',
+                        locationVibe: '',
+                        breakfastIncluded: d.breakfastIncluded || false,
+                        cancellationPolicy: d.cancellationPolicy || '',
+                        bookingSource: d.bookingSource || undefined,
+                };
+        });
+
+        // --- CAR RENTAL → mapped as transport segments ---
+        const carRentalSegments: FlightSegment[] = ((categories as any).carRental || []).map((i: any) => {
+                const d = i.data || {};
+                return {
+                        fromCode: '',
+                        toCode: '',
+                        fromCity: d.pickupCity || d.pickupLocation || d.from || '',
+                        toCity: d.dropoffCity || d.dropoffLocation || d.to || '',
+                        date: d.pickupDate || '',
+                        airline: d.provider || 'Car Rental',
+                        flightNumber: d.confirmationCode || '',
+                        departureTime: d.pickupTime || '10:00',
+                        arrivalTime: d.dropoffTime || '10:00',
+                        duration: '',
+                        price: d.price?.amount || 0,
+                };
+        });
+
+        // --- WALLET ---
         const wallet: SecureNote[] = categories.wallet.map(i => ({
                 id: crypto.randomUUID(),
                 title: i.title || i.data.documentName || 'Document',
-                value: i.data.displayTime || 'No details',
-                category: (i.type === 'passport' || i.type === 'visa' || i.type === 'insurance') ? i.type : 'other'
+                value: i.data.displayTime || i.data.holderName || 'No details',
+                category: (i.type === 'passport' || i.type === 'visa' || i.type === 'insurance')
+                        ? i.type as 'passport' | 'visa' | 'insurance'
+                        : 'other'
         }));
 
-        // Import dining and activities as "Imported" lists to avoid messing with user's specific items
-        // Or we could map them one by one.
-        // Logic from OnboardingModal creates a single list carrier for them. We will replicate that or return raw items?
-        // OnboardingModal creates a Trip object which has categories.
-        // Trip.restaurants is RestaurantCategory[].
-
+        // --- DINING ---
         const restaurants: Restaurant[] = categories.dining.map(i => ({
                 id: crypto.randomUUID(),
                 name: i.data.name || '',
-                description: "Imported via AI",
-                location: i.data.address || '',
-                reservationTime: i.data.displayTime || '',
-                iconType: 'ramen'
+                description: i.data.cuisine ? `${i.data.cuisine} Restaurant` : "Imported via AI",
+                location: i.data.address || i.data.city || '',
+                reservationDate: i.data.reservationDate || '',
+                reservationTime: i.data.reservationTime || '',
+                iconType: 'ramen' as const,
+                cuisine: i.data.cuisine || '',
         }));
 
+        // --- ACTIVITIES ---
         const attractions: Attraction[] = categories.activities.map(i => ({
                 id: crypto.randomUUID(),
                 name: i.data.name || '',
                 description: "Imported via AI",
-                location: i.data.address || '',
-                scheduledTime: i.data.displayTime || ''
+                location: i.data.address || i.data.city || '',
+                scheduledDate: i.data.reservationDate || '',
+                scheduledTime: i.data.reservationTime || '',
         }));
+
+        // Merge all transport (flights + car rentals)
+        const allSegments = [...flights, ...carRentalSegments];
+
+        // Extract passenger name from first flight if available
+        const passengerName = categories.transport[0]?.data?.passengerName || '';
 
         return {
                 flights: {
-                        passengerName: "",
-                        pnr: "",
-                        segments: flights
+                        passengerName,
+                        pnr: categories.transport[0]?.data?.pnr || '',
+                        segments: allSegments,
+                        totalPrice: allSegments.reduce((sum, s) => sum + (s.price || 0), 0),
                 },
                 hotels,
                 secureNotes: wallet,
-                // We return raw arrays here, helper will place them into categories if needed
-                // But Trip type expects RestaurantCategory[], AttractionCategory[].
-                // We will handle that in mergeTripData.
         };
 };
 
 /**
  * Smartly merges new analysis data into an existing Trip, preventing duplicates.
+ * Uses multi-signal deduplication:
+ * - Flights: same flight number + same date, OR same route + same time
+ * - Hotels: same name + same check-in date (fuzzy name match)
+ * - Wallet: same title
  */
 export const mergeTripData = (existing: Trip, analysis: TripAnalysisResult): Trip => {
         const newPartial = mapAnalysisToTrip(analysis);
@@ -112,30 +187,49 @@ export const mergeTripData = (existing: Trip, analysis: TripAnalysisResult): Tri
         // 1. Flights Deduplication
         const newSegments = newPartial.flights?.segments || [];
         const existingSegments = existing.flights?.segments || [];
-
         const uniqueSegments = [...existingSegments];
 
         newSegments.forEach(newSeg => {
-                // Duplicate Check: Same Flight Number AND Same Date
-                const isDuplicate = existingSegments.some(ex =>
-                        ex.flightNumber === newSeg.flightNumber &&
-                        ex.date === newSeg.date
-                );
+                const isDuplicate = existingSegments.some(ex => {
+                        // Signal 1: Same flight number + same date
+                        if (ex.flightNumber && newSeg.flightNumber &&
+                                ex.flightNumber === newSeg.flightNumber &&
+                                ex.date === newSeg.date) return true;
+
+                        // Signal 2: Same route + same departure time (for flights without numbers)
+                        if (ex.fromCode === newSeg.fromCode &&
+                                ex.toCode === newSeg.toCode &&
+                                ex.date === newSeg.date &&
+                                ex.departureTime === newSeg.departureTime) return true;
+
+                        // Signal 3: Same origin city + dest city + same date (fuzzy)
+                        if (ex.fromCity && newSeg.fromCity &&
+                                ex.fromCity.toLowerCase() === newSeg.fromCity.toLowerCase() &&
+                                ex.toCity?.toLowerCase() === newSeg.toCity?.toLowerCase() &&
+                                ex.date === newSeg.date) return true;
+
+                        return false;
+                });
                 if (!isDuplicate) {
                         uniqueSegments.push(newSeg);
                 }
         });
 
-        // 2. Hotels Deduplication
+        // 2. Hotels Deduplication (with fuzzy name matching)
         const newHotels = newPartial.hotels || [];
         const existingHotels = existing.hotels || [];
         const uniqueHotels = [...existingHotels];
 
+        const fuzzyNameMatch = (a: string, b: string): boolean => {
+                const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const na = normalize(a);
+                const nb = normalize(b);
+                return na === nb || na.includes(nb) || nb.includes(na);
+        };
+
         newHotels.forEach(newHotel => {
-                // Duplicate Check: Same Name AND Same Check-in
-                // Fuzzy match on name? "Hilton" vs "Hilton Hotel". Let's stick to exact or contains for now.
                 const isDuplicate = existingHotels.some(ex =>
-                        (ex.name === newHotel.name || ex.name.includes(newHotel.name) || newHotel.name.includes(ex.name)) &&
+                        fuzzyNameMatch(ex.name, newHotel.name) &&
                         ex.checkInDate === newHotel.checkInDate
                 );
                 if (!isDuplicate) {
@@ -143,34 +237,31 @@ export const mergeTripData = (existing: Trip, analysis: TripAnalysisResult): Tri
                 }
         });
 
-        // 3. Documents/Wallet Deduplication
+        // 3. Wallet Deduplication
         const newWallet = newPartial.secureNotes || [];
         const existingWallet = existing.secureNotes || [];
         const uniqueWallet = [...existingWallet];
 
         newWallet.forEach(newDoc => {
-                const isDuplicate = existingWallet.some(ex => ex.title === newDoc.title);
+                const isDuplicate = existingWallet.some(ex =>
+                        ex.title === newDoc.title ||
+                        (ex.category === newDoc.category && ex.value === newDoc.value)
+                );
                 if (!isDuplicate) {
                         uniqueWallet.push(newDoc);
                 }
         });
 
-        // 4. Restaurants & Activities (Import into "Imported" category if exists, or create new)
-        // Simplified: Just add them for now, assuming less frequency of duplicate restaurant bookings from files
-        // But we should try to match.
-        // For now, let's just create a new "Imported" category if we have new items.
-
-        // (Skipping strict dedup for dining/activities for brevity, as flight/hotel is the main pain point)
-
         return {
                 ...existing,
                 flights: {
                         ...existing.flights,
+                        passengerName: existing.flights?.passengerName || newPartial.flights?.passengerName || '',
+                        pnr: existing.flights?.pnr || newPartial.flights?.pnr || '',
                         segments: uniqueSegments
                 },
                 hotels: uniqueHotels,
                 secureNotes: uniqueWallet,
-                // Helper to add processed file IDs?
                 documents: Array.from(new Set([...(existing.documents || []), ...(analysis.processedFileIds || [])]))
         };
 };

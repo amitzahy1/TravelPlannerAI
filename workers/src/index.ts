@@ -54,24 +54,26 @@ export default {
                                 throw new Error("Missing Environment Variables");
                         }
 
-                        // Secure API Endpoint for Frontend
+                        // Secure API Endpoint for Frontend (supports multimodal content)
                         if (url.pathname === "/api/generate" && request.method === "POST") {
                                 const body = await request.json() as any;
-                                const { prompt, Model } = body; // Expecting prompt and optional model
+                                const { contents, prompt, Model } = body;
 
-                                if (!prompt) return new Response("Missing prompt", { status: 400, headers: corsHeaders });
+                                // Accept either structured 'contents' (new) or flat 'prompt' (backward compat)
+                                const requestContent = contents || prompt;
+                                if (!requestContent) return new Response("Missing prompt/contents", { status: 400, headers: corsHeaders });
 
                                 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
-                                const modelId = Model || "gemini-1.5-flash-latest"; // Default to fast model
+                                const modelId = Model || "gemini-1.5-flash-latest";
 
                                 const model = genAI.getGenerativeModel({
                                         model: modelId,
                                         generationConfig: { responseMimeType: "application/json" }
                                 });
 
-                                // Support for multimodal/complex prompts would need more parsing here
-                                // For now, assuming text-based prompt structure from client
-                                const result = await model.generateContent(prompt);
+                                // Pass content directly — supports text, inlineData (images/PDFs), and mixed parts
+                                // The client sends Content[] format: [{ role: 'user', parts: [{text: ...}, {inlineData: ...}] }]
+                                const result = await model.generateContent({ contents: requestContent });
                                 const response = await result.response;
                                 const text = response.text();
 

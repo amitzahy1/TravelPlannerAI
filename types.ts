@@ -409,6 +409,7 @@ export interface UnprocessedFile {
 export interface StagedCategories {
   transport: StagedTransportItem[];
   accommodation: StagedAccommodationItem[];
+  carRental: StagedTransportItem[];
   wallet: StagedWalletItem[];
   dining: StagedExperienceItem[];
   activities: StagedExperienceItem[];

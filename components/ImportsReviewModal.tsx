@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Check, Plane, Bed, AlertTriangle, FileText, ChevronRight, Calendar, MapPin, AlertCircle, Trash2, Shield, Eye, EyeOff, Utensils, Star, Ticket, Info } from 'lucide-react';
-import { StagedTripData, StagedLogisticsItem, StagedWalletItem, StagedExperienceItem, StagedCategories } from '../types';
+import { X, Check, Plane, Bed, Car, AlertTriangle, FileText, ChevronRight, Calendar, MapPin, AlertCircle, Trash2, Shield, Eye, EyeOff, Utensils, Star, Ticket, Info } from 'lucide-react';
+import { StagedTripData, StagedTransportItem, StagedAccommodationItem, StagedWalletItem, StagedExperienceItem, StagedCategories } from '../types';
 import { formatDateTime, formatDateOnly } from '../utils/dateUtils';
 
 interface ImportsReviewModalProps {
@@ -10,14 +10,14 @@ interface ImportsReviewModalProps {
         onCancel: () => void;
 }
 
-type TabType = 'logistics' | 'wallet' | 'experiences';
+type TabType = 'itinerary' | 'wallet' | 'experiences';
 
 export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedData, files, onConfirm, onCancel }) => {
         const [tripName, setTripName] = useState(stagedData.tripMetadata.suggestedName);
         const [tripDates, setTripDates] = useState(stagedData.tripMetadata.suggestedDates);
         const [destination, setDestination] = useState(stagedData.tripMetadata.mainDestination);
         const [categories, setCategories] = useState<StagedCategories>(stagedData.categories);
-        const [activeTab, setActiveTab] = useState<TabType>('logistics');
+        const [activeTab, setActiveTab] = useState<TabType>('itinerary');
         const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
 
         // Memoize file URLs
@@ -30,7 +30,6 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                 const processedSet = new Set(stagedData.processedFileIds || []);
                 const aiReported = stagedData.unprocessedFiles || [];
 
-                // Files that aren't in processed list AND aren't in AI rejection report
                 const silentFailures = files
                         .filter(f => !processedSet.has(f.name) && !aiReported.some(u => u.fileName === f.name))
                         .map(f => ({ fileName: f.name, reason: 'Unknown / No data found' }));
@@ -48,15 +47,27 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                 return fileUrls.find(f => f.name === fileName)?.url;
         };
 
-        const removeItem = (type: TabType, id: string) => { // id is usually fileId or index, but here we iterate
-                // Generic remover for simplicity (would need proper IDs in prod)
-                if (type === 'logistics') {
-                        setCategories(prev => ({ ...prev, logistics: prev.logistics.filter((_, i) => i !== Number(id)) }));
-                } else if (type === 'wallet') {
-                        setCategories(prev => ({ ...prev, wallet: prev.wallet.filter((_, i) => i !== Number(id)) }));
-                } else {
-                        setCategories(prev => ({ ...prev, experiences: prev.experiences.filter((_, i) => i !== Number(id)) }));
-                }
+        // Counts for tabs
+        const itineraryCount = (categories.transport?.length || 0) + (categories.accommodation?.length || 0) + (categories.carRental?.length || 0);
+        const experiencesCount = (categories.dining?.length || 0) + (categories.activities?.length || 0);
+
+        const removeTransport = (idx: number) => {
+                setCategories(prev => ({ ...prev, transport: prev.transport.filter((_, i) => i !== idx) }));
+        };
+        const removeAccommodation = (idx: number) => {
+                setCategories(prev => ({ ...prev, accommodation: prev.accommodation.filter((_, i) => i !== idx) }));
+        };
+        const removeCarRental = (idx: number) => {
+                setCategories(prev => ({ ...prev, carRental: prev.carRental.filter((_, i) => i !== idx) }));
+        };
+        const removeWallet = (idx: number) => {
+                setCategories(prev => ({ ...prev, wallet: prev.wallet.filter((_, i) => i !== idx) }));
+        };
+        const removeDining = (idx: number) => {
+                setCategories(prev => ({ ...prev, dining: prev.dining.filter((_, i) => i !== idx) }));
+        };
+        const removeActivity = (idx: number) => {
+                setCategories(prev => ({ ...prev, activities: prev.activities.filter((_, i) => i !== idx) }));
         };
 
         const finalizeTrip = () => {
@@ -67,24 +78,27 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                                 suggestedDates: tripDates,
                                 mainDestination: destination
                         },
+                        processedFileIds: stagedData.processedFileIds || [],
+                        unprocessedFiles: stagedData.unprocessedFiles || [],
                         categories
                 };
                 onConfirm(finalData);
         };
 
-        const renderLogistics = () => (
+        const renderItinerary = () => (
                 <div className="space-y-4">
-                        {categories.logistics.map((item, idx) => (
-                                <div key={idx} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all flex items-start gap-4">
-                                        <div className={`p-3 rounded-xl flex-shrink-0 ${item.type === 'flight' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}>
-                                                {item.type === 'flight' ? <Plane className="w-6 h-6" /> : <Bed className="w-6 h-6" />}
+                        {/* Flights */}
+                        {categories.transport.map((item, idx) => (
+                                <div key={`transport-${idx}`} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all flex items-start gap-4">
+                                        <div className="p-3 rounded-xl flex-shrink-0 bg-blue-100 text-blue-600">
+                                                <Plane className="w-6 h-6" />
                                         </div>
                                         <div className="flex-1">
                                                 <div className="flex justify-between items-start">
                                                         <div>
                                                                 <div className="text-xs font-bold text-slate-400 uppercase">{item.type}</div>
                                                                 <div className="font-bold text-slate-800 text-lg">
-                                                                        {item.type === 'flight' ? item.data.airline : item.data.name}
+                                                                        {(item.data as any).airline || (item.data as any).flightNumber || 'Flight'}
                                                                 </div>
                                                         </div>
                                                         {item.confidence < 0.8 && (
@@ -95,53 +109,113 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                                                 </div>
 
                                                 <div className="mt-4 grid grid-cols-2 gap-4">
-                                                        {item.type === 'flight' && (
-                                                                <>
-                                                                        <div>
-                                                                                <span className="text-xs text-slate-400 block">Flight</span>
-                                                                                <span className="font-mono font-bold text-slate-700">{item.data.flightNumber}</span>
-                                                                        </div>
-                                                                        <div>
-                                                                                <span className="text-xs text-slate-400 block">Time</span>
-                                                                                <span className="font-mono font-bold text-slate-700">{item.data.displayTime || formatDateTime(item.data.departureTime)}</span>
-                                                                        </div>
-                                                                        <div className="col-span-2 flex items-center gap-2 bg-slate-50 p-2 rounded-lg">
-                                                                                <span className="font-bold text-lg">{item.data.from}</span>
-                                                                                <ChevronRight className="w-4 h-4 text-slate-400" />
-                                                                                <span className="font-bold text-lg">{item.data.to}</span>
-                                                                        </div>
-                                                                </>
-                                                        )}
-                                                        {item.type === 'hotel' && (
-                                                                <>
-                                                                        <div>
-                                                                                <span className="text-xs text-slate-400 block">Check-In</span>
-                                                                                <span className="font-bold text-slate-700">{formatDateOnly(item.data.checkInDate || item.data.checkIn)}</span>
-                                                                        </div>
-                                                                        <div>
-                                                                                <span className="text-xs text-slate-400 block">Check-Out</span>
-                                                                                <span className="font-bold text-slate-700">{formatDateOnly(item.data.checkOutDate || item.data.checkOut)}</span>
-                                                                        </div>
-                                                                        <div className="col-span-2 text-left">
-                                                                                <span className="text-xs text-slate-400 block">Address</span>
-                                                                                <span className="text-sm text-slate-600 truncate block">{item.data.address || item.data.location || item.data.city || 'Unknown Location'}</span>
-                                                                        </div>
-                                                                </>
-                                                        )}
+                                                        <div>
+                                                                <span className="text-xs text-slate-400 block">Flight</span>
+                                                                <span className="font-mono font-bold text-slate-700">{(item.data as any).flightNumber || '-'}</span>
+                                                        </div>
+                                                        <div>
+                                                                <span className="text-xs text-slate-400 block">Time</span>
+                                                                <span className="font-mono font-bold text-slate-700">
+                                                                        {(item.data as any).displayTime || (item.data as any).departureTime || formatDateTime((item.data as any).departure?.isoDate)}
+                                                                </span>
+                                                        </div>
+                                                        <div className="col-span-2 flex items-center gap-2 bg-slate-50 p-2 rounded-lg">
+                                                                <span className="font-bold text-lg">{(item.data as any).from || (item.data as any).departure?.city || '-'}</span>
+                                                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                                                                <span className="font-bold text-lg">{(item.data as any).to || (item.data as any).arrival?.city || '-'}</span>
+                                                        </div>
                                                 </div>
-                                                <SourceChips ids={item.sourceFileIds || (item as any).fileId ? [(item as any).fileId] : []} />
+                                                <SourceChips ids={item.sourceFileIds} />
                                         </div>
-                                        <button onClick={() => removeItem('logistics', idx.toString())} className="text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
+                                        <button onClick={() => removeTransport(idx)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
                                 </div>
                         ))}
-                        {categories.logistics.length === 0 && <EmptyState type="logistics" />}
+
+                        {/* Hotels */}
+                        {categories.accommodation.map((item, idx) => (
+                                <div key={`hotel-${idx}`} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all flex items-start gap-4">
+                                        <div className="p-3 rounded-xl flex-shrink-0 bg-purple-100 text-purple-600">
+                                                <Bed className="w-6 h-6" />
+                                        </div>
+                                        <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                        <div>
+                                                                <div className="text-xs font-bold text-slate-400 uppercase">{item.type}</div>
+                                                                <div className="font-bold text-slate-800 text-lg">{item.data.hotelName}</div>
+                                                        </div>
+                                                        {item.confidence < 0.8 && (
+                                                                <div className="text-xs bg-amber-100 text-amber-600 px-2 py-1 rounded-full font-bold flex items-center gap-1">
+                                                                        <AlertTriangle className="w-3 h-3" /> Verify
+                                                                </div>
+                                                        )}
+                                                </div>
+                                                <div className="mt-4 grid grid-cols-2 gap-4">
+                                                        <div>
+                                                                <span className="text-xs text-slate-400 block">Check-In</span>
+                                                                <span className="font-bold text-slate-700">
+                                                                        {formatDateOnly(item.data.checkInDate || (item.data as any).checkIn?.isoDate)}
+                                                                </span>
+                                                        </div>
+                                                        <div>
+                                                                <span className="text-xs text-slate-400 block">Check-Out</span>
+                                                                <span className="font-bold text-slate-700">
+                                                                        {formatDateOnly((item.data as any).checkOutDate || (item.data as any).checkOut?.isoDate)}
+                                                                </span>
+                                                        </div>
+                                                        <div className="col-span-2 text-left">
+                                                                <span className="text-xs text-slate-400 block">Address</span>
+                                                                <span className="text-sm text-slate-600 truncate block">
+                                                                        {item.data.address || (item.data as any).city || 'Unknown Location'}
+                                                                </span>
+                                                        </div>
+                                                </div>
+                                                <SourceChips ids={item.sourceFileIds} />
+                                        </div>
+                                        <button onClick={() => removeAccommodation(idx)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
+                                </div>
+                        ))}
+
+                        {/* Car Rentals */}
+                        {(categories.carRental || []).map((item, idx) => (
+                                <div key={`car-${idx}`} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all flex items-start gap-4">
+                                        <div className="p-3 rounded-xl flex-shrink-0 bg-emerald-100 text-emerald-600">
+                                                <Car className="w-6 h-6" />
+                                        </div>
+                                        <div className="flex-1">
+                                                <div className="text-xs font-bold text-slate-400 uppercase">Car Rental</div>
+                                                <div className="font-bold text-slate-800 text-lg">{(item.data as any).provider || 'Car Rental'}</div>
+                                                <div className="mt-4 grid grid-cols-2 gap-4">
+                                                        <div>
+                                                                <span className="text-xs text-slate-400 block">Pickup</span>
+                                                                <span className="text-sm text-slate-700">{(item.data as any).pickupCity || (item.data as any).pickupLocation || '-'}</span>
+                                                        </div>
+                                                        <div>
+                                                                <span className="text-xs text-slate-400 block">Dropoff</span>
+                                                                <span className="text-sm text-slate-700">{(item.data as any).dropoffCity || (item.data as any).dropoffLocation || '-'}</span>
+                                                        </div>
+                                                        <div>
+                                                                <span className="text-xs text-slate-400 block">From</span>
+                                                                <span className="font-bold text-slate-700">{formatDateOnly((item.data as any).pickupDate)}</span>
+                                                        </div>
+                                                        <div>
+                                                                <span className="text-xs text-slate-400 block">To</span>
+                                                                <span className="font-bold text-slate-700">{formatDateOnly((item.data as any).dropoffDate)}</span>
+                                                        </div>
+                                                </div>
+                                                <SourceChips ids={item.sourceFileIds} />
+                                        </div>
+                                        <button onClick={() => removeCarRental(idx)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
+                                </div>
+                        ))}
+
+                        {itineraryCount === 0 && <EmptyState type="itinerary" />}
                 </div>
         );
 
         const renderWallet = () => (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {categories.wallet.map((item, idx) => (
-                                <WalletCard key={idx} item={item} onRemove={() => removeItem('wallet', idx.toString())} />
+                                <WalletCard key={idx} item={item} onRemove={() => removeWallet(idx)} />
                         ))}
                         {categories.wallet.length === 0 && <div className="col-span-2"><EmptyState type="wallet" /></div>}
                 </div>
@@ -149,14 +223,17 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
 
         const renderExperiences = () => (
                 <div className="space-y-4">
-                        {categories.experiences.map((item, idx) => (
-                                <div key={idx} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all flex items-center gap-4">
+                        {/* Dining */}
+                        {categories.dining.map((item, idx) => (
+                                <div key={`dining-${idx}`} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all flex items-center gap-4">
                                         <div className="w-20 h-20 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                                {item.type === 'restaurant_reservation' ? <Utensils className="w-8 h-8 text-orange-400" /> : <Ticket className="w-8 h-8 text-emerald-400" />}
+                                                <Utensils className="w-8 h-8 text-orange-400" />
                                         </div>
                                         <div className="flex-1">
                                                 <div className="flex justify-between">
-                                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{item.data.inferredCuisine || 'Experience'}</div>
+                                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                                                {(item.data as any).cuisine || 'Restaurant'}
+                                                        </div>
                                                         <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                                                                 <Check className="w-3 h-3" /> Synced
                                                         </span>
@@ -170,12 +247,36 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                                                                 {item.data.displayTime || item.data.reservationTime?.replace('T', ' @ ')}
                                                         </div>
                                                 )}
-                                                <SourceChips ids={item.sourceFileIds || (item as any).fileId ? [(item as any).fileId] : []} />
+                                                <SourceChips ids={item.sourceFileIds} />
                                         </div>
-                                        <button onClick={() => removeItem('experiences', idx.toString())} className="text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
+                                        <button onClick={() => removeDining(idx)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
                                 </div>
                         ))}
-                        {categories.experiences.length === 0 && <EmptyState type="experiences" />}
+
+                        {/* Activities */}
+                        {categories.activities.map((item, idx) => (
+                                <div key={`activity-${idx}`} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all flex items-center gap-4">
+                                        <div className="w-20 h-20 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                                <Ticket className="w-8 h-8 text-emerald-400" />
+                                        </div>
+                                        <div className="flex-1">
+                                                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Activity</div>
+                                                <h3 className="font-bold text-slate-800 text-lg leading-tight">{item.data.name}</h3>
+                                                <div className="text-sm text-slate-500 mt-1 flex items-center gap-1">
+                                                        <MapPin className="w-3 h-3" /> {item.data.address || 'Unknown Location'}
+                                                </div>
+                                                {item.data.displayTime && (
+                                                        <div className="text-sm font-medium text-slate-700 mt-2 bg-slate-50 inline-block px-2 py-1 rounded-md">
+                                                                {item.data.displayTime}
+                                                        </div>
+                                                )}
+                                                <SourceChips ids={item.sourceFileIds} />
+                                        </div>
+                                        <button onClick={() => removeActivity(idx)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
+                                </div>
+                        ))}
+
+                        {experiencesCount === 0 && <EmptyState type="experiences" />}
                 </div>
         );
 
@@ -220,9 +321,9 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
 
                         {/* Tabs */}
                         <div className="bg-white border-b border-slate-200 px-6 flex items-center gap-6">
-                                <TabButton active={activeTab === 'logistics'} onClick={() => setActiveTab('logistics')} icon={Plane} label="Itinerary" count={categories.logistics.length} />
+                                <TabButton active={activeTab === 'itinerary'} onClick={() => setActiveTab('itinerary')} icon={Plane} label="Itinerary" count={itineraryCount} />
                                 <TabButton active={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} icon={Shield} label="Wallet" count={categories.wallet.length} isSecure />
-                                <TabButton active={activeTab === 'experiences'} onClick={() => setActiveTab('experiences')} icon={Star} label="Experiences" count={categories.experiences.length} isNew />
+                                <TabButton active={activeTab === 'experiences'} onClick={() => setActiveTab('experiences')} icon={Star} label="Experiences" count={experiencesCount} isNew />
                         </div>
 
                         {/* Content Area */}
@@ -250,7 +351,7 @@ export const ImportsReviewModal: React.FC<ImportsReviewModalProps> = ({ stagedDa
                                         )}
                                 </div>
 
-                                {activeTab === 'logistics' && renderLogistics()}
+                                {activeTab === 'itinerary' && renderItinerary()}
                                 {activeTab === 'wallet' && renderWallet()}
                                 {activeTab === 'experiences' && renderExperiences()}
                         </div>
@@ -306,13 +407,13 @@ const WalletCard: React.FC<{ item: StagedWalletItem, onRemove: () => void }> = (
                                 </div>
                                 <h3 className="font-bold text-slate-800">{item.title || item.type}</h3>
                                 <div className="mt-2 space-y-1">
-                                        {item.data.holderName && <div className="text-sm text-slate-500">Holder: <span className="text-slate-700 font-medium">{item.data.holderName}</span></div>}
-                                        {item.data.expiryDate && <div className="text-sm text-slate-500">Expires: <span className={`font-mono font-medium ${new Date(item.data.expiryDate) < new Date('2026-12-31') ? 'text-red-500' : 'text-slate-700'}`}>{item.data.expiryDate}</span></div>}
+                                        {(item.data as any).holderName && <div className="text-sm text-slate-500">Holder: <span className="text-slate-700 font-medium">{(item.data as any).holderName}</span></div>}
+                                        {(item.data as any).expiryDate && <div className="text-sm text-slate-500">Expires: <span className={`font-mono font-medium ${new Date((item.data as any).expiryDate) < new Date('2026-12-31') ? 'text-red-500' : 'text-slate-700'}`}>{(item.data as any).expiryDate}</span></div>}
                                 </div>
                                 <div className="mt-3 text-xs text-slate-400 italic flex items-center gap-1">
                                         <AlertCircle className="w-3 h-3" /> {item.uiMessage || "Stored locally on device"}
                                 </div>
-                                <SourceChips ids={item.sourceFileIds || (item as any).fileId ? [(item as any).fileId] : []} />
+                                <SourceChips ids={item.sourceFileIds} />
                         </div>
                 </div>
         );
@@ -321,7 +422,7 @@ const WalletCard: React.FC<{ item: StagedWalletItem, onRemove: () => void }> = (
 const EmptyState = ({ type }: { type: string }) => (
         <div className="text-center py-10 opacity-50 border-2 border-dashed border-slate-200 rounded-xl">
                 <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-400">
-                        {type === 'logistics' ? <Plane /> : type === 'wallet' ? <Shield /> : <Star />}
+                        {type === 'itinerary' ? <Plane /> : type === 'wallet' ? <Shield /> : <Star />}
                 </div>
                 <p className="font-medium text-slate-500">No {type} items found</p>
         </div>
