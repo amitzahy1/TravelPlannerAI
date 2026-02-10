@@ -23,7 +23,16 @@ interface Env {
 // --- MAIN HANDLER ---
 export default {
         async email(message: ForwardableEmailMessage, env: Env, ctx: ExecutionContext) {
-                await handleEmail(message.from, message.raw, env, ctx);
+                console.log(`[Email Handler] Received email from: ${message.from}`);
+                try {
+                        const result = await handleEmail(message.from, message.raw, env, ctx);
+                        console.log(`[Email Handler] Result:`, JSON.stringify(result));
+                        if (!result.success) {
+                                console.error(`[Email Handler] FAILED:`, result.message || result.error);
+                        }
+                } catch (e: any) {
+                        console.error(`[Email Handler] UNCAUGHT CRASH:`, e.message, e.stack);
+                }
         },
 
         async fetch(request: Request, env: Env, ctx: ExecutionContext) {
@@ -133,6 +142,20 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
         let textBody = "";
 
         try {
+                // 0. Env Var Validation
+                if (!env.FIREBASE_SERVICE_ACCOUNT) {
+                        console.error('[Pipeline] FATAL: FIREBASE_SERVICE_ACCOUNT env var is missing!');
+                        return { success: false, error: 'Missing FIREBASE_SERVICE_ACCOUNT', logs };
+                }
+                if (!env.FIREBASE_PROJECT_ID) {
+                        console.error('[Pipeline] FATAL: FIREBASE_PROJECT_ID env var is missing!');
+                        return { success: false, error: 'Missing FIREBASE_PROJECT_ID', logs };
+                }
+                if (!env.GEMINI_API_KEY) {
+                        console.error('[Pipeline] FATAL: GEMINI_API_KEY env var is missing!');
+                        return { success: false, error: 'Missing GEMINI_API_KEY', logs };
+                }
+
                 // 1. Auth (Blocking, Required)
                 logs.push("Step 1: Authenticating...");
                 token = await getFirebaseAccessToken(env, logs) || "";
@@ -140,7 +163,9 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
                 if (!token) throw new Error("Firebase Auth Token is null");
 
                 const senderEmail = extractEmail(from);
+                console.log(`[Pipeline] Step 1b: Looking up user for email: ${senderEmail}`);
                 uid = await getUserByEmail(senderEmail, env.FIREBASE_PROJECT_ID, token);
+                console.log(`[Pipeline] Step 1b Result: uid=${uid || 'NOT FOUND'}`);
 
                 if (!uid) {
                         console.error(`[Pipeline] Step 1b FAILED: User not found for ${senderEmail}`);
