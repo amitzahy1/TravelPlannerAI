@@ -80,42 +80,41 @@ export default {
                                 });
                         }
 
-                        // Legacy/Email Testing Endpoint (Keep existing logic if needed, or deprecate)
-                        if (request.method === "POST") {
-                                // ... (Keeping the existing email simulation logic if desired, or restricting it)
-                                // For now, let's keep it but ideally it should be on a specific path too.
-                                // However, to avoid breaking anything else, I will wrap it.
-                                // Assuming the original intent was testing via root POST.
-
-                                // Existing Auth Check (Only for the email part if strictly needed, or global?)
-                                // The original code had global auth check. Let's respect it for the email path.
-                                const authHeader = request.headers.get("X-Auth-Token");
-                                if (env.AUTH_SECRET && authHeader !== env.AUTH_SECRET) {
-                                        // Allow /api/generate without AUTH_SECRET if it's public-facing? 
-                                        // Usually APIs are protected. The user implementation plan said "Validate X-Auth-Token".
-                                        // But for a public site, we might need a different strategy (like Origin check).
-                                        // For now, we will require the token if it's set, or maybe the frontend sends it?
-                                        // The prompt said "Validate X-Auth-Token or Origin". 
-                                        // Let's assume the frontend will send the token if it has one, or we rely on Origin.
-                                }
-
-                                // If it's the email simulation:
+                        // Email Import Endpoint (Apps Script + Testing)
+                        if (request.method === "POST" && (url.pathname === "/api/email" || url.pathname === "/")) {
                                 const body = await request.json() as any;
-                                if (body.from && body.raw) {
-                                        // It's likely the email simulation
-                                        const from = body.from || "test@example.com";
-                                        const stream = new ReadableStream({
-                                                start(controller) {
-                                                        controller.enqueue(new TextEncoder().encode(body.content || "Subject: Test"));
-                                                        controller.close();
-                                                }
-                                        });
-                                        const result = await handleEmail(from, stream, env, ctx);
-                                        return new Response(JSON.stringify(result, null, 2), {
-                                                status: 200,
-                                                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                                console.log(`[Fetch] POST ${url.pathname} - Keys: ${Object.keys(body).join(', ')}`);
+
+                                const from = body.from || "unknown@example.com";
+                                const emailContent = body.content || body.raw || body.body || body.html || body.subject || "";
+
+                                if (!from || from === "unknown@example.com") {
+                                        return new Response(JSON.stringify({ error: "Missing 'from' field" }), {
+                                                status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                                         });
                                 }
+
+                                console.log(`[Fetch] Processing email from: ${from}, content length: ${emailContent.length}`);
+
+                                const stream = new ReadableStream({
+                                        start(controller) {
+                                                controller.enqueue(new TextEncoder().encode(emailContent || "Subject: Test"));
+                                                controller.close();
+                                        }
+                                });
+                                const result = await handleEmail(from, stream, env, ctx);
+                                return new Response(JSON.stringify(result, null, 2), {
+                                        status: result.success ? 200 : 500,
+                                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                                });
+                        }
+
+                        // Fallback for unknown POST paths
+                        if (request.method === "POST") {
+                                console.warn(`[Fetch] Unknown POST path: ${url.pathname}`);
+                                return new Response(JSON.stringify({ error: `Unknown endpoint: ${url.pathname}` }), {
+                                        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                                });
                         }
 
                         return new Response("Not Found", { status: 404, headers: corsHeaders });
@@ -177,14 +176,28 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
 
                 // 2. Parse Email
                 logs.push("Step 2: Parsing Email...");
-                const parser = new PostalMime();
                 const rawBuffer = await streamToArrayBuffer(rawStream);
-                const email = await parser.parse(rawBuffer);
+                let attachments: any[] = [];
+                let email: any = null;
 
-                textBody = email.text || email.html || "";
-                const attachments = email.attachments.filter(att =>
-                        att.mimeType === "application/pdf" || att.mimeType.startsWith("image/")
-                );
+                // Try MIME parsing first (for Cloudflare Email Routing)
+                try {
+                        const parser = new PostalMime();
+                        email = await parser.parse(rawBuffer);
+                        textBody = email.text || email.html || "";
+                        attachments = (email.attachments || []).filter(att =>
+                                att.mimeType === "application/pdf" || att.mimeType.startsWith("image/")
+                        );
+                } catch (parseError: any) {
+                        console.warn(`[Pipeline] PostalMime parse failed: ${parseError.message}`);
+                }
+
+                // Fallback: if MIME parsing yielded nothing, use raw buffer as plain text
+                // (Apps Script sends formatted text, not raw MIME)
+                if (!textBody || textBody.trim().length < 10) {
+                        textBody = new TextDecoder().decode(rawBuffer);
+                        console.log(`[Pipeline] Using raw text fallback (${textBody.length} chars)`);
+                }
 
                 logs.push(`Body Length: ${textBody.length}, Attachments: ${attachments.length}`);
                 console.log(`[Pipeline] Step 2 Done: body=${textBody.length} chars, attachments=${attachments.length}`);
@@ -216,7 +229,7 @@ async function handleEmail(from: string, rawStream: ReadableStream, env: Env, ct
                         await saveToProcessingQueue(uid, env.FIREBASE_PROJECT_ID, token, {
                                 from: senderEmail,
                                 receivedAt: new Date().toISOString(),
-                                subject: email.subject || "No Subject",
+                                subject: email?.subject || "No Subject",
                                 bodySnippet: textBody.substring(0, 5000),
                                 error: geminiError.message
                         });
@@ -722,12 +735,25 @@ function extractEmail(from: string) {
 }
 
 async function getUserByEmail(email: string, projectId: string, token: string) {
+        // Normalize email
+        const cleanEmail = email.toLowerCase().trim();
+        const emailsToTry = [cleanEmail];
+
+        // Handle gmail.com / googlemail.com alias
+        if (cleanEmail.endsWith('@gmail.com')) {
+                emailsToTry.push(cleanEmail.replace('@gmail.com', '@googlemail.com'));
+        } else if (cleanEmail.endsWith('@googlemail.com')) {
+                emailsToTry.push(cleanEmail.replace('@googlemail.com', '@gmail.com'));
+        }
+
         const res = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:lookup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ email: [email] })
+                body: JSON.stringify({ email: emailsToTry }) // API supports array of emails
         });
+
         const data: any = await res.json();
+        // Return first found user
         return data.users?.[0]?.localId || null;
 }
 
