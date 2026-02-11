@@ -1097,25 +1097,60 @@ function unmapFirestore(doc: any): any {
         return obj;
 }
 
+function mapToFirestoreValue(v: any): any {
+        if (v === null || v === undefined) return { nullValue: null };
+        if (typeof v === 'string') return { stringValue: v };
+        if (typeof v === 'number') return { doubleValue: v };
+        if (typeof v === 'boolean') return { booleanValue: v };
+        if (Array.isArray(v)) {
+                return { arrayValue: { values: v.map(mapToFirestoreValue) } };
+        }
+        if (typeof v === 'object') {
+                // Should use mapValue
+                const fields: any = {};
+                for (const [key, val] of Object.entries(v)) {
+                        fields[key] = mapToFirestoreValue(val);
+                }
+                return { mapValue: { fields } };
+        }
+        return { stringValue: String(v) }; // Fallback
+}
+
 function mapSimpleObject(obj: any) {
+        // Legacy compat wrapper if needed, but we should use the new one.
+        // Actually, let's just make mapSimpleObject use the new logic for the fields map.
         const f: any = {};
         for (const [k, v] of Object.entries(obj)) {
-                if (typeof v === 'string') f[k] = { stringValue: v };
-                else if (typeof v === 'number') f[k] = { doubleValue: v };
-                else if (typeof v === 'boolean') f[k] = { booleanValue: v };
+                f[k] = mapToFirestoreValue(v);
         }
         return f;
+}
+
+function unmapFirestoreValue(v: any): any {
+        if (!v) return null;
+        if (v.stringValue !== undefined) return v.stringValue;
+        if (v.doubleValue !== undefined) return Number(v.doubleValue);
+        if (v.integerValue !== undefined) return Number(v.integerValue);
+        if (v.booleanValue !== undefined) return v.booleanValue;
+        if (v.timestampValue !== undefined) return v.timestampValue;
+        if (v.nullValue !== undefined) return null;
+        if (v.mapValue && v.mapValue.fields) {
+                const obj: any = {};
+                for (const [key, val] of Object.entries(v.mapValue.fields)) {
+                        obj[key] = unmapFirestoreValue(val);
+                }
+                return obj;
+        }
+        if (v.arrayValue && v.arrayValue.values) {
+                return v.arrayValue.values.map(unmapFirestoreValue);
+        }
+        return null; // Fallback
 }
 
 function unmapSimpleObject(fields: any) {
         const obj: any = {};
         for (const [k, v] of Object.entries(fields || {})) {
-                // @ts-ignore
-                if (v.stringValue) obj[k] = v.stringValue;
-                // @ts-ignore
-                else if (v.doubleValue) obj[k] = v.doubleValue;
-                // @ts-ignore
-                else if (v.booleanValue) obj[k] = v.booleanValue;
+                obj[k] = unmapFirestoreValue(v);
         }
         return obj;
 }
