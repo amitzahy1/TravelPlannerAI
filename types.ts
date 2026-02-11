@@ -25,6 +25,68 @@ export interface FlightSegment {
   toLng?: number;
   price?: number; // Cost estimate
   baggage?: string; // New: e.g. "2PCS SALE"
+  // Deep Extraction Fields
+  cancellationPolicy?: string;
+  mealPlan?: string; // "Meal included", "Buy on board"
+  seat?: string;
+  class?: string; // "Economy", "Business"
+}
+
+export interface TrainRide {
+  id: string;
+  provider: string; // "Eurostar", "Amtrak"
+  trainNumber: string;
+  fromStation: string;
+  toStation: string;
+  departureTime: string; // ISO
+  arrivalTime: string; // ISO
+  date: string;
+  duration?: string;
+  class?: string; // "Standard", "Premier"
+  car?: string;
+  seat?: string;
+  platform?: string;
+  price?: number;
+  currency?: string;
+  bookingReference?: string;
+}
+
+export interface Cruise {
+  id: string;
+  cruiseLine: string; // "Royal Caribbean"
+  shipName: string;
+  cabinNumber?: string;
+  deck?: string;
+  departurePort: string;
+  arrivalPort: string;
+  departureTime: string; // ISO
+  arrivalTime: string; // ISO
+  portsOfCall?: { name: string; arrival: string; departure: string }[];
+  bookingReference?: string;
+  mealPlan?: string; // "All Inclusive"
+  price?: number;
+}
+
+export interface BusRide {
+  id: string;
+  provider: string; // "FlixBus"
+  fromCity: string;
+  toCity: string;
+  departureTime: string;
+  arrivalTime: string;
+  price?: number;
+  bookingReference?: string;
+}
+
+export interface FerryRide {
+  id: string;
+  provider: string;
+  fromPort: string;
+  toPort: string;
+  departureTime: string;
+  arrivalTime: string;
+  vehicle?: string; // "Car", "Foot Passenger"
+  price?: number;
 }
 
 export interface Ticket {
@@ -67,8 +129,11 @@ export interface HotelBooking {
   // New AI Field
   locationVibe?: string; // Short AI description of the neighborhood
   // New Parsing Fields
-  breakfastIncluded?: boolean;
+  breakfastIncluded?: boolean; // Legacy boolean
   cancellationPolicy?: string;
+  mealPlan?: string; // "Room Only", "Half Board", "All Inclusive"
+  roomView?: string; // "Sea View"
+  checkInInstructions?: string; // "Keybox 1234"
 }
 
 export interface Restaurant {
@@ -264,7 +329,11 @@ export interface Trip {
   coverImage: string;
   groupType?: 'family' | 'couple' | 'friends' | 'solo' | 'business';
   travelers?: TravelersComposition; // Detailed composition
-  flights: Ticket;
+  flights: Ticket; // Legacy name, maybe rename to 'transport'?
+  trains?: TrainRide[];
+  cruises?: Cruise[];
+  buses?: BusRide[];
+  ferries?: FerryRide[];
   hotels: HotelBooking[];
   restaurants: RestaurantCategory[];
   reservations?: Reservation[];
@@ -341,7 +410,7 @@ export interface TripMetadata {
 
 // 1. Transport (Flights, Trains, etc.)
 export interface StagedTransportItem {
-  type: 'flight' | 'train' | 'ferry' | 'bus' | 'car_rental' | 'other';
+  type: 'flight' | 'train' | 'ferry' | 'bus' | 'car_rental' | 'cruise' | 'other';
   sourceFileIds: string[];
   data: {
     airline?: string;

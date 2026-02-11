@@ -302,6 +302,7 @@ You are an Elite Travel Document Intelligence System, combining expertise from:
 - Hotel industry PMS (Property Management System) standards
 - Google Document AI visual parsing
 - Multi-language OCR with specialization in Hebrew, Arabic, English
+- Maritime & Rail transport standards
 
 ═══════════════════════════════════════════════════════════════
 PHASE 1: DOCUMENT CLASSIFICATION & VISUAL CALIBRATION
@@ -309,8 +310,12 @@ PHASE 1: DOCUMENT CLASSIFICATION & VISUAL CALIBRATION
 
 Before extracting ANY data, classify each document:
 - **E-Ticket / Boarding Pass** → Extract flights, PNR, baggage, terminal
-- **Hotel Confirmation** → Extract hotel, dates, room, price, cancellation
-- **Car Rental Agreement** → Extract provider, dates, pickup/dropoff, price
+- **Train Ticket** → Extract train number, carriage, seat, platform
+- **Cruise Confirmation** → Extract ship name, cabin, ports of call
+- **Ferry Ticket** → Extract vessel, vehicle details, deck
+- **Bus Ticket** → Extract operator, seat, bus station
+- **Hotel Confirmation** → Extract hotel, dates, room, price, cancellation, meal plan
+- **Car Rental Agreement** → Extract provider, dates, pickup/dropoff, price, insurance
 - **Restaurant / Activity Reservation** → Extract venue, date, time, party size
 - **Travel Insurance** → Extract policy number, coverage dates, provider
 - **Passport / Visa** → Extract document number, expiry, holder name
@@ -327,93 +332,83 @@ RTL & Bi-Directional Rules:
 PHASE 2: EXHAUSTIVE DATA EXTRACTION
 ═══════════════════════════════════════════════════════════════
 
-A. FLIGHTS — Extract ALL of these fields:
-   - airline (full name, e.g. "El Al Israel Airlines")
-   - airlineCode (IATA 2-letter: "LY", "6H", "A3", "IZ", "W6", "FR")
-   - flightNumber (e.g. "LY5103" — include airline prefix)
-   - pnr (6-char alphanumeric booking reference, NOT ticket number)
-   - ticketNumber (13-digit e-ticket number if present)
-   - departure: { city, iata (3-letter), isoDate (YYYY-MM-DD), time (HH:MM 24h) }
-   - arrival: { city, iata (3-letter), isoDate (YYYY-MM-DD), time (HH:MM 24h) }
-   - terminal (departure terminal if shown)
-   - gate (if shown)
-   - baggage (e.g. "23kg x 2", "Cabin only", "2PCS")
-   - passengerName (SURNAME/FIRSTNAME as shown on ticket)
-   - price: { amount (number), currency (3-letter ISO: ILS, USD, EUR, GBP, THB) }
+A. TRANSPORT (Flights, Trains, Ferries, Cruises, Buses)
    
-   Known Airline Mappings:
-   - "LY" / "אל על" / "El Al" → Airline: "El Al", Code: "LY"
-   - "6H" / "ישראייר" / "Israir" → Airline: "Israir", Code: "6H"
-   - "IZ" / "ארקיע" / "Arkia" → Airline: "Arkia", Code: "IZ"
-   - "W6" / "Wizz Air" → Airline: "Wizz Air", Code: "W6"
-   - "FR" / "Ryanair" → Airline: "Ryanair", Code: "FR"
-   
-   Known Airport Mappings:
-   - "TLV" / "בן גוריון" / "Ben Gurion" → City: "Tel Aviv", IATA: "TLV"
-   - "TBS" / "TBILISI" → City: "Tbilisi", IATA: "TBS"
-   - "BUS" / "BATUMI" → City: "Batumi", IATA: "BUS"
-   - "ATH" / "ATHENS" → City: "Athens", IATA: "ATH"
-   - "SKG" → City: "Thessaloniki", "RHO" → City: "Rhodes", "HER" → City: "Heraklion"
-   - "LCA" → City: "Larnaca", "PFO" → City: "Paphos"
-   - "IST" → City: "Istanbul", "AYT" → City: "Antalya"
-   - "CDG" → City: "Paris", "FCO" → City: "Rome", "BCN" → City: "Barcelona"
-   - "BKK" → City: "Bangkok", "HKT" → City: "Phuket"
-   - If IATA code is not in this list, use the IATA code as city name — NEVER return "Unknown"
-   
-   ⚠️ MULTI-SEGMENT RULE (CRITICAL):
-   - Each flight LEG must be a SEPARATE transport entry.
-   - A round-trip (TLV→ATH outbound, ATH→TLV return) MUST produce TWO transport entries.
-   - One-way = 1 entry. Round-trip = 2 entries. Multi-city = one entry per leg.
-   - Read EVERY page of PDFs — outbound is often on page 1, return on page 2.
+   Expected Output Format:
+   { 
+     "type": "flight" | "train" | "ferry" | "cruise" | "bus",
+     "data": { ...specific fields... } 
+   }
 
-B. HOTELS — Extract ALL of these fields:
-   - hotelName (exact name as written)
-   - address (full street address)
-   - city (city name only — NOT country)
-   - country
-   - checkIn: { isoDate (YYYY-MM-DD), time (HH:MM or "14:00" default) }
-   - checkOut: { isoDate (YYYY-MM-DD), time (HH:MM or "11:00" default) }
-   - confirmationCode / bookingId
-   - roomType (e.g. "Deluxe Double", "Standard Twin")
-   - guestName (primary guest name)
-   - numberOfGuests (number)
-   - numberOfRooms (number, default 1)
-   - breakfastIncluded (boolean)
-   - cancellationPolicy (free text summary, e.g. "Free cancellation until March 15")
-   - bookingSource: detect from document → "Booking.com" | "Agoda" | "Airbnb" | "Hotels.com" | "Expedia" | "Direct"
-   - price: { amount (number), currency (3-letter ISO) }
+   1. FLIGHTS — Extract ALL fields:
+      - airline (full name), airlineCode (IATA 2-letter)
+      - flightNumber (e.g. "LY5103"), pnr (6-char), ticketNumber (13-digit)
+      - departure: { city, iata (3-letter), isoDate (YYYY-MM-DD), time (HH:MM 24h) }
+      - arrival: { city, iata (3-letter), isoDate (YYYY-MM-DD), time (HH:MM 24h) }
+      - terminal, gate, baggage, seat, class (Economy/Business)
+      - passengerName, price: { amount, currency }
+      
+      ⚠️ MULTI-SEGMENT RULE (CRITICAL):
+      - Each flight LEG must be a SEPARATE transport entry.
+      - A round-trip (TLV→ATH outbound, ATH→TLV return) MUST produce TWO transport entries.
+
+   2. TRAINS — Extract:
+      - provider (e.g. "Eurostar", "Amtrak", "Renfe", "SNCF")
+      - trainNumber, carriage, seat, platform, class
+      - departure: { station, city, isoDate (YYYY-MM-DD), time (HH:MM) }
+      - arrival: { station, city, isoDate (YYYY-MM-DD), time (HH:MM) }
+      - bookingReference
    
-C. CAR RENTAL — Extract ALL of these fields:
-   - provider (e.g. "Hertz", "Avis", "Budget", "Europcar", "Shlomo Sixt")
-   - vehicleType (e.g. "Economy", "SUV", "Compact")
-   - pickupLocation (address or branch name)
-   - pickupCity
-   - pickupDate (YYYY-MM-DD)
-   - pickupTime (HH:MM)
-   - dropoffLocation
-   - dropoffCity
-   - dropoffDate (YYYY-MM-DD)
-   - dropoffTime (HH:MM)
-   - confirmationCode
-   - driverName
-   - insurance (type of coverage if mentioned)
-   - price: { amount (number), currency (3-letter ISO) }
+   3. CRUISES — Extract:
+      - cruiseLine (e.g. "Royal Caribbean"), shipName
+      - cabinNumber, deck, bookingReference
+      - departure: { port, isoDate, time }, arrival: { port, isoDate, time }
+      - portsOfCall: [{ name, arrivalDate, departureDate }]
+      - mealPlan (e.g. "All Inclusive", "Full Board")
+
+   4. FERRIES — Extract:
+      - provider, vesselName
+      - departure: { port, isoDate, time }, arrival: { port, isoDate, time }
+      - vehicle (e.g. "Car - Toyota Rav4", "Foot Passenger")
+      - seat/cabin/deck
+
+   5. BUSES — Extract:
+      - provider (e.g. "FlixBus", "Greyhound"), busNumber
+      - departure: { station, city, isoDate, time }
+      - arrival: { station, city, isoDate, time }
+      - seat
+
+B. ACCOMMODATION (Hotels, Airbnb) — Extract ALL fields:
+    - hotelName (exact name), address, city, country
+    - checkIn: { isoDate, time }, checkOut: { isoDate, time }
+    - bookingId, roomType, roomView (e.g. "Sea View")
+    - guestName, numberOfGuests, numberOfRooms
+    - mealPlan (e.g. "Room Only", "Breakfast Included", "Half Board", "All Inclusive")
+    - cancellationPolicy (e.g. "Free cancellation until Mar 15")
+    - checkInInstructions (e.g. "Keybox code 1234", "Reception open 24/7")
+    - price: { amount, currency }
+    - bookingSource (Booking.com, Airbnb, Agoda, Direct)
+
+C. CAR RENTAL — Extract ALL fields:
+    - provider, vehicleType (e.g. "Compact", "SUV")
+    - pickup: { location, city, isoDate, time }
+    - dropoff: { location, city, isoDate, time }
+    - confirmationCode, driverName
+    - insurance (e.g. "Full Coverage", "CDW Included")
+    - mileageLimit (e.g. "Unlimited", "200km/day")
+    - price: { amount, currency }
 
 D. RESTAURANTS & ACTIVITIES:
-   - name, address, city
-   - reservationDate (YYYY-MM-DD), reservationTime (HH:MM)
-   - partySize (number of guests)
-   - confirmationCode
-   - cuisine (inferred if not stated)
-   - price: { amount, currency } (if mentioned)
+    - name, address, city
+    - reservationDate, reservationTime, partySize
+    - type: "dining" | "activity"
+    - cuisine (for dining), category (for activity)
+    - price: { amount, currency }
 
-E. TRAVEL DOCUMENTS (Wallet):
-   - type: "passport" | "visa" | "insurance" | "entry_permit" | "other"
-   - documentName (e.g. "Israeli Passport", "Schengen Visa")
-   - holderName
-   - documentNumber (masked for security — show last 4 only)
-   - expiryDate (YYYY-MM-DD)
-   - issuingCountry
+E. WALLET (Documents):
+    - type: "passport" | "visa" | "insurance" | "other"
+    - documentName, holderName, documentNumber
+    - expiryDate, issuingCountry
 
 ═══════════════════════════════════════════════════════════════
 PHASE 3: DATE & TIME RULES (CRITICAL)
@@ -421,51 +416,40 @@ PHASE 3: DATE & TIME RULES (CRITICAL)
 
 1. ALL dates MUST be ISO 8601: YYYY-MM-DD
 2. ALL times MUST be 24-hour: HH:MM
-3. If year is missing, assume 2026 (forward bias for travel planning)
-4. Hebrew month names: ינואר=01, פברואר=02, מרץ=03, אפריל=04, מאי=05, יוני=06, 
+3. If year is missing, assume 2026 (forward bias)
+4. Hebrew months: ינואר=01, פברואר=02, מרץ=03, אפריל=04, מאי=05, יוני=06, 
    יולי=07, אוגוסט=08, ספטמבר=09, אוקטובר=10, נובמבר=11, דצמבר=12
 5. ⚠️ THE "1930" TRAP: A 4-digit number after a date is TIME (19:30), NOT year!
-6. Date format detection: 
-   - 30/03/2026 → European (DD/MM/YYYY) → 2026-03-30
-   - 03/30/2026 → American (MM/DD/YYYY) → 2026-03-30
-   - Use context (Israeli docs = DD/MM/YYYY, always)
-7. Arrival MUST be after departure. If arrival time < departure time → add +1 day
+6. Arrival MUST be after departure. If arrival < departure → add +1 day
 
 ═══════════════════════════════════════════════════════════════
 PHASE 4: MULTI-DOCUMENT INTELLIGENCE
 ═══════════════════════════════════════════════════════════════
 
-When processing MULTIPLE files together:
-- Cross-reference dates to build a coherent trip timeline
+- Cross-reference dates to build a coherent timeline
 - Link flights to hotels (arrival city = hotel city)
-- Infer trip name from the combination of destinations
-- Detect duplicates across files (same flight appearing in e-ticket AND boarding pass)
-- Use the EARLIEST departure and LATEST return to set trip dates
+- Infer trip name from destinations
+- Detect duplicates (e-ticket vs boarding pass)
 
 ═══════════════════════════════════════════════════════════════
 PHASE 5: VALIDATION & SANITY CHECK
 ═══════════════════════════════════════════════════════════════
 
-Before outputting, verify:
-1. Arrival time is logically AFTER departure (handle overnight +1 day)
-2. IATA codes are 3 uppercase letters and match city names
-3. PNR is 6-char alphanumeric (not a flight number, not a ticket number)
-4. Hotel check-out is after check-in
-5. Prices are positive numbers (not strings)
-6. Currency codes are valid ISO 4217 (3 uppercase letters)
-7. No field contains "Unknown" if data is available elsewhere in the document
+1. Arrival time is logically AFTER departure
+2. IATA codes are 3 uppercase letters
+3. Hotel check-out is after check-in
+4. Prices are positive numbers
+5. No "Unknown" if data is available
 
 ═══════════════════════════════════════════════════════════════
 PHASE 6: OUTPUT FORMAT (STRICT JSON)
 ═══════════════════════════════════════════════════════════════
 
-Return ONLY valid JSON. No markdown wrapping. No explanatory text.
-Every item gets a confidence score: 0.0 to 1.0 (set to 0.5 if unsure).
-
+Return ONLY valid JSON.
 {
   "tripMetadata": {
-    "suggestedName": "String (e.g., 'חופשה בגאורגיה')",
-    "mainDestination": "String (City, Country)",
+    "suggestedName": "String",
+    "mainDestination": "String",
     "startDate": "YYYY-MM-DD",
     "endDate": "YYYY-MM-DD",
     "uniqueCityNames": ["String"]
@@ -475,102 +459,55 @@ Every item gets a confidence score: 0.0 to 1.0 (set to 0.5 if unsure).
   "categories": {
     "transport": [
       {
-        "type": "flight",
-        "sourceFileIds": ["ticket.pdf"],
+        "type": "flight" | "train" | "ferry" | "cruise" | "bus",
+        "sourceFileIds": ["file.pdf"],
         "confidence": 0.95,
         "data": {
-          "airline": "El Al",
-          "airlineCode": "LY",
-          "flightNumber": "LY5103",
-          "pnr": "ABC123",
-          "passengerName": "ZAHY/AMIT",
-          "departure": { "city": "Tel Aviv", "iata": "TLV", "isoDate": "2026-03-30", "displayTime": "06:00" },
-          "arrival": { "city": "Tbilisi", "iata": "TBS", "isoDate": "2026-03-30", "displayTime": "10:30" },
-          "terminal": "3",
-          "baggage": "23kg x 1",
-          "price": { "amount": 1200, "currency": "ILS" }
+           // Common fields
+           "departure": { "city", "iata", "station", "port", "isoDate", "time" },
+           "arrival": { "city", "iata", "station", "port", "isoDate", "time" },
+           "price": { "amount", "currency" },
+           
+           // Flight specific
+           "airline", "flightNumber", "pnr", "ticketNumber", "terminal", "gate", "baggage", "seat", "class",
+           
+           // Train specific
+           "provider", "trainNumber", "carriage", "platform",
+           
+           // Cruise/Ferry specific
+           "shipName", "cabinNumber", "deck", "vehicle", "mealPlan",
+           
+           // Bus specific
+           "busNumber"
         }
       }
     ],
     "accommodation": [
       {
-        "type": "hotel",
-        "sourceFileIds": ["booking.pdf"],
-        "confidence": 0.95,
+        "type": "hotel" | "airbnb",
         "data": {
-          "hotelName": "Rooms Hotel Tbilisi",
-          "address": "14 Merab Kostava St",
-          "city": "Tbilisi",
-          "country": "Georgia",
-          "checkIn": { "isoDate": "2026-03-30", "time": "14:00" },
-          "checkOut": { "isoDate": "2026-04-03", "time": "11:00" },
-          "bookingId": "3847291",
-          "roomType": "Deluxe Double",
-          "guestName": "Amit Zahy",
-          "numberOfGuests": 2,
-          "breakfastIncluded": true,
-          "cancellationPolicy": "Free cancellation until March 28",
-          "bookingSource": "Booking.com",
-          "price": { "amount": 450, "currency": "USD" }
+          "hotelName", "address", "city", "country",
+          "checkIn": { "isoDate", "time" },
+          "checkOut": { "isoDate", "time" },
+          "bookingId", "roomType", "roomView", "mealPlan", "cancellationPolicy", "checkInInstructions",
+          "guestName", "numberOfGuests", "price": { "amount", "currency" }, "bookingSource"
         }
       }
     ],
     "carRental": [
-      {
-        "type": "car_rental",
-        "sourceFileIds": ["rental.pdf"],
-        "confidence": 0.9,
-        "data": {
-          "provider": "Hertz",
-          "vehicleType": "Compact",
-          "pickupLocation": "Tbilisi Airport",
-          "pickupCity": "Tbilisi",
-          "pickupDate": "2026-03-30",
-          "pickupTime": "11:00",
-          "dropoffLocation": "Batumi Office",
-          "dropoffCity": "Batumi",
-          "dropoffDate": "2026-04-02",
-          "dropoffTime": "18:00",
-          "confirmationCode": "HR98765",
-          "price": { "amount": 200, "currency": "USD" }
-        }
-      }
+       {
+         "type": "car_rental",
+         "data": {
+           "provider", "vehicleType", 
+           "pickup": { "location", "city", "isoDate", "time" },
+           "dropoff": { "location", "city", "isoDate", "time" },
+           "confirmationCode", "driverName", "insurance", "mileageLimit", "price": { "amount", "currency" }
+         }
+       }
     ],
-    "wallet": [
-      {
-        "type": "passport",
-        "sourceFileIds": ["passport.jpg"],
-        "isSensitive": true,
-        "title": "Israeli Passport",
-        "data": {
-          "documentName": "Israeli Passport",
-          "holderName": "Amit Zahy",
-          "documentNumber": "****4567",
-          "expiryDate": "2028-06-15",
-          "issuingCountry": "Israel",
-          "displayTime": "Valid until 2028-06-15"
-        },
-        "uiMessage": "Stored securely on your device only"
-      }
-    ],
-    "dining": [
-      {
-        "type": "dining",
-        "sourceFileIds": ["reservation.pdf"],
-        "confidence": 0.85,
-        "data": {
-          "name": "Shavi Lomi",
-          "address": "Zubalashvili St 28",
-          "city": "Tbilisi",
-          "reservationDate": "2026-03-31",
-          "reservationTime": "20:00",
-          "partySize": 2,
-          "cuisine": "Georgian",
-          "displayTime": "2026-03-31 20:00"
-        }
-      }
-    ],
-    "activities": []
+    "dining": [ ... ],
+    "activities": [ ... ],
+    "wallet": [ ... ]
   }
 }
 `;
@@ -655,38 +592,83 @@ const normalizeExtractionResult = (raw: any): StagedTripData => {
     const d = item.data || {};
     const dep = d.departure || {};
     const arr = d.arrival || {};
-    return {
-      type: item.type || 'flight',
-      sourceFileIds: item.sourceFileIds || [],
-      confidence: typeof item.confidence === 'number' ? item.confidence : 0.8,
-      data: {
+    const type = item.type || 'flight';
+
+    // Common Transport Data
+    const commonData = {
+      departure: {
+        city: dep.city || d.fromCity || d.from || "",
+        iata: dep.iata || d.fromCode || "",
+        station: dep.station || "",
+        port: dep.port || "",
+        isoDate: fixDate(dep.isoDate || dep.date || d.departureDate || d.date),
+        displayTime: fixTime(dep.displayTime || dep.time || d.departureTime || "")
+      },
+      arrival: {
+        city: arr.city || d.toCity || d.to || "",
+        iata: arr.iata || d.toCode || "",
+        station: arr.station || "",
+        port: arr.port || "",
+        isoDate: fixDate(arr.isoDate || arr.date || d.arrivalDate || ""),
+        displayTime: fixTime(arr.displayTime || arr.time || d.arrivalTime || "")
+      },
+      price: extractPrice(d.price || d.totalPrice),
+      // Legacy compat
+      from: dep.city || dep.port || dep.station || d.fromCity || d.from || "",
+      to: arr.city || arr.port || arr.station || d.toCity || d.to || "",
+      departureTime: fixTime(dep.displayTime || dep.time || d.departureTime || ""),
+      displayTime: fixTime(dep.displayTime || dep.time || d.departureTime || "")
+    };
+
+    // Type-Specific Data
+    let specificData = {};
+    if (type === 'flight') {
+      specificData = {
         airline: d.airline || d.airlineName || "",
         airlineCode: d.airlineCode || "",
         flightNumber: d.flightNumber || d.flight || "",
         pnr: d.pnr || d.bookingReference || "",
+        ticketNumber: d.ticketNumber || "",
         passengerName: d.passengerName || d.passenger || "",
-        departure: {
-          city: dep.city || d.fromCity || d.from || "",
-          iata: dep.iata || d.fromCode || "",
-          isoDate: fixDate(dep.isoDate || dep.date || d.departureDate || d.date),
-          displayTime: fixTime(dep.displayTime || dep.time || d.departureTime || "")
-        },
-        arrival: {
-          city: arr.city || d.toCity || d.to || "",
-          iata: arr.iata || d.toCode || "",
-          isoDate: fixDate(arr.isoDate || arr.date || d.arrivalDate || ""),
-          displayTime: fixTime(arr.displayTime || arr.time || d.arrivalTime || "")
-        },
         terminal: d.terminal || dep.terminal || "",
         gate: d.gate || dep.gate || "",
         baggage: d.baggage || "",
-        price: extractPrice(d.price || d.totalPrice),
-        // Compat fields for legacy display
-        from: dep.city || d.fromCity || d.from || "",
-        to: arr.city || d.toCity || d.to || "",
-        departureTime: fixTime(dep.displayTime || dep.time || d.departureTime || ""),
-        displayTime: fixTime(dep.displayTime || dep.time || d.departureTime || ""),
-      }
+        seat: d.seat || "",
+        class: d.class || ""
+      };
+    } else if (type === 'train') {
+      specificData = {
+        provider: d.provider || d.operator || "",
+        trainNumber: d.trainNumber || "",
+        carriage: d.carriage || d.coach || "",
+        seat: d.seat || "",
+        platform: d.platform || "",
+        class: d.class || "",
+        bookingReference: d.bookingReference || ""
+      };
+    } else if (type === 'cruise' || type === 'ferry') {
+      specificData = {
+        provider: d.provider || d.operator || d.cruiseLine || "",
+        shipName: d.shipName || d.vesselName || "",
+        cabinNumber: d.cabinNumber || "",
+        deck: d.deck || "",
+        vehicle: d.vehicle || "",
+        mealPlan: d.mealPlan || "",
+        bookingReference: d.bookingReference || ""
+      };
+    } else if (type === 'bus') {
+      specificData = {
+        provider: d.provider || d.operator || "",
+        busNumber: d.busNumber || "",
+        seat: d.seat || ""
+      };
+    }
+
+    return {
+      type: type,
+      sourceFileIds: item.sourceFileIds || [],
+      confidence: typeof item.confidence === 'number' ? item.confidence : 0.8,
+      data: { ...commonData, ...specificData }
     };
   });
 
@@ -714,10 +696,13 @@ const normalizeExtractionResult = (raw: any): StagedTripData => {
         checkOut: { isoDate: checkOutDate, time: checkOutTime },
         bookingId: d.bookingId || d.confirmationCode || "",
         roomType: d.roomType || "",
+        roomView: d.roomView || "",
         guestName: d.guestName || d.passengerName || "",
         numberOfGuests: d.numberOfGuests || d.guests || 1,
-        breakfastIncluded: d.breakfastIncluded || false,
+        breakfastIncluded: d.breakfastIncluded || (d.mealPlan && d.mealPlan.toLowerCase().includes('breakfast')) || false,
+        mealPlan: d.mealPlan || "",
         cancellationPolicy: d.cancellationPolicy || "",
+        checkInInstructions: d.checkInInstructions || "",
         bookingSource: d.bookingSource || "",
         totalPrice: extractPrice(d.price).amount,
         currency: extractPrice(d.price).currency,
@@ -748,6 +733,7 @@ const normalizeExtractionResult = (raw: any): StagedTripData => {
         confirmationCode: d.confirmationCode || "",
         driverName: d.driverName || "",
         insurance: d.insurance || "",
+        mileageLimit: d.mileageLimit || "",
         price: extractPrice(d.price),
         displayTime: `${fixDate(d.pickupDate)} ${fixTime(d.pickupTime)}`,
         from: d.pickupCity || d.pickupLocation || "",
@@ -864,38 +850,87 @@ const normalizeExtractionResult = (raw: any): StagedTripData => {
 
 export const validateTripData = (data: TripAnalysisResult): TripAnalysisResult => {
   const validated = { ...data };
+  const raw = validated.rawStagedData;
 
-  // 1. Fix arrival-before-departure (overnight flights)
-  if (validated.rawStagedData?.categories?.transport) {
-    validated.rawStagedData.categories.transport = validated.rawStagedData.categories.transport.map((item: any) => {
-      if (item.type === 'flight' && item.data.departure?.isoDate && item.data.arrival?.isoDate) {
+  if (!raw?.categories) return validated;
+
+  // Helper: fix date order
+  const ensureOrder = (start: string, end: string): [string, string] => {
+    if (!start || !end) return [start, end];
+    return new Date(start) > new Date(end) ? [end, start] : [start, end];
+  };
+
+  // 1. TRANSPORT VALIDATION & INFERENCE
+  if (raw.categories.transport) {
+    raw.categories.transport = raw.categories.transport.map((item: any) => {
+      // Fix overnight arrival (if arrival < departure, add +1 day)
+      if (item.data.departure?.isoDate && item.data.arrival?.isoDate) {
         const depStr = `${item.data.departure.isoDate}T${item.data.departure.displayTime || '00:00'}`;
         const arrStr = `${item.data.arrival.isoDate}T${item.data.arrival.displayTime || '00:00'}`;
-        const dep = new Date(depStr);
-        const arr = new Date(arrStr);
 
-        if (arr < dep) {
-          console.warn(`⚠️ Fixing overnight flight: ${item.data.flightNumber}`);
-          const nextDay = new Date(dep);
+        if (new Date(arrStr) < new Date(depStr)) {
+          console.warn(`⚠️ Fixing overnight travel: ${item.type} ${item.data.flightNumber || item.data.trainNumber}`);
+          const nextDay = new Date(new Date(depStr));
           nextDay.setDate(nextDay.getDate() + 1);
           item.data.arrival.isoDate = nextDay.toISOString().split('T')[0];
         }
+      }
+
+      // Context Inference: If missing arrival city, check hotels starting on that date
+      if (!item.data.arrival?.city && item.data.arrival?.isoDate && raw.categories.accommodation) {
+        const matchingHotel = raw.categories.accommodation.find((h: any) => h.data.checkInDate === item.data.arrival.isoDate);
+        if (matchingHotel?.data.city) {
+          console.log(`🧠 Inferred arrival city ${matchingHotel.data.city} from hotel ${matchingHotel.data.hotelName}`);
+          item.data.arrival.city = matchingHotel.data.city;
+          item.data.to = matchingHotel.data.city;
+        }
+      }
+
+      return item;
+    }).filter((item: any) => {
+      // Filter out empty items
+      return item.data.departure?.isoDate || item.data.arrival?.isoDate || item.data.bookingReference;
+    });
+  }
+
+  // 2. ACCOMMODATION VALIDATION
+  if (raw.categories.accommodation) {
+    raw.categories.accommodation = raw.categories.accommodation.map((item: any) => {
+      // Ensure Check-In < Check-Out
+      if (item.data.checkInDate && item.data.checkOutDate) {
+        const [start, end] = ensureOrder(item.data.checkInDate, item.data.checkOutDate);
+        item.data.checkInDate = start;
+        item.data.checkOutDate = end;
+        item.data.checkIn.isoDate = start;
+        item.data.checkOut.isoDate = end;
       }
       return item;
     });
   }
 
-  // 2. Ensure destination is in cities list
+  // 3. CAR RENTAL VALIDATION
+  if (raw.categories.carRental) {
+    raw.categories.carRental = raw.categories.carRental.map((item: any) => {
+      // Ensure Pickup < Dropoff
+      if (item.data.pickupDate && item.data.dropoffDate) {
+        const [start, end] = ensureOrder(item.data.pickupDate, item.data.dropoffDate);
+        item.data.pickupDate = start;
+        item.data.dropoffDate = end;
+      }
+      return item;
+    });
+  }
+
+  // 4. METADATA ENRICHMENT
   const meta = validated.metadata;
+  // Ensure main destination is in cities list
   if (meta.destination && !meta.cities.includes(meta.destination)) {
     meta.cities.push(meta.destination);
   }
-
-  // 3. Verify no empty flight segments
-  if (validated.rawStagedData?.categories?.transport) {
-    validated.rawStagedData.categories.transport = validated.rawStagedData.categories.transport.filter(
-      (item: any) => item.data?.departure?.isoDate || item.data?.arrival?.isoDate || item.data?.flightNumber
-    );
+  // If destination is missing, try to infer from first hotel
+  if (!meta.destination && raw.categories.accommodation?.length > 0) {
+    meta.destination = raw.categories.accommodation[0].data.city;
+    meta.cities.push(meta.destination);
   }
 
   return validated;

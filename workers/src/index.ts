@@ -393,86 +393,118 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
                 "gemini-1.5-pro-latest"    // 4. Backup
         ];
 
+        // THIS IS A SYSTEM GENERATED PROMPT -- DO NOT EDIT MANUALLY IF NOT SYNCING WITH AISERVICE.TS
         const SYSTEM_PROMPT = `
-Role: You are an elite Travel Data Architect.
-Mission: Extract unstructured travel data (PDF/Email) into a strict JSON format.
+You are an Elite Travel Document Intelligence System, combining expertise from:
+- IATA NDC data standards for aviation
+- Hotel industry PMS standards
+- Google Document AI visual parsing
+- Multi-language OCR (Hebrew, Arabic, English)
+- Maritime & Rail transport standards
 
---- CRITICAL RULES ---
-1. **OCR & Language**: The input may be in Hebrew, English, or mixed. You MUST OCR the attached PDFs deeply.
-   - Read EVERY page of the PDF. Flight itineraries often have outbound on one page and return on another.
-   - If you see "26 ינואר", translate to "2026-01-26".
-   - If year is missing, assume **2026** (unless context implies otherwise).
-2. **Locations**:
-   - NEVER return "Unknown". Always infer from context, IATA codes, or airline routes.
-   - IATA Code Mappings: TLV=Tel Aviv, TBS=Tbilisi, BUS=Batumi, ATH=Athens, SKG=Thessaloniki, RHO=Rhodes, HER=Heraklion, LCA=Larnaca, PFO=Paphos, IST=Istanbul, SAW=Istanbul Sabiha, AYT=Antalya, CDG=Paris, FCO=Rome, BCN=Barcelona, BKK=Bangkok, HKT=Phuket.
-   - If you cannot determine the city from IATA, use the IATA code itself — do NOT write "Unknown".
-3. **Flights — MULTI-SEGMENT RULE (CRITICAL)**:
-   - **Each flight LEG must be a SEPARATE entry in the flights array.**
-   - A round-trip itinerary (e.g., TLV→ATH on Apr 6, ATH→TLV on Apr 10) MUST produce TWO separate entries.
-   - One-way = 1 entry. Round-trip = 2 entries. Multi-city = one entry per leg.
-   - Airline Mappings: "LY"/"El Al"→Airline:"El Al",Code:"LY". "6H"/"Israir"→Airline:"Israir",Code:"6H". "A3"/"Aegean"→Airline:"Aegean",Code:"A3". "IZ"/"Arkia"→Airline:"Arkia",Code:"IZ". "W6"/"Wizz Air"→Airline:"Wizz Air",Code:"W6". "FR"/"Ryanair"→Airline:"Ryanair",Code:"FR".
-   - Extract EXACT flight numbers including airline prefix (e.g., "6H103", "LY5103").
-   - **Times**: Convert all to 24h format (HH:MM). Never return "00:00" unless the actual departure is midnight.
-4. **Dates**:
-   - OUTPUT MUST BE ISO 8601 (YYYY-MM-DD).
-   - "04/00" is INVALID. If day/month is ambiguous, look for duration or other dates.
-   - startDate = earliest flight departure date. endDate = latest flight/hotel date.
+═══════════════════════════════════════════════════════════════
+PHASE 1: DOCUMENT CLASSIFICATION & VISUAL CALIBRATION
+═══════════════════════════════════════════════════════════════
 
---- OUTPUT SCHEMA (STRICT JSON) ---
+Before extracting ANY data, classify each document:
+- **E-Ticket / Boarding Pass** → Extract flights, PNR, baggage, terminal
+- **Train Ticket** → Extract train number, carriage, seat, platform
+- **Cruise/Ferry** → Extract ship, cabin, ports
+- **Hotel Confirmation** → Extract hotel, dates, room, price
+- **Car Rental Agreement** → Extract provider, dates, pickup/dropoff
+- **Unknown / Noise** → Report as unprocessable
+
+RTL & Bi-Directional Rules:
+- Hebrew/Arabic text flows Right-to-Left, but NUMBERS flow Left-to-Right
+- "897" stays "897" (never reverse digits)
+- "תל אביב → לונדון" means Origin: Tel Aviv, Destination: London
+
+═══════════════════════════════════════════════════════════════
+PHASE 2: EXHAUSTIVE DATA EXTRACTION
+═══════════════════════════════════════════════════════════════
+
+A. TRANSPORT (Flights, Trains, Ferries, Cruises, Buses)
+   Expected Output Format: { "type": "flight" | "train" | "ferry", "data": { ... } }
+
+   1. FLIGHTS — Extract ALL fields:
+      - airline, airlineCode (IATA 2-letter)
+      - flightNumber (e.g. "LY5103"), pnr (6-char)
+      - departure: { city, iata, isoDate (YYYY-MM-DD), time (HH:MM) }
+      - arrival: { city, iata, isoDate (YYYY-MM-DD), time (HH:MM) }
+      - terminal, baggage, passengerName, price: { amount, currency }
+      
+      ⚠️ MULTI-SEGMENT RULE (CRITICAL):
+      - Each flight LEG must be a SEPARATE transport entry.
+      - A round-trip (TLV→ATH outbound, ATH→TLV return) MUST produce TWO separate entries.
+
+   2. TRAINS/FERRIES — Extract provider, number, seat, platform/deck, dep/arr details.
+
+B. ACCOMMODATION (Hotels, Airbnb) — Extract ALL fields:
+    - hotelName, address, city, country
+    - checkIn: { isoDate, time }, checkOut: { isoDate, time }
+    - bookingId, roomType, guestName, price: { amount, currency }
+
+C. CAR RENTAL — Extract ALL fields:
+    - provider, vehicleType, pickup/dropoff details, price.
+
+═══════════════════════════════════════════════════════════════
+PHASE 3: DATE & TIME RULES (CRITICAL)
+═══════════════════════════════════════════════════════════════
+
+1. ALL dates MUST be ISO 8601: YYYY-MM-DD
+2. ALL times MUST be 24-hour: HH:MM
+3. If year is missing, assume 2026 (forward bias)
+4. Hebrew months: ינואר=01, פברואר=02, ...
+5. Arrival MUST be after departure.
+
+═══════════════════════════════════════════════════════════════
+PHASE 6: OUTPUT FORMAT (STRICT JSON)
+═══════════════════════════════════════════════════════════════
+
+Return ONLY valid JSON.
 {
   "tripMetadata": {
-    "suggestedName": "String (e.g., 'Weekend in Athens')",
-    "mainDestination": "String (City, NOT the origin)",
-    "mainCountry": "String (Country)",
-    "startDate": "YYYY-MM-DD (earliest departure)",
-    "endDate": "YYYY-MM-DD (latest return/checkout)"
+    "suggestedName": "String",
+    "mainDestination": "String",
+    "startDate": "YYYY-MM-DD",
+    "endDate": "YYYY-MM-DD",
+    "uniqueCityNames": ["String"]
   },
   "categories": {
-    "flights": [
+    "transport": [
       {
-        "airline": "String (full name)",
-        "flightNumber": "String (e.g., '6H103' — include airline prefix)",
-        "pnr": "String (6-char booking reference, NOT ticket number)",
-        "passengerName": "String (SURNAME/FIRSTNAME as on ticket)",
-        "totalPrice": "Number",
-        "currency": "String (ILS/USD/EUR)",
-        "baggage": "String (e.g., '23kg x 2', 'Cabin only')",
-        "departure": { "city": "String", "iata": "String (3 chars)", "isoDate": "YYYY-MM-DD", "time": "HH:MM (24h)" },
-        "arrival": { "city": "String", "iata": "String (3 chars)", "isoDate": "YYYY-MM-DD", "time": "HH:MM (24h)" }
+        "type": "flight",
+        "data": {
+           "airline", "flightNumber", "pnr", "passengerName", "price": { "amount", "currency" },
+           "departure": { "city", "iata", "isoDate", "time" },
+           "arrival": { "city", "iata", "isoDate", "time" },
+           "terminal", "baggage"
+        }
       }
     ],
-    "hotels": [
+    "accommodation": [
       {
-        "name": "String",
-        "address": "String",
-        "city": "String",
-        "country": "String",
-        "checkIn": "YYYY-MM-DD",
-        "checkOut": "YYYY-MM-DD",
-        "price": "Number",
-        "currency": "String"
+        "type": "hotel",
+        "data": {
+          "hotelName", "address", "city", "country",
+          "checkIn": { "isoDate", "time" },
+          "checkOut": { "isoDate", "time" },
+          "bookingId", "price": { "amount", "currency" }
+        }
       }
     ],
     "carRental": [
-      {
-        "provider": "String",
-        "pickupLocation": "String",
-        "pickupDate": "YYYY-MM-DD",
-        "dropoffDate": "YYYY-MM-DD",
-        "price": "Number",
-        "currency": "String"
-      }
+       {
+         "type": "car_rental",
+         "data": {
+           "provider", "pickupLocation", "pickupCity", "pickupDate", "pickupTime",
+           "dropoffLocation", "dropoffCity", "dropoffDate", "dropoffTime",
+           "price": { "amount", "currency" }
+         }
+       }
     ]
   }
 }
-
---- EXAMPLE ---
-A round-trip Israir PDF: TLV→ATH on 2026-04-06 at 08:30, ATH→TLV on 2026-04-10 at 14:15.
-Expected output flights array with TWO entries:
-[
-  { "airline": "Israir", "flightNumber": "6H103", ..., "departure": { "city": "Tel Aviv", "iata": "TLV", "isoDate": "2026-04-06", "time": "08:30" }, "arrival": { "city": "Athens", "iata": "ATH", ... } },
-  { "airline": "Israir", "flightNumber": "6H104", ..., "departure": { "city": "Athens", "iata": "ATH", "isoDate": "2026-04-10", "time": "14:15" }, "arrival": { "city": "Tel Aviv", "iata": "TLV", ... } }
-]
 `;
 
         // 1. בניית ה-Parts כולל הקבצים (זה החלק שהיה חסר!)
@@ -519,9 +551,11 @@ Expected output flights array with TWO entries:
         }
         console.log(`[Pipeline] Step 4 Done: Gemini returned data. Keys: ${Object.keys(frontendData).join(', ')}`);
         console.log(`[Pipeline] Flights found: ${frontendData.categories?.flights?.length || 0}`);
-        if (frontendData.categories?.flights) {
-                frontendData.categories.flights.forEach((f: any, i: number) => {
-                        console.log(`[Pipeline] Flight ${i}: ${f.departure?.iata || '?'} → ${f.arrival?.iata || '?'} on ${f.departure?.isoDate || '?'} at ${f.departure?.time || '?'}, flight=${f.flightNumber || '?'}`);
+        if (frontendData.categories?.transport) {
+                const flights = frontendData.categories.transport.filter((t: any) => t.type === 'flight');
+                flights.forEach((f: any, i: number) => {
+                        const d = f.data || {};
+                        console.log(`[Pipeline] Flight ${i}: ${d.departure?.iata || '?'} → ${d.arrival?.iata || '?'} on ${d.departure?.isoDate || '?'} at ${d.departure?.time || '?'}, flight=${d.flightNumber || '?'}`);
                 });
         }
 
@@ -546,8 +580,12 @@ Expected output flights array with TWO entries:
 
         // --- MAPPING ENGINE (Golden Schema v2.2) ---
 
-        // 1. Process Flights
-        const aiFlights = frontendData.categories?.flights || [];
+        // 1. Process Flights (from Unified Schema 'transport' array)
+        const allTransport = frontendData.categories?.transport || [];
+        const aiFlights = allTransport
+                .filter((t: any) => t.type === 'flight')
+                .map((t: any) => t.data || {});
+
         const processedSegments = aiFlights.map((f: any) => {
                 const depDate = fixDate(f.departure?.isoDate);
 
@@ -573,31 +611,37 @@ Expected output flights array with TWO entries:
                         departureTime: depTime,
                         arrivalTime: arrTime,
                         arrivalDate: fixDate(f.arrival?.isoDate) || depDate || "",
-                        price: f.totalPrice || 0,
-                        currency: f.currency || "USD"
+                        price: f.price?.amount || f.totalPrice || 0,
+                        currency: f.price?.currency || f.currency || "USD"
                 };
         });
 
-        // 2. Process Hotels (With City/Country/Price)
-        const aiHotels = frontendData.categories?.hotels || [];
+        // 2. Process Hotels (from Unified Schema 'accommodation' array)
+        const allAccommodation = frontendData.categories?.accommodation || [];
+        const aiHotels = allAccommodation
+                .filter((h: any) => h.type === 'hotel' || !h.type) // Default to hotel if type missing
+                .map((h: any) => h.data || {});
+
         const processedHotels = aiHotels.map((h: any) => ({
-                name: h.name || "Unknown Hotel",
+                name: h.hotelName || h.name || "Unknown Hotel",
                 address: h.address || "",
                 city: h.city || "Unknown",
                 country: h.country || "",
-                checkIn: fixDate(h.checkIn),
-                checkOut: fixDate(h.checkOut),
-                bookingId: h.confirmationCode || "",
-                price: h.price || 0,
-                currency: h.currency || "USD"
+                checkIn: fixDate(h.checkIn?.isoDate || h.checkIn),
+                checkOut: fixDate(h.checkOut?.isoDate || h.checkOut),
+                bookingId: h.bookingId || h.confirmationCode || "",
+                price: h.price?.amount || h.price || 0,
+                currency: h.price?.currency || h.currency || "USD"
         }));
 
-        // 3. Process Car Rental (With City/Country/Price)
-        const aiCars = frontendData.categories?.carRental || [];
+        // 3. Process Car Rental (from Unified Schema 'carRental' array with wrapper)
+        const allCars = frontendData.categories?.carRental || [];
+        const aiCars = allCars.map((c: any) => c.data || {});
+
         const processedCars = aiCars.map((c: any) => ({
                 provider: c.provider || "Unknown Rental",
                 location: c.pickupLocation || "",
-                city: c.city || "",
+                city: c.pickupCity || c.city || "",
                 country: c.country || "",
                 pickupDate: fixDate(c.pickupDate),
                 dropoffDate: fixDate(c.dropoffDate),
