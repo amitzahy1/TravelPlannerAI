@@ -1,4 +1,5 @@
 import { StagedTripData, StagedCategories } from "../types";
+import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 
 // ============================================================================
 // 🏗️ CONFIGURATION — Model Chains & Constants
@@ -231,7 +232,11 @@ export const generateWithFallback = async (
         body: JSON.stringify({
           contents: adaptedContents,  // Send full structured content (multimodal support)
           prompt: adaptedContents,    // Backward compat with old worker
-          Model: modelId
+          Model: modelId,
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: TRIP_OUTPUT_SCHEMA
+          }
         })
       });
 
@@ -261,7 +266,7 @@ export const generateWithFallback = async (
       }
 
       const data = await response.json();
-      const text = cleanJSON(data.text);
+      const text = data.text; // Validated by Schema, no cleaning needed!
       JSON.parse(text); // Verify JSON validity
 
       console.log(`✅ [AI] Success with ${modelId}`);
@@ -346,7 +351,7 @@ A. TRANSPORT (Flights, Trains, Ferries, Cruises, Buses)
       - departure: { city, iata (3-letter), isoDate (YYYY-MM-DD), time (HH:MM 24h) }
       - arrival: { city, iata (3-letter), isoDate (YYYY-MM-DD), time (HH:MM 24h) }
       - terminal, gate, baggage, seat, class (Economy/Business)
-      - passengerName, price: { amount, currency }
+      - passengers (list), price: { amount, currency }
       
       ⚠️ MULTI-SEGMENT RULE (CRITICAL):
       - Each flight LEG must be a SEPARATE transport entry.
@@ -442,18 +447,14 @@ PHASE 5: VALIDATION & SANITY CHECK
 5. No "Unknown" if data is available
 
 ═══════════════════════════════════════════════════════════════
-PHASE 6: OUTPUT FORMAT (STRICT JSON)
+PHASE 6: OUTPUT FORMAT (STRICT JSON SCHEMA)
 ═══════════════════════════════════════════════════════════════
 
-Return ONLY valid JSON.
-{
-  "tripMetadata": {
-    "suggestedName": "String",
-    "mainDestination": "String",
-    "startDate": "YYYY-MM-DD",
-    "endDate": "YYYY-MM-DD",
-    "uniqueCityNames": ["String"]
-  },
+The output must strictly follow the provided JSON Schema.
+Ensure all dates are YYYY-MM-DD.
+Ensure all passengers are extracted into the 'passengers' array.
+Ensure round-trip flights are SPLIT into separate transport items.
+
   "processedFileIds": ["filename.pdf"],
   "unprocessedFiles": [{ "fileName": "noise.pdf", "reason": "No travel data found" }],
   "categories": {
@@ -629,7 +630,7 @@ const normalizeExtractionResult = (raw: any): StagedTripData => {
         flightNumber: d.flightNumber || d.flight || "",
         pnr: d.pnr || d.bookingReference || "",
         ticketNumber: d.ticketNumber || "",
-        passengerName: d.passengerName || d.passenger || "",
+        passengers: d.passengers || (d.passengerName ? [d.passengerName] : []),
         terminal: d.terminal || dep.terminal || "",
         gate: d.gate || dep.gate || "",
         baggage: d.baggage || "",
@@ -697,8 +698,8 @@ const normalizeExtractionResult = (raw: any): StagedTripData => {
         bookingId: d.bookingId || d.confirmationCode || "",
         roomType: d.roomType || "",
         roomView: d.roomView || "",
-        guestName: d.guestName || d.passengerName || "",
-        numberOfGuests: d.numberOfGuests || d.guests || 1,
+        guests: d.guests || (d.guestName ? [d.guestName] : []),
+        numberOfGuests: d.numberOfGuests || d.guests?.length || 1,
         breakfastIncluded: d.breakfastIncluded || (d.mealPlan && d.mealPlan.toLowerCase().includes('breakfast')) || false,
         mealPlan: d.mealPlan || "",
         cancellationPolicy: d.cancellationPolicy || "",

@@ -1124,7 +1124,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                 destination: wizardData.destination || "",
                                 dates: wizardData.startDate ? `${wizardData.startDate} - ${wizardData.endDate}` : "",
                                 coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
-                                flights: wizardData.flights || { passengerName: "", pnr: "", segments: [] },
+                                flights: wizardData.flights || { passengers: [], pnr: "", segments: [] },
                                 hotels: wizardData.hotels || [],
                                 restaurants: [],
                                 attractions: [],

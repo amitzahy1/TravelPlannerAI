@@ -57,7 +57,7 @@ export default {
                         // Secure API Endpoint for Frontend (supports multimodal content)
                         if (url.pathname === "/api/generate" && request.method === "POST") {
                                 const body = await request.json() as any;
-                                const { contents, prompt, Model } = body;
+                                const { contents, prompt, Model, generationConfig } = body;
 
                                 // Accept either structured 'contents' (new) or flat 'prompt' (backward compat)
                                 const requestContent = contents || prompt;
@@ -68,7 +68,7 @@ export default {
 
                                 const model = genAI.getGenerativeModel({
                                         model: modelId,
-                                        generationConfig: { responseMimeType: "application/json" }
+                                        generationConfig: generationConfig || { responseMimeType: "application/json" }
                                 });
 
                                 // Pass content directly — supports text, inlineData (images/PDFs), and mixed parts
@@ -382,6 +382,112 @@ const extractTimeFromText = (text: string | undefined): string => {
 
 // --- THE CORE LOGIC ---
 
+// --- WORKER TRIP SCHEMA (Duplicated to avoid import issues) ---
+const WORKER_TRIP_SCHEMA: any = {
+        type: "OBJECT",
+        description: "A structured comprehensive travel itinerary extracted from documents.",
+        properties: {
+                tripMetadata: {
+                        type: "OBJECT",
+                        description: "High-level details about the trip",
+                        properties: {
+                                suggestedName: { type: "STRING", description: "A creative, short name for the trip" },
+                                mainDestination: { type: "STRING" },
+                                startDate: { type: "STRING", description: "ISO 8601 (YYYY-MM-DD)" },
+                                endDate: { type: "STRING", description: "ISO 8601 (YYYY-MM-DD)" },
+                                uniqueCityNames: { type: "ARRAY", items: { type: "STRING" } }
+                        },
+                        required: ["suggestedName", "startDate", "endDate"]
+                },
+                categories: {
+                        type: "OBJECT",
+                        properties: {
+                                transport: {
+                                        type: "ARRAY",
+                                        items: {
+                                                type: "OBJECT",
+                                                properties: {
+                                                        type: { type: "STRING", enum: ["flight", "train", "bus", "ferry", "cruise", "car_rental", "other"] },
+                                                        confidence: { type: "NUMBER" },
+                                                        data: {
+                                                                type: "OBJECT",
+                                                                properties: {
+                                                                        airline: { type: "STRING" },
+                                                                        flightNumber: { type: "STRING" },
+                                                                        pnr: { type: "STRING" },
+                                                                        passengers: { type: "ARRAY", items: { type: "STRING" } }, // Multi-Passenger
+                                                                        departure: {
+                                                                                type: "OBJECT",
+                                                                                properties: { city: { type: "STRING" }, iata: { type: "STRING" }, isoDate: { type: "STRING" }, time: { type: "STRING" } },
+                                                                                required: ["isoDate", "time"]
+                                                                        },
+                                                                        arrival: {
+                                                                                type: "OBJECT",
+                                                                                properties: { city: { type: "STRING" }, iata: { type: "STRING" }, isoDate: { type: "STRING" }, time: { type: "STRING" } },
+                                                                                required: ["isoDate", "time"]
+                                                                        },
+                                                                        price: { type: "OBJECT", properties: { amount: { type: "NUMBER" }, currency: { type: "STRING" } } },
+                                                                        // Deep fields
+                                                                        baggage: { type: "STRING" },
+                                                                        seat: { type: "STRING" },
+                                                                        class: { type: "STRING" },
+                                                                        provider: { type: "STRING" },
+                                                                        trainNumber: { type: "STRING" },
+                                                                        shipName: { type: "STRING" },
+                                                                        cabinNumber: { type: "STRING" }
+                                                                }
+                                                        }
+                                                },
+                                                required: ["type", "data"]
+                                        }
+                                },
+                                accommodation: {
+                                        type: "ARRAY",
+                                        items: {
+                                                type: "OBJECT",
+                                                properties: {
+                                                        type: { type: "STRING", enum: ["hotel", "airbnb", "other"] },
+                                                        confidence: { type: "NUMBER" },
+                                                        data: {
+                                                                type: "OBJECT",
+                                                                properties: {
+                                                                        hotelName: { type: "STRING" },
+                                                                        address: { type: "STRING" },
+                                                                        checkIn: { type: "OBJECT", properties: { isoDate: { type: "STRING" }, time: { type: "STRING" } }, required: ["isoDate"] },
+                                                                        checkOut: { type: "OBJECT", properties: { isoDate: { type: "STRING" }, time: { type: "STRING" } }, required: ["isoDate"] },
+                                                                        guests: { type: "ARRAY", items: { type: "STRING" } }, // Multi-Guest
+                                                                        price: { type: "OBJECT", properties: { amount: { type: "NUMBER" }, currency: { type: "STRING" } } },
+                                                                        mealPlan: { type: "STRING" },
+                                                                        cancellationPolicy: { type: "STRING" }
+                                                                },
+                                                                required: ["hotelName", "checkIn", "checkOut"]
+                                                        }
+                                                },
+                                                required: ["type", "data"]
+                                        }
+                                },
+                                carRental: {
+                                        type: "ARRAY",
+                                        items: {
+                                                type: "OBJECT",
+                                                properties: {
+                                                        type: { type: "STRING", enum: ["car_rental"] },
+                                                        data: {
+                                                                type: "OBJECT",
+                                                                properties: {
+                                                                        provider: { type: "STRING" },
+                                                                        pickupDate: { type: "STRING" },
+                                                                        dropoffDate: { type: "STRING" }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+};
+
 async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
         const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -458,53 +564,13 @@ PHASE 3: DATE & TIME RULES (CRITICAL)
 5. Arrival MUST be after departure.
 
 ═══════════════════════════════════════════════════════════════
-PHASE 6: OUTPUT FORMAT (STRICT JSON)
+PHASE 6: OUTPUT FORMAT (STRICT JSON SCHEMA)
 ═══════════════════════════════════════════════════════════════
 
-Return ONLY valid JSON.
-{
-  "tripMetadata": {
-    "suggestedName": "String",
-    "mainDestination": "String",
-    "startDate": "YYYY-MM-DD",
-    "endDate": "YYYY-MM-DD",
-    "uniqueCityNames": ["String"]
-  },
-  "categories": {
-    "transport": [
-      {
-        "type": "flight",
-        "data": {
-           "airline", "flightNumber", "pnr", "passengerName", "price": { "amount", "currency" },
-           "departure": { "city", "iata", "isoDate", "time" },
-           "arrival": { "city", "iata", "isoDate", "time" },
-           "terminal", "baggage"
-        }
-      }
-    ],
-    "accommodation": [
-      {
-        "type": "hotel",
-        "data": {
-          "hotelName", "address", "city", "country",
-          "checkIn": { "isoDate", "time" },
-          "checkOut": { "isoDate", "time" },
-          "bookingId", "price": { "amount", "currency" }
-        }
-      }
-    ],
-    "carRental": [
-       {
-         "type": "car_rental",
-         "data": {
-           "provider", "pickupLocation", "pickupCity", "pickupDate", "pickupTime",
-           "dropoffLocation", "dropoffCity", "dropoffDate", "dropoffTime",
-           "price": { "amount", "currency" }
-         }
-       }
-    ]
-  }
-}
+The output must strictly follow the provided JSON Schema.
+Ensure all dates are YYYY-MM-DD.
+Ensure all passengers are extracted into the 'passengers' array.
+Ensure round-trip flights are SPLIT into separate transport items.
 `;
 
         // 1. בניית ה-Parts כולל הקבצים (זה החלק שהיה חסר!)
@@ -533,12 +599,15 @@ Return ONLY valid JSON.
                 try {
                         const model = genAI.getGenerativeModel({
                                 model: modelName,
-                                generationConfig: { responseMimeType: "application/json" }
+                                generationConfig: {
+                                        responseMimeType: "application/json",
+                                        responseSchema: WORKER_TRIP_SCHEMA
+                                }
                         });
 
                         const result = await model.generateContent({ contents: [{ role: "user", parts }] });
                         const rawText = result.response.text();
-                        frontendData = JSON.parse(cleanJSON(rawText));
+                        frontendData = JSON.parse(rawText); // Direct Parse, No regex cleaning needed!
                         if (frontendData) break;
                 } catch (e: any) {
                         console.warn(`[Gemini] Model ${modelName} failed: ${e.message}`);
@@ -601,7 +670,7 @@ Return ONLY valid JSON.
                         airline: f.airline || "Unknown",
                         flight: f.flightNumber || "",
                         pnr: f.pnr || "",
-                        passengerName: f.passengerName || "",
+                        passengers: f.passengers || (f.passengerName ? [f.passengerName] : []),
                         baggage: f.baggage || "",
                         from: resolveCity(f.departure?.city, f.departure?.iata),
                         to: resolveCity(f.arrival?.city, f.arrival?.iata),
@@ -684,7 +753,7 @@ Return ONLY valid JSON.
                 flights: processedSegments.length > 0 ? {
                         airline: processedSegments[0].airline,
                         pnr: processedSegments[0].pnr,
-                        passengerName: processedSegments[0].passengerName || "",
+                        passengers: processedSegments[0].passengers || [],
                         totalPrice: totalFlightPrice || aiFlights[0]?.totalPrice || 0,
                         currency: aiFlights[0]?.currency || "USD",
                         segments: processedSegments

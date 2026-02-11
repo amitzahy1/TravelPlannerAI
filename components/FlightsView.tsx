@@ -391,6 +391,18 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
           <div className="text-left hidden md:block">
             <div className="text-sm font-bold opacity-60 uppercase tracking-widest mb-1">מספר הזמנה (PNR)</div>
             <div className="text-4xl font-mono font-black tracking-widest">{flights.pnr || '---'}</div>
+            {flights.passengers && flights.passengers.length > 0 && (
+              <div className="mt-4">
+                <div className="text-sm font-bold opacity-60 uppercase tracking-widest mb-1">נוסעים</div>
+                <div className="flex flex-wrap gap-2 justify-end">
+                  {flights.passengers.map((p, idx) => (
+                    <span key={idx} className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold backdrop-blur-sm">
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

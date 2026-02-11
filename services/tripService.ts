@@ -159,12 +159,12 @@ export const mapAnalysisToTrip = (analysis: TripAnalysisResult): Partial<Trip> =
         // Merge all transport (flights + car rentals)
         const allSegments = [...flights, ...carRentalSegments];
 
-        // Extract passenger name from first flight if available
-        const passengerName = categories.transport[0]?.data?.passengerName || '';
+        // Extract passenger names from first flight if available
+        const passengers = categories.transport[0]?.data?.passengers || [];
 
         return {
                 flights: {
-                        passengerName,
+                        passengers,
                         pnr: categories.transport[0]?.data?.pnr || '',
                         segments: allSegments,
                         totalPrice: allSegments.reduce((sum, s) => sum + (s.price || 0), 0),
@@ -256,7 +256,7 @@ export const mergeTripData = (existing: Trip, analysis: TripAnalysisResult): Tri
                 ...existing,
                 flights: {
                         ...existing.flights,
-                        passengerName: existing.flights?.passengerName || newPartial.flights?.passengerName || '',
+                        passengers: Array.from(new Set([...(existing.flights?.passengers || []), ...(newPartial.flights?.passengers || [])])),
                         pnr: existing.flights?.pnr || newPartial.flights?.pnr || '',
                         segments: uniqueSegments
                 },

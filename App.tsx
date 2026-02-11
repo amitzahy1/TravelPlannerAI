@@ -174,7 +174,7 @@ const AppContent: React.FC = () => {
       dates,
       coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
       flights: {
-        passengerName: user?.displayName || "",
+        passengers: user?.displayName ? [user.displayName] : [],
         pnr: flightPnr,
         segments: flightSegments
       },

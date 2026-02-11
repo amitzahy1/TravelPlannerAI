@@ -90,7 +90,7 @@ export interface FerryRide {
 }
 
 export interface Ticket {
-  passengerName: string;
+  passengers: string[]; // Supports multiple passengers per PNR
   pnr: string;
   segments: FlightSegment[];
   totalPrice?: number; // Total ticket cost
@@ -134,6 +134,7 @@ export interface HotelBooking {
   mealPlan?: string; // "Room Only", "Half Board", "All Inclusive"
   roomView?: string; // "Sea View"
   checkInInstructions?: string; // "Keybox 1234"
+  guests?: string[]; // Multiple guests
 }
 
 export interface Restaurant {

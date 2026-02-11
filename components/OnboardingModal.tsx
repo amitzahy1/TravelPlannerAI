@@ -78,7 +78,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
             dates: formDates || "", // Use formDates if set (manual flow)
             destination: destinationInput || "",
             coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
-            flights: { passengerName: "", pnr: "", segments: [] },
+            flights: { passengers: [], pnr: "", segments: [] },
             hotels: [],
             restaurants: [],
             attractions: [],
@@ -209,7 +209,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                 ? finalMetadata.cities.join(' - ')
                 : finalMetadata.mainDestination || "Unknown Destination",
             coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
-            flights: partialTrip.flights || { passengerName: "", pnr: "", segments: [] },
+            flights: partialTrip.flights || { passengers: [], pnr: "", segments: [] },
             hotels: partialTrip.hotels || [],
             secureNotes: partialTrip.secureNotes || [],
             restaurants: [{
