@@ -546,14 +546,19 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             }
         } else {
             // ADD Logic
-            // FIX: Use catTitle (Search Context) as the region source-of-truth, ignoring raw address (e.g. Telavi -> Lopota)
-            const intendedRegion = catTitle;
+            // FIX: Restore correct region/city logic. Do not use Category Title (e.g. "Italian") as region.
+            // Try to extract city from location (e.g. "Rothschild 12, Tel Aviv" -> "Tel Aviv")
+            const locationParts = restaurant.location ? restaurant.location.split(',') : [];
+            const cityFromLocation = locationParts.length > 1 ? locationParts[locationParts.length - 1].trim() : restaurant.location;
 
-            // Find category matching the Trip City (Title)
+            // Priority: Extracted City -> Selected City Filter -> Trip Destination
+            const intendedRegion = cityFromLocation || (selectedCity !== 'all' ? selectedCity : trip.destination);
+
+            // Find category matching the Category Title (e.g. "Italian" or "Search Results")
             let targetCatIndex = newRestaurants.findIndex(c => c.title === catTitle);
 
             if (targetCatIndex === -1) {
-                // If category doesn't exist (shouldn't happen if trip cities initialized, but safe fallback), create it using the Intent
+                // If category doesn't exist, create it.
                 newRestaurants.push({ id: `cat-${Date.now()}`, title: catTitle, region: intendedRegion, restaurants: [] });
                 targetCatIndex = newRestaurants.length - 1;
             }
@@ -561,7 +566,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             newRestaurants[targetCatIndex].restaurants.push({
                 ...restaurant,
                 id: `added-${Date.now()}`,
-                region: intendedRegion // Force region to match Trip City for consistent grouping
+                region: intendedRegion // Correctly saves the City/Region name
             });
         }
 
