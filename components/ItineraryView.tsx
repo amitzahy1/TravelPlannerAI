@@ -104,7 +104,10 @@ export const ItineraryView: React.FC<{
     // Updated: Use locationContext (city) instead of "מלון"
     const generateDayTitle = (day: DayPlan, trip: Trip, dayIndex: number, totalDays: number): string => {
         const events = day.events;
-        const cityContext = day.locationContext || trip.destinationEnglish || (trip.destination || '').split('-')[0].trim();
+        let cityContext = day.locationContext || trip.destinationEnglish || (trip.destination || '').split('-')[0].trim();
+
+        // CLEANUP: Remove zip codes/years from city names (e.g. "Napareuli 2200" -> "Napareuli")
+        cityContext = cityContext.replace(/\s+\d{3,6}$/, '').trim();
 
         // Priority 1: Flight Day - Show flight direction
         const flightEvent = events.find(e => e.type === 'flight');

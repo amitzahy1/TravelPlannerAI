@@ -155,8 +155,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         }
 
         // 2. Flight Destinations (Arrivals)
+        const originCity = trip.flights?.segments?.[0]?.fromCity?.toLowerCase();
         trip.flights?.segments?.forEach(s => {
-            if (s.toCity) unique.add(s.toCity);
+            if (s.toCity && s.toCity.toLowerCase() !== originCity) unique.add(s.toCity);
         });
 
         // 3. Hotel Cities

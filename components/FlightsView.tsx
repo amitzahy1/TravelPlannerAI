@@ -291,8 +291,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
             <div className="text-sm font-bold text-slate-600 mt-1 uppercase">
               {(() => {
                 try {
-                  const d = segment.departureTime ? new Date(segment.departureTime) : (segment.date ? new Date(segment.date) : null);
-                  return (d && !isNaN(d.getTime())) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '---';
+                  // Fallback Logic: if departureTime is just "HH:MM", use segment.date
+                  let d = null;
+                  if (segment.departureTime && segment.departureTime.includes('T')) {
+                    d = new Date(segment.departureTime);
+                  } else if (segment.date) {
+                    d = new Date(segment.date);
+                  }
+
+                  return (d && !isNaN(d.getTime())) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '---';
                 } catch { return '---'; }
               })()}
             </div>
@@ -328,7 +335,14 @@ const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
             <div className="text-sm font-bold text-slate-600 mt-1 uppercase">
               {(() => {
                 try {
-                  const d = segment.arrivalTime ? new Date(segment.arrivalTime) : null;
+                  // Fallback Logic: if arrivalTime is just "HH:MM", we might not have a date unless we calc duration
+                  // But usually arrivalTime from AI is ISO if date is known. If not, fallback to segment.date (same day)
+                  let d = null;
+                  if (segment.arrivalTime && segment.arrivalTime.includes('T')) {
+                    d = new Date(segment.arrivalTime);
+                  } else if (segment.date) {
+                    d = new Date(segment.date);
+                  }
                   return (d && !isNaN(d.getTime())) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '---';
                 } catch { return '---'; }
               })()}
