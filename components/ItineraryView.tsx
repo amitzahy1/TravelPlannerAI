@@ -106,8 +106,10 @@ export const ItineraryView: React.FC<{
         const events = day.events;
         let cityContext = day.locationContext || trip.destinationEnglish || (trip.destination || '').split('-')[0].trim();
 
-        // CLEANUP: Remove zip codes/years from city names (e.g. "Napareuli 2200" -> "Napareuli")
-        cityContext = cityContext.replace(/\s+\d{3,6}$/, '').trim();
+        // CLEANUP: Aggressively remove zip codes (3+ digits anywhere) from city names
+        // e.g. "Napareuli 2200" -> "Napareuli", "0105 Tbilisi City" -> "Tbilisi City"
+        cityContext = cityContext.replace(/\b\d{3,}\b/g, '').trim();
+        cityContext = cityContext.replace(/\s+/g, ' '); // Clean double spaces
 
         // Priority 1: Flight Day - Show flight direction
         const flightEvent = events.find(e => e.type === 'flight');
