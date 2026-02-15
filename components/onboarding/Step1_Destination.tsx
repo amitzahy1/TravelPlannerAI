@@ -125,24 +125,7 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                         </AnimatePresence>
                                 </div>
 
-                                {/* Continue Floating Button */}
-                                <AnimatePresence>
-                                        {(destinations.length > 0 || inputValue.length > 1) && (
-                                                <motion.div
-                                                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                        exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                                                        className="absolute -bottom-24 left-0 right-0 flex justify-center"
-                                                >
-                                                        <RippleButton
-                                                                onClick={handleContinue}
-                                                                className="px-10 py-4 text-lg shadow-brand-action/40"
-                                                        >
-                                                                המשך לתאריכים
-                                                        </RippleButton>
-                                                </motion.div>
-                                        )}
-                                </AnimatePresence>
+
                         </div>
 
                         {/* Popular Destinations Chips */}
@@ -173,6 +156,26 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                         </motion.button>
                                 ))}
                         </motion.div>
+
+                        {/* Continue Button (Static Footer) */}
+                        <div className="h-24 flex items-center justify-center mt-8">
+                                <AnimatePresence>
+                                        {(destinations.length > 0 || inputValue.length > 1) && (
+                                                <motion.div
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: 10 }}
+                                                >
+                                                        <RippleButton
+                                                                onClick={handleContinue}
+                                                                className="px-12 py-4 text-xl shadow-brand-action/40"
+                                                        >
+                                                                המשך לתאריכים
+                                                        </RippleButton>
+                                                </motion.div>
+                                        )}
+                                </AnimatePresence>
+                        </div>
                 </div>
         );
 };
