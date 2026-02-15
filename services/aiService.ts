@@ -213,7 +213,7 @@ export const generateWithFallback = async (
   chain = [...new Set(chain)];
 
   let lastError: Error | null = null;
-  const WORKER_URL = import.meta.env.VITE_WORKER_URL || "https://travelplannerai.amitzahy.workers.dev";
+  const WORKER_URL = import.meta.env.VITE_WORKER_URL || "https://travelplannerai.amitzahy1.workers.dev";
 
   for (let i = 0; i < chain.length; i++) {
     const modelId = chain[i];

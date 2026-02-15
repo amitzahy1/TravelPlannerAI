@@ -543,6 +543,13 @@ A. TRANSPORT (Flights, Trains, Ferries, Cruises, Buses)
       - Each flight LEG must be a SEPARATE transport entry.
       - A round-trip (TLV→ATH outbound, ATH→TLV return) MUST produce TWO separate entries.
 
+      ⚠️ ISRAIR / HEBREW TICKET RULES:
+      - Look closely for "Tel Aviv", "TLV", "Ben Gurion" in Hebrew "תל אביב", "נתב״ג".
+      - Look for destination: "Tbilisi", "TBS", "Batumi", "BUS" in Hebrew "טביליסי", "באטומי".
+      - Date format on these tickets is often DD/MM/YYYY. CONVERT TO ISO 8601 "YYYY-MM-DD".
+      - If city is missing but IATA code exists (e.g. "TLV"), infer the city ("Tel Aviv").
+      - Distinguish between "Flight" lines and "Passenger" lines. Don't create a flight for every passenger if it's the same flight. Group passengers under one flight entry if they share the same PNR and flight details.
+
    2. TRAINS/FERRIES — Extract provider, number, seat, platform/deck, dep/arr details.
 
 B. ACCOMMODATION (Hotels, Airbnb) — Extract ALL fields:
@@ -600,8 +607,8 @@ Ensure round-trip flights are SPLIT into separate transport items.
                         const model = genAI.getGenerativeModel({
                                 model: modelName,
                                 generationConfig: {
-                                        responseMimeType: "application/json",
-                                        responseSchema: WORKER_TRIP_SCHEMA
+                                        responseMimeType: "application/json"
+                                        // responseSchema removed to allow flexible parsing of complex tickets
                                 }
                         });
 

@@ -35,12 +35,15 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
 
+    // 3. References (ללא שינוי)
     // --- COLLECTION GROUP QUERY RULE (Feb 2026) ---
     // Required for Hybrid Query Strategy (finding orphaned trips by email)
     match /{path=**}/trips/{tripId} {
       allow read: if request.auth != null && (
         resource.data.userId == request.auth.uid ||
-        resource.data.ownerEmail == request.auth.token.email
+        resource.data.ownerEmail == request.auth.token.email ||
+        // Allow access if we are querying BY email (query-based security)
+        (resource.data.ownerEmail != null && request.auth.token.email == resource.data.ownerEmail)
       );
     }
 

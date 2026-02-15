@@ -24,7 +24,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     // Strict State Machine
     const [mode, setMode] = useState<ViewMode>('DESTINATION');
 
-    // Data State
+    // Data State (Inputs)
+    const [destinationInput, setDestinationInput] = useState("");
+    const [datesInput, setDatesInput] = useState<{ start: string; end: string }>({ start: "", end: "" });
+
+    // Data State (Files & AI)
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
     const [tripData, setTripData] = useState<TripAnalysisResult | null>(null);
 
@@ -34,7 +38,6 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
     const [formDestination, setFormDestination] = useState("");
 
     // Input States
-    const [destinationInput, setDestinationInput] = useState("");
     const [magicInput, setMagicInput] = useState("");
     const [isMagicProcessing, setIsMagicProcessing] = useState(false);
 
@@ -63,6 +66,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
             setFormDates("");
             setFormDestination("");
             setDestinationInput("");
+            setDatesInput({ start: "", end: "" });
             setMagicInput("");
             setIsMagicProcessing(false);
         }, 300);
@@ -75,7 +79,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
         const newTrip: Trip = {
             id: crypto.randomUUID(),
             name: destinationInput ? `${destinationInput} Trip` : "My New Trip",
-            dates: formDates || "", // Use formDates if set (manual flow)
+            dates: (datesInput.start && datesInput.end) ? `${datesInput.start} - ${datesInput.end}` : (formDates || ""),
             destination: destinationInput || "",
             coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
             flights: { passengers: [], pnr: "", segments: [] },
@@ -110,6 +114,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
             if (result.metadata.startDate && result.metadata.endDate) {
                 setFormDates(`${result.metadata.startDate} - ${result.metadata.endDate}`);
+            } else if (datesInput.start && datesInput.end) {
+                // Fallback to user provided dates if AI missed them
+                setFormDates(`${datesInput.start} - ${datesInput.end}`);
             } else {
                 setFormDates(result.metadata.startDate || "");
             }
@@ -134,6 +141,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
         try {
             const prompt = `Parse this trip description into structured data. 
             User Context: The user wants to go to "${destinationInput}".
+            ${(datesInput.start && datesInput.end) ? `Travel Dates: ${datesInput.start} to ${datesInput.end}` : ''}
             
             Return JSON:
             {
@@ -264,10 +272,32 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                     autoFocus
                     value={destinationInput}
                     onChange={(e) => setDestinationInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && destinationInput.trim() && setMode('METHOD_SELECTION')}
                     className="w-full text-right pr-12 pl-4 py-4 text-xl font-bold bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-500 focus:bg-white transition-all outline-none placeholder:font-normal shadow-sm"
                     placeholder="לדוגמה: יפן, איטליה..."
                 />
+            </div>
+
+            {/* Date Inputs */}
+            <div className="flex gap-2 w-full max-w-sm">
+                <div className="relative flex-1 group">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 absolute -top-4 right-1">התחלה</label>
+                    <input
+                        type="date"
+                        value={datesInput.start}
+                        onChange={(e) => setDatesInput(prev => ({ ...prev, start: e.target.value }))}
+                        className="w-full text-center py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-700"
+                    />
+                </div>
+                <div className="relative flex-1 group">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 absolute -top-4 right-1">סיום</label>
+                    <input
+                        type="date"
+                        value={datesInput.end}
+                        min={datesInput.start}
+                        onChange={(e) => setDatesInput(prev => ({ ...prev, end: e.target.value }))}
+                        className="w-full text-center py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-700"
+                    />
+                </div>
             </div>
 
             <button
@@ -306,7 +336,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
                 {/* Option 2: Manual */}
                 <button
-                    onClick={() => setMode('MANUAL_DATE')}
+                    onClick={() => {
+                        if (datesInput.start && datesInput.end) {
+                            setFormDates(`${datesInput.start} - ${datesInput.end}`);
+                        }
+                        setMode('MANUAL_DATE');
+                    }}
                     className="group p-6 rounded-2xl border-2 border-slate-100 bg-white hover:border-slate-300 hover:shadow-lg transition-all text-right flex flex-col items-center md:items-start"
                 >
                     <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
