@@ -289,9 +289,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
             </div>
             <div className="text-base md:text-xl font-bold text-blue-600 mt-1 md:mt-2 font-mono" dir="ltr">{depTime}</div>
             <div className="text-sm font-bold text-slate-600 mt-1 uppercase">
-              {segment.departureTime
-                ? new Date(segment.departureTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : (segment.date ? new Date(segment.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')}
+              {(() => {
+                try {
+                  const d = segment.departureTime ? new Date(segment.departureTime) : (segment.date ? new Date(segment.date) : null);
+                  return (d && !isNaN(d.getTime())) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '---';
+                } catch { return '---'; }
+              })()}
             </div>
           </div>
 
@@ -323,7 +326,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
             </div>
             <div className="text-base md:text-xl font-bold text-blue-600 mt-1 md:mt-2 font-mono" dir="ltr">{arrTime}</div>
             <div className="text-sm font-bold text-slate-600 mt-1 uppercase">
-              {segment.arrivalTime ? formatDateOnly(segment.arrivalTime) : '---'}
+              {(() => {
+                try {
+                  const d = segment.arrivalTime ? new Date(segment.arrivalTime) : null;
+                  return (d && !isNaN(d.getTime())) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '---';
+                } catch { return '---'; }
+              })()}
             </div>
           </div>
 
@@ -411,14 +419,27 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
       <section className="max-w-5xl mx-auto -mt-6">
         {flights.segments.length > 0 ? (
           <div className="space-y-4">
-            {flights.segments.map((seg, i) => (
-              <FlightCard
-                key={i}
-                segment={seg}
-                isLast={i === flights.segments.length - 1}
-                onEdit={onUpdateTrip ? () => setEditingIndex(i) : undefined}
-              />
-            ))}
+            {flights.segments.map((seg, i) => {
+              const isMissingData = !seg.departureTime || !seg.arrivalTime || seg.departureTime === 'INVALID DATE'; // Crude check
+              return (
+                <div key={i} className="relative">
+                  {isMissingData && onUpdateTrip && (
+                    <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r-lg mb-2 flex justify-between items-center animate-pulse">
+                      <div className="flex items-center gap-2">
+                        <div className="bg-amber-100 p-1 rounded-full"><ShieldCheck className="w-4 h-4 text-amber-600" /></div>
+                        <span className="text-xs font-bold text-amber-800">חסרים פרטי טיסה חיוניים</span>
+                      </div>
+                      <button onClick={() => setEditingIndex(i)} className="text-xs bg-amber-200 text-amber-900 px-3 py-1 rounded-lg font-bold hover:bg-amber-300 transition-colors">השלם פרטים</button>
+                    </div>
+                  )}
+                  <FlightCard
+                    segment={seg}
+                    isLast={i === flights.segments.length - 1}
+                    onEdit={onUpdateTrip ? () => setEditingIndex(i) : undefined}
+                  />
+                </div>
+              )
+            })}
           </div>
         ) : (
           <div className="text-center p-16 bg-white rounded-3xl shadow-sm border border-slate-200">

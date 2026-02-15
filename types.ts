@@ -112,6 +112,7 @@ export interface Reservation {
 export interface HotelBooking {
   id: string;
   name: string;
+  city?: string; // New field for context
   address: string;
   checkInDate: string;
   checkOutDate: string;

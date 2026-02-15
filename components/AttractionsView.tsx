@@ -96,9 +96,27 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     }, [trip.aiAttractions]);
 
     const tripCities = useMemo(() => {
-        if (!trip.destination) return [];
-        return trip.destination.split(/ - | & |, /).map(s => s.trim()).filter(Boolean);
-    }, [trip.destination]);
+        const unique = new Set<string>();
+
+        // 1. Wizard Destination
+        if (trip.destination) {
+            trip.destination.split(/ - | & |, /).forEach(s => unique.add(s.trim()));
+        }
+
+        // 2. Flight Destinations (Arrivals)
+        trip.flights?.segments?.forEach(s => {
+            if (s.toCity) unique.add(s.toCity);
+        });
+
+        // 3. Hotel Cities
+        trip.hotels?.forEach(h => {
+            if (h.city) unique.add(h.city);
+            // Verify if address contains distinct city if city is missing?
+            // For now rely on the AI extracted city
+        });
+
+        return Array.from(unique).filter(Boolean);
+    }, [trip.destination, trip.flights, trip.hotels]);
 
     // --- AI Logic ---
     const handleTextSearch = async () => {

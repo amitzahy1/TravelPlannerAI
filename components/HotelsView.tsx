@@ -124,7 +124,7 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                                     damping: 25
                                 }}
                             >
-                                <HotelCard data={hotel} onSaveNote={(note) => handleNoteUpdate(hotel.id, note)} onSaveVibe={(vibe) => handleVibeUpdate(hotel.id, vibe)} onDelete={() => handleDeleteHotel(hotel.id)} onEdit={() => handleEditHotel(hotel)} />
+                                <HotelCard data={hotel} tripDestination={trip.destination} onSaveNote={(note) => handleNoteUpdate(hotel.id, note)} onSaveVibe={(vibe) => handleVibeUpdate(hotel.id, vibe)} onDelete={() => handleDeleteHotel(hotel.id)} onEdit={() => handleEditHotel(hotel)} />
                             </motion.div>
                         ))}
                     </div>
@@ -251,11 +251,12 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
 
 const HotelCard: React.FC<{
     data: HotelBooking,
+    tripDestination: string,
     onSaveNote: (n: string) => void,
     onSaveVibe: (v: string) => void,
     onDelete: () => void,
     onEdit: () => void
-}> = ({ data, onSaveNote, onSaveVibe, onDelete, onEdit }) => {
+}> = ({ data, tripDestination, onSaveNote, onSaveVibe, onDelete, onEdit }) => {
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
     const [analyzing, setAnalyzing] = useState(false);
@@ -361,7 +362,7 @@ const HotelCard: React.FC<{
                             )}
                         </div>
 
-                        <a href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''}`)}`} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white p-1.5 md:p-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"><MapPin className="w-3 h-3 md:w-4 md:h-4" /></a>
+                        <a href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''} ${tripDestination || ''}`)}`} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white p-1.5 md:p-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"><MapPin className="w-3 h-3 md:w-4 md:h-4" /></a>
                     </div>
                 </div>
             </div>

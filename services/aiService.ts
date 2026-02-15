@@ -595,10 +595,16 @@ const normalizeExtractionResult = (raw: any): StagedTripData => {
     const arr = d.arrival || {};
     const type = item.type || 'flight';
 
+    // Helper: Clean City Name (Remove Zip Codes like "Napareuli 2200")
+    const cleanCity = (city: string) => {
+      if (!city) return "";
+      return city.replace(/\s+\d{3,6}$/, '').trim();
+    };
+
     // Common Transport Data
     const commonData = {
       departure: {
-        city: dep.city || d.fromCity || d.from || "",
+        city: cleanCity(dep.city || d.fromCity || d.from || ""),
         iata: dep.iata || d.fromCode || "",
         station: dep.station || "",
         port: dep.port || "",
@@ -606,7 +612,7 @@ const normalizeExtractionResult = (raw: any): StagedTripData => {
         displayTime: fixTime(dep.displayTime || dep.time || d.departureTime || "")
       },
       arrival: {
-        city: arr.city || d.toCity || d.to || "",
+        city: cleanCity(arr.city || d.toCity || d.to || ""),
         iata: arr.iata || d.toCode || "",
         station: arr.station || "",
         port: arr.port || "",
@@ -615,8 +621,8 @@ const normalizeExtractionResult = (raw: any): StagedTripData => {
       },
       price: extractPrice(d.price || d.totalPrice),
       // Legacy compat
-      from: dep.city || dep.port || dep.station || d.fromCity || d.from || "",
-      to: arr.city || arr.port || arr.station || d.toCity || d.to || "",
+      from: cleanCity(dep.city || dep.port || dep.station || d.fromCity || d.from || ""),
+      to: cleanCity(arr.city || arr.port || arr.station || d.toCity || d.to || ""),
       departureTime: fixTime(dep.displayTime || dep.time || d.departureTime || ""),
       displayTime: fixTime(dep.displayTime || dep.time || d.departureTime || "")
     };
@@ -689,7 +695,7 @@ const normalizeExtractionResult = (raw: any): StagedTripData => {
         hotelName: d.hotelName || d.name || "",
         name: d.hotelName || d.name || "",
         address: d.address || "",
-        city: d.city || "",
+        city: (d.city || "").replace(/\s+\d{3,6}$/, '').trim(),
         country: d.country || "",
         checkInDate: checkInDate,
         checkOutDate: checkOutDate,
