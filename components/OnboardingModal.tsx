@@ -16,8 +16,8 @@ interface OnboardingModalProps {
     onClose?: () => void;       // Notify parent
 }
 
-// Updated State Machine: DESTINATION -> METHOD -> [MANUAL | CONTEXT] -> PROCESSING -> REVIEW
-type ViewMode = 'DESTINATION' | 'METHOD_SELECTION' | 'MANUAL_DATE' | 'CONTEXT' | 'PROCESSING' | 'REVIEW_FORM';
+// Updated State Machine: DESTINATION -> DATES -> METHOD -> [MANUAL | CONTEXT] -> PROCESSING -> REVIEW
+type ViewMode = 'DESTINATION' | 'DATE_SELECTION' | 'METHOD_SELECTION' | 'MANUAL_DATE' | 'CONTEXT' | 'PROCESSING' | 'REVIEW_FORM';
 
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], onSelectTrip, onCreateNew, onImportTrip, isOpen = false, onClose }) => {
 
@@ -26,6 +26,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
     // Data State (Inputs)
     const [destinationInput, setDestinationInput] = useState("");
+    const [destinations, setDestinations] = useState<string[]>([]);
     const [datesInput, setDatesInput] = useState<{ start: string; end: string }>({ start: "", end: "" });
 
     // Data State (Files & AI)
@@ -66,6 +67,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
             setFormDates("");
             setFormDestination("");
             setDestinationInput("");
+            setDestinations([]);
             setDatesInput({ start: "", end: "" });
             setMagicInput("");
             setIsMagicProcessing(false);
@@ -78,9 +80,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
         const newTrip: Trip = {
             id: crypto.randomUUID(),
-            name: destinationInput ? `${destinationInput} Trip` : "My New Trip",
+            name: destinations.length > 0 ? `${destinations[0]} Trip` : "My New Trip",
             dates: (datesInput.start && datesInput.end) ? `${datesInput.start} - ${datesInput.end}` : (formDates || ""),
-            destination: destinationInput || "",
+            destination: destinations.join(' - ') || destinationInput || "",
             coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
             flights: { passengers: [], pnr: "", segments: [] },
             hotels: [],
@@ -110,7 +112,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
             // Fix: Use the smart route (City - City) if available, otherwise country, fallback to user input
             setFormDestination(result.metadata.cities && result.metadata.cities.length > 0
                 ? result.metadata.cities.join(' - ')
-                : result.metadata.destination || destinationInput);
+                : result.metadata.destination || destinations.join(' - ') || destinationInput);
 
             if (result.metadata.startDate && result.metadata.endDate) {
                 setFormDates(`${result.metadata.startDate} - ${result.metadata.endDate}`);
@@ -140,7 +142,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
         try {
             const prompt = `Parse this trip description into structured data. 
-            User Context: The user wants to go to "${destinationInput}".
+            User Context: The user wants to go to "${destinations.join(', ')}".
             ${(datesInput.start && datesInput.end) ? `Travel Dates: ${datesInput.start} to ${datesInput.end}` : ''}
             
             Return JSON:
@@ -157,8 +159,8 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
             const response = await generateWithFallback(null, prompt, {}, 'FAST');
             const parsed = JSON.parse(response.text);
 
-            setFormName(parsed.tripName || (destinationInput ? `${destinationInput} Adventure` : "My Dream Trip"));
-            setFormDestination(parsed.cities?.join(' - ') || parsed.destination || destinationInput || "");
+            setFormName(parsed.tripName || (destinations.length > 0 ? `${destinations[0]} Adventure` : "My Dream Trip"));
+            setFormDestination(parsed.cities?.join(' - ') || parsed.destination || destinations.join(' - ') || "");
             if (parsed.startDate && parsed.endDate) {
                 setFormDates(`${parsed.startDate} - ${parsed.endDate}`);
             }
@@ -255,6 +257,17 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
     // --- RENDERERS ---
 
+    const handleAddDestination = () => {
+        if (destinationInput.trim()) {
+            setDestinations([...destinations, destinationInput.trim()]);
+            setDestinationInput("");
+        }
+    };
+
+    const handleRemoveDestination = (index: number) => {
+        setDestinations(destinations.filter((_, i) => i !== index));
+    };
+
     const renderDestinationStep = () => (
         <div className="space-y-8 p-8 flex flex-col items-center justify-center min-h-[400px] animate-fade-in">
             <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-2 animate-bounce-short">
@@ -263,18 +276,62 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
             <div className="text-center space-y-2">
                 <h3 className="text-3xl font-black text-slate-800 tracking-tight">לאן טסים?</h3>
-                <p className="text-slate-500 font-medium">הכנס את שם המדינה או היעד המרכזי</p>
+                <p className="text-slate-500 font-medium">הכנס מדינה או עיר ולחץ Enter להוספה</p>
             </div>
 
-            <div className="relative w-full max-w-sm group">
-                <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
-                <input
-                    autoFocus
-                    value={destinationInput}
-                    onChange={(e) => setDestinationInput(e.target.value)}
-                    className="w-full text-right pr-12 pl-4 py-4 text-xl font-bold bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-500 focus:bg-white transition-all outline-none placeholder:font-normal shadow-sm"
-                    placeholder="לדוגמה: יפן, איטליה..."
-                />
+            <div className="w-full max-w-sm space-y-4">
+                <div className="relative group">
+                    <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
+                    <input
+                        autoFocus
+                        value={destinationInput}
+                        onChange={(e) => setDestinationInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                handleAddDestination();
+                            }
+                        }}
+                        className="w-full text-right pr-12 pl-4 py-4 text-xl font-bold bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-500 focus:bg-white transition-all outline-none placeholder:font-normal shadow-sm"
+                        placeholder="לדוגמה: יפן..."
+                    />
+                </div>
+
+                {/* Chips */}
+                <div className="flex flex-wrap gap-2 justify-center">
+                    {destinations.map((dest, idx) => (
+                        <div key={idx} className="flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full text-sm font-bold animate-fade-in">
+                            <span>{dest}</span>
+                            <button onClick={() => handleRemoveDestination(idx)} className="hover:bg-blue-200 rounded-full p-0.5">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <button
+                onClick={() => {
+                    if (destinationInput.trim()) handleAddDestination();
+                    setMode('DATE_SELECTION');
+                }}
+                disabled={destinations.length === 0 && !destinationInput.trim()}
+                className="w-full max-w-sm py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-300 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 transform active:scale-95"
+            >
+                המשך לתאריכים
+                <ArrowLeft className="w-5 h-5" />
+            </button>
+        </div>
+    );
+
+    const renderDateSelectionStep = () => (
+        <div className="space-y-8 p-8 flex flex-col items-center justify-center min-h-[400px] animate-fade-in">
+            <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-2">
+                <Calendar className="w-10 h-10 text-orange-500" />
+            </div>
+
+            <div className="text-center space-y-2">
+                <h3 className="text-3xl font-black text-slate-800 tracking-tight">מתי נוסעים?</h3>
+                <p className="text-slate-500 font-medium">בחר את תאריכי החופשה שלנו (אופציונלי)</p>
             </div>
 
             {/* Date Inputs */}
@@ -300,21 +357,29 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                 </div>
             </div>
 
-            <button
-                onClick={() => setMode('METHOD_SELECTION')}
-                disabled={!destinationInput.trim()}
-                className="w-full max-w-sm py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-300 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 transform active:scale-95"
-            >
-                המשך
-                <ArrowLeft className="w-5 h-5" />
-            </button>
+            <div className="flex flex-col gap-3 w-full max-w-sm">
+                <button
+                    onClick={() => setMode('METHOD_SELECTION')}
+                    className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-orange-200 transition-all flex items-center justify-center gap-2 transform active:scale-95"
+                >
+                    המשך
+                    <ArrowLeft className="w-5 h-5" />
+                </button>
+                <button
+                    onClick={() => setMode('DESTINATION')}
+                    className="w-full py-2 text-slate-400 font-bold hover:text-slate-600 transition-colors flex items-center justify-center gap-1"
+                >
+                    <ChevronRight className="w-4 h-4" />
+                    חזרה
+                </button>
+            </div>
         </div>
     );
 
     const renderMethodSelectionStep = () => (
         <div className="space-y-8 p-8 min-h-[400px] animate-fade-in">
             <div className="text-center space-y-2">
-                <h3 className="text-2xl font-black text-slate-800">איך תרצה לתכנן את הטיול ל{destinationInput}?</h3>
+                <h3 className="text-2xl font-black text-slate-800">איך תרצה לתכנן את הטיול ל{destinations.join(', ')}?</h3>
                 <p className="text-slate-500 font-medium">בחר את הדרך הנוחה לך</p>
             </div>
 
@@ -391,21 +456,21 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
                         // Create Empty Trip with Manual Data
                         setTripData({
                             metadata: {
-                                suggestedName: `${destinationInput} Adventure`,
-                                destination: destinationInput,
+                                suggestedName: `${destinations.join(' - ')} Adventure`,
+                                destination: destinations.join(' - '),
                                 startDate: formDates.split('-')[0]?.trim(),
                                 endDate: formDates.split('-')[1]?.trim(),
                                 cities: []
                             },
                             rawStagedData: {
-                                tripMetadata: { suggestedName: `${destinationInput} Adventure`, suggestedDates: formDates, mainDestination: destinationInput, uniqueCityNames: [] },
+                                tripMetadata: { suggestedName: `${destinations.join(' - ')} Adventure`, suggestedDates: formDates, mainDestination: destinations.join(' - '), uniqueCityNames: [] },
                                 processedFileIds: [],
                                 unprocessedFiles: [],
                                 categories: { transport: [], accommodation: [], carRental: [], wallet: [], dining: [], activities: [] }
                             }
                         });
-                        setFormName(`${destinationInput} Adventure`);
-                        setFormDestination(destinationInput);
+                        setFormName(`${destinations.join(' - ')} Adventure`);
+                        setFormDestination(destinations.join(' - '));
                         setMode('REVIEW_FORM');
                     }}
                     className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-orange-200 transition-all flex items-center justify-center gap-2"
@@ -565,6 +630,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
                 {/* State Rendering */}
                 {mode === 'DESTINATION' && renderDestinationStep()}
+                {mode === 'DATE_SELECTION' && renderDateSelectionStep()}
                 {mode === 'METHOD_SELECTION' && renderMethodSelectionStep()}
                 {mode === 'MANUAL_DATE' && renderManualDateStep()}
                 {mode === 'CONTEXT' && renderContextStep()}
