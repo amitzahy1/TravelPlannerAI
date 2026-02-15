@@ -174,7 +174,19 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     const prompt = createResearchPrompt(city);
                     const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
                     const rawData = JSON.parse(response.text || '{}');
-                    const categoriesList = rawData.categories || (Array.isArray(rawData) ? rawData : []);
+
+                    // ROBUST PARSER: Handle { categories: [...], categories: {...} }
+                    let categoriesList: any[] = [];
+                    if (rawData.categories) {
+                        if (Array.isArray(rawData.categories)) {
+                            categoriesList = rawData.categories;
+                        } else if (typeof rawData.categories === 'object') {
+                            categoriesList = Object.values(rawData.categories);
+                        }
+                    } else if (Array.isArray(rawData)) {
+                        categoriesList = rawData;
+                    }
+                    if (!Array.isArray(categoriesList)) categoriesList = [];
 
                     if (categoriesList.length > 0) {
                         const processed = categoriesList.map((c: any, index: number) => ({

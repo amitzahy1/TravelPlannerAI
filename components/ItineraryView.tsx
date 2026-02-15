@@ -102,14 +102,24 @@ export const ItineraryView: React.FC<{
 
     // Generate context-aware day title based on events (Task 6)
     // Updated: Use locationContext (city) instead of "מלון"
+    // Helper to clean city names for consistent coloring and display
+    const cleanCityName = (name: string): string => {
+        if (!name) return '';
+        let cleaned = name.replace(/\b\d{3,}\b/g, '').trim(); // Remove 3+ digit numbers
+        cleaned = cleaned.replace(/\s+/g, ' '); // Clean double spaces
+        // Remove "City" suffix if present (e.g. "Tbilisi City" -> "Tbilisi")
+        cleaned = cleaned.replace(/\s+City$/i, '');
+        return cleaned;
+    };
+
+    // Generate context-aware day title based on events (Task 6)
+    // Updated: Use locationContext (city) instead of "מלון"
     const generateDayTitle = (day: DayPlan, trip: Trip, dayIndex: number, totalDays: number): string => {
         const events = day.events;
         let cityContext = day.locationContext || trip.destinationEnglish || (trip.destination || '').split('-')[0].trim();
 
         // CLEANUP: Aggressively remove zip codes (3+ digits anywhere) from city names
-        // e.g. "Napareuli 2200" -> "Napareuli", "0105 Tbilisi City" -> "Tbilisi City"
-        cityContext = cityContext.replace(/\b\d{3,}\b/g, '').trim();
-        cityContext = cityContext.replace(/\s+/g, ' '); // Clean double spaces
+        cityContext = cleanCityName(cityContext);
 
         // Priority 1: Flight Day - Show flight direction
         const flightEvent = events.find(e => e.type === 'flight');
@@ -994,7 +1004,7 @@ export const ItineraryView: React.FC<{
                                     const isLastDay = index === timeline.length - 1;
 
                                     // Use dynamic theme engine
-                                    const theme = getCityTheme(day.locationContext);
+                                    const theme = getCityTheme(cleanCityName(day.locationContext));
                                     const headerColorClass = theme.bg;
 
                                     // COMPACT VIEW - Slim horizontal cards
@@ -1162,7 +1172,7 @@ export const ItineraryView: React.FC<{
                         <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] animate-scale-in" onClick={e => e.stopPropagation()}>
                             {/* Modal Header */}
                             {(() => {
-                                const modalTheme = getCityTheme(activeDay.locationContext);
+                                const modalTheme = getCityTheme(cleanCityName(activeDay.locationContext));
                                 return (
                                     <div className={`${modalTheme.bg} border-b border-white/10 p-5 flex items-center justify-between flex-shrink-0`}>
                                         <div className="flex items-center gap-3">

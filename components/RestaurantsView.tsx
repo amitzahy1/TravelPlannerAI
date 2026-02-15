@@ -176,6 +176,17 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setRecError('');
 
         try {
+            const prompt = `Search Query: "${textQuery}"
+            Destination Context: ${trip.destination}
+            
+            Mission: Find excellent restaurant/food results for this query.
+            - If specific name (e.g. "Pizza East"): Find it.
+            - If category (e.g. "Sushi"): Find top examples.
+            
+            CRITICAL: 'name' field must be in recognized script (English/Local). Description in Hebrew.
+            OUTPUT JSON ONLY:
+            { "results": [{ "name", "description", "location", "rating", "cuisine", "priceRange", "googleMapsUrl", "business_status" }] }`;
+
             // Removed Schema enforcement to match Pro Enforcer pattern
             const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
 
@@ -411,13 +422,21 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             try {
                 const rawData = JSON.parse(textContent || '{}');
 
-                // ROBUST PARSER: Handle both { categories: [...] } and direct [...] formats
-                let categoriesList = [];
-                if (rawData.categories && Array.isArray(rawData.categories)) {
-                    categoriesList = rawData.categories;
+                // ROBUST PARSER: Handle { categories: [...], categories: {...} } and direct [...] formats
+                let categoriesList: any[] = [];
+                if (rawData.categories) {
+                    if (Array.isArray(rawData.categories)) {
+                        categoriesList = rawData.categories;
+                    } else if (typeof rawData.categories === 'object') {
+                        // Handle case where AI returns an object instead of array (e.g. numbered keys)
+                        categoriesList = Object.values(rawData.categories);
+                    }
                 } else if (Array.isArray(rawData)) {
                     categoriesList = rawData;
                 }
+
+                // Extra safety: ensure it's an array
+                if (!Array.isArray(categoriesList)) categoriesList = [];
 
                 if (categoriesList.length > 0) {
                     console.log(`✅ [AI Success] Parsed ${categoriesList.length} categories (Format: ${Array.isArray(rawData) ? 'Direct Array' : 'Wrapped Object'})`);

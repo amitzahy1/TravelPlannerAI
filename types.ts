@@ -94,6 +94,7 @@ export interface Ticket {
   pnr: string;
   segments: FlightSegment[];
   totalPrice?: number; // Total ticket cost
+  currency?: string; // New: Store original currency
 }
 
 export type RestaurantIconType = 'ramen' | 'burger' | 'meat' | 'seafood' | 'michelin' | 'cafe' | 'street' | 'bar' | 'dessert';
@@ -121,7 +122,9 @@ export interface HotelBooking {
   roomType?: string;
   price?: string; // String to allow currency symbols, parsed later
   costNumeric?: number; // Actual number for calc
+  currency?: string; // New: Store original currency
   imageUrl?: string;
+  // ... existing fields
   googleMapsUrl?: string;
   bookingSource?: 'Booking.com' | 'Agoda' | 'Airbnb' | 'Direct';
   notes?: string; // User notes
@@ -260,6 +263,7 @@ export interface ManualExpense {
   id: string;
   title: string;
   amount: number;
+  currency?: string; // New: Store original currency
   category: 'food' | 'shopping' | 'transport' | 'other';
 }
 

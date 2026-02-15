@@ -93,6 +93,17 @@ const CITY_OVERRIDES: Record<string, number> = {
         'paris': 3, // Romantic
         'new york': 20, // Galaxy Slate
         'tokyo': 7, // Modern Fuchsia
+
+        // Georgia
+        'tbilisi': 12, // Lavender/Purple
+        'batumi': 5, // Coastal/Sky
+        'kazbegi': 8, // Green/Forest
+        'napareuli': 16, // Wine/Rose
+        'sighnaghi': 6, // Historic/Amber
+        'kutaisi': 3, // Romantic/Rose
+        'lopota': 11, // Aqua/Cyan (Lake)
+        'gudauri': 2, // Emerald/Nature (Ski)
+        'borjomi': 8, // Green/Forest
 };
 
 // Country-Level Defaults (Fallback if City not found)
@@ -108,7 +119,8 @@ const COUNTRY_THEMES: Record<string, number> = {
         'Greece': 5,      // Coastal Blue
         'Maldives': 11,   // Aqua
         'Switzerland': 2, // Nature/Green
-        'Israel': 5       // Coastal
+        'Israel': 5,       // Coastal
+        'Georgia': 8      // Nature/Green
 };
 
 export const getCityTheme = (cityName: string): CityTheme => {
