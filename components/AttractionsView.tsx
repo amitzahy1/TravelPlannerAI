@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Trip, Attraction, AttractionCategory } from '../types';
 import { MapPin, Ticket, Star, Landmark, Sparkles, Filter, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid, Heart } from 'lucide-react';
 // cleaned imports
+import { getTripCities } from '../utils/geoData'; // Imported from new DB
 import { getAttractionImage } from '../services/imageMapper';
 import { SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
@@ -95,29 +96,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         if (trip.aiAttractions && trip.aiAttractions.length > 0) setAiCategories(trip.aiAttractions);
     }, [trip.aiAttractions]);
 
-    const tripCities = useMemo(() => {
-        const unique = new Set<string>();
-
-        // 1. Wizard Destination
-        if (trip.destination) {
-            trip.destination.split(/ - | & |, /).forEach(s => unique.add(s.trim()));
-        }
-
-        // 2. Flight Destinations (Arrivals)
-        const originCity = trip.flights?.segments?.[0]?.fromCity?.toLowerCase();
-        trip.flights?.segments?.forEach(s => {
-            if (s.toCity && s.toCity.toLowerCase() !== originCity) unique.add(s.toCity);
-        });
-
-        // 3. Hotel Cities
-        trip.hotels?.forEach(h => {
-            if (h.city) unique.add(h.city);
-            // Verify if address contains distinct city if city is missing?
-            // For now rely on the AI extracted city
-        });
-
-        return Array.from(unique).filter(Boolean);
-    }, [trip.destination, trip.flights, trip.hotels]);
+    const tripCities = useMemo(() => getTripCities(trip), [trip]);
 
     // --- AI Logic ---
     const handleTextSearch = async () => {
@@ -134,6 +113,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             - If vague ("fun for kids"): Recommend suitable spots.
 
             CRITICAL: 'name' field must be in English. Description in Hebrew.
+            NO TRANSPORT DATA: Do NOT return flights, trains, or hotels. ONLY ATTRACTIONS.
              OUTPUT JSON ONLY:
             { "results": [{ "name", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl", "business_status", "verification_needed" }] } `;
 

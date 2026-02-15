@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
-import { resolveLocationName } from '../utils/geoData'; // Imported from new DB
+import { resolveLocationName, extractRobustCity, cleanCityName } from '../utils/geoData'; // Imported from new DB
 import { getCityTheme } from '../utils/cityColors'; // Color Engine
 import {
     MapPin, Calendar, Navigation, Info, ExternalLink,
@@ -102,16 +102,6 @@ export const ItineraryView: React.FC<{
 
     // Generate context-aware day title based on events (Task 6)
     // Updated: Use locationContext (city) instead of "מלון"
-    // Helper to clean city names for consistent coloring and display
-    const cleanCityName = (name: string): string => {
-        if (!name) return '';
-        let cleaned = name.replace(/\b\d{3,}\b/g, '').trim(); // Remove 3+ digit numbers
-        cleaned = cleaned.replace(/\s+/g, ' '); // Clean double spaces
-        // Remove "City" suffix if present (e.g. "Tbilisi City" -> "Tbilisi")
-        cleaned = cleaned.replace(/\s+City$/i, '');
-        return cleaned;
-    };
-
     // Generate context-aware day title based on events (Task 6)
     // Updated: Use locationContext (city) instead of "מלון"
     const generateDayTitle = (day: DayPlan, trip: Trip, dayIndex: number, totalDays: number): string => {
@@ -188,95 +178,6 @@ export const ItineraryView: React.FC<{
 
         // Default: City name
         return cityContext;
-    };
-
-    // SMART City Extraction - finds actual city from hotel address
-    // Prioritizes: known cities from trip/flights > last address segments > hotel name
-    const extractRobustCity = (address: string, hotelName: string, trip: Trip): string => {
-        if (!address && !hotelName) return (trip.destination || '').split('-')[0].trim();
-
-        // Build known cities database from trip data
-        const knownCities = new Set<string>();
-
-        // From trip destination (e.g., "Georgia - Tbilisi & Batumi")
-        (trip.destination || '').split(/[-&,]/).forEach(part => {
-            const city = part.trim().toLowerCase();
-            if (city && city.length > 2 && !['and', 'the'].includes(city)) {
-                knownCities.add(city);
-            }
-        });
-
-        // From English destination if exists
-        if (trip.destinationEnglish) {
-            trip.destinationEnglish.split(/[-&,]/).forEach(part => {
-                const city = part.trim().toLowerCase();
-                if (city && city.length > 2) knownCities.add(city);
-            });
-        }
-
-        // From flight segments (only fromCity and toCity exist on FlightSegment)
-        trip.flights?.segments?.forEach(seg => {
-            if (seg.toCity) knownCities.add(seg.toCity.toLowerCase());
-            if (seg.fromCity) knownCities.add(seg.fromCity.toLowerCase());
-        });
-
-        // 1. Try to resolve using robust Geo Database
-        const resolvedCity = resolveLocationName(address);
-        if (resolvedCity) return resolvedCity;
-
-        // 2. Legacy Fallback (capital map and manual parsing) - kept just in case
-        const addressParts = address ? address.split(',').map(p => p.trim()).filter(Boolean) : [];
-        const capitalMap: Record<string, string> = {
-            'georgia': 'Tbilisi', 'philippines': 'Manila', 'thailand': 'Bangkok',
-            'vietnam': 'Hanoi', 'indonesia': 'Jakarta', 'japan': 'Tokyo',
-            'south korea': 'Seoul', 'israel': 'Tel Aviv', 'greece': 'Athens'
-        };
-
-        // Try to match against known cities in address
-        for (const part of addressParts) {
-            const partLower = part.toLowerCase();
-            for (const known of knownCities) {
-                if (partLower.includes(known) || known.includes(partLower)) {
-                    // Return properly capitalized version
-                    return part.charAt(0).toUpperCase() + part.slice(1);
-                }
-            }
-        }
-
-        // Look for city after street number pattern (e.g., "Freedom Square 4, Tbilisi")
-        // Cities usually come after street addresses
-        if (addressParts.length >= 2) {
-            // Skip first part if it looks like a street address (has numbers)
-            for (let i = 1; i < addressParts.length; i++) {
-                const part = addressParts[i];
-                const partLower = part.toLowerCase();
-
-                // Skip if it's a country or postal code
-                if (/^\d+$/.test(part)) continue; // Pure number = postal code
-                const countries = ['georgia', 'philippines', 'thailand', 'vietnam', 'indonesia', 'japan', 'israel', 'greece', 'usa', 'uk'];
-                if (countries.some(c => partLower.includes(c))) continue;
-
-                // This is likely the city
-                return part.charAt(0).toUpperCase() + part.slice(1);
-            }
-        }
-
-        // Result Candidate
-        let candidate = (trip.destination || '').split('-')[0].trim();
-
-        // Fallback: check if hotel name contains a known city
-        const hotelLower = hotelName.toLowerCase();
-        for (const [country, capital] of Object.entries(capitalMap)) {
-            if (hotelLower.includes(country) || address.toLowerCase().includes(country)) {
-                candidate = capital;
-                break;
-            }
-        }
-
-        return candidate.replace(/\d+/g, '') // Remove numbers
-            .replace(/Street|St\.|Ave\.|Road|Block|Unit|Apartment|Apt\.?/gi, '') // Remove common street words
-            .replace(/[,\.]/g, '') // Remove punctuation
-            .trim();
     };
 
     useEffect(() => {

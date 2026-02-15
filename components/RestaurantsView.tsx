@@ -62,6 +62,7 @@ const getCuisineVisuals = (cuisine: string = '') => {
 };
 
 import { cleanTextForMap } from '../utils/textUtils';
+import { getTripCities } from '../utils/geoData'; // Imported from new DB
 
 
 // Sorting helper: Favorites first, then Rating
@@ -146,27 +147,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         }
     }, [trip.aiRestaurants]);
 
-    const tripCities = useMemo(() => {
-        const unique = new Set<string>();
-
-        // 1. Wizard Destination
-        if (trip.destination) {
-            trip.destination.split(/ - | & |, /).forEach(s => unique.add(s.trim()));
-        }
-
-        // 2. Flight Destinations (Arrivals)
-        const originCity = trip.flights?.segments?.[0]?.fromCity?.toLowerCase();
-        trip.flights?.segments?.forEach(s => {
-            if (s.toCity && s.toCity.toLowerCase() !== originCity) unique.add(s.toCity);
-        });
-
-        // 3. Hotel Cities
-        trip.hotels?.forEach(h => {
-            if (h.city) unique.add(h.city);
-        });
-
-        return Array.from(unique).filter(Boolean);
-    }, [trip.destination, trip.flights, trip.hotels]);
+    const tripCities = useMemo(() => getTripCities(trip), [trip]);
 
     // --- Search Logic ---
     const handleTextSearch = async () => {
@@ -323,7 +304,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             2. **Quality > Quantity:** Return **UP TO 6** recommendations. If only 3 amazing places exist, return 3. Do NOT fill with mediocrity.
             3. **NO HALLUCINATIONS:** If a category (e.g. Ramen) has no real results in this city, return an empty list. Better empty than fake.
             4. **Quality Firewall:** STRICTLY REJECT global fast-food chains (McDonald's, Starbucks, KFC). Prioritize "Chef-Driven" and "Local Legend" spots.
-            5. **Context Verification:** You are searching for "${specificCity}". Ensure this is a real location. If the user misspelled it (e.g. "Tal Aviv"), infer the correct city ("Tel Aviv"). If the city is unknown, return empty.
+            5. **Context Verification:** You are searching for "${specificCity}". Ensure this is a real location.
+            6. **NO TRANSPORT DATA:** Do NOT return flights, trains, or hotels. ONLY RESTAURANTS. If you return "transport" or "flight" data, you fail.
 
             **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
             

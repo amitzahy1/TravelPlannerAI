@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment } from '../types';
 import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal } from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
+import { getTripCities } from '../utils/geoData'; // Imported from new DB
 import { MagicDropZone } from './MagicDropZone';
 import { ShareModal } from './ShareModal';
 import { SystemLogs } from './SystemLogs';
@@ -762,6 +763,36 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                         <button onClick={addCity} className="bg-slate-200 hover:bg-slate-300 text-slate-600 p-1 rounded-md transition-colors"><Plus className="w-4 h-4" /></button>
                                                     </div>
                                                 </div>
+
+                                                {/* Suggested Cities (Task Fix) */}
+                                                {(() => {
+                                                    const detected = getTripCities(activeTrip);
+                                                    const suggestions = detected.filter(c => !routeCities.some(rc => rc.toLowerCase() === c.toLowerCase()));
+                                                    if (suggestions.length === 0) return null;
+
+                                                    return (
+                                                        <div className="mt-2 animate-fade-in">
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">זוהו מהטיול:</span>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {suggestions.map((s, i) => (
+                                                                    <button
+                                                                        key={i}
+                                                                        onClick={() => {
+                                                                            const newRoute = [...routeCities, s];
+                                                                            setRouteCities(newRoute);
+                                                                            handleUpdateTrip({ destination: newRoute.join(' - ') });
+                                                                        }}
+                                                                        className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold border border-blue-100 hover:bg-blue-100 transition-colors"
+                                                                    >
+                                                                        <Sparkles className="w-3 h-3" />
+                                                                        {s}
+                                                                        <Plus className="w-3 h-3 ml-1 opacity-50" />
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
 
                                             {/* Date Range Parser */}
