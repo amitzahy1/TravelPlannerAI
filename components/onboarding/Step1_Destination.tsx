@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, X } from 'lucide-react';
+import { Search, MapPin, X, Plus } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import { RippleButton } from '../ui/RippleButton';
 
@@ -19,17 +19,34 @@ const POPULAR_DESTINATIONS = [
         { name: "יוון", flag: "🇬🇷" },
         { name: "דובאי", flag: "🇦🇪" },
         { name: "פורטוגל", flag: "🇵🇹" },
-        { name: "ספרד", flag: "ES" },
+        { name: "ספרד", flag: "🇪🇸" },
         { name: "ישראל", flag: "🇮🇱" },
 ];
 
 export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData }) => {
-        const [searchTerm, setSearchTerm] = useState(initialData?.destination || '');
+        const [inputValue, setInputValue] = useState("");
+        const [destinations, setDestinations] = useState<string[]>(
+                initialData?.destination ? initialData.destination.split(' - ').filter(Boolean) : []
+        );
 
-        const handleSearch = (e?: React.FormEvent) => {
+        const handleAdd = () => {
+                if (inputValue.trim()) {
+                        setDestinations([...destinations, inputValue.trim()]);
+                        setInputValue("");
+                }
+        };
+
+        const handleRemove = (index: number) => {
+                setDestinations(destinations.filter((_, i) => i !== index));
+        };
+
+        const handleContinue = (e?: React.FormEvent) => {
                 if (e) e.preventDefault();
-                if (searchTerm.trim()) {
-                        onNext({ destination: searchTerm });
+                // If there's pending input, add it first
+                const finalDestinations = inputValue.trim() ? [...destinations, inputValue.trim()] : destinations;
+
+                if (finalDestinations.length > 0) {
+                        onNext({ destination: finalDestinations.join(' - ') });
                 }
         };
 
@@ -55,58 +72,78 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                         לאן ההרפתקה הבאה<br />תיקח אתכם?
                                 </h2>
                                 <p className="text-lg text-slate-500 font-medium">
-                                        התחילו עם מדינה או עיר. אנחנו נדאג לכל השאר.
+                                        הקלידו יעדים ולחצו Enter (אפשר להוסיף כמה!)
                                 </p>
                         </motion.div>
 
                         {/* Main Search Input */}
-                        <motion.form
-                                onSubmit={handleSearch}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3, duration: 0.5 }}
-                                className="relative max-w-xl mx-auto mb-12"
-                        >
+                        <div className="relative max-w-xl mx-auto mb-12">
                                 <div className="relative group">
                                         <Search className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 group-focus-within:text-brand-action transition-colors" />
                                         <input
                                                 type="text"
-                                                value={searchTerm}
-                                                onChange={(e) => setSearchTerm(e.target.value)}
-                                                placeholder="נסו 'טוקיו' או 'איסלנד'..."
+                                                value={inputValue}
+                                                onChange={(e) => setInputValue(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                handleAdd();
+                                                        }
+                                                }}
+                                                placeholder={destinations.length === 0 ? "נסו 'טוקיו' או 'איסלנד'..." : "הוסיפו יעד נוסף..."}
                                                 className="w-full bg-white border border-slate-200 text-slate-800 text-xl font-medium placeholder:text-slate-300 rounded-2xl py-5 pr-14 pl-4 shadow-xl shadow-brand-navy/5 focus:outline-none focus:ring-4 focus:ring-brand-action/10 focus:border-brand-action/50 transition-all hover:shadow-2xl hover:shadow-brand-navy/10 text-right"
                                                 autoFocus
                                         />
-                                        {searchTerm && (
+                                        {inputValue && (
                                                 <button
                                                         type="button"
-                                                        onClick={() => setSearchTerm('')}
-                                                        className="absolute left-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                                                        onClick={handleAdd}
+                                                        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                                                 >
-                                                        <X className="w-5 h-5" />
+                                                        <Plus className="w-5 h-5" />
                                                 </button>
                                         )}
                                 </div>
 
+                                {/* Selected Chips */}
+                                <div className="flex flex-wrap gap-2 justify-center mt-4">
+                                        <AnimatePresence>
+                                                {destinations.map((dest, idx) => (
+                                                        <motion.div
+                                                                key={`${dest}-${idx}`}
+                                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                                animate={{ opacity: 1, scale: 1 }}
+                                                                exit={{ opacity: 0, scale: 0.8 }}
+                                                                className="flex items-center gap-1.5 bg-brand-navy/5 text-brand-navy px-4 py-2 rounded-full text-base font-bold border border-brand-navy/10"
+                                                        >
+                                                                <span>{dest}</span>
+                                                                <button onClick={() => handleRemove(idx)} className="hover:bg-black/5 rounded-full p-0.5 transition-colors">
+                                                                        <X className="w-4 h-4" />
+                                                                </button>
+                                                        </motion.div>
+                                                ))}
+                                        </AnimatePresence>
+                                </div>
+
                                 {/* Continue Floating Button */}
                                 <AnimatePresence>
-                                        {searchTerm.length > 1 && (
+                                        {(destinations.length > 0 || inputValue.length > 1) && (
                                                 <motion.div
                                                         initial={{ opacity: 0, scale: 0.9, y: 10 }}
                                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                                         exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                                                        className="absolute -bottom-20 left-0 right-0 flex justify-center"
+                                                        className="absolute -bottom-24 left-0 right-0 flex justify-center"
                                                 >
                                                         <RippleButton
-                                                                type="submit"
+                                                                onClick={handleContinue}
                                                                 className="px-10 py-4 text-lg shadow-brand-action/40"
                                                         >
-                                                                המשך לתכנון
+                                                                המשך לתאריכים
                                                         </RippleButton>
                                                 </motion.div>
                                         )}
                                 </AnimatePresence>
-                        </motion.form>
+                        </div>
 
                         {/* Popular Destinations Chips */}
                         <motion.div
@@ -124,7 +161,10 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                                 whileHover={{ scale: 1.05, backgroundColor: '#f1f5f9' }}
                                                 whileTap={{ scale: 0.95 }}
                                                 onClick={() => {
-                                                        onNext({ destination: dest.name });
+                                                        // Prevent duplicate adds
+                                                        if (!destinations.includes(dest.name)) {
+                                                                setDestinations([...destinations, dest.name]);
+                                                        }
                                                 }}
                                                 className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-100 rounded-full shadow-sm text-slate-600 font-medium hover:border-brand-action/30 hover:text-brand-action transition-all"
                                         >

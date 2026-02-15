@@ -7,12 +7,13 @@ import { RippleButton } from '../ui/RippleButton';
 interface Step3ManualProps {
         onComplete: (data: any) => void;
         onBack: () => void;
+        initialData?: any;
 }
 
-export const Step3_ManualBuild: React.FC<Step3ManualProps> = ({ onComplete, onBack }) => {
-        const [startDate, setStartDate] = useState('');
-        const [endDate, setEndDate] = useState('');
-        const [initialCity, setInitialCity] = useState('');
+export const Step3_ManualBuild: React.FC<Step3ManualProps> = ({ onComplete, onBack, initialData }) => {
+        const [startDate, setStartDate] = useState(initialData?.startDate || '');
+        const [endDate, setEndDate] = useState(initialData?.endDate || '');
+        const [initialCity, setInitialCity] = useState(initialData?.destination?.split(' - ')[0] || '');
 
         const handleComplete = () => {
                 onComplete({

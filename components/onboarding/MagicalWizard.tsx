@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Step1_Destination } from './Step1_Destination';
+import { Step1_5_Dates } from './Step1_5_Dates';
 import { Step2_ChoosePath } from './Step2_ChoosePath';
 import { Step3_SmartImport } from './Step3_SmartImport';
 import { Step3_ManualBuild } from './Step3_ManualBuild';
@@ -40,22 +41,27 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
 
         const handleStep1Next = (data: { destination: string }) => {
                 setTripData((prev: any) => ({ ...prev, ...data }));
-                setStep(1);
+                setStep(1); // Go to Dates
+        };
+
+        const handleDatesNext = (data: { startDate: string; endDate: string }) => {
+                setTripData((prev: any) => ({ ...prev, ...data }));
+                setStep(2); // Go to Method
         };
 
         const handleStep2Select = (method: 'smart' | 'manual') => {
                 setTripData((prev: any) => ({ ...prev, method }));
-                setStep(2);
+                setStep(3); // Go to Final Step (Smart/Manual)
         };
 
         const handleStep3Back = () => {
-                setStep(1);
+                setStep(2); // Back to Method
         };
 
         const handleStep3Complete = (finalData: any) => {
                 const completeData = { ...tripData, ...finalData };
                 setTripData(completeData); // Store final data
-                setStep(3); // Show Success Screen
+                setStep(4); // Show Success Screen
 
                 // Auto-close after animation
                 setTimeout(() => {
@@ -85,12 +91,12 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                 className="relative w-full max-w-5xl h-[85vh] max-h-[800px] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
                         >
                                 {/* Top Navigation / Progress (Hide on Success) */}
-                                {step < 3 && (
+                                {step < 4 && (
                                         <div className="flex items-center justify-between p-8 z-20">
                                                 <div className="flex items-center gap-4">
                                                         {/* Progress Dots */}
                                                         <div className="flex items-center gap-2">
-                                                                {[0, 1, 2].map((i) => (
+                                                                {[0, 1, 2, 3].map((i) => (
                                                                         <div
                                                                                 key={i}
                                                                                 className={`h-1.5 rounded-full transition-all duration-500 ${i === step ? 'w-8 bg-brand-action' :
@@ -149,6 +155,27 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                 )}
                                                 {step === 1 && (
                                                         <motion.div
+                                                                key="step_dates"
+                                                                custom={step}
+                                                                variants={slideVariants}
+                                                                initial="enter"
+                                                                animate="center"
+                                                                exit="exit"
+                                                                transition={{
+                                                                        x: { type: "spring", stiffness: 300, damping: 30 },
+                                                                        opacity: { duration: 0.2 }
+                                                                }}
+                                                                className="w-full absolute"
+                                                        >
+                                                                <Step1_5_Dates
+                                                                        onNext={handleDatesNext}
+                                                                        onBack={() => setStep(0)}
+                                                                        initialData={tripData}
+                                                                />
+                                                        </motion.div>
+                                                )}
+                                                {step === 2 && (
+                                                        <motion.div
                                                                 key="step2"
                                                                 custom={step}
                                                                 variants={slideVariants}
@@ -163,11 +190,11 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                         >
                                                                 <Step2_ChoosePath
                                                                         onSelect={handleStep2Select}
-                                                                        onBack={() => setStep(0)}
+                                                                        onBack={() => setStep(1)} // Back to Dates
                                                                 />
                                                         </motion.div>
                                                 )}
-                                                {step === 2 && (
+                                                {step === 3 && (
                                                         <motion.div
                                                                 key="step3"
                                                                 custom={step}
@@ -190,11 +217,12 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                         <Step3_ManualBuild
                                                                                 onComplete={handleStep3Complete}
                                                                                 onBack={handleStep3Back}
+                                                                                initialData={tripData}
                                                                         />
                                                                 )}
                                                         </motion.div>
                                                 )}
-                                                {step === 3 && (
+                                                {step === 4 && (
                                                         <motion.div
                                                                 key="success"
                                                                 initial={{ opacity: 0, scale: 0.8 }}
