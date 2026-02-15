@@ -234,8 +234,9 @@ export const generateWithFallback = async (
           prompt: adaptedContents,    // Backward compat with old worker
           Model: modelId,
           generationConfig: {
+            ...config,
             responseMimeType: "application/json",
-            responseSchema: TRIP_OUTPUT_SCHEMA
+            responseSchema: config.responseSchema || (intent === 'ANALYZE' ? TRIP_OUTPUT_SCHEMA : undefined)
           }
         })
       });

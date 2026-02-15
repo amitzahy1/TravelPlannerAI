@@ -224,6 +224,16 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
     [אתרי חובה, טבע ונופים, מוזיאונים ותרבות, קניות ושווקים, אקסטרים ופעילויות, חופים ומים, למשפחות וילדים, היסטוריה ודת, חיי לילה ואווירה, פינות נסתרות]
 
+    **PART 3: THE CURATOR PHILOSOPHY**
+    When providing recommendations:
+    - Cite professional sources (UNESCO, Lonely Planet, Fodor's, Atlas Obscura, etc.)
+    - Filter out viral trends without substance or quality backing
+    - Prioritize authenticity, quality, and genuine local experiences over popularity
+    - Be critical of tourist traps and overhyped locations
+    - Provide context about why a place is recommended (historical significance, cultural value, etc.)
+    - Consider value for money and realistic expectations
+    - Warn about common tourist pitfalls
+
     OUTPUT JSON ONLY:
     { "categories": [ { "id", "title", "attractions": [ { "name", "description", "location", "rating", "type", "price", "recommendationSource" } ] } ] }
     `;

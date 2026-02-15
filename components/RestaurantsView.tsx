@@ -283,6 +283,16 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     **PART 2: THE "PERFECT DEFINITION MATRIX" (Standard 10 Categories)**
     [Authentic Local Food, Luxury & Michelin, Cocktail Bars, Family Friendly, Ramen, Pizza, Burger, Cafe & Dessert, Thai, Japanese]
 
+    **PART 3: THE CURATOR PHILOSOPHY**
+    When providing recommendations:
+    - Cite professional sources (Michelin Guide, James Beard Foundation, Lonely Planet, Fodor's, etc.)
+    - Filter out viral trends without substance or quality backing
+    - Prioritize authenticity, quality, and genuine local experiences over popularity
+    - Be critical of tourist traps and overhyped locations
+    - Provide context about why a place is recommended (awards, chef credentials, historical significance, etc.)
+    - Consider value for money and realistic expectations
+    - Warn about common tourist pitfalls
+
     OUTPUT JSON ONLY:
     { "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl" } ] } ] }
     `;
@@ -371,7 +381,19 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             - **BANNED SOURCES:** Generic names like "Burger Blog", "Bar Awards", "Foodie Guy", "American Blog".
             - If no specific source exists, use "Google Review" or "Local Legend".
 
-            **PART 5: CRITICAL QUALITY RULES**
+            **PART 5: CRITICAL QUALITY RULES (THE CURATOR PHILOSOPHY)**
+            When providing recommendations:
+            - **Cite professional sources** (Michelin Guide, James Beard Foundation, Lonely Planet, Fodor's, etc.)
+            - **Filter out viral trends** without substance or quality backing (avoid "TikTok hype" if food is mediocre).
+            - **Prioritize authenticity, quality, and genuine local experiences** over popularity.
+            - **Be critical of tourist traps** and overhyped locations.
+            - **Provide context** about why a place is recommended (awards, chef credentials, historical significance, etc.).
+            - **Consider value for money** and realistic expectations.
+            - **Warn about common tourist pitfalls**.
+            
+            Your goal is to provide trustworthy, well-researched recommendations that travelers can rely on.
+
+            **PART 6: REVIEW & FORMATTING RULES**
             - **Review Check:** MUST have > 50 reviews (prefer >100). Do NOT invent places.
             - **Anti-Tourist Trap Rule:** REJECT places with > 3000 reviews but rating < 4.4. (High volume + mediocre score = Trap).
             - **Hotel Logic:** EXCLUDE hotels unless they have a SPECIFIC, NAMED restaurant (e.g. "Alain Ducasse at The Dorchester"). Do NOT recommend "The Hilton" as a restaurant.
