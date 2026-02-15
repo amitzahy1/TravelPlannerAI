@@ -311,7 +311,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ trips = [], on
 
             <button
                 onClick={() => {
-                    if (destinationInput.trim()) handleAddDestination();
+                    handleAddDestination(); // Always try to add pending input
                     setMode('DATE_SELECTION');
                 }}
                 disabled={destinations.length === 0 && !destinationInput.trim()}
