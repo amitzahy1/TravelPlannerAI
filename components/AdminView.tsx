@@ -652,13 +652,12 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-grow flex overflow-hidden bg-white/50 rounded-t-3xl border-t border-x border-white/60 shadow-xl backdrop-blur-md">
+            <div className="flex-grow flex flex-col md:flex-row overflow-auto md:overflow-hidden bg-white/50 rounded-t-3xl border-t border-x border-white/60 shadow-xl backdrop-blur-md">
 
-                {/* Sidebar Navigation */}
-                <div className={`
-                        w-64 bg-white border-l border-slate-100 flex-shrink-0 flex flex-col
-                        ${isSidebarOpen ? 'absolute inset-y-0 right-0 z-20 shadow-2xl' : 'hidden md:flex'}
-                    `}>
+                {/* Sidebar Navigation — Desktop Only */}
+                <div className={
+                    `w-64 bg-white border-l border-slate-100 flex-shrink-0 flex-col hidden md:flex`
+                }>
                     <div className="p-6">
                         <div className="space-y-1">
                             <button
@@ -722,8 +721,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                                 className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id
-                                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                        : 'bg-white text-slate-600 border border-slate-200'
+                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                    : 'bg-white text-slate-600 border border-slate-200'
                                     }`}
                             >
                                 <span>{tab.emoji}</span>

@@ -6,6 +6,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
 import { Loader2, Map as MapIcon, Navigation } from 'lucide-react';
+import { extractRobustCity, cleanCityName } from '../utils/geoData';
 
 // --- Interfaces ---
 interface MapItem {
@@ -30,7 +31,7 @@ interface UnifiedMapViewProps {
     title?: string;
 }
 
-const STORAGE_KEY = 'travel_app_geo_cache_v4';
+const STORAGE_KEY = 'travel_app_geo_cache_v5';
 
 // Cross-language city mapping for Hebrew <-> English filter matching
 const HEBREW_TO_ENGLISH_CITY_MAP: Record<string, string[]> = {
@@ -213,8 +214,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
 
             // HOTELS
             trip.hotels.forEach(h => {
-                // Extract city from address if possible, simplistic fallback
-                const cityGuess = h.address?.split(',')?.[1]?.trim() || h.address || trip.destination;
+                // Use robust extraction to get a clean city name (strips postal codes like '2200 Napareuli')
+                const cityGuess = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
                 rawItems.push({
                     id: h.id, type: 'hotel', name: h.name, address: h.address, lat: h.lat, lng: h.lng, description: h.roomType, date: h.checkInDate, city: cityGuess
                 });
@@ -367,7 +368,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 });
 
                 sortedHotels.forEach(hotel => {
-                    const cityGuess = hotel.address?.split(',').slice(-2, -1)[0]?.trim() || hotel.address?.split(',')[1]?.trim();
+                    const cityGuess = cleanCityName(extractRobustCity(hotel.address || '', hotel.name || '', trip));
                     // Use Hotel Name if available, otherwise City
                     if (cityGuess) {
                         newRoute.push({
@@ -419,7 +420,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         const map = L.map(mapContainerRef.current, {
             zoomControl: false,
             attributionControl: false
-        }).setView([15.123, 120.67], 5); // Default view (Philippines/Asia general)
+        }).setView([41.7, 44.8], 7); // Default: Georgia region, will be overridden by fitBounds
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             maxZoom: 20

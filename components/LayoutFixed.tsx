@@ -202,18 +202,6 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         </button>
                                                 </div>
 
-                                                {/* Left: Trip Info Badges */}
-                                                <div className="flex items-center gap-3">
-                                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-100 rounded-lg shadow-sm max-w-md">
-                                                                <MapPin className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
-                                                                <span className="text-xs font-bold text-slate-600 truncate">{dynamicRoute || activeTrip?.destination || "לא צוין יעד"}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-100 rounded-lg shadow-sm">
-                                                                <Globe className="w-3.5 h-3.5 text-indigo-500" />
-                                                                <span className="text-xs font-bold text-slate-600">{activeTrip?.days ? `${activeTrip.days} ימים` : "גמיש"}</span>
-                                                        </div>
-                                                </div>
-
                                         </div>
                                 </div>
                         </header>

@@ -22,6 +22,10 @@ export const WORLD_DESTINATIONS: Record<string, string[]> = {
         'United Arab Emirates': ['Dubai', 'Abu Dhabi', 'Sharjah'],
         'Israel': ['Tel Aviv', 'Jerusalem', 'Haifa', 'Eilat', 'Dead Sea', 'Nazareth', 'Tiberias'],
         'Turkey': ['Istanbul', 'Cappadocia', 'Antalya', 'Bodrum', 'Izmir', 'Ankara'],
+        'Georgia': ['Tbilisi', 'Batumi', 'Kutaisi', 'Napareuli', 'Lopota', 'Signagi', 'Kazbegi', 'Mestia', 'Borjomi', 'Gori', 'Mtskheta', 'Telavi', 'Kvareli', 'Stepantsminda'],
+        'Armenia': ['Yerevan', 'Gyumri', 'Dilijan', 'Garni'],
+        'Azerbaijan': ['Baku', 'Ganja', 'Sheki'],
+        'Jordan': ['Amman', 'Petra', 'Aqaba', 'Wadi Rum'],
 
         // EUROPE
         'France': ['Paris', 'Nice', 'Lyon', 'Marseille', 'Bordeaux', 'Strasbourg', 'Cannes', 'Chamonix'],
@@ -228,15 +232,19 @@ export const extractRobustCity = (address: string, hotelName: string, trip: Trip
                 }
         }
 
-        // Look for city after street number pattern
+        // Look for city after street number pattern — but skip pure postal codes
         if (addressParts.length >= 2) {
                 for (let i = 1; i < addressParts.length; i++) {
                         const part = addressParts[i];
                         const partLower = part.toLowerCase();
-                        if (/^\d+$/.test(part)) continue;
-                        const countries = ['georgia', 'philippines', 'thailand', 'vietnam', 'indonesia', 'japan', 'israel', 'greece', 'usa', 'uk'];
+                        // Skip if it's purely a number (postal code)
+                        if (/^\d+$/.test(part.trim())) continue;
+                        // Skip known country names
+                        const countries = ['georgia', 'philippines', 'thailand', 'vietnam', 'indonesia', 'japan', 'israel', 'greece', 'usa', 'uk', 'armenia', 'azerbaijan', 'turkey'];
                         if (countries.some(c => partLower.includes(c))) continue;
-                        return part.charAt(0).toUpperCase() + part.slice(1);
+                        // Strip leading/trailing postal code digits from city names like "2200 Napareuli" or "Napareuli 2200"
+                        const cleaned = part.trim().replace(/^\d+\s+/, '').replace(/\s+\d+$/, '').trim();
+                        if (cleaned.length > 1) return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
                 }
         }
 
