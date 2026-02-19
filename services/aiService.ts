@@ -248,15 +248,24 @@ export const generateWithFallback = async (
         const retryAfter = parseInt(response.headers.get('retry-after') || '5', 10);
         console.warn(`⏳ [AI] Rate limited on ${modelId}, waiting ${retryAfter}s...`);
         await delay(retryAfter * 1000);
-        // Retry once on same model
+        // Retry once on same model — include full config to match original request
         const retryResponse = await fetch(`${WORKER_URL}/api/generate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: adaptedContents, prompt: adaptedContents, Model: modelId })
+          body: JSON.stringify({
+            contents: adaptedContents,
+            prompt: adaptedContents,
+            Model: modelId,
+            generationConfig: {
+              ...config,
+              responseMimeType: "application/json",
+              responseSchema: config.responseSchema || (intent === 'ANALYZE' ? TRIP_OUTPUT_SCHEMA : undefined)
+            }
+          })
         });
         if (!retryResponse.ok) throw new Error(`Retry failed: ${retryResponse.status}`);
         const retryData = await retryResponse.json();
-        const text = cleanJSON(retryData.text);
+        const text = retryData.text;
         JSON.parse(text);
         console.log(`✅ [AI] Success with ${modelId} (after retry)`);
         return { text, model: modelId };

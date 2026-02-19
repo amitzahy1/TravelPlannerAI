@@ -182,20 +182,42 @@ const AppContent: React.FC = () => {
       restaurants: [],
       attractions: [],
       itinerary: [],
-      documents: [], // TODO: Upload files to Storage and link here
+      documents: [],
       secureNotes: [],
       isShared: false,
-      // Create initial itinerary days based on dates
-      ...(dates ? {
-        // Simple logic: create a day for the start date
-        itinerary: [{
-          id: crypto.randomUUID(),
-          day: 1,
-          date: analysis?.metadata?.startDate || wizardData.startDate || new Date().toISOString(),
-          title: `Arrival in ${dest}`,
-          activities: []
-        }]
-      } : {})
+      // Generate itinerary days for the full trip duration
+      ...(() => {
+        const startStr = analysis?.metadata?.startDate || wizardData.startDate;
+        const endStr = analysis?.metadata?.endDate || wizardData.endDate;
+        if (!startStr || !endStr) return {};
+
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+        if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return {};
+
+        const days = [];
+        const totalDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+        for (let i = 0; i < totalDays; i++) {
+          const dayDate = new Date(start);
+          dayDate.setDate(dayDate.getDate() + i);
+          const isoDate = dayDate.toISOString().split('T')[0];
+
+          let title: string;
+          if (i === 0) title = `Arrival in ${dest}`;
+          else if (i === totalDays - 1) title = `Departure from ${dest}`;
+          else title = `Day ${i + 1} in ${dest}`;
+
+          days.push({
+            id: crypto.randomUUID(),
+            day: i + 1,
+            date: isoDate,
+            title,
+            activities: []
+          });
+        }
+        return { itinerary: days };
+      })()
     };
 
     try {

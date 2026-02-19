@@ -236,6 +236,18 @@ export const deleteTrip = async (tripId: string, userId?: string, shareId?: stri
 export const leaveTrip = async (tripId: string, shareId: string, userId?: string): Promise<void> => {
   if (!userId) return;
 
+  // Clean up localStorage to prevent ghost data
+  try {
+    const local = loadTripsFromLocal();
+    if (local.find(t => t.id === tripId)) {
+      const filtered = local.filter(t => t.id !== tripId);
+      saveTripsToLocal(filtered);
+      console.log('🧹 Cleaned up left trip from localStorage');
+    }
+  } catch (e) {
+    console.warn('Failed to clean localStorage during leave', e);
+  }
+
   try {
     await leaveSharedTrip(userId, shareId);
     console.log('✅ Left shared trip successfully');

@@ -28,7 +28,7 @@ export const useTrips = () => {
         });
 
         // activeTrip is derived from the list, not a separate fetch (usually)
-        const activeTrip = query.data?.find((t) => t.id === activeTripId) || query.data?.[query.data.length - 1] || null;
+        const activeTrip = query.data?.find((t) => t.id === activeTripId) || query.data?.[0] || null;
 
         return {
                 trips: query.data || [],

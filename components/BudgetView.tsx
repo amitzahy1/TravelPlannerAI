@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Trip, ManualExpense, HotelBooking, Ticket } from '../types';
 import { Wallet, TrendingUp, DollarSign, PieChart as PieChartIcon, ShoppingBag, Utensils, Hotel, Ticket as TicketIcon, Plane, Plus, Trash2, X, Save, Car, Bus, ArrowRight, ChevronRight, UploadCloud, Loader2, Sparkles, AlertCircle, Banknote, LayoutGrid, Coins, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -10,30 +10,86 @@ interface BudgetViewProps {
 }
 
 // --- CURRENCY LOGIC ---
-const EXCHANGE_RATES: Record<string, number> = {
+const FALLBACK_RATES: Record<string, number> = {
     'ILS': 1,
     'USD': 3.6,
     'EUR': 3.9,
-    'THB': 0.11
+    'GBP': 4.5,
+    'THB': 0.11,
+    'JPY': 0.024,
+    'AUD': 2.3,
+    'CAD': 2.6,
+};
+
+const RATES_CACHE_KEY = 'travel_app_exchange_rates_v1';
+const RATES_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+const loadCachedRates = (): Record<string, number> | null => {
+    try {
+        const cached = localStorage.getItem(RATES_CACHE_KEY);
+        if (!cached) return null;
+        const { rates, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp > RATES_CACHE_TTL) return null;
+        return rates;
+    } catch { return null; }
+};
+
+const fetchLiveRates = async (): Promise<Record<string, number>> => {
+    try {
+        const res = await fetch('https://api.exchangerate-api.com/v4/latest/ILS');
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        // API returns rates FROM ILS (e.g. 1 ILS = 0.27 USD)
+        // We need rates TO ILS (e.g. 1 USD = 3.6 ILS)
+        const toILS: Record<string, number> = { ILS: 1 };
+        for (const [currency, rate] of Object.entries(data.rates)) {
+            if (typeof rate === 'number' && rate > 0) {
+                toILS[currency] = 1 / rate;
+            }
+        }
+        localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates: toILS, timestamp: Date.now() }));
+        return toILS;
+    } catch (e) {
+        console.warn('⚠️ Failed to fetch live rates, using fallback', e);
+        return FALLBACK_RATES;
+    }
+};
+
+// Hook to get live exchange rates with 24h cache
+const useExchangeRates = () => {
+    const [rates, setRates] = useState<Record<string, number>>(() => loadCachedRates() || FALLBACK_RATES);
+    const [isLive, setIsLive] = useState(() => !!loadCachedRates());
+
+    useEffect(() => {
+        if (!loadCachedRates()) {
+            fetchLiveRates().then(r => { setRates(r); setIsLive(true); });
+        }
+    }, []);
+
+    return { rates, isLive };
 };
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
     'ILS': '₪',
     'USD': '$',
     'EUR': '€',
-    'THB': '฿'
+    'GBP': '£',
+    'THB': '฿',
+    'JPY': '¥',
+    'AUD': 'A$',
+    'CAD': 'C$',
 };
 
-const convertCurrency = (amount: number, from: string = 'ILS', to: string = 'ILS'): number => {
+const convertCurrency = (amount: number, from: string = 'ILS', to: string = 'ILS', rates: Record<string, number> = FALLBACK_RATES): number => {
     if (!amount) return 0;
     if (from === to) return amount;
 
     // Convert to ILS (Base) first
-    const rateToILS = EXCHANGE_RATES[from] || 1;
+    const rateToILS = rates[from] || FALLBACK_RATES[from] || 1;
     const amountInILS = amount * rateToILS;
 
     // Convert to Target
-    const rateFromILS = 1 / (EXCHANGE_RATES[to] || 1);
+    const rateFromILS = 1 / (rates[to] || FALLBACK_RATES[to] || 1);
     return amountInILS * rateFromILS;
 };
 
@@ -52,15 +108,19 @@ export const BudgetView: React.FC<BudgetViewProps> = ({ trip, onUpdateTrip }) =>
     const [showAddForm, setShowAddForm] = useState(false);
     const [newExpense, setNewExpense] = useState<Partial<ManualExpense>>({ title: '', amount: 0, category: 'other', currency: 'ILS' });
     const [selectedCategory, setSelectedCategory] = useState<'hotels' | 'flights' | null>(null);
+    const { rates, isLive } = useExchangeRates();
 
     // Active Display Currency
     const displayCurrency = trip.currency || 'ILS';
     const currencySymbol = CURRENCY_SYMBOLS[displayCurrency] || displayCurrency;
 
+    // Shorthand for convertCurrency with live rates
+    const conv = (amount: number, from: string = 'ILS', to: string = 'ILS') => convertCurrency(amount, from, to, rates);
+
     // Calculate Totals logic
     const budget = useMemo(() => {
         let totalHotels = 0;
-        let totalFlights = convertCurrency(trip.flights?.totalPrice || 0, trip.flights?.currency || 'USD', displayCurrency);
+        let totalFlights = conv(trip.flights?.totalPrice || 0, trip.flights?.currency || 'USD', displayCurrency);
         let totalAttractions = 0;
         let totalFood = 0;
         let totalShopping = 0;
@@ -70,36 +130,35 @@ export const BudgetView: React.FC<BudgetViewProps> = ({ trip, onUpdateTrip }) =>
         // Sum Hotels
         trip.hotels.forEach(h => {
             const rawCost = h.costNumeric || parsePrice(h.price);
-            totalHotels += convertCurrency(rawCost, h.currency || 'USD', displayCurrency);
+            totalHotels += conv(rawCost, h.currency || 'USD', displayCurrency);
         });
 
         // Sum Attractions
-        // Assumption: AI extracted prices are usually in local currency or USD. defaulting to USD if unknown for now.
         trip.attractions.forEach(cat => {
             cat.attractions.forEach(a => {
                 const cost = a.costNumeric || parsePrice(a.price);
-                totalAttractions += convertCurrency(cost, 'USD', displayCurrency);
+                totalAttractions += conv(cost, 'USD', displayCurrency);
             });
         });
 
         // Sum Food
         trip.restaurants.forEach(cat => {
             cat.restaurants.forEach(r => {
-                totalFood += convertCurrency(r.estimatedCost || 0, 'USD', displayCurrency);
+                totalFood += conv(r.estimatedCost || 0, 'USD', displayCurrency);
             });
         });
 
         // Sum Shopping
         if (trip.shoppingItems) {
             trip.shoppingItems.forEach(item => {
-                totalShopping += convertCurrency(item.price, 'USD', displayCurrency);
+                totalShopping += conv(item.price, 'USD', displayCurrency);
             });
         }
 
         // Sum Manual Expenses
         if (trip.expenses) {
             trip.expenses.forEach(e => {
-                const amount = convertCurrency(Number(e.amount), e.currency || 'ILS', displayCurrency);
+                const amount = conv(Number(e.amount), e.currency || 'ILS', displayCurrency);
                 if (e.category === 'food') totalFood += amount;
                 else if (e.category === 'shopping') totalShopping += amount;
                 else if (e.category === 'transport') totalTransport += amount;
@@ -132,14 +191,14 @@ export const BudgetView: React.FC<BudgetViewProps> = ({ trip, onUpdateTrip }) =>
                 { id: 'other', label: 'אחר', amount: totalOther, icon: Wallet, color: 'bg-gray-500' },
             ]
         };
-    }, [trip, displayCurrency]);
+    }, [trip, displayCurrency, rates]);
 
     const handleAddExpense = () => {
         if (!newExpense.title || !newExpense.amount) return;
         if (!onUpdateTrip) return;
 
         const expense: ManualExpense = {
-            id: `exp-${Date.now()}`,
+            id: crypto.randomUUID(),
             title: newExpense.title,
             amount: Number(newExpense.amount),
             currency: newExpense.currency || 'ILS',
@@ -347,7 +406,7 @@ export const BudgetView: React.FC<BudgetViewProps> = ({ trip, onUpdateTrip }) =>
                                     value={newExpense.currency}
                                     onChange={e => setNewExpense({ ...newExpense, currency: e.target.value })}
                                 >
-                                    {Object.keys(EXCHANGE_RATES).map(c => <option key={c} value={c}>{c}</option>)}
+                                    {Object.keys(CURRENCY_SYMBOLS).map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                             <div className="md:col-span-2 space-y-1">
@@ -388,9 +447,9 @@ export const BudgetView: React.FC<BudgetViewProps> = ({ trip, onUpdateTrip }) =>
                             <div key={exp.id} className="p-6 flex justify-between items-center hover:bg-slate-50 transition-colors group">
                                 <div className="flex items-center gap-5">
                                     <div className={`p-3.5 rounded-2xl ${exp.category === 'food' ? 'bg-orange-100 text-orange-600' :
-                                            exp.category === 'shopping' ? 'bg-pink-100 text-pink-600' :
-                                                exp.category === 'transport' ? 'bg-emerald-100 text-emerald-600' :
-                                                    'bg-slate-100 text-slate-600'
+                                        exp.category === 'shopping' ? 'bg-pink-100 text-pink-600' :
+                                            exp.category === 'transport' ? 'bg-emerald-100 text-emerald-600' :
+                                                'bg-slate-100 text-slate-600'
                                         }`}>
                                         {exp.category === 'food' ? <Utensils className="w-5 h-5" /> :
                                             exp.category === 'shopping' ? <ShoppingBag className="w-5 h-5" /> :
@@ -471,27 +530,37 @@ const CategoryDetailModal: React.FC<{
     const handleReceiptUpload = async (file: File, itemId: string) => {
         setAnalyzingId(itemId);
         try {
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const base64Data = (reader.result as string).split(',')[1];
-                const response = await analyzeReceipt(base64Data, file.type, 'TOTAL');
-                const textContent = response.text;
-                let data;
-                try {
-                    data = JSON.parse(textContent);
-                } catch (e) {
-                    const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) data = JSON.parse(jsonMatch[0]);
-                }
+            // Convert FileReader to awaitable Promise to prevent race condition
+            const base64Data = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    if (typeof reader.result === 'string') {
+                        resolve((reader.result as string).split(',')[1]);
+                    } else {
+                        reject(new Error('Failed to read file'));
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
 
-                // Assuming generic AI detection, defaulting to ILS if not detected for simplicity in this version
-                // Ideally AI returns currency too.
-                const price = data?.price || data?.totalPrice;
-                if (price) {
-                    handlePriceUpdate(itemId, price, 'ILS'); // Default to ILS for scanned receipts for now
-                }
-            };
-            reader.readAsDataURL(file);
+            const response = await analyzeReceipt(base64Data, file.type, 'TOTAL');
+            const textContent = response.text;
+            let data;
+            try {
+                data = JSON.parse(textContent);
+            } catch (e) {
+                const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+                if (jsonMatch) data = JSON.parse(jsonMatch[0]);
+            }
+
+            const price = data?.price || data?.totalPrice;
+            const currency = data?.currency || 'ILS';
+            if (price) {
+                handlePriceUpdate(itemId, price, currency);
+            } else {
+                alert("לא הצלחנו לחלץ מחיר מהקבלה.");
+            }
         } catch (e) {
             console.error(e);
             alert("לא הצלחנו לחלץ מחיר מהקבלה.");
@@ -541,7 +610,7 @@ const CategoryDetailModal: React.FC<{
                                                 value={hotel.currency || 'USD'}
                                                 onChange={e => handlePriceUpdate(hotel.id, hotel.costNumeric || 0, e.target.value)}
                                             >
-                                                {Object.keys(EXCHANGE_RATES).map(c => <option key={c} value={c}>{c}</option>)}
+                                                {Object.keys(CURRENCY_SYMBOLS).map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>
                                     </div>
@@ -589,7 +658,7 @@ const CategoryDetailModal: React.FC<{
                                             value={trip.flights.currency || 'USD'}
                                             onChange={e => handlePriceUpdate('flight-main', trip.flights.totalPrice || 0, e.target.value)}
                                         >
-                                            {Object.keys(EXCHANGE_RATES).map(c => <option key={c} value={c}>{c}</option>)}
+                                            {Object.keys(CURRENCY_SYMBOLS).map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
                                     </div>
                                 </div>

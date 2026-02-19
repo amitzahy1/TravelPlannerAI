@@ -5,6 +5,7 @@ import { generateWithFallback } from '../services/aiService';
 import { getTripCities } from '../utils/geoData'; // Imported from new DB
 import { MagicDropZone } from './MagicDropZone';
 import { ShareModal } from './ShareModal';
+import { downloadTripHTML } from '../utils/generateTripHTML';
 import { SystemLogs } from './SystemLogs';
 
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
@@ -751,6 +752,16 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             <Share2 className="w-4 h-4" />
                                             <span>שיתוף והרשאות</span>
                                         </button>
+                                        {/* Export HTML Button */}
+                                        {activeTrip && (
+                                            <button
+                                                onClick={() => downloadTripHTML(activeTrip)}
+                                                className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold border border-blue-100 hover:bg-blue-100 transition-colors"
+                                            >
+                                                <FileText className="w-4 h-4" />
+                                                <span>ייצא סיכום</span>
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div className="space-y-5">
