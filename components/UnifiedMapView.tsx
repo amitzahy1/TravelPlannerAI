@@ -58,7 +58,7 @@ const TYPE_CONFIG = {
         gradient: ['#f97316', '#ea580c'],
         emoji: '🍽️',
         label: 'מסעדה',
-        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>`,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>`,
     },
     attraction: {
         color: '#8b5cf6',
@@ -611,7 +611,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             }
         `;
         document.head.appendChild(style);
-        return () => document.head.removeChild(style);
+        return () => { void document.head.removeChild(style); };
     }, []);
 
     // --- UI ---

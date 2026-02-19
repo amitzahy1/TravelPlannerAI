@@ -374,10 +374,10 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
     const [formData, setFormData] = useState<Partial<HotelBooking>>(initialData || { name: '', address: '', checkInDate: '', checkOutDate: '', bookingSource: 'Direct', price: '' });
     const [showInPicker, setShowInPicker] = useState(false);
     const [showOutPicker, setShowOutPicker] = useState(false);
+    const [showCoords, setShowCoords] = useState(!!(initialData?.lat || initialData?.lng));
 
     const formatForDisplay = (d?: string) => {
         if (!d) return "בחר תאריך";
-        // Handle YYYY-MM-DD with optional time part
         if (d.match(/^\d{4}-\d{2}-\d{2}/)) {
             const datePart = d.split('T')[0];
             const [y, m, day] = datePart.split('-');
@@ -389,8 +389,8 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData as HotelBooking); };
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
-            <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-scale-in" onClick={e => e.stopPropagation()}>
-                <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center">
+            <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
                     <h3 className="text-xl font-black text-slate-800">{initialData ? 'עריכת מלון' : 'הוספת מלון ידנית'}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X className="w-6 h-6 text-slate-400" /></button>
                 </div>
@@ -402,6 +402,56 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-400 mr-2">כתובת</label>
                         <input className="w-full p-4 bg-slate-50 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-indigo-100 transition-all" placeholder="כתובת" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                    </div>
+
+                    {/* City field */}
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-400 mr-2">עיר (לסינון במפה)</label>
+                        <input
+                            className="w-full p-4 bg-slate-50 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                            placeholder="למשל: Tbilisi, Napareuli..."
+                            value={(formData as any).city || ''}
+                            onChange={e => setFormData({ ...formData, city: e.target.value } as any)}
+                        />
+                    </div>
+
+                    {/* Override coordinates toggle */}
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => setShowCoords(!showCoords)}
+                            className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-xl transition-colors border border-dashed border-indigo-200"
+                        >
+                            <Navigation className="w-3.5 h-3.5" />
+                            {showCoords ? 'הסתר קואורדינטות' : '📍 עקוף מיקום על המפה (lat/lng)'}
+                        </button>
+                        {showCoords && (
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-slate-400 mr-2">Latitude</label>
+                                    <input
+                                        type="number" step="any"
+                                        className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100"
+                                        placeholder="41.6938"
+                                        value={formData.lat || ''}
+                                        onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) } as any)}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-slate-400 mr-2">Longitude</label>
+                                    <input
+                                        type="number" step="any"
+                                        className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100"
+                                        placeholder="44.8015"
+                                        value={formData.lng || ''}
+                                        onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) } as any)}
+                                    />
+                                </div>
+                                <div className="col-span-2 text-[10px] text-slate-400 px-1">
+                                    💡 ניתן למצוא קואורדינטות דרך <a href="https://maps.google.com" target="_blank" className="text-indigo-500 underline">Google Maps</a> — לחץ ימני על מיקום → "What's here"
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -458,6 +508,8 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
         </div>
     );
 };
+
+
 
 const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBooking) => void }> = ({ onClose, onSave }) => {
     const [textInput, setTextInput] = useState('');
