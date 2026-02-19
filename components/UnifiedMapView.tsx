@@ -208,6 +208,103 @@ const makeStopPill = (num: number, name: string, emoji: string, color: string) =
     return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 15] });
 };
 
+// --- ROUTE INFO BADGE (travel time/distance/mode between stops) ---
+interface SegmentTransportInfo {
+    mode: 'flight' | 'drive' | 'train' | 'ferry' | 'bus' | 'unknown';
+    emoji: string;
+    label: string;
+    duration?: string;
+    hasTransportData: boolean;
+}
+
+const getSegmentTransport = (
+    fromStop: RouteStop, toStop: RouteStop, trip: Trip, distKm: number
+): SegmentTransportInfo => {
+    // Match flight
+    const segs = trip.flights?.segments || [];
+    const matchedFlight = segs.find(s => {
+        const fromMatch = s.fromCity?.toLowerCase() === fromStop.name.toLowerCase() ||
+            s.fromCode?.toLowerCase() === (fromStop.code?.toLowerCase() || '');
+        const toMatch = s.toCity?.toLowerCase() === toStop.name.toLowerCase() ||
+            s.toCode?.toLowerCase() === (toStop.code?.toLowerCase() || '');
+        return fromMatch && toMatch;
+    });
+    if (matchedFlight) return {
+        mode: 'flight', emoji: '✈️',
+        label: `${matchedFlight.airline || ''} ${matchedFlight.flightNumber || ''}`.trim() || 'טיסה',
+        duration: matchedFlight.duration, hasTransportData: true
+    };
+
+    // Match train
+    const matchedTrain = trip.trains?.find(t =>
+        (t.fromStation?.toLowerCase() || '').includes(fromStop.name.toLowerCase()) ||
+        (t.toStation?.toLowerCase() || '').includes(toStop.name.toLowerCase())
+    );
+    if (matchedTrain) return { mode: 'train', emoji: '🚆', label: matchedTrain.provider || 'רכבת', duration: matchedTrain.duration, hasTransportData: true };
+
+    // Match ferry
+    const matchedFerry = trip.ferries?.find(f =>
+        (f.fromPort?.toLowerCase() || '').includes(fromStop.name.toLowerCase()) ||
+        (f.toPort?.toLowerCase() || '').includes(toStop.name.toLowerCase())
+    );
+    if (matchedFerry) return { mode: 'ferry', emoji: '⛴️', label: matchedFerry.provider || 'מעבורת', hasTransportData: true };
+
+    // Match bus
+    const matchedBus = trip.buses?.find(b =>
+        (b.fromCity?.toLowerCase() || '').includes(fromStop.name.toLowerCase()) ||
+        (b.toCity?.toLowerCase() || '').includes(toStop.name.toLowerCase())
+    );
+    if (matchedBus) return { mode: 'bus', emoji: '🚌', label: matchedBus.provider || 'אוטובוס', hasTransportData: true };
+
+    // Estimate by distance
+    if (distKm > 300) return { mode: 'flight', emoji: '✈️', label: 'טיסה?', hasTransportData: false };
+    return { mode: 'drive', emoji: '🚗', label: 'נסיעה', hasTransportData: false };
+};
+
+const estimateTravelTime = (distKm: number, mode: string): string => {
+    if (mode === 'flight') {
+        const h = Math.max(1, Math.round(distKm / 800));
+        return h <= 1 ? '~1 שעה' : `~${h} שעות`;
+    }
+    if (mode === 'train') {
+        const h = distKm / 150;
+        return h < 1 ? `~${Math.round(h * 60)} דק'` : `~${h.toFixed(1)} שעות`;
+    }
+    const h = distKm / 80;
+    return h < 1 ? `~${Math.round(h * 60)} דק'` : `~${(Math.round(h * 10) / 10)} שעות`;
+};
+
+const fmtDistKm = (km: number): string =>
+    km >= 1000 ? `${(km / 1000).toFixed(1)}K ק"מ` : `${Math.round(km)} ק"מ`;
+
+const makeRouteBadge = (distKm: number, transport: SegmentTransportInfo, color: string): L.DivIcon => {
+    const displayTime = transport.duration || estimateTravelTime(distKm, transport.mode);
+    const warn = !transport.hasTransportData
+        ? `<div style="font-size:9px;color:#ef4444;font-weight:700;margin-top:2px">⚠️ חסר מידע הסעה</div>` : '';
+
+    const html = `<div style="
+        display:flex;flex-direction:column;align-items:center;
+        background:white;border-radius:14px;
+        padding:6px 12px;
+        box-shadow:0 4px 16px rgba(0,0,0,.18),0 1px 4px rgba(0,0,0,.1);
+        border:2px solid ${color}40;
+        font-family:'Rubik','Inter',sans-serif;
+        white-space:nowrap;direction:rtl;min-width:80px;text-align:center;
+    ">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+            <span style="font-size:14px">${transport.emoji}</span>
+            <span style="font-size:11px;font-weight:800;color:${color}">${transport.label}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#475569;font-weight:600">
+            <span>⏱ ${displayTime}</span>
+            <span style="color:#cbd5e1">|</span>
+            <span>${fmtDistKm(distKm)}</span>
+        </div>
+        ${warn}
+    </div>`;
+    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [40, 20] });
+};
+
 // --- POPUP HTML ---
 const makePopupHtml = (item: MapItem) => {
     const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
@@ -559,6 +656,16 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 L.marker([pathPoints[arrowIdx][0], pathPoints[arrowIdx][1]], {
                     icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [18, 18], iconAnchor: [9, 9] })
                 }).addTo(routeLayer);
+
+                // Transport info badge at 40% point
+                if (trip) {
+                    const transport = getSegmentTransport(start, end, trip, dist);
+                    const badgeIdx = Math.floor(pathPoints.length * 0.4);
+                    const badgeIcon = makeRouteBadge(dist, transport, lineColor);
+                    L.marker([pathPoints[badgeIdx][0], pathPoints[badgeIdx][1]], {
+                        icon: badgeIcon, zIndexOffset: 1500, interactive: false
+                    }).addTo(routeLayer);
+                }
 
                 bounds.extend([start.coords.lat, start.coords.lng]);
                 bounds.extend([end.coords.lat, end.coords.lng]);
