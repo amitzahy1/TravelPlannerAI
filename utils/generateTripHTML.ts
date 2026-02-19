@@ -174,16 +174,28 @@ const buildTimeline = (trip: Trip): TimelineDay[] => {
     });
   });
 
-  // → Hotels
+  // → Hotels (with smart check-in time based on flight arrivals)
   trip.hotels?.forEach((h, idx) => {
     const inIso = isoDate(h.checkInDate);
     const outIso = isoDate(h.checkOutDate);
     const nights = nightsBetween(h.checkInDate, h.checkOutDate);
 
+    // Smart check-in time: if a flight arrives on the same day, place check-in AFTER arrival
+    let checkInTime = '15:00';
+    const arrivalOnSameDay = days[inIso]?.events.find(e => e.type === 'flight_arr');
+    if (arrivalOnSameDay && arrivalOnSameDay.time) {
+      // Set check-in 30 min after arrival
+      const [hh, mm] = arrivalOnSameDay.time.split(':').map(Number);
+      const totalMin = hh * 60 + mm + 30;
+      const newH = Math.min(23, Math.floor(totalMin / 60));
+      const newM = totalMin % 60;
+      checkInTime = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+    }
+
     addToDay(inIso, {
       id: `hotel-${idx}-in`,
       type: 'hotel_in',
-      time: '15:00',
+      time: checkInTime,
       title: `צ'ק-אין`,
       subtitle: h.name,
       icon: '🏨',
@@ -192,10 +204,21 @@ const buildTimeline = (trip: Trip): TimelineDay[] => {
       nightsCount: nights
     });
 
+    // Smart check-out time: if a flight departs same day, put checkout BEFORE departure
+    let checkOutTime = '11:00';
+    const depOnSameDay = days[outIso]?.events.find(e => e.type === 'flight_dep');
+    if (depOnSameDay && depOnSameDay.time) {
+      const [hh, mm] = depOnSameDay.time.split(':').map(Number);
+      const totalMin = Math.max(0, hh * 60 + mm - 120); // 2 hours before flight
+      const newH = Math.floor(totalMin / 60);
+      const newM = totalMin % 60;
+      checkOutTime = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+    }
+
     addToDay(outIso, {
       id: `hotel-${idx}-out`,
       type: 'hotel_out',
-      time: '11:00',
+      time: checkOutTime,
       title: `צ'ק-אאוט`,
       subtitle: h.name,
       icon: '👋',
@@ -407,6 +430,44 @@ const renderEvent = (e: TimelineEvent): string => {
 };
 
 
+/** Renders a grouped block for consecutive hotel-stay days */
+const renderStayGroup = (days: TimelineDay[]): string => {
+  if (days.length === 0) return '';
+  const first = days[0];
+  const last = days[days.length - 1];
+  const hotel = first.events[0];
+  const hotelName = hotel?.title || '';
+
+  const dateRange = days.length === 1
+    ? `${first.dayNum} ${first.month}`
+    : `${first.dayNum} ${first.month} — ${last.dayNum} ${last.month}`;
+
+  return `
+    <div class="timeline-day stay-group">
+      <div class="day-header" id="day-${first.iso}">
+        <div class="dh-badge stay-badge">
+          <div class="dh-daynum">${days.length}</div>
+          <div class="dh-month">ימים</div>
+        </div>
+        <div class="dh-info">
+          <div class="dh-label">${dateRange}</div>
+          <div class="dh-title">נופש ב-${esc(hotelName)}</div>
+        </div>
+      </div>
+      <div class="timeline-body">
+        <div class="timeline-line"></div>
+        <div class="stay-group-card">
+          <div class="sg-icon">🛏️</div>
+          <div class="sg-content">
+            <div class="sg-title">${esc(hotelName)}</div>
+            <div class="sg-sub">${days.length} ימי נופש ומנוחה • ${dateRange}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
 const renderDay = (day: TimelineDay, index: number, total: number): string => {
   const isFirst = index === 0;
   const isLast = index === total - 1;
@@ -440,6 +501,35 @@ const renderDay = (day: TimelineDay, index: number, total: number): string => {
       </div>
     </div>
   `;
+};
+
+/** Groups consecutive hotel-stay-only days, renders everything else normally */
+const renderTimeline = (timeline: TimelineDay[]): string => {
+  const output: string[] = [];
+  let stayBuffer: TimelineDay[] = [];
+  let dayCounter = 0;
+
+  const flushStays = () => {
+    if (stayBuffer.length > 0) {
+      output.push(renderStayGroup(stayBuffer));
+      stayBuffer = [];
+    }
+  };
+
+  for (const day of timeline) {
+    const isStayOnly = day.events.length > 0 && day.events.every(e => e.type === 'hotel_stay');
+
+    if (isStayOnly) {
+      stayBuffer.push(day);
+    } else {
+      flushStays();
+      output.push(renderDay(day, dayCounter, timeline.length));
+    }
+    dayCounter++;
+  }
+  flushStays();
+
+  return output.join('');
 };
 
 
@@ -895,10 +985,33 @@ h1 {
 /* ═══ PRINT ═══ */
 @media print {
   .hero { height: 160px; }
-  .event-card, .flight-card, .hotel-card, .stay-card { break-inside: avoid; }
+  .event-card, .flight-card, .hotel-card, .stay-card, .stay-group-card { break-inside: avoid; }
   .day-header { position: static; }
   body { background: white; }
 }
+
+/* ═══ STAY GROUP ═══ */
+.stay-group .day-header .dh-title { color: #047857; }
+.stay-badge {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: white !important;
+  border-color: #047857 !important;
+}
+.stay-badge .dh-dow, .stay-badge .dh-month { color: rgba(255,255,255,0.85) !important; }
+.stay-group-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid #a7f3d0;
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.sg-icon { font-size: 36px; }
+.sg-title { font-size: 18px; font-weight: 800; color: #065f46; }
+.sg-sub { font-size: 13px; color: #047857; margin-top: 4px; font-weight: 500; }
 `;
 
 // ── Main Generator ───────────────────────────────────────────────
@@ -912,7 +1025,7 @@ export const generateTripHTML = (trip: Trip): string => {
   const flightCount = trip.flights?.segments?.length || 0;
   const hotelCount = trip.hotels?.length || 0;
 
-  const dayHtml = timeline.map((d, i) => renderDay(d, i, timeline.length)).join('');
+  const dayHtml = renderTimeline(timeline);
 
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
