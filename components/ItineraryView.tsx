@@ -538,8 +538,17 @@ export const ItineraryView: React.FC<{
         const description = formData.get('description') as string;
         const time = formData.get('time') as string;
         const priceStr = formData.get('price') as string;
+        const driverName = formData.get('driverName') as string;
+        const driverPhone = formData.get('driverPhone') as string;
         const notes = formData.get('notes') as string;
-        const activityText = `${time} ${description} ${notes ? `- ${notes}` : ''}`;
+
+        const detailsParts = [];
+        if (driverName) detailsParts.push(`נהג: ${driverName}`);
+        if (driverPhone) detailsParts.push(`טל: ${driverPhone}`);
+        if (notes) detailsParts.push(notes);
+
+        const detailsStr = detailsParts.length > 0 ? ` - ${detailsParts.join(', ')}` : '';
+        const activityText = `${time} ${description}${detailsStr}`;
 
         let newItinerary = [...trip.itinerary];
         const targetDate = transferModal.date;
@@ -1265,11 +1274,15 @@ export const ItineraryView: React.FC<{
                                     <input name="time" type="time" defaultValue={transferModal.defaultTime} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
                                     <input name="price" type="number" placeholder="מחיר" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <input name="driverName" placeholder="שם הנהג" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium" />
+                                    <input name="driverPhone" placeholder="טלפון" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium" />
+                                </div>
                                 <textarea name="notes" placeholder="הערות..." rows={3} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium" />
                                 <button type="submit" className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold">שמור</button>
                             </div>
                         </form>
-                    </div>
+                    </div >
                 )
             }
 
@@ -1277,50 +1290,52 @@ export const ItineraryView: React.FC<{
             {/* Note: CategoryListModal replaced by inline Smart Popover in Hero Stats section */}
 
             {/* Schedule Item Modal (from CategoryListModal selection) */}
-            {scheduleItem && (
-                <TripDateSelector
-                    isOpen={true}
-                    trip={trip}
-                    timeline={timeline}
-                    title="תזמון פעילות"
-                    description={`עבור: ${scheduleItem.item?.name || 'פריט'}`}
-                    onClose={() => setScheduleItem(null)}
-                    onSelect={(dateIso: string) => {
-                        // Convert dateIso (YYYY-MM-DD) to DD/MM/YYYY for itinerary
-                        const [y, m, d] = dateIso.split('-');
-                        const targetDateStr = `${d}/${m}/${y}`;
+            {
+                scheduleItem && (
+                    <TripDateSelector
+                        isOpen={true}
+                        trip={trip}
+                        timeline={timeline}
+                        title="תזמון פעילות"
+                        description={`עבור: ${scheduleItem.item?.name || 'פריט'}`}
+                        onClose={() => setScheduleItem(null)}
+                        onSelect={(dateIso: string) => {
+                            // Convert dateIso (YYYY-MM-DD) to DD/MM/YYYY for itinerary
+                            const [y, m, d] = dateIso.split('-');
+                            const targetDateStr = `${d}/${m}/${y}`;
 
-                        // Add to trip.itinerary (this is what the timeline renders from)
-                        let newItinerary = [...trip.itinerary];
-                        let dayIndex = newItinerary.findIndex(day => day.date === targetDateStr);
+                            // Add to trip.itinerary (this is what the timeline renders from)
+                            let newItinerary = [...trip.itinerary];
+                            let dayIndex = newItinerary.findIndex(day => day.date === targetDateStr);
 
-                        const activityText = `12:00 ${scheduleItem.type === 'food' ? '🍽️' : '🎟️'} ${scheduleItem.item?.name || 'פריט'}`;
+                            const activityText = `12:00 ${scheduleItem.type === 'food' ? '🍽️' : '🎟️'} ${scheduleItem.item?.name || 'פריט'}`;
 
-                        if (dayIndex === -1) {
-                            // Create new day entry
-                            newItinerary.push({
-                                id: `day-${Date.now()}`,
-                                day: 0,
-                                date: targetDateStr,
-                                title: 'יום חדש',
-                                activities: [activityText]
-                            });
-                        } else {
-                            // Add to existing day
-                            newItinerary[dayIndex] = {
-                                ...newItinerary[dayIndex],
-                                activities: [...newItinerary[dayIndex].activities, activityText]
-                            };
-                        }
+                            if (dayIndex === -1) {
+                                // Create new day entry
+                                newItinerary.push({
+                                    id: `day-${Date.now()}`,
+                                    day: 0,
+                                    date: targetDateStr,
+                                    title: 'יום חדש',
+                                    activities: [activityText]
+                                });
+                            } else {
+                                // Add to existing day
+                                newItinerary[dayIndex] = {
+                                    ...newItinerary[dayIndex],
+                                    activities: [...newItinerary[dayIndex].activities, activityText]
+                                };
+                            }
 
-                        onUpdateTrip({ ...trip, itinerary: newItinerary });
-                        setScheduleItem(null);
+                            onUpdateTrip({ ...trip, itinerary: newItinerary });
+                            setScheduleItem(null);
 
-                        // Show confirmation
-                        alert(`✅ "${scheduleItem.item?.name}" נוסף ליום ${d}/${m}!`);
-                    }}
-                />
-            )}
+                            // Show confirmation
+                            alert(`✅ "${scheduleItem.item?.name}" נוסף ליום ${d}/${m}!`);
+                        }}
+                    />
+                )
+            }
 
 
         </div >

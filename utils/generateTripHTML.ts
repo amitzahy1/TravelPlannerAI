@@ -10,7 +10,7 @@ import { Trip, FlightSegment, HotelBooking, ItineraryItem } from '../types';
 
 interface TimelineEvent {
   id: string;
-  type: 'flight_dep' | 'flight_arr' | 'hotel_in' | 'hotel_out' | 'activity' | 'food' | 'divider';
+  type: 'flight_dep' | 'flight_arr' | 'hotel_in' | 'hotel_out' | 'hotel_stay' | 'activity' | 'food' | 'divider';
   time: string; // HH:MM
   title: string;
   subtitle?: string;
@@ -228,6 +228,37 @@ const buildTimeline = (trip: Trip): TimelineDay[] => {
     }
   });
 
+  // -> Detect ongoing hotel stays for empty days
+  // We do this BEFORE sorting, so we can set the title if needed.
+  Object.values(days).forEach(day => {
+    const d = isoDate(day.date);
+
+    // Find hotel where we are strictly between check-in and check-out
+    // (Check-in day and Check-out day already have events)
+    const activeHotel = trip.hotels?.find(h => {
+      const inD = isoDate(h.checkInDate);
+      const outD = isoDate(h.checkOutDate);
+      return d > inD && d < outD;
+    });
+
+    // Only add if explicit stay is needed (e.g. empty day)
+    if (activeHotel) {
+      if (day.events.length === 0) {
+        day.title = `נופש ב-${activeHotel.name}`; // Force title
+        day.events.push({
+          id: `stay-${d}`,
+          type: 'hotel_stay',
+          time: '',
+          title: 'שהייה במלון',
+          subtitle: activeHotel.name,
+          icon: '🛏️',
+          isMajor: false,
+          details: 'יום חופשי במלון'
+        });
+      }
+    }
+  });
+
   // 3. Sort & Assign Titles
   return Object.values(days).sort((a, b) => a.date.getTime() - b.date.getTime()).map(day => {
     // Sort events by time
@@ -380,6 +411,10 @@ h1{margin:0;font-size:32px;line-height:1.1}
 .event-card.type-flight_dep .ev-title{color:#1e3a8a}
 .event-card.type-hotel_in .ev-marker{background:#f0fdf4;border-color:#bbf7d0}
 .event-card.type-hotel_in .ev-title{color:#14532d}
+.event-card.type-hotel_stay .ev-marker{background:#f0fdf4;border-color:#bbf7d0}
+.event-card.type-hotel_stay .ev-title{color:#14532d}
+.event-card.type-hotel_stay .ev-marker{background:#f0fdf4;border-color:#bbf7d0}
+.event-card.type-hotel_stay .ev-title{color:#14532d}
 
 .ev-title{font-weight:700;font-size:15px;margin-bottom:2px}
 .ev-subtitle{font-size:13px;color:var(--muted)}
