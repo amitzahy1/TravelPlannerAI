@@ -524,6 +524,19 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     return (
         <div className="w-full h-full bg-slate-50 relative flex flex-col md:flex-row animate-scale-in" onClick={(e) => e.stopPropagation()}>
 
+            {/* ✅ Mobile Back Bar — sticky top bar so user can always go back */}
+            <div className="md:hidden sticky top-0 z-50 bg-white border-b border-slate-100 shadow-sm flex items-center justify-between px-4 py-3">
+                <button
+                    onClick={onClose}
+                    className="flex items-center gap-2 text-blue-600 font-bold text-sm hover:bg-blue-50 px-3 py-2 rounded-xl transition-all active:scale-95"
+                >
+                    <ArrowRight className="w-4 h-4" />
+                    <span>חזרה לטיול</span>
+                </button>
+                <span className="font-black text-slate-800">ניהול טיול</span>
+                <div className="w-20" /> {/* spacer for centering */}
+            </div>
+
             <ConfirmModal
                 isOpen={!!tripToDelete}
                 title="מחיקת טיול"
@@ -697,11 +710,27 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
                 {/* Content Panel */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-8 relative scroll-smooth decoration-slice">
-                    {/* Mobile Sidebar Toggle */}
-                    <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden absolute top-4 left-4 p-2 bg-white shadow-sm rounded-lg border border-slate-200 z-10">
-                        <Menu className="w-5 h-5 text-slate-600" />
-                    </button>
-
+                    {/* Mobile Tab Switcher — replaces hidden sidebar on small screens */}
+                    <div className="md:hidden flex items-center gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide">
+                        {[
+                            { id: 'overview', label: 'פרטים כלליים', emoji: '📋' },
+                            { id: 'logistics', label: 'טיסות ומלונות', emoji: '✈️' },
+                            { id: 'ai', label: 'Magic Import', emoji: '✨' },
+                            { id: 'logs', label: 'לוגים', emoji: '🖥️' },
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                                className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id
+                                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                        : 'bg-white text-slate-600 border border-slate-200'
+                                    }`}
+                            >
+                                <span>{tab.emoji}</span>
+                                <span>{tab.label}</span>
+                            </button>
+                        ))}
+                    </div>
                     <div className="max-w-4xl mx-auto pb-20">
                         {/* TAB: OVERVIEW */}
                         {activeTab === 'overview' && (

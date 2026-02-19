@@ -1,19 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip } from '../types';
-import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, MessageCircle, X, Sparkles, ShoppingBag, Check, List, User, Calendar, Mountain, Plus, Settings } from 'lucide-react';
+import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, X, Sparkles, ShoppingBag, Check, List, Calendar, Plus, Settings, ArrowRight, Home } from 'lucide-react';
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
 
 // Helper to extract city from hotel address
 const extractCityFromAddress = (address?: string): string | null => {
         if (!address) return null;
-        // Common patterns: "..., City, Country" or "..., City" 
         const parts = address.split(',').map(p => p.trim());
         if (parts.length >= 2) {
-                // Try second-to-last part (city before country)
                 const city = parts[parts.length - 2];
-                // Skip if it looks like a country
                 if (city && !city.match(/Philippines|Thailand|Japan|Indonesia|Malaysia/i)) {
                         return city;
                 }
@@ -33,32 +30,41 @@ interface LayoutProps {
         onDeleteTrip?: (tripId: string) => void;
 }
 
+// Content nav tabs (excluding trip management)
+const contentNavItems = [
+        { id: 'itinerary', label: 'ראשי', icon: Home },
+        { id: 'flights', label: 'טיסות', icon: Plane },
+        { id: 'hotels', label: 'מלונות', icon: Hotel },
+        { id: 'restaurants', label: 'אוכל', icon: Utensils },
+        { id: 'attractions', label: 'אטרקציות', icon: Ticket },
+        { id: 'budget', label: 'תקציב', icon: Wallet },
+        { id: 'map_full', label: 'מפה', icon: MapPin },
+        { id: 'shopping', label: 'קניות', icon: ShoppingBag },
+];
+
 export const LayoutFixed: React.FC<LayoutProps> = ({
         children, activeTrip, trips, onSwitchTrip, currentTab, onSwitchTab, onOpenAdmin, onUpdateTrip, onDeleteTrip
 }) => {
 
-
         const [isWalletOpen, setIsWalletOpen] = useState(false);
         const [isTripMenuOpen, setIsTripMenuOpen] = useState(false);
+        const [isTripDropdownOpen, setIsTripDropdownOpen] = useState(false);
 
-        // Dynamic route calculation: extract cities from flights + hotels
+        // Dynamic route calculation
         const dynamicRoute = useMemo(() => {
                 if (!activeTrip) return '';
                 const cities = new Set<string>();
 
-                // 1. Add flight cities (in order)
                 activeTrip.flights?.segments?.forEach(seg => {
                         if (seg.fromCity) cities.add(seg.fromCity);
                         if (seg.toCity) cities.add(seg.toCity);
                 });
 
-                // 2. Add hotel cities
                 activeTrip.hotels?.forEach(hotel => {
                         const city = extractCityFromAddress(hotel.address);
                         if (city) cities.add(city);
                 });
 
-                // 3. Fallback to destination if no cities extracted
                 if (cities.size === 0 && activeTrip.destination) {
                         return activeTrip.destination;
                 }
@@ -66,24 +72,12 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                 return Array.from(cities).join(' - ');
         }, [activeTrip]);
 
-        const navItems = [
-                { id: 'trips', label: 'ניהול טיול', icon: Sparkles }, // NEW: Top priority
-                { id: 'itinerary', label: 'ראשי', icon: Map },
-                { id: 'flights', label: 'טיסות', icon: Plane },
-                { id: 'hotels', label: 'מלונות', icon: Hotel },
-                { id: 'restaurants', label: 'אוכל', icon: Utensils },
-                { id: 'attractions', label: 'אטרקציות', icon: Ticket },
-                { id: 'budget', label: 'תקציב', icon: Wallet },
-                { id: 'map_full', label: 'מפה', icon: MapPin },
-                { id: 'shopping', label: 'קניות', icon: ShoppingBag },
-        ];
-
         return (
                 <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-rubik pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" dir="rtl">
-                        {/* Premium Glass Header - Double Row Layout */}
+                        {/* Premium Glass Header */}
                         <header className="fixed top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-b border-white/20 shadow-sm transition-all duration-300 flex flex-col">
 
-                                {/* ROW 1: Branding, Global Nav, Login */}
+                                {/* ROW 1: Branding, Desktop Nav Tabs, Login */}
                                 <div className="w-full border-b border-slate-100/50">
                                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[65px] flex justify-between items-center">
 
@@ -98,9 +92,9 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         </div>
                                                 </div>
 
-                                                {/* Center: Desktop Nav Tabs */}
+                                                {/* Center: Desktop Content Nav Tabs (without trip management) */}
                                                 <div className="hidden lg:flex items-center gap-1 bg-slate-100/80 p-1.5 rounded-2xl mx-4">
-                                                        {navItems.map(item => (
+                                                        {contentNavItems.map(item => (
                                                                 <button
                                                                         key={item.id}
                                                                         onClick={() => onSwitchTab(item.id)}
@@ -117,16 +111,14 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
 
                                                 {/* Left: Login & Mobile Menu */}
                                                 <div className="flex items-center gap-3">
-                                                        {/* 1. Login - Now Visible on Mobile too (Icon only on mobile, full on desktop) */}
                                                         <div className="hidden md:block">
                                                                 <LoginButton />
                                                         </div>
                                                         <div className="md:hidden">
-                                                                {/* Simplified Login Icon for Mobile Header */}
-                                                                <LoginButton /> {/* LoginButton handles its own responsive/modal logic, assuming it renders a button */}
+                                                                <LoginButton />
                                                         </div>
 
-                                                        {/* 2. Mobile Menu Trigger */}
+                                                        {/* Mobile Menu Trigger */}
                                                         <button
                                                                 onClick={() => setIsTripMenuOpen(true)}
                                                                 className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-700 hover:bg-slate-200"
@@ -141,31 +133,31 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                 <div className="hidden lg:flex w-full bg-slate-50/80 backdrop-blur-sm border-b border-white/50">
                                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[55px] flex items-center justify-between w-full">
 
-                                                {/* Right: Trip Controls (Selector, Wallet, Admin) */}
-                                                <div className="flex items-center gap-3">
+                                                {/* Right: Trip Selector + Trip Management */}
+                                                <div className="flex items-center gap-2">
 
-                                                        {/* 1. Trip Selector (Primary) */}
-                                                        <div className="relative group z-50">
+                                                        {/* Trip Selector (Primary) */}
+                                                        <div className="relative z-50">
                                                                 <button
-                                                                        onClick={() => setIsTripMenuOpen(!isTripMenuOpen)}
-                                                                        onBlur={() => setTimeout(() => setIsTripMenuOpen(false), 200)}
+                                                                        onClick={() => setIsTripDropdownOpen(!isTripDropdownOpen)}
+                                                                        onBlur={() => setTimeout(() => setIsTripDropdownOpen(false), 200)}
                                                                         className="flex items-center gap-3 bg-white hover:bg-blue-50/50 text-slate-800 px-4 py-2 rounded-xl border border-slate-200 shadow-sm transition-all min-w-[220px]"
                                                                 >
                                                                         <span className="font-black text-sm text-blue-600 truncate flex-1 text-right">{activeTrip?.name || 'בחר טיול'}</span>
-                                                                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isTripMenuOpen ? 'rotate-180' : ''}`} />
+                                                                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isTripDropdownOpen ? 'rotate-180' : ''}`} />
                                                                 </button>
 
-                                                                {isTripMenuOpen && (
+                                                                {isTripDropdownOpen && (
                                                                         <div className="absolute top-full right-0 mt-2 w-full bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[60] animate-fade-in">
                                                                                 <div className="max-h-60 overflow-y-auto p-1">
                                                                                         {trips.map(trip => (
                                                                                                 <button
                                                                                                         key={trip.id}
-                                                                                                        onClick={() => { onSwitchTrip(trip.id); setIsTripMenuOpen(false); }}
-                                                                                                        className={`w-full text-right px-3 py-2.5 text-sm font-bold rounded-lg flex items-center justify-between hover:bg-slate-50 transition-colors ${activeTrip.id === trip.id ? 'text-blue-700 bg-blue-50' : 'text-slate-600'}`}
+                                                                                                        onClick={() => { onSwitchTrip(trip.id); setIsTripDropdownOpen(false); }}
+                                                                                                        className={`w-full text-right px-3 py-2.5 text-sm font-bold rounded-lg flex items-center justify-between hover:bg-slate-50 transition-colors ${activeTrip?.id === trip.id ? 'text-blue-700 bg-blue-50' : 'text-slate-600'}`}
                                                                                                 >
                                                                                                         <span className="truncate">{trip.name}</span>
-                                                                                                        {activeTrip.id === trip.id && <Check className="w-4 h-4 text-blue-600" />}
+                                                                                                        {activeTrip?.id === trip.id && <Check className="w-4 h-4 text-blue-600" />}
                                                                                                 </button>
                                                                                         ))}
                                                                                 </div>
@@ -173,18 +165,32 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                 )}
                                                         </div>
 
-                                                        <div className="w-px h-6 bg-slate-200 mx-2"></div>
+                                                        {/* Separator */}
+                                                        <div className="w-px h-6 bg-slate-200 mx-1"></div>
 
-                                                        <div className="w-px h-6 bg-slate-200 mx-2"></div>
-
-                                                        {/* Tools (Wallet & New Trip) */}
+                                                        {/* New Trip Button */}
                                                         <button
-                                                                onClick={() => onOpenAdmin()} // Reuse Admin/Wizard opener
+                                                                onClick={() => onOpenAdmin()}
                                                                 title="צור טיול חדש"
                                                                 className="flex items-center gap-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-blue-100 hover:shadow-sm"
                                                         >
                                                                 <Plus className="w-4 h-4" />
                                                                 <span className="hidden xl:inline">טיול חדש</span>
+                                                        </button>
+
+                                                        {/* Separator */}
+                                                        <div className="w-px h-6 bg-slate-200 mx-1"></div>
+
+                                                        {/* ✅ Trip Management Button — next to trip selector, like in the screenshot */}
+                                                        <button
+                                                                onClick={() => onSwitchTab('trips')}
+                                                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${currentTab === 'trips'
+                                                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                                                                        : 'bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50 hover:border-indigo-200 shadow-sm'
+                                                                        }`}
+                                                        >
+                                                                <Sparkles className="w-4 h-4" />
+                                                                <span>ניהול טיול</span>
                                                         </button>
 
                                                         <button
@@ -212,62 +218,83 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                 </div>
                         </header>
 
-                        {/* Mobile Menu Overlay (Fullscreen) */}
-                        {
-                                isTripMenuOpen && (
-                                        <div className="lg:hidden fixed inset-0 z-[100] bg-white animate-fade-in flex flex-col">
-                                                <div className="p-4 flex justify-between items-center border-b border-slate-100">
-                                                        <span className="font-black text-xl text-slate-800">תפריט</span>
-                                                        <button onClick={() => setIsTripMenuOpen(false)} className="p-2 bg-slate-100 rounded-full">
-                                                                <X className="w-6 h-6 text-slate-600" />
-                                                        </button>
+                        {/* Mobile Full-Screen Menu Overlay */}
+                        {isTripMenuOpen && (
+                                <div className="lg:hidden fixed inset-0 z-[100] bg-white animate-fade-in flex flex-col">
+                                        <div className="p-4 flex justify-between items-center border-b border-slate-100 bg-white sticky top-0 z-10">
+                                                <span className="font-black text-xl text-slate-800">תפריט</span>
+                                                <button onClick={() => setIsTripMenuOpen(false)} className="p-2 bg-slate-100 rounded-full">
+                                                        <X className="w-6 h-6 text-slate-600" />
+                                                </button>
+                                        </div>
+
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-10">
+                                                {/* 1. User Profile */}
+                                                <div className="bg-slate-50 p-4 rounded-2xl">
+                                                        <LoginButton />
                                                 </div>
 
-                                                <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                                                        {/* 1. User Profile actions */}
-                                                        <div className="bg-slate-50 p-4 rounded-2xl">
-                                                                <LoginButton />
-                                                        </div>
-
-                                                        {/* 2. Key Actions */}
+                                                {/* 2. Trip Management — primary action */}
+                                                <div>
+                                                        <h3 className="font-bold text-slate-400 text-xs uppercase tracking-wider mb-3">ניהול</h3>
                                                         <div className="grid grid-cols-2 gap-3">
                                                                 <button
                                                                         onClick={() => { onSwitchTab('trips'); setIsTripMenuOpen(false); }}
-                                                                        className="flex flex-col items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 p-4 rounded-2xl transition-all"
+                                                                        className="flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-4 rounded-2xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
                                                                 >
                                                                         <Sparkles className="w-6 h-6" />
-                                                                        <span className="font-bold">ניהול טיול</span>
+                                                                        <span className="font-bold text-sm">ניהול טיול</span>
                                                                 </button>
 
                                                                 <button
                                                                         onClick={() => { setIsWalletOpen(true); setIsTripMenuOpen(false); }}
-                                                                        className="flex flex-col items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 p-4 rounded-2xl transition-all border border-slate-200"
+                                                                        className="flex flex-col items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 p-4 rounded-2xl transition-all active:scale-95 border border-slate-200"
                                                                 >
                                                                         <Wallet className="w-6 h-6" />
-                                                                        <span className="font-bold">ארנק</span>
+                                                                        <span className="font-bold text-sm">ארנק</span>
                                                                 </button>
                                                         </div>
+                                                </div>
 
-                                                        {/* 3. Trip Switcher */}
-                                                        <div>
-                                                                <h3 className="font-bold text-slate-400 text-xs uppercase tracking-wider mb-3">הטיולים שלי</h3>
-                                                                <div className="space-y-2">
-                                                                        {trips.map(trip => (
-                                                                                <button
-                                                                                        key={trip.id}
-                                                                                        onClick={() => { onSwitchTrip(trip.id); setIsTripMenuOpen(false); }}
-                                                                                        className={`w-full text-right px-4 py-4 rounded-xl font-bold flex items-center justify-between border ${activeTrip?.id === trip.id ? 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-100 bg-white text-slate-600'}`}
-                                                                                >
-                                                                                        <span className="truncate">{trip.name}</span>
-                                                                                        {activeTrip?.id === trip.id && <div className="bg-blue-600 text-white p-1 rounded-full"><Check className="w-3 h-3" /></div>}
-                                                                                </button>
-                                                                        ))}
-                                                                </div>
+                                                {/* 3. All Content Tabs */}
+                                                <div>
+                                                        <h3 className="font-bold text-slate-400 text-xs uppercase tracking-wider mb-3">עמודים</h3>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                                {contentNavItems.map(item => (
+                                                                        <button
+                                                                                key={item.id}
+                                                                                onClick={() => { onSwitchTab(item.id); setIsTripMenuOpen(false); }}
+                                                                                className={`flex flex-col items-center justify-center gap-2 p-3 rounded-2xl transition-all active:scale-95 border ${currentTab === item.id
+                                                                                        ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm'
+                                                                                        : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50'
+                                                                                        }`}
+                                                                        >
+                                                                                <item.icon className="w-5 h-5" />
+                                                                                <span className="font-bold text-xs">{item.label}</span>
+                                                                        </button>
+                                                                ))}
+                                                        </div>
+                                                </div>
+
+                                                {/* 4. Trip Switcher */}
+                                                <div>
+                                                        <h3 className="font-bold text-slate-400 text-xs uppercase tracking-wider mb-3">הטיולים שלי</h3>
+                                                        <div className="space-y-2">
+                                                                {trips.map(trip => (
+                                                                        <button
+                                                                                key={trip.id}
+                                                                                onClick={() => { onSwitchTrip(trip.id); setIsTripMenuOpen(false); }}
+                                                                                className={`w-full text-right px-4 py-4 rounded-xl font-bold flex items-center justify-between border ${activeTrip?.id === trip.id ? 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-100 bg-white text-slate-600'}`}
+                                                                        >
+                                                                                <span className="truncate">{trip.name}</span>
+                                                                                {activeTrip?.id === trip.id && <div className="bg-blue-600 text-white p-1 rounded-full"><Check className="w-3 h-3" /></div>}
+                                                                        </button>
+                                                                ))}
                                                         </div>
                                                 </div>
                                         </div>
-                                )
-                        }
+                                </div>
+                        )}
 
                         {/* Main Content Spacer for Fixed Header */}
                         <div className="h-[70px] lg:h-[120px]"></div>
@@ -277,24 +304,25 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                 {children}
                         </main>
 
-                        {/* Premium Floating Dock - Mobile Only */}
+                        {/* Mobile Floating Dock — content tabs only, no trip management */}
                         <motion.nav
                                 initial={{ y: 100, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ type: 'spring', stiffness: 260, damping: 25, delay: 0.2 }}
                                 className="md:hidden floating-dock"
                         >
-                                {/* Main Navigation Items */}
-                                {navItems.slice(0, 5).map((item, index) => (
+                                {/* Content navigation items */}
+                                {contentNavItems.map((item, index) => (
                                         <motion.button
                                                 key={item.id}
                                                 initial={{ scale: 0, opacity: 0 }}
                                                 animate={{ scale: 1, opacity: 1 }}
-                                                transition={{ delay: 0.1 + index * 0.05, type: 'spring', stiffness: 400, damping: 20 }}
+                                                transition={{ delay: 0.1 + index * 0.04, type: 'spring', stiffness: 400, damping: 20 }}
                                                 whileHover={{ scale: 1.15, y: -6 }}
                                                 whileTap={{ scale: 0.95 }}
                                                 onClick={() => onSwitchTab(item.id)}
                                                 className={`dock-item ${currentTab === item.id ? 'active' : ''}`}
+                                                title={item.label}
                                         >
                                                 <item.icon className="w-5 h-5" />
 
@@ -317,32 +345,29 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                 {/* Divider */}
                                 <div className="w-px h-8 bg-white/10 mx-1" />
 
-                                {/* Admin Button - Special CTA */}
+                                {/* Menu button to open full-screen overlay (where trip management lives) */}
                                 <motion.button
-                                        initial={{ scale: 0, rotate: -180 }}
-                                        animate={{ scale: 1, rotate: 0 }}
-                                        transition={{ delay: 0.4, type: 'spring', stiffness: 300, damping: 20 }}
-                                        whileHover={{ scale: 1.2, rotate: 90 }}
+                                        initial={{ scale: 0, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 20 }}
+                                        whileHover={{ scale: 1.1 }}
                                         whileTap={{ scale: 0.9 }}
-                                        onClick={() => onSwitchTab('trips')}
-                                        className="dock-item bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30"
+                                        onClick={() => setIsTripMenuOpen(true)}
+                                        className={`dock-item ${isTripMenuOpen || currentTab === 'trips' ? 'active bg-gradient-to-br from-indigo-500 to-purple-600 text-white' : ''}`}
+                                        title="תפריט"
                                 >
-                                        <Sparkles className="w-5 h-5" />
+                                        <List className="w-5 h-5" />
                                 </motion.button>
                         </motion.nav>
 
-
-
                         {/* Quick Wallet Overlay */}
-                        {
-                                isWalletOpen && onUpdateTrip && activeTrip && (
-                                        <QuickAccessWallet
-                                                trip={activeTrip}
-                                                onClose={() => setIsWalletOpen(false)}
-                                                onUpdateTrip={onUpdateTrip}
-                                        />
-                                )
-                        }
-                </div >
+                        {isWalletOpen && onUpdateTrip && activeTrip && (
+                                <QuickAccessWallet
+                                        trip={activeTrip}
+                                        onClose={() => setIsWalletOpen(false)}
+                                        onUpdateTrip={onUpdateTrip}
+                                />
+                        )}
+                </div>
         );
 };
