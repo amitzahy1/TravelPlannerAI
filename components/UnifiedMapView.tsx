@@ -5,155 +5,236 @@ import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
-import { Loader2, Map as MapIcon, Navigation } from 'lucide-react';
+import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName } from '../utils/geoData';
 
 // --- Interfaces ---
 interface MapItem {
     id: string;
     type: 'hotel' | 'restaurant' | 'attraction' | 'airport' | 'shopping';
-    subType?: 'departure' | 'arrival'; // Special for flights
-    flightId?: string; // To link dep/arr
+    subType?: 'departure' | 'arrival';
+    flightId?: string;
     name: string;
     description?: string;
     lat?: number;
     lng?: number;
-    address?: string; // Fallback for geocoding
-    date?: string; // For routing order
-    time?: string; // For routing order
-    city?: string; // For City Navigation
+    address?: string;
+    date?: string;
+    time?: string;
+    city?: string;
+    order?: number; // Chronological order
+}
+
+interface RouteStop {
+    name: string;
+    displayName?: string;
+    type: 'flight' | 'hotel' | 'city';
+    code?: string;
+    coords?: { lat: number; lng: number };
+    date?: string;
+    emoji?: string;
 }
 
 interface UnifiedMapViewProps {
-    trip?: Trip; // If provided, shows EVERYTHING
-    items?: MapItem[]; // If provided, shows specific list (overrides trip)
+    trip?: Trip;
+    items?: MapItem[];
     height?: string;
     title?: string;
 }
 
 const STORAGE_KEY = 'travel_app_geo_cache_v5';
 
-// Cross-language city mapping for Hebrew <-> English filter matching
-const HEBREW_TO_ENGLISH_CITY_MAP: Record<string, string[]> = {
-    'בנגקוק': ['Bangkok', 'Krung Thep'],
-    'פטאייה': ['Pattaya', 'Chon Buri'],
-    'פוקט': ['Phuket'],
-    'קו סמט': ['Koh Samet', 'Ko Samet', 'Rayong'],
-    'צ\'יאנג מאי': ['Chiang Mai'],
-    'קוסמוי': ['Koh Samui', 'Ko Samui', 'Surat Thani'],
-    'קראבי': ['Krabi'],
-    'הואה הין': ['Hua Hin'],
-    'תל אביב': ['Tel Aviv'],
-    'ירושלים': ['Jerusalem'],
-    'אילת': ['Eilat'],
-    'חיפה': ['Haifa'],
-    'לונדון': ['London'],
-    'פריז': ['Paris'],
-    'ניו יורק': ['New York', 'NYC', 'Manhattan'],
-    'רומא': ['Rome', 'Roma'],
-    'ברצלונה': ['Barcelona'],
-    'אמסטרדם': ['Amsterdam'],
-    'ברלין': ['Berlin'],
-    'טוקיו': ['Tokyo'],
-    'סינגפור': ['Singapore'],
-    'דובאי': ['Dubai'],
-    'אתונה': ['Athens'],
-    'וינה': ['Vienna', 'Wien'],
-    'פראג': ['Prague', 'Praha'],
-    'בודפשט': ['Budapest'],
-    'ליסבון': ['Lisbon', 'Lisboa'],
+// Type config — colors and icons
+const TYPE_CONFIG = {
+    hotel: {
+        color: '#0ea5e9',
+        gradient: ['#0ea5e9', '#0284c7'],
+        emoji: '🏨',
+        label: 'מלון',
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-8a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v8"/><path d="M5 21h14"/><path d="M9 10V8a3 3 0 0 1 6 0v2"/></svg>`,
+    },
+    restaurant: {
+        color: '#f97316',
+        gradient: ['#f97316', '#ea580c'],
+        emoji: '🍽️',
+        label: 'מסעדה',
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>`,
+    },
+    attraction: {
+        color: '#8b5cf6',
+        gradient: ['#8b5cf6', '#7c3aed'],
+        emoji: '🎯',
+        label: 'אטרקציה',
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    },
+    airport: {
+        color: '#6366f1',
+        gradient: ['#6366f1', '#4f46e5'],
+        emoji: '✈️',
+        label: 'שדה תעופה',
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
+    },
+    shopping: {
+        color: '#ec4899',
+        gradient: ['#ec4899', '#db2777'],
+        emoji: '🛍️',
+        label: 'קניות',
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>`,
+    },
 };
 
-// Helper: Get English keywords for a Hebrew city (or vice versa)
+// Hebrew cross-language map
+const HEBREW_TO_ENGLISH_CITY_MAP: Record<string, string[]> = {
+    'בנגקוק': ['Bangkok'], 'פוקט': ['Phuket'], 'תל אביב': ['Tel Aviv'],
+    'ירושלים': ['Jerusalem'], 'אילת': ['Eilat'], 'לונדון': ['London'],
+    'פריז': ['Paris'], 'ניו יורק': ['New York', 'NYC'], 'רומא': ['Rome'],
+    'ברצלונה': ['Barcelona'], 'טביליסי': ['Tbilisi'], 'גיאורגיה': ['Georgia'],
+};
+
 const getCityKeywords = (cityName: string): string[] => {
     const lowerCity = cityName.toLowerCase();
-
-    // Check Hebrew -> English
     for (const [hebrew, englishList] of Object.entries(HEBREW_TO_ENGLISH_CITY_MAP)) {
-        if (hebrew.toLowerCase() === lowerCity) {
-            return englishList.map(e => e.toLowerCase());
-        }
-        // Check English -> Hebrew (reverse lookup)
-        if (englishList.some(e => e.toLowerCase() === lowerCity)) {
-            return [hebrew.toLowerCase(), ...englishList.map(e => e.toLowerCase())];
-        }
+        if (hebrew.toLowerCase() === lowerCity) return englishList.map(e => e.toLowerCase());
+        if (englishList.some(e => e.toLowerCase() === lowerCity)) return [hebrew.toLowerCase(), ...englishList.map(e => e.toLowerCase())];
     }
-
-    // Fallback: return the original city name
     return [lowerCity];
 };
 
-// --- Helpers ---
-const isValidCoordinate = (lat?: number, lng?: number) => {
-    return typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng);
-};
-
-const getDistanceFromLatLonInKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Radius of the earth in km
-    const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-};
-
-const deg2rad = (deg: number) => {
-    return deg * (Math.PI / 180);
-};
-
-const getBearing = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-    const y = Math.sin(deg2rad(lng2 - lng1)) * Math.cos(deg2rad(lat2));
-    const x = Math.cos(deg2rad(lat1)) * Math.sin(deg2rad(lat2)) -
-        Math.sin(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.cos(deg2rad(lng2 - lng1));
-    const brng = Math.atan2(y, x);
-    return (brng * 180 / Math.PI + 360) % 360;
-};
+const isValidCoordinate = (lat?: number, lng?: number) =>
+    typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng);
 
 const parseTripDate = (dateStr: string): Date | null => {
     if (!dateStr) return null;
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return new Date(dateStr);
     const parts = dateStr.split('/');
-    if (parts.length !== 3) {
-        const d = new Date(dateStr);
-        if (!isNaN(d.getTime())) return d;
-        return null;
-    }
-    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    if (parts.length === 3) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
 };
 
 const getItemTimestamp = (item: MapItem): number => {
-    if (!item.date) return 0;
+    if (!item.date) return Infinity;
     const date = parseTripDate(item.date);
-    if (!date) return 0;
+    if (!date) return Infinity;
     if (item.time) {
-        const [hours, minutes] = item.time.split(':').map(Number);
-        date.setHours(hours || 0, minutes || 0);
+        const [h, m] = item.time.split(':').map(Number);
+        date.setHours(h || 0, m || 0);
     }
     return date.getTime();
 };
 
-// Geocoding Cache & Logic
+const deg2rad = (deg: number) => deg * (Math.PI / 180);
+
+const getDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const getBearing = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const y = Math.sin(deg2rad(lng2 - lng1)) * Math.cos(deg2rad(lat2));
+    const x = Math.cos(deg2rad(lat1)) * Math.sin(deg2rad(lat2)) - Math.sin(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.cos(deg2rad(lng2 - lng1));
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+};
+
 const geocodeAddress = async (query: string): Promise<{ lat: number; lng: number } | null> => {
     if (!query) return null;
     try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
-            headers: { 'User-Agent': 'TravelPlannerPro/1.0' }
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
+            headers: { 'User-Agent': 'TravelPlannerPro/2.0' }
         });
-        const data = await response.json();
-        if (data && data.length > 0) {
-            return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        }
+        const data = await res.json();
+        if (data?.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
         return null;
-    } catch (e) {
-        console.warn("Geocoding failed for", query);
+    } catch {
         return null;
     }
 };
 
-export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, height = "75vh", title }) => {
+// --- PREMIUM PIN MARKER ---
+const makePinIcon = (config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG], label?: string) => {
+    const [c1, c2] = config.gradient;
+    const html = `
+        <div style="position:relative; width:44px; height:52px; display:flex; flex-direction:column; align-items:center;">
+            <div style="
+                width:44px; height:44px; border-radius:50% 50% 50% 0%;
+                transform:rotate(-45deg);
+                background:linear-gradient(135deg,${c1},${c2});
+                box-shadow:0 6px 20px ${c1}60,0 2px 6px rgba(0,0,0,0.25);
+                display:flex; align-items:center; justify-content:center;
+                border:2.5px solid rgba(255,255,255,0.8);
+            ">
+                <div style="transform:rotate(45deg); color:white; display:flex; align-items:center; justify-content:center; width:22px; height:22px;">
+                    ${config.svg}
+                </div>
+            </div>
+            <div style="
+                width:6px; height:10px; margin-top:-2px;
+                background:linear-gradient(to bottom,${c1},${c2});
+                clip-path:polygon(50% 100%,0 0,100% 0);
+            "></div>
+        </div>
+    `;
+    return L.divIcon({ html, className: '', iconSize: [44, 52], iconAnchor: [22, 52], popupAnchor: [0, -56] });
+};
+
+// --- ROUTE STOP PILL ---
+const makeStopPill = (num: number, name: string, emoji: string, color: string) => {
+    const html = `
+        <div style="
+            display:inline-flex; align-items:center; gap:7px;
+            background:white;
+            border-radius:24px;
+            padding:5px 12px 5px 5px;
+            box-shadow:0 4px 16px rgba(0,0,0,0.18),0 1px 4px rgba(0,0,0,0.1);
+            border:1.5px solid rgba(255,255,255,0.9);
+            white-space:nowrap;
+            font-family:'Rubik','Inter',sans-serif;
+            position:relative;
+        ">
+            <div style="
+                width:28px; height:28px; border-radius:50%;
+                background:linear-gradient(135deg,${color},${color}cc);
+                color:white; font-weight:900; font-size:13px;
+                display:flex; align-items:center; justify-content:center;
+                box-shadow:0 2px 8px ${color}50;
+                flex-shrink:0;
+            ">${num}</div>
+            <span style="font-size:13px; font-weight:700; color:#1e293b; letter-spacing:0.1px;">${emoji} ${name}</span>
+        </div>
+    `;
+    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 15] });
+};
+
+// --- POPUP HTML ---
+const makePopupHtml = (item: MapItem) => {
+    const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
+    const dateStr = item.date ? parseTripDate(item.date)?.toLocaleDateString('he-IL', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+    return `
+        <div style="font-family:'Rubik','Inter',sans-serif;direction:rtl;text-align:right;min-width:200px;max-width:260px;padding:2px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <div style="
+                    width:36px;height:36px;border-radius:10px;
+                    background:linear-gradient(135deg,${cfg.gradient[0]},${cfg.gradient[1]});
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:18px;flex-shrink:0;
+                ">${cfg.emoji}</div>
+                <div>
+                    <div style="font-size:10px;font-weight:700;color:${cfg.color};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:1px;">${cfg.label}</div>
+                    <div style="font-size:14px;font-weight:800;color:#0f172a;line-height:1.2;">${item.name}</div>
+                </div>
+            </div>
+            ${item.address ? `<div style="font-size:11px;color:#64748b;display:flex;align-items:flex-start;gap:4px;margin-bottom:4px;">📍 <span>${item.address}</span></div>` : ''}
+            ${item.description ? `<div style="font-size:11px;color:#475569;margin-bottom:4px;background:#f8fafc;padding:4px 8px;border-radius:8px;">${item.description}</div>` : ''}
+            ${dateStr ? `<div style="font-size:11px;color:#94a3b8;font-weight:600;">📅 ${dateStr}</div>` : ''}
+        </div>
+    `;
+};
+
+// ============================================================
+export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, height = "75vh" }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
     const markersRef = useRef<L.LayerGroup | null>(null);
@@ -162,562 +243,456 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
     const [mapItems, setMapItems] = useState<MapItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeCity, setActiveCity] = useState<string | 'ALL'>('ALL');
-    const [routeCities, setRouteCities] = useState<{ name: string; displayName?: string; type?: 'flight' | 'hotel' | 'city'; code?: string; coords?: { lat: number; lng: number } }[]>([]);
+    const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
+    const [activeStop, setActiveStop] = useState<number | null>(null);
 
-    // Geocoding Cache
-    const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number, lng: number }>>(() => {
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            return stored ? JSON.parse(stored) : {};
-        } catch { return {}; }
+    const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number; lng: number }>>(() => {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
     });
 
-    // 1. Prepare Data
+    // 1. Build raw map items from trip data
     useEffect(() => {
-        let rawItems: MapItem[] = [];
+        if (!trip && !items) return;
+        let raw: MapItem[] = [];
 
         if (items) {
-            rawItems = items;
+            raw = items;
         } else if (trip) {
-            // FLIGHTS
-            const sortedSegments = [...(trip.flights?.segments || [])].sort((a, b) => {
-                return (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0);
-            });
-            const originCode = sortedSegments.length > 0 ? sortedSegments[0].fromCode : null;
-
-            sortedSegments.forEach(seg => {
+            // Flights
+            const segs = [...(trip.flights?.segments || [])].sort((a, b) =>
+                (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0)
+            );
+            const originCode = segs[0]?.fromCode;
+            segs.forEach(seg => {
                 if (seg.fromCode !== originCode) {
-                    rawItems.push({
-                        id: `flight-${seg.flightNumber}-dep`,
-                        type: 'airport',
-                        subType: 'departure',
-                        flightId: seg.flightNumber,
-                        name: `${seg.fromCity} (${seg.fromCode})`,
-                        date: seg.date,
-                        time: seg.departureTime,
-                        city: seg.fromCity
-                    });
+                    raw.push({ id: `f-${seg.flightNumber}-dep`, type: 'airport', subType: 'departure', flightId: seg.flightNumber, name: `${seg.fromCity || seg.fromCode}`, date: seg.date, time: seg.departureTime, city: seg.fromCity });
                 }
                 if (seg.toCode !== originCode) {
-                    rawItems.push({
-                        id: `flight-${seg.flightNumber}-arr`,
-                        type: 'airport',
-                        subType: 'arrival',
-                        flightId: seg.flightNumber,
-                        name: `${seg.toCity} (${seg.toCode})`,
-                        date: seg.date,
-                        time: seg.arrivalTime,
-                        city: seg.toCity
-                    });
+                    raw.push({ id: `f-${seg.flightNumber}-arr`, type: 'airport', subType: 'arrival', flightId: seg.flightNumber, name: `${seg.toCity || seg.toCode}`, date: seg.date, time: seg.arrivalTime, city: seg.toCity });
                 }
             });
 
-            // HOTELS
-            trip.hotels.forEach(h => {
-                // Use robust extraction to get a clean city name (strips postal codes like '2200 Napareuli')
-                const cityGuess = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
-                rawItems.push({
-                    id: h.id, type: 'hotel', name: h.name, address: h.address, lat: h.lat, lng: h.lng, description: h.roomType, date: h.checkInDate, city: cityGuess
-                });
+            // Hotels
+            trip.hotels?.forEach(h => {
+                const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
+                raw.push({ id: h.id, type: 'hotel', name: h.name, address: h.address, lat: h.lat, lng: h.lng, description: h.roomType, date: h.checkInDate, city });
             });
 
-            // RESTAURANTS & ATTRACTIONS
-            trip.restaurants.forEach(cat => cat.restaurants.forEach(r => {
-                const cityGuess = r.location?.split(',')?.[1]?.trim() || trip.destination;
-                rawItems.push({ id: r.id, type: 'restaurant', name: r.name, address: r.location, lat: r.lat, lng: r.lng, description: r.description, date: r.reservationDate, time: r.reservationTime, city: cityGuess });
-            }));
-            trip.attractions.forEach(cat => cat.attractions.forEach(a => {
-                const cityGuess = a.location?.split(',')?.[1]?.trim() || trip.destination;
-                rawItems.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: a.description, date: a.scheduledDate, time: a.scheduledTime, city: cityGuess });
+            // Restaurants
+            trip.restaurants?.forEach(cat => cat.restaurants?.forEach(r => {
+                const city = r.location?.split(',')?.[1]?.trim() || trip.destination;
+                raw.push({ id: r.id, type: 'restaurant', name: r.name, address: r.location, lat: r.lat, lng: r.lng, description: r.description, date: r.reservationDate, time: r.reservationTime, city });
             }));
 
-            // SHOPPING
-            if (trip.shoppingItems) {
-                trip.shoppingItems.forEach(s => {
-                    if (s.shopName) {
-                        rawItems.push({
-                            id: s.id,
-                            type: 'shopping',
-                            name: s.shopName,
-                            address: `${s.shopName}, ${trip.destination}`,
-                            description: `${s.name}`,
-                            date: s.purchaseDate,
-                            city: trip.destination
-                        });
-                    }
-                });
-            }
+            // Attractions
+            trip.attractions?.forEach(cat => cat.attractions?.forEach(a => {
+                const city = a.location?.split(',')?.[1]?.trim() || trip.destination;
+                raw.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: a.description, date: a.scheduledDate, time: a.scheduledTime, city });
+            }));
+
+            // Shopping
+            trip.shoppingItems?.forEach(s => {
+                if (s.shopName) raw.push({ id: s.id, type: 'shopping', name: s.shopName, address: `${s.shopName}, ${trip.destination}`, description: s.name, date: s.purchaseDate, city: trip.destination });
+            });
         }
-        setMapItems(rawItems);
+
+        // Assign chronological order
+        const sorted = [...raw].sort((a, b) => getItemTimestamp(a) - getItemTimestamp(b));
+        sorted.forEach((item, i) => { item.order = i + 1; });
+
+        setMapItems(sorted);
     }, [trip, items]);
 
-    // 2. Geocode & Filter (Same logic as before, just ensuring cache consistency)
+    // 2. Geocode missing items
     useEffect(() => {
-        const resolveAndFilter = async () => {
-            if (mapItems.length === 0) return;
-            const itemsToGeocode = mapItems.filter(i => !i.lat && i.address);
-            if (itemsToGeocode.length > 0) setLoading(true);
+        const run = async () => {
+            const toGeocode = mapItems.filter(i => !isValidCoordinate(i.lat, i.lng) && i.address);
+            if (toGeocode.length === 0) return;
+            setLoading(true);
 
-            const newItems = [...mapItems];
-            let newCacheEntries: Record<string, { lat: number, lng: number }> = {};
-            let hasUpdates = false;
+            const updated = [...mapItems];
+            const newEntries: Record<string, { lat: number; lng: number }> = {};
 
-            await Promise.all(newItems.map(async (item) => {
-                if ((item.lat && item.lng) || !item.address) return;
-
-                if (geocodedCache[item.address]) {
-                    item.lat = geocodedCache[item.address].lat;
-                    item.lng = geocodedCache[item.address].lng;
-                    return;
-                }
-
-                let query = item.address;
-                if (item.type === 'airport') query = item.name.split('(')[0] + ' Airport';
-
-                const coords = await geocodeAddress(query);
-                if (coords) {
-                    item.lat = coords.lat;
-                    item.lng = coords.lng;
-                    newCacheEntries[item.address] = coords;
-                    hasUpdates = true;
-                }
+            await Promise.all(updated.map(async item => {
+                if (isValidCoordinate(item.lat, item.lng) || !item.address) return;
+                const cacheKey = item.address;
+                if (geocodedCache[cacheKey]) { item.lat = geocodedCache[cacheKey].lat; item.lng = geocodedCache[cacheKey].lng; return; }
+                const coords = await geocodeAddress(item.type === 'airport' ? `${item.name} Airport` : item.address!);
+                if (coords) { item.lat = coords.lat; item.lng = coords.lng; newEntries[cacheKey] = coords; }
             }));
 
-            if (hasUpdates) {
+            if (Object.keys(newEntries).length > 0) {
                 setGeocodedCache(prev => {
-                    const updated = { ...prev, ...newCacheEntries };
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-                    return updated;
+                    const next = { ...prev, ...newEntries };
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                    return next;
                 });
             }
-            setMapItems(newItems);
+            setMapItems(updated);
             setLoading(false);
         };
-        resolveAndFilter();
-    }, [mapItems.length, trip]); // Depend on length to avoid infinite loops, simplistic check
+        run();
+    }, [mapItems.length]);
 
-    // 3. City Grouping Logic (Fixed: Aggregate ALL cities from items, not just destination string)
-    const cities = useMemo(() => {
-        const cityMap = new Map<string, number>();
-        const normalize = (s?: string) => s ? s.trim() : '';
-
-        // 1. Add cities from Destination String (Base)
-        if (trip?.destination) {
-            trip.destination.split(/[-–,]/).forEach(c => {
-                const name = normalize(c);
-                if (name) cityMap.set(name, 0);
-            });
-        }
-
-        // 2. Scan all map items and auto-add their cities
-        mapItems.forEach(item => {
-            const city = normalize(item.city);
-            if (city) {
-                // If this city isn't in the map yet, try to find a fuzzy match or add it
-                // Simple version: just add if missing
-                if (!cityMap.has(city)) {
-                    cityMap.set(city, 0);
-                }
-            }
-        });
-
-        // 3. Count items per city
-        const cityList = Array.from(cityMap.keys()).map(cityName => {
-            // Get keywords for robust matching
-            const keywords = getCityKeywords(cityName);
-            const count = mapItems.filter(item => {
-                const searchStr = (item.address || item.city || item.name || '').toLowerCase();
-                return keywords.some(kw => searchStr.includes(kw));
-            }).length;
-            return { name: cityName, count };
-        }).filter(c => c.count > 0 || (trip?.destination || '').includes(c.name)); // Keep if in destination OR has items
-
-        return cityList;
-    }, [mapItems, trip]);
-
-    // 3.5. Build and geocode route cities (Updated: Preserve Hotel Name)
+    // 3. Build date-ordered route stops
     useEffect(() => {
         if (!trip || items) return;
 
-        const buildAndGeocodeRoute = async () => {
-            // Extended interface to include displayName
-            const newRoute: { name: string; displayName?: string; type: 'flight' | 'hotel' | 'city'; code?: string; coords?: { lat: number; lng: number } }[] = [];
+        const buildRoute = async () => {
+            const stops: RouteStop[] = [];
 
-            // 1. Flight Segments
-            const flightSegments = [...(trip.flights?.segments || [])].sort((a, b) => {
-                return (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0);
-            });
+            // From flight segments (chronological)
+            const segs = [...(trip.flights?.segments || [])].sort((a, b) =>
+                (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0)
+            );
 
-            flightSegments.forEach(seg => {
-                if (seg.fromCity && (newRoute.length === 0 || newRoute[newRoute.length - 1].name.toLowerCase() !== seg.fromCity.toLowerCase())) {
-                    newRoute.push({ name: seg.fromCity, displayName: seg.fromCity, type: 'city', code: seg.fromCode }); // Flights just show City
+            if (segs.length > 0) {
+                // Add origin
+                const orig = segs[0];
+                if (orig.fromCity && !stops.some(s => s.name.toLowerCase() === orig.fromCity!.toLowerCase())) {
+                    stops.push({ name: orig.fromCity, displayName: orig.fromCity, type: 'city', code: orig.fromCode, date: orig.date, emoji: '🛫' });
                 }
-                if (seg.toCity && (newRoute.length === 0 || newRoute[newRoute.length - 1].name.toLowerCase() !== seg.toCity.toLowerCase())) {
-                    newRoute.push({ name: seg.toCity, displayName: seg.toCity, type: 'city', code: seg.toCode });
-                }
-            });
-
-            // 2. Hotels (Interleave or Append)
-            // If we have flights, usually hotels are "inside" changes. 
-            // Simplified: If no flights, populate from hotels. If flights exist, we might miss "Road Trips".
-            // For now, let's stick to the previous fallback logic but enhance the data.
-
-            if (newRoute.length === 0) {
-                const sortedHotels = [...(trip.hotels || [])].sort((a, b) => {
-                    return (parseTripDate(a.checkInDate || '')?.getTime() || 0) - (parseTripDate(b.checkInDate || '')?.getTime() || 0);
-                });
-
-                sortedHotels.forEach(hotel => {
-                    const cityGuess = cleanCityName(extractRobustCity(hotel.address || '', hotel.name || '', trip));
-                    // Use Hotel Name if available, otherwise City
-                    if (cityGuess) {
-                        newRoute.push({
-                            name: cityGuess,
-                            displayName: hotel.name || cityGuess, // SHOW HOTEL NAME!
-                            type: 'hotel',
-                            coords: hotel.lat && hotel.lng ? { lat: hotel.lat, lng: hotel.lng } : undefined
-                        });
+                segs.forEach(seg => {
+                    if (seg.toCity && !stops.some(s => s.name.toLowerCase() === seg.toCity!.toLowerCase())) {
+                        stops.push({ name: seg.toCity, displayName: seg.toCity, type: 'flight', code: seg.toCode, date: seg.date, emoji: '🛬' });
                     }
                 });
             }
 
-            // 3. Last fallback
-            if (newRoute.length === 0 && trip.destination) {
-                const destCities = trip.destination.split(/[-–,&]/).map(c => c.trim()).filter(Boolean);
-                destCities.forEach(city => newRoute.push({ name: city, displayName: city, type: 'city' }));
-            }
-
-            // Geocode missing...
-            for (const item of newRoute) {
-                if (item.coords) continue;
-                const query = item.code ? `${item.name} Airport` : item.name;
-
-                // Cache check...
-                if (geocodedCache[query]) item.coords = geocodedCache[query];
-                else if (geocodedCache[item.name]) item.coords = geocodedCache[item.name];
-                else {
-                    const coords = await geocodeAddress(query);
-                    if (coords) {
-                        item.coords = coords;
-                        setGeocodedCache(prev => {
-                            const updated = { ...prev, [query]: coords };
-                            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-                            return updated;
-                        });
+            // If no flights, build from hotels
+            if (stops.length <= 1) {
+                const sortedHotels = [...(trip.hotels || [])].sort((a, b) =>
+                    (parseTripDate(a.checkInDate || '')?.getTime() || 0) - (parseTripDate(b.checkInDate || '')?.getTime() || 0)
+                );
+                sortedHotels.forEach(h => {
+                    const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
+                    if (city && !stops.some(s => s.name.toLowerCase() === city.toLowerCase())) {
+                        stops.push({ name: city, displayName: h.name || city, type: 'hotel', date: h.checkInDate, emoji: '🏨', coords: isValidCoordinate(h.lat, h.lng) ? { lat: h.lat!, lng: h.lng! } : undefined });
                     }
-                }
+                });
             }
-            setRouteCities(newRoute);
-        };
-        buildAndGeocodeRoute();
-    }, [trip, items, geocodedCache]);
 
-    // 4. Initialize Map (Re-inserting logic that was lost)
-    useEffect(() => {
-        if (!mapContainerRef.current) return;
-        if (mapInstanceRef.current) return; // Already initialized
+            // Fallback: destination string
+            if (stops.length === 0 && trip.destination) {
+                trip.destination.split(/[-–,&]/).map(s => s.trim()).filter(Boolean).forEach(dest => {
+                    stops.push({ name: dest, displayName: dest, type: 'city', emoji: '📍' });
+                });
+            }
 
-        const map = L.map(mapContainerRef.current, {
-            zoomControl: false,
-            attributionControl: false
-        }).setView([41.7, 44.8], 7); // Default: Georgia region, will be overridden by fitBounds
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20
-        }).addTo(map);
-
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-        // Marker Cluster Group - Safety Check
-        let markerClusterGroup: L.MarkerClusterGroup | L.LayerGroup;
-
-        // @ts-ignore
-        if (typeof L.markerClusterGroup === 'function') {
-            // @ts-ignore
-            markerClusterGroup = L.markerClusterGroup({
-                showCoverageOnHover: false,
-                maxClusterRadius: 40,
-                iconCreateFunction: (cluster: any) => {
-                    return L.divIcon({
-                        html: `<div style="background-color: #3b82f6; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: 'Rubik'; font-size: 14px; border: 2px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">${cluster.getChildCount()}</div>`,
-                        className: '',
-                        iconSize: [32, 32]
+            // Geocode stops
+            for (const stop of stops) {
+                if (stop.coords) continue;
+                const query = stop.code ? `${stop.name} Airport, ${stop.code}` : stop.name;
+                if (geocodedCache[query]) { stop.coords = geocodedCache[query]; continue; }
+                if (geocodedCache[stop.name]) { stop.coords = geocodedCache[stop.name]; continue; }
+                const coords = await geocodeAddress(query);
+                if (coords) {
+                    stop.coords = coords;
+                    setGeocodedCache(prev => {
+                        const next = { ...prev, [query]: coords };
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                        return next;
                     });
                 }
-            });
-        } else {
-            console.warn('Leaflet MarkerCluster plugin not found. Falling back to LayerGroup.');
-            markerClusterGroup = L.layerGroup();
-        }
+            }
 
-        // Route Layer Group
-        const routeGroup = L.layerGroup().addTo(map);
-
-        map.addLayer(markerClusterGroup);
-
-        mapInstanceRef.current = map;
-        markersRef.current = markerClusterGroup;
-        routeLayerRef.current = routeGroup;
-
-        // Force resize after init
-        setTimeout(() => map.invalidateSize(), 200);
-
-        // ResizeObserver for robust layout handling
-        const resizeObserver = new ResizeObserver(() => {
-            map.invalidateSize();
-        });
-        resizeObserver.observe(mapContainerRef.current);
-
-        return () => {
-            resizeObserver.disconnect();
-            map.remove();
-            mapInstanceRef.current = null;
+            setRouteStops(stops);
         };
+
+        buildRoute();
+    }, [trip, items]);
+
+    // 4. Init map
+    useEffect(() => {
+        if (!mapContainerRef.current || mapInstanceRef.current) return;
+
+        const map = L.map(mapContainerRef.current, { zoomControl: false, attributionControl: false })
+            .setView([41.7, 44.8], 7);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // @ts-ignore
+        const clusterGroup = typeof L.markerClusterGroup === 'function'
+            // @ts-ignore
+            ? L.markerClusterGroup({
+                showCoverageOnHover: false,
+                maxClusterRadius: 50,
+                iconCreateFunction: (cluster: any) => L.divIcon({
+                    html: `<div style="
+                        background:linear-gradient(135deg,#4f46e5,#7c3aed);
+                        color:white;border-radius:50%;width:36px;height:36px;
+                        display:flex;align-items:center;justify-content:center;
+                        font-weight:900;font-size:14px;font-family:'Rubik',sans-serif;
+                        border:3px solid white;box-shadow:0 4px 12px rgba(79,70,229,0.4);
+                    ">${cluster.getChildCount()}</div>`,
+                    className: '', iconSize: [36, 36]
+                })
+            })
+            : L.layerGroup();
+
+        map.addLayer(clusterGroup);
+        markersRef.current = clusterGroup;
+        routeLayerRef.current = L.layerGroup().addTo(map);
+        mapInstanceRef.current = map;
+
+        setTimeout(() => map.invalidateSize(), 200);
+        const ro = new ResizeObserver(() => map.invalidateSize());
+        ro.observe(mapContainerRef.current);
+
+        return () => { ro.disconnect(); map.remove(); mapInstanceRef.current = null; };
     }, []);
 
-    // 5. Update Map Markers & View
+    // Cities for filter bar
+    const cities = useMemo(() => {
+        const cityMap = new Map<string, number>();
+
+        if (trip?.destination) {
+            trip.destination.split(/[-–,]/).forEach(c => {
+                const n = c.trim();
+                if (n) cityMap.set(n, 0);
+            });
+        }
+
+        mapItems.forEach(item => {
+            const city = item.city?.trim();
+            if (city && !cityMap.has(city)) cityMap.set(city, 0);
+        });
+
+        return Array.from(cityMap.keys()).map(cityName => {
+            const keywords = getCityKeywords(cityName);
+            const count = mapItems.filter(i => {
+                const str = (i.address || i.city || i.name || '').toLowerCase();
+                return keywords.some(kw => str.includes(kw));
+            }).length;
+            return { name: cityName, count };
+        }).filter(c => c.count > 0);
+    }, [mapItems, trip]);
+
+    // 5. Render map
     useEffect(() => {
         const map = mapInstanceRef.current;
         const markerLayer = markersRef.current;
         const routeLayer = routeLayerRef.current;
-
         if (!map || !markerLayer || !routeLayer) return;
 
-        // Ensure size is correct on update
         map.invalidateSize();
-
         markerLayer.clearLayers();
         routeLayer.clearLayers();
 
         const validItems = mapItems.filter(i => isValidCoordinate(i.lat, i.lng));
-
-        // Filter by City
         const visibleItems = activeCity === 'ALL'
             ? validItems
             : validItems.filter(i => {
-                const searchStr = (i.address || i.city || '').toLowerCase();
-                return searchStr.includes(activeCity.toLowerCase());
+                const str = (i.address || i.city || '').toLowerCase();
+                return getCityKeywords(activeCity).some(kw => str.includes(kw));
             });
 
         const bounds = L.latLngBounds([]);
 
-        // Plot Markers (Standard Items)
+        // Plot non-airport items with premium pins
         visibleItems.forEach(item => {
             if (item.type === 'airport') return;
+            const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
+            const icon = makePinIcon(cfg);
 
-            // Brand Colors
-            let color = '#3b82f6';
-            let iconSvg = '';
-
-            switch (item.type) {
-                case 'hotel': color = '#0ea5e9'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-8a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v8"/><path d="M5 21h14"/><path d="M9 10a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2"/></svg>'; break;
-                case 'restaurant': color = '#f97316'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>'; break;
-                case 'attraction': color = '#8b5cf6'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-8"/><path d="m22 2-9 9"/><path d="M17 12a5 5 0 0 0-5-5"/></svg>'; break;
-                case 'shopping': color = '#ec4899'; iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>'; break;
-            }
-
-            const iconHtml = `<div style="background-color: ${color}; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3); color: white;">${iconSvg}</div>`;
-            const customIcon = L.divIcon({ html: iconHtml, className: 'custom-map-icon', iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -36] });
-
-            L.marker([item.lat!, item.lng!], { icon: customIcon })
-                .bindPopup(`<div style="font-family:'Rubik'; text-align:right; direction:rtl;">
-                    <div style="color:${color}; font-size:10px; font-weight:bold; letter-spacing:0.5px; margin-bottom:2px; text-transform:uppercase;">${item.type.toUpperCase()}</div>
-                    <strong style="font-size:14px;">${item.name}</strong><br/>
-                    <span style="font-size:12px;color:gray;">${item.description || ''}</span>
-                </div>`)
+            L.marker([item.lat!, item.lng!], { icon })
+                .bindPopup(makePopupHtml(item), {
+                    className: 'premium-popup',
+                    maxWidth: 280,
+                    minWidth: 210,
+                })
                 .addTo(markerLayer);
 
             bounds.extend([item.lat!, item.lng!]);
         });
 
-        // Plot Route (Refined Styles & Labels)
-        if (activeCity === 'ALL' && trip && !items && routeCities.length > 0) {
-            const cityRoute = routeCities;
-            let stopNumber = 0;
+        // Draw route (only in ALL view)
+        if (activeCity === 'ALL' && trip && !items && routeStops.length > 0) {
+            const STOP_COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626'];
+            const validStops = routeStops.filter(s => s.coords);
 
-            cityRoute.forEach(city => {
-                if (!city.coords) return;
-                stopNumber++;
-
-                // PILL MARKER: Number + Name
-                const pillHtml = `
-                    <div style="
-                        display: flex;
-                        align-items: center;
-                        background: white;
-                        border-radius: 20px;
-                        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-                        padding-right: 4px; /* Number side */
-                        padding-left: 12px;
-                        height: 36px;
-                        border: 2px solid white;
-                        transform: translate(50%, -50%); /* Center anchor tweak */
-                        white-space: nowrap;
-                    ">
-                        <div style="
-                             background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
-                             width: 28px;
-                             height: 28px;
-                             border-radius: 50%;
-                             color: white;
-                             font-weight: 900;
-                             font-size: 13px;
-                             display: flex;
-                             align-items: center;
-                             justify-content: center;
-                             margin-left: 8px;
-                             flex-shrink: 0;
-                        ">${stopNumber}</div>
-                        <span style="
-                            font-family: 'Rubik', sans-serif;
-                            font-weight: 700;
-                            font-size: 13px;
-                            color: #1e293b;
-                        ">${city.displayName || city.name}</span>
-                    </div>
-                `;
-
-                const pillIcon = L.divIcon({
-                    html: pillHtml,
-                    className: 'map-route-pill', // Add custom class if needed for hover effects
-                    iconSize: [0, 0], // Size 0 handled by HTML content overflow
-                    iconAnchor: [0, 0] // Adjusted in CSS transform above
-                });
-
-                L.marker([city.coords.lat, city.coords.lng], { icon: pillIcon, zIndexOffset: 1000 })
-                    .addTo(markerLayer);
-
-                bounds.extend([city.coords.lat, city.coords.lng]);
-            });
-
-            // Draw Lines (Enhanced)
-            for (let i = 0; i < cityRoute.length - 1; i++) {
-                const start = cityRoute[i];
-                const end = cityRoute[i + 1];
+            // Draw curved lines between stops
+            for (let i = 0; i < validStops.length - 1; i++) {
+                const start = validStops[i];
+                const end = validStops[i + 1];
                 if (!start.coords || !end.coords) continue;
 
-                const dist = getDistanceFromLatLonInKm(start.coords.lat, start.coords.lng, end.coords.lat, end.coords.lng);
+                const dist = getDistanceKm(start.coords.lat, start.coords.lng, end.coords.lat, end.coords.lng);
                 let pathPoints: [number, number][];
 
-                // Curve Logic (Same as before, just kept for smoothness)
                 if (dist > 50) {
-                    const steps = 40; // Smoother
+                    const steps = 60;
                     pathPoints = [];
                     for (let s = 0; s <= steps; s++) {
                         const t = s / steps;
                         const lat = start.coords.lat + (end.coords.lat - start.coords.lat) * t;
                         const lng = start.coords.lng + (end.coords.lng - start.coords.lng) * t;
-                        const curveFactor = Math.min(dist / 40, 4); // Slightly less aggressive curve
+                        const curveFactor = Math.min(dist / 30, 5);
                         const curveOffset = Math.sin(t * Math.PI) * curveFactor;
                         const perpLat = -(end.coords.lng - start.coords.lng) / Math.max(dist, 1);
                         const perpLng = (end.coords.lat - start.coords.lat) / Math.max(dist, 1);
-                        pathPoints.push([lat + perpLat * curveOffset * 0.5, lng + perpLng * curveOffset * 0.5]);
+                        pathPoints.push([lat + perpLat * curveOffset * 0.6, lng + perpLng * curveOffset * 0.6]);
                     }
                 } else {
                     pathPoints = [[start.coords.lat, start.coords.lng], [end.coords.lat, end.coords.lng]];
                 }
 
-                // GLOW Layer (Bottom)
-                L.polyline(pathPoints, {
-                    color: '#3b82f6',
-                    weight: 8,
-                    opacity: 0.2,
-                    lineCap: 'round',
+                const lineColor = STOP_COLORS[i % STOP_COLORS.length];
+
+                // Glow
+                L.polyline(pathPoints, { color: lineColor, weight: 12, opacity: 0.12, lineCap: 'round' }).addTo(routeLayer);
+
+                // White stroke (outline)
+                L.polyline(pathPoints, { color: 'white', weight: 5.5, opacity: 1, lineCap: 'round' }).addTo(routeLayer);
+
+                // Main colored line
+                L.polyline(pathPoints, { color: lineColor, weight: 3.5, opacity: 0.92, dashArray: '10, 6', lineCap: 'round' }).addTo(routeLayer);
+
+                // Arrow at 60% point
+                const arrowIdx = Math.floor(pathPoints.length * 0.6);
+                const bearing = getBearing(pathPoints[arrowIdx - 1][0], pathPoints[arrowIdx - 1][1],
+                    end.coords.lat, end.coords.lng);
+                const arrowHtml = `<div style="transform:rotate(${bearing}deg);color:${lineColor};filter:drop-shadow(0 1px 3px rgba(0,0,0,0.3))">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L19 9H14V22H10V9H5L12 2Z"/></svg>
+                </div>`;
+                L.marker([pathPoints[arrowIdx][0], pathPoints[arrowIdx][1]], {
+                    icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [18, 18], iconAnchor: [9, 9] })
                 }).addTo(routeLayer);
 
-                // DASHED Line (Top)
-                L.polyline(pathPoints, {
-                    color: '#2563eb',
-                    weight: 3,
-                    opacity: 0.9,
-                    dashArray: '8, 8',
-                    lineCap: 'round',
-                    lineJoin: 'round'
-                }).addTo(routeLayer);
-
-                // Icon at Midpoint
-                const midIdx = Math.floor(pathPoints.length / 2);
-                const midLat = pathPoints[midIdx][0] + 0.5; // Offset slightly?
-                const midLng = pathPoints[midIdx][1];
-                const bearing = getBearing(start.coords.lat, start.coords.lng, end.coords.lat, end.coords.lng);
-
-                const arrowHtml = `
-                     <div style="
-                        transform: rotate(${bearing - 90}deg);
-                        color: #2563eb;
-                        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
-                    ">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M5 12h14M12 5l7 7-7 7"/>
-                        </svg>
-                    </div>
-                `;
-                // Simple Arrow, no circular bg for cleaner look on route
-                L.marker([pathPoints[midIdx][0], pathPoints[midIdx][1]], {
-                    icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [24, 24], iconAnchor: [12, 12] })
-                }).addTo(routeLayer);
+                bounds.extend([start.coords.lat, start.coords.lng]);
+                bounds.extend([end.coords.lat, end.coords.lng]);
             }
+
+            // Route stop pills
+            validStops.forEach((stop, idx) => {
+                if (!stop.coords) return;
+                const color = STOP_COLORS[idx % STOP_COLORS.length];
+                const icon = makeStopPill(idx + 1, stop.displayName || stop.name, stop.emoji || '📍', color);
+
+                L.marker([stop.coords.lat, stop.coords.lng], { icon, zIndexOffset: 2000 })
+                    .addTo(routeLayer);
+
+                bounds.extend([stop.coords.lat, stop.coords.lng]);
+            });
         }
 
-        // View Control
+        // Fit bounds
         if (bounds.isValid()) {
-            if (activeCity !== 'ALL') {
-                map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 14, duration: 1.5 });
-            } else {
-                map.fitBounds(bounds, { padding: [80, 80], maxZoom: 10 });
-            }
+            const padding: [number, number] = activeCity !== 'ALL' ? [60, 60] : [80, 80];
+            const maxZoom = activeCity !== 'ALL' ? 15 : 12;
+            map.fitBounds(bounds, { padding, maxZoom, duration: 1 });
         } else if (trip?.destination) {
-            geocodeAddress(trip.destination).then(c => c && map.setView([c.lat, c.lng], 10));
+            geocodeAddress(trip.destination).then(c => c && map.setView([c.lat, c.lng], 8));
         }
 
-        // Force resize to ensure map renders correctly in tabs/modals
-        setTimeout(() => {
-            map.invalidateSize();
-        }, 100);
-        setTimeout(() => {
-            map.invalidateSize();
-        }, 500);
+        [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
+    }, [mapItems, activeCity, trip, routeStops]);
 
-    }, [mapItems, activeCity, trip, routeCities, height]); // Added height to dependencies
+    // Popup CSS injection
+    useEffect(() => {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .premium-popup .leaflet-popup-content-wrapper {
+                border-radius: 16px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.12);
+                border: 1px solid rgba(255,255,255,0.8);
+                padding: 0;
+                overflow: hidden;
+            }
+            .premium-popup .leaflet-popup-content { margin: 14px 14px; }
+            .premium-popup .leaflet-popup-tip-container { display: none; }
+            .premium-popup .leaflet-popup-close-button {
+                top: 8px; right: 8px;
+                color: #94a3b8; font-size: 18px; font-weight: 300;
+                background: rgba(248,250,252,0.8); border-radius: 50%;
+                width: 24px; height: 24px; display: flex; align-items: center; justify-content:center;
+                line-height: 1;
+            }
+        `;
+        document.head.appendChild(style);
+        return () => document.head.removeChild(style);
+    }, []);
 
-
-    // --- UI RENDER ---
+    // --- UI ---
     return (
-        <div className="w-full relative bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-200 animate-fade-in group">
+        <div className="w-full relative bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 animate-fade-in" style={{ direction: 'ltr' }}>
 
-            {/* City Navigator Bar */}
+            {/* Top City Filter Bar */}
             <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-center pointer-events-none">
-                <div className="bg-white/95 backdrop-blur-xl p-2 rounded-2xl shadow-xl border border-white/50 flex gap-2 overflow-x-auto max-w-full pointer-events-auto no-scrollbar items-center">
+                <div className="bg-white/97 backdrop-blur-2xl p-1.5 rounded-2xl shadow-2xl border border-white/70 flex gap-1.5 overflow-x-auto max-w-full pointer-events-auto no-scrollbar items-center">
                     <button
                         onClick={() => setActiveCity('ALL')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === 'ALL' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === 'ALL' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                     >
-                        <MapIcon className="w-4 h-4" />
+                        <MapIcon className="w-3.5 h-3.5" />
                         כל המסלול
                     </button>
-                    <div className="w-px h-6 bg-slate-200 mx-1"></div>
+                    <div className="w-px h-5 bg-slate-200" />
                     {cities.map(c => (
                         <button
                             key={c.name}
                             onClick={() => setActiveCity(c.name)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === c.name ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'}`}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === c.name ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'}`}
                         >
-                            {/* <Navigation className={`w-3 h-3 ${activeCity === c.name ? 'text-white' : 'text-slate-400'}`} /> */}
                             {c.name}
-                            {c.count > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeCity === c.name ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{c.count}</span>}
+                            {c.count > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${activeCity === c.name ? 'bg-white/25 text-white' : 'bg-indigo-50 text-indigo-500'}`}>{c.count}</span>}
                         </button>
                     ))}
                 </div>
             </div>
 
+            {/* Loading indicator */}
             {loading && (
-                <div className="absolute bottom-4 left-4 z-[400] bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-gray-200 flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                    <span className="text-xs font-bold text-gray-600">טוען מיקומים...</span>
+                <div className="absolute bottom-28 left-4 z-[1000] bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-gray-100 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                    <span className="text-xs font-bold text-slate-600">מחשב מיקומים...</span>
                 </div>
             )}
 
-            <div ref={mapContainerRef} style={{ height, width: '100%' }} className="z-10 bg-slate-50 relative" />
+            {/* Map */}
+            <div ref={mapContainerRef} style={{ height, width: '100%' }} className="z-10 bg-slate-50" />
+
+            {/* Bottom Timeline Strip */}
+            {routeStops.length > 0 && activeCity === 'ALL' && (
+                <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white/97 backdrop-blur-xl border-t border-slate-100 shadow-xl">
+                    <div className="flex items-center gap-0 overflow-x-auto p-3 no-scrollbar">
+                        {routeStops.map((stop, idx) => {
+                            const COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626'];
+                            const color = COLORS[idx % COLORS.length];
+                            const isLast = idx === routeStops.length - 1;
+                            return (
+                                <div key={idx} className="flex items-center flex-shrink-0">
+                                    <button
+                                        onClick={() => {
+                                            setActiveStop(activeStop === idx ? null : idx);
+                                            if (stop.coords && mapInstanceRef.current) {
+                                                mapInstanceRef.current.flyTo([stop.coords.lat, stop.coords.lng], 12, { duration: 1.2 });
+                                            }
+                                        }}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all group ${activeStop === idx ? 'bg-slate-100 shadow-sm' : 'hover:bg-slate-50'}`}
+                                    >
+                                        <div style={{ background: color }} className="w-7 h-7 rounded-full flex items-center justify-center text-white font-black text-xs shadow-md flex-shrink-0">
+                                            {idx + 1}
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="text-[10px] text-slate-400 font-semibold">{stop.emoji} {stop.type === 'flight' ? 'טיסה' : stop.type === 'hotel' ? 'מלון' : 'עצירה'}</div>
+                                            <div className="text-xs font-bold text-slate-800 whitespace-nowrap">{stop.displayName || stop.name}</div>
+                                        </div>
+                                    </button>
+                                    {!isLast && (
+                                        <div className="flex items-center mx-1 flex-shrink-0">
+                                            <div style={{ background: `linear-gradient(to right, ${color}, ${COLORS[(idx + 1) % COLORS.length]})` }}
+                                                className="h-0.5 w-8 rounded-full opacity-40" />
+                                            <div className="text-slate-300 text-xs mx-0.5">›</div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
