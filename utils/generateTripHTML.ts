@@ -14,7 +14,7 @@ import { Trip, FlightSegment, HotelBooking, ItineraryItem } from '../types';
 
 interface TimelineEvent {
   id: string;
-  type: 'flight_dep' | 'flight_arr' | 'hotel_in' | 'hotel_out' | 'hotel_stay' | 'activity' | 'food' | 'divider';
+  type: 'flight_dep' | 'flight_arr' | 'hotel_in' | 'hotel_out' | 'hotel_stay' | 'transfer' | 'activity' | 'food' | 'divider';
   time: string;
   title: string;
   subtitle?: string;
@@ -241,14 +241,23 @@ const buildTimeline = (trip: Trip): TimelineDay[] => {
       const text = timeMatch ? timeMatch[2] : act;
 
       // Detect transfer activities
-      const isTransfer = /הסעה|נסיעה|טרנספר|transfer/i.test(text);
+      const isTransfer = /הסעה|נסיעה|טרנספר|transfer|מונית|taxi/i.test(text);
+      let driverDetails = '';
+      let cleanTitle = text;
+
+      // Extract details in parenthesis like (Driver: Yossi, Phone: 050...)
+      const detailsMatch = text.match(/\((.*?)\)$/);
+      if (detailsMatch) {
+        cleanTitle = text.replace(/\s*\(.*?\)$/, '').trim();
+        driverDetails = detailsMatch[1];
+      }
 
       addToDay(iso, {
         id: `act-${idx}-${aIdx}`,
-        type: isTransfer ? 'activity' : 'activity',
+        type: isTransfer ? 'transfer' : 'activity', // New dedicated type
         time,
-        title: text,
-        subtitle: '',
+        title: cleanTitle,
+        subtitle: driverDetails,
         icon: isTransfer ? '🚕' : '📍',
       });
     });
@@ -316,6 +325,20 @@ const buildTimeline = (trip: Trip): TimelineDay[] => {
 
 
 // ── Renderers ────────────────────────────────────────────────────
+
+/** Renders a specialized Transfer Card with driver details */
+const renderTransferCard = (e: TimelineEvent): string => {
+  return `
+    <div class="transfer-card">
+      <div class="tc-time">${e.time || ''}</div>
+      <div class="tc-icon">🚕</div>
+      <div class="tc-content">
+        <div class="tc-title">${esc(e.title)}</div>
+        ${e.subtitle ? `<div class="tc-details">${esc(e.subtitle)}</div>` : ''}
+      </div>
+    </div>
+  `;
+};
 
 /** Renders a prominent boarding-pass style flight card */
 const renderFlightCard = (e: TimelineEvent): string => {
@@ -424,6 +447,8 @@ const renderEvent = (e: TimelineEvent): string => {
       return renderHotelCard(e);
     case 'hotel_stay':
       return renderStayCard(e);
+    case 'transfer':
+      return renderTransferCard(e);
     default:
       return renderGenericEvent(e);
   }
@@ -981,6 +1006,47 @@ h1 {
   .fc-route { padding: 12px 14px 16px; }
   .hc-name { font-size: 15px; }
 }
+
+/* ═══ TRANSFER CARD ═══ */
+.transfer-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  background: #fdfbf7; /* Warm off-white */
+  border: 1px solid #fcd34d; /* Amber border */
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.transfer-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  background: #f59e0b; /* Amber strip */
+  border-radius: 0 var(--radius) var(--radius) 0; /* RTL strip on right actually? No left is fine */
+}
+.tc-time {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  color: #b45309;
+  min-width: 50px;
+}
+.tc-icon {
+  font-size: 24px;
+  background: #fffbeb;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1px solid #fcd34d;
+}
+.tc-content { flex: 1; }
+.tc-title { font-weight: 700; font-size: 15px; color: #78350f; }
+.tc-details { font-size: 13px; color: #92400e; margin-top: 4px; }
+
 
 /* ═══ PRINT ═══ */
 @media print {
