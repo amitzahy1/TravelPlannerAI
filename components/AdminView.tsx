@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Trip, HotelBooking, FlightSegment } from '../types';
-import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal } from 'lucide-react';
+import { Trip, HotelBooking, FlightSegment, HotelRoom } from '../types';
+import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble } from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
 import { getTripCities } from '../utils/geoData'; // Imported from new DB
 import { MagicDropZone } from './MagicDropZone';
@@ -115,6 +115,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'logs'>('overview');
+    const [freeText, setFreeText] = useState('');
+    const [isFreeTextProcessing, setIsFreeTextProcessing] = useState(false);
+    const [freeTextResult, setFreeTextResult] = useState<{ hotels: HotelBooking[], flights: FlightSegment[], summary: string } | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
     const [tripToDelete, setTripToDelete] = useState<string | null>(null);
     const [tripToLeave, setTripToLeave] = useState<string | null>(null); // NEW: For shared trip leave confirmation
@@ -520,6 +523,125 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         handleUpdateTrip(mergedTrip);
         const newTrips = trips.map(t => t.id === activeTripId ? mergedTrip : t);
         onSave(newTrips);
+    };
+
+    const handleFreeTextImport = async () => {
+        if (!freeText.trim()) return;
+        setIsFreeTextProcessing(true);
+        setFreeTextResult(null);
+        try {
+            const prompt = `You are a travel data extractor. Parse the following trip plan text (may be in Hebrew or English) and extract structured data.
+
+Return ONLY valid JSON in this exact structure:
+{
+  "summary": "one line Hebrew summary of what was found",
+  "hotels": [
+    {
+      "id": "unique-id-1",
+      "name": "Hotel Name",
+      "city": "City",
+      "address": "Hotel Name, City, Country",
+      "checkInDate": "YYYY-MM-DD",
+      "checkOutDate": "YYYY-MM-DD",
+      "nights": number,
+      "notes": "transfer or arrival info if mentioned",
+      "bookingSource": "Direct",
+      "rooms": [
+        {
+          "id": "room-id-1",
+          "roomType": "exact room type name e.g. 2 Bedroom Family Suite",
+          "adults": number,
+          "children": number,
+          "notes": "any room preferences or notes"
+        }
+      ]
+    }
+  ],
+  "flights": [
+    {
+      "fromCode": "IATA or ???",
+      "toCode": "IATA or ???",
+      "fromCity": "departure city",
+      "toCity": "arrival city",
+      "date": "YYYY-MM-DD",
+      "departureTime": "HH:MM or 00:00",
+      "arrivalTime": "HH:MM or 00:00",
+      "airline": "airline name or Unknown",
+      "flightNumber": "number or TBD",
+      "duration": "estimated or Unknown"
+    }
+  ]
+}
+
+Rules:
+- For months in Hebrew: ינואר=01, פברואר=02, מרץ=03, אפריל=04, מאי=05, יוני=06, יולי=07, אוגוסט=08, ספטמבר=09, אוקטובר=10, נובמבר=11, דצמבר=12
+- If year is not mentioned, use the current year or next year based on context
+- Extract ALL hotels mentioned, including ones where "hotel will be chosen later"
+- For room types: extract exactly as written (e.g. "2 Bedroom Family Suite", "Deluxe Room")
+- If no room type is mentioned, use "Standard Room"
+- If guest count not specified per room, distribute trip.travelers evenly
+- Flights: a "landing" (נחיתה) = arrival flight, "departure" (המראה) = departure flight
+- For transfers (vans, ferries) mentioned: put them in the hotel's notes field
+- Always return valid JSON, never return markdown or extra text
+
+Trip plan text:
+${freeText}`;
+
+            const response = await generateWithFallback(
+                null,
+                [prompt],
+                { responseMimeType: 'application/json' },
+                'SMART'
+            );
+
+            const textContent = typeof response.text === 'function' ? response.text() : response.text;
+            let parsed: any;
+            try {
+                parsed = JSON.parse(textContent);
+            } catch {
+                const match = textContent?.match(/\{[\s\S]*\}/);
+                if (match) parsed = JSON.parse(match[0]);
+                else throw new Error('Could not parse AI response');
+            }
+
+            // Assign fresh IDs and fix room IDs
+            const hotels: HotelBooking[] = (parsed.hotels || []).map((h: any) => ({
+                ...h,
+                id: crypto.randomUUID(),
+                rooms: (h.rooms || []).map((r: any) => ({
+                    ...r,
+                    id: crypto.randomUUID(),
+                    adults: r.adults || 2,
+                    children: r.children || 0,
+                })),
+            }));
+            const flights: FlightSegment[] = parsed.flights || [];
+
+            setFreeTextResult({ hotels, flights, summary: parsed.summary || `נמצאו ${hotels.length} מלונות ו-${flights.length} טיסות` });
+        } catch (e) {
+            console.error('Free text import error:', e);
+            alert('שגיאה בעיבוד הטקסט. אנא נסה שנית.');
+        } finally {
+            setIsFreeTextProcessing(false);
+        }
+    };
+
+    const handleFreeTextApply = () => {
+        if (!freeTextResult || !activeTrip) return;
+        const existingHotelIds = new Set((activeTrip.hotels || []).map(h => h.id));
+        const newHotels = [...(activeTrip.hotels || []), ...freeTextResult.hotels.filter(h => !existingHotelIds.has(h.id))];
+
+        const existingSegments = activeTrip.flights?.segments || [];
+        const newFlights = [...existingSegments, ...freeTextResult.flights.filter(f =>
+            !existingSegments.some(s => s.flightNumber === f.flightNumber && s.date === f.date)
+        )];
+
+        const mergedTrip = { ...activeTrip, hotels: newHotels, flights: { ...activeTrip.flights, segments: newFlights } };
+        handleUpdateTrip(mergedTrip);
+        const newTrips = trips.map(t => t.id === activeTripId ? mergedTrip : t);
+        onSave(newTrips);
+        setFreeText('');
+        setFreeTextResult(null);
     };
 
     return (
@@ -1149,9 +1271,115 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                         {/* TAB: AI MAGIC */}
                         {activeTab === 'ai' && (
                             <div className="space-y-6 animate-fade-in">
+
+                                {/* FREE TEXT TRIP PLAN IMPORTER */}
+                                <div className="bg-white border border-indigo-100 rounded-2xl overflow-hidden shadow-sm">
+                                    <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-white/20 p-2.5 rounded-xl">
+                                                <Terminal className="w-5 h-5 text-white" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-black text-white">יבוא מטקסט חופשי</h3>
+                                                <p className="text-indigo-100 text-sm">כתוב או הדבק את תוכנית הטיול שלך — ה-AI יזהה מלונות, טיסות וסוגי חדרים אוטומטית</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="p-5 space-y-4">
+                                        <textarea
+                                            className="w-full h-48 p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 resize-none font-medium text-slate-800 text-sm leading-relaxed transition-all placeholder:text-slate-400 placeholder:font-normal"
+                                            placeholder={`לדוגמה:\n\n✈️ נחיתה בבנגקוק: 7 באוגוסט, 11:50\n\n📍 פטאייה | Holiday Inn Pattaya\nתאריכים: 7 עד 13 באוגוסט (6 לילות)\n2 Bedroom Family Suite\nהגעה: 3 ואנים סגורים משדה התעופה\n\n📍 קו צ'אנג | KC Grande Resort\nתאריכים: 13 עד 18 באוגוסט (5 לילות)`}
+                                            value={freeText}
+                                            onChange={e => setFreeText(e.target.value)}
+                                        />
+
+                                        <button
+                                            onClick={handleFreeTextImport}
+                                            disabled={!freeText.trim() || isFreeTextProcessing}
+                                            className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-bold text-sm shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                                        >
+                                            {isFreeTextProcessing ? (
+                                                <><Loader2 className="w-4 h-4 animate-spin" /> ה-AI מנתח את הטקסט...</>
+                                            ) : (
+                                                <><Sparkles className="w-4 h-4" /> נתח וייבא</>
+                                            )}
+                                        </button>
+
+                                        {/* Results Preview */}
+                                        {freeTextResult && (
+                                            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-4">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="bg-emerald-100 p-2 rounded-xl flex-shrink-0">
+                                                        <CheckCircle className="w-5 h-5 text-emerald-600" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-emerald-900 text-sm">ה-AI זיהה:</div>
+                                                        <div className="text-emerald-700 text-xs mt-0.5">{freeTextResult.summary}</div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Hotels preview */}
+                                                {freeTextResult.hotels.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <div className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                                                            <Hotel className="w-3.5 h-3.5" /> מלונות ({freeTextResult.hotels.length})
+                                                        </div>
+                                                        {freeTextResult.hotels.map((h, i) => (
+                                                            <div key={i} className="bg-white rounded-xl p-3 border border-emerald-100">
+                                                                <div className="font-bold text-slate-800 text-sm">{h.name}</div>
+                                                                <div className="text-xs text-slate-500 mt-0.5">
+                                                                    {h.checkInDate?.split('-').reverse().join('/')} → {h.checkOutDate?.split('-').reverse().join('/')}
+                                                                    {h.nights ? ` · ${h.nights} לילות` : ''}
+                                                                </div>
+                                                                {(h.rooms || []).map((r: HotelRoom, ri) => (
+                                                                    <div key={ri} className="mt-1.5 text-[11px] bg-indigo-50 text-indigo-700 rounded-lg px-2 py-1 flex items-center gap-1.5">
+                                                                        <BedDouble className="w-3 h-3" />
+                                                                        {r.roomType || 'Standard Room'} · {r.adults} מבוגרים{r.children > 0 ? ` + ${r.children} ילדים` : ''}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Flights preview */}
+                                                {freeTextResult.flights.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <div className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                                                            <Plane className="w-3.5 h-3.5" /> טיסות ({freeTextResult.flights.length})
+                                                        </div>
+                                                        {freeTextResult.flights.map((f, i) => (
+                                                            <div key={i} className="bg-white rounded-xl p-3 border border-emerald-100 text-xs text-slate-700">
+                                                                <span className="font-bold">{f.fromCity || f.fromCode} → {f.toCity || f.toCode}</span>
+                                                                <span className="text-slate-400 mr-2">{f.date} {f.arrivalTime !== '00:00' ? `· ${f.arrivalTime}` : ''}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={handleFreeTextApply}
+                                                        className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors"
+                                                    >
+                                                        הוסף לטיול
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setFreeTextResult(null)}
+                                                        className="px-4 py-3 bg-white text-slate-500 rounded-xl font-bold text-sm border border-slate-200 hover:bg-slate-50 transition-colors"
+                                                    >
+                                                        ביטול
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Magic Drop Zone (Files/PDFs) */}
                                 <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl p-8 text-white text-center">
                                     <Sparkles className="w-12 h-12 mx-auto mb-4 text-purple-200" />
-                                    <h3 className="text-2xl font-black mb-2">Magic Import</h3>
+                                    <h3 className="text-2xl font-black mb-2">Magic Import — קבצים</h3>
                                     <p className="text-purple-100 mb-6 font-medium">גרור לכאן קבצי PDF של טיסות, מלונות או כרטיסים וה-AI יסדר אותם בטיול.</p>
                                     <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
                                         <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />

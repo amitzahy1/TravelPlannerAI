@@ -1,7 +1,11 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trip, HotelBooking } from '../types';
-import { Hotel, MapPin, Calendar, ExternalLink, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X, Save, DollarSign, Image as ImageIcon, Link as LinkIcon, Globe, Sparkles, Loader2, Navigation, Search, UploadCloud, FileText, Coffee, ShieldCheck, Lock } from 'lucide-react';
+import { Trip, HotelBooking, HotelRoom, TravelersComposition } from '../types';
+import {
+    Hotel, MapPin, Calendar, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X,
+    Image as ImageIcon, Sparkles, Loader2, Navigation, UploadCloud, FileText, Coffee,
+    ShieldCheck, Lock, AlertTriangle, ChevronDown, Users, Tag, Info, CheckCheck
+} from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
@@ -18,7 +22,7 @@ const getPlaceImage = (address: string): string => {
     if (lowerAddr.includes('pattaya')) return 'https://images.unsplash.com/photo-1598970434795-0c54fe7c0648?auto=format&fit=crop&q=80';
     if (lowerAddr.includes('chiang mai')) return 'https://images.unsplash.com/photo-1598135753163-6167c1a1ad65?auto=format&fit=crop&q=80';
     if (lowerAddr.includes('krabi')) return 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('koh chang')) return 'https://images.unsplash.com/photo-1559530432-62dc0442c549?auto=format&fit=crop&q=80'; // Beachy island
+    if (lowerAddr.includes('koh chang')) return 'https://images.unsplash.com/photo-1559530432-62dc0442c549?auto=format&fit=crop&q=80';
     if (lowerAddr.includes('tao') || lowerAddr.includes('koh tao')) return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80';
 
     // Europe
@@ -31,12 +35,538 @@ const getPlaceImage = (address: string): string => {
     if (lowerAddr.includes('new york') || lowerAddr.includes('nyc')) return 'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?auto=format&fit=crop&q=80';
 
     // General
-    if (lowerAddr.includes('beach') || lowerAddr.includes('resort') || lowerAddr.includes('island')) return 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&q=80'; // General Resort
+    if (lowerAddr.includes('beach') || lowerAddr.includes('resort') || lowerAddr.includes('island')) return 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&q=80';
 
-    // Default City
-    return 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&q=80'; // General City
+    return 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&q=80';
 };
 
+// Room color palette — each room gets a distinct look
+const ROOM_COLORS = [
+    { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', badge: 'bg-indigo-100', num: 'text-indigo-600' },
+    { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100', num: 'text-emerald-600' },
+    { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-100', num: 'text-amber-600' },
+    { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', badge: 'bg-rose-100', num: 'text-rose-600' },
+    { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', badge: 'bg-violet-100', num: 'text-violet-600' },
+    { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700', badge: 'bg-teal-100', num: 'text-teal-600' },
+];
+
+
+// ─────────────────────────────────────────────────────────
+// RoomFormModal — add/edit a single room
+// ─────────────────────────────────────────────────────────
+const RoomFormModal: React.FC<{
+    initialData?: HotelRoom;
+    onClose: () => void;
+    onSave: (room: HotelRoom) => void;
+}> = ({ initialData, onClose, onSave }) => {
+    const [form, setForm] = useState<Partial<HotelRoom>>(
+        initialData || { adults: 2, children: 0, label: '', roomType: '', beds: '', notes: '' }
+    );
+
+    const ROOM_TYPE_OPTIONS = [
+        'Standard Room', 'Deluxe Room', 'Superior Room', 'Junior Suite', 'Suite',
+        'Family Room', 'Studio', 'Villa', 'Bungalow', 'Twin Room', 'Double Room', 'Executive Room'
+    ];
+    const BED_OPTIONS = ['King Bed', 'Queen Bed', 'Double Bed', 'Twin Beds', 'Single Bed', 'Bunk Beds'];
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave({
+            id: initialData?.id || crypto.randomUUID(),
+            adults: form.adults ?? 2,
+            children: form.children ?? 0,
+            label: form.label,
+            roomType: form.roomType,
+            beds: form.beds,
+            notes: form.notes,
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
+            <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="bg-gradient-to-r from-indigo-50 to-violet-50 p-5 border-b border-indigo-100 flex justify-between items-center sticky top-0">
+                    <h3 className="text-lg font-black text-indigo-900 flex items-center gap-2">
+                        <BedDouble className="w-5 h-5 text-indigo-600" />
+                        {initialData ? 'עריכת חדר' : 'הוספת חדר'}
+                    </h3>
+                    <button onClick={onClose} className="p-1.5 hover:bg-white rounded-full transition-colors">
+                        <X className="w-5 h-5 text-slate-400" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                    {/* Label / Family Name */}
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                            <Tag className="w-3 h-3" /> כותרת / שם משפחה לחדר
+                        </label>
+                        <input
+                            className="w-full p-3.5 bg-slate-50 rounded-2xl font-semibold outline-none focus:ring-2 focus:ring-indigo-200 transition-all placeholder:font-normal text-slate-800"
+                            placeholder='למשל: "משפחת כהן", "הורים", "הילדים"'
+                            value={form.label || ''}
+                            onChange={e => setForm({ ...form, label: e.target.value })}
+                        />
+                    </div>
+
+                    {/* Room Type */}
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                            <Hotel className="w-3 h-3" /> סוג חדר
+                        </label>
+                        <input
+                            list="room-types-list"
+                            className="w-full p-3.5 bg-slate-50 rounded-2xl font-semibold outline-none focus:ring-2 focus:ring-indigo-200 transition-all placeholder:font-normal text-slate-800"
+                            placeholder='Deluxe Double Room, Junior Suite...'
+                            value={form.roomType || ''}
+                            onChange={e => setForm({ ...form, roomType: e.target.value })}
+                        />
+                        <datalist id="room-types-list">
+                            {ROOM_TYPE_OPTIONS.map(opt => <option key={opt} value={opt} />)}
+                        </datalist>
+                    </div>
+
+                    {/* Guests — Adults & Children */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-500">מבוגרים</label>
+                            <div className="flex items-center gap-2 bg-slate-50 rounded-2xl p-2 border border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setForm({ ...form, adults: Math.max(1, (form.adults ?? 1) - 1) })}
+                                    className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none"
+                                >−</button>
+                                <span className="flex-1 text-center font-black text-slate-800 text-lg">{form.adults ?? 1}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setForm({ ...form, adults: (form.adults ?? 1) + 1 })}
+                                    className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none"
+                                >+</button>
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-500">ילדים</label>
+                            <div className="flex items-center gap-2 bg-slate-50 rounded-2xl p-2 border border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setForm({ ...form, children: Math.max(0, (form.children ?? 0) - 1) })}
+                                    className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none"
+                                >−</button>
+                                <span className="flex-1 text-center font-black text-slate-800 text-lg">{form.children ?? 0}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setForm({ ...form, children: (form.children ?? 0) + 1 })}
+                                    className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none"
+                                >+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bed Type */}
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                            <BedDouble className="w-3 h-3" /> סוג מיטות מועדף
+                        </label>
+                        <select
+                            className="w-full p-3.5 bg-slate-50 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-indigo-200 transition-all text-slate-800"
+                            value={form.beds || ''}
+                            onChange={e => setForm({ ...form, beds: e.target.value })}
+                        >
+                            <option value="">לא צוין / לא משנה</option>
+                            {BED_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                    </div>
+
+                    {/* Notes / Preferences */}
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-500">בקשות / העדפות מראש</label>
+                        <input
+                            className="w-full p-3.5 bg-slate-50 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-indigo-200 transition-all placeholder:font-normal text-slate-800"
+                            placeholder="קומה גבוהה, נוף לים, מיטת תינוק, חיבור לחדרים..."
+                            value={form.notes || ''}
+                            onChange={e => setForm({ ...form, notes: e.target.value })}
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-bold text-base shadow-xl shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    >
+                        שמור חדר
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+
+// ─────────────────────────────────────────────────────────
+// RoomsPanel — expandable section inside HotelCard
+// ─────────────────────────────────────────────────────────
+const RoomsPanel: React.FC<{
+    rooms: HotelRoom[];
+    tripTravelers?: TravelersComposition;
+    onUpdateRooms: (rooms: HotelRoom[]) => void;
+}> = ({ rooms, tripTravelers, onUpdateRooms }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    // undefined = modal closed, null = adding new, HotelRoom = editing existing
+    const [editingRoom, setEditingRoom] = useState<HotelRoom | null | undefined>(undefined);
+
+    const totalAdults = rooms.reduce((s, r) => s + r.adults, 0);
+    const totalChildren = rooms.reduce((s, r) => s + r.children, 0);
+    const totalGuests = totalAdults + totalChildren;
+
+    const expectedTotal = tripTravelers
+        ? (tripTravelers.adults || 0) + (tripTravelers.children || 0)
+        : null;
+    const hasDiscrepancy = expectedTotal !== null && rooms.length > 0 && totalGuests !== expectedTotal;
+    const isAllGood = rooms.length > 0 && !hasDiscrepancy;
+
+    const handleSaveRoom = (room: HotelRoom) => {
+        if (editingRoom) {
+            onUpdateRooms(rooms.map(r => r.id === room.id ? room : r));
+        } else {
+            onUpdateRooms([...rooms, room]);
+        }
+        setEditingRoom(undefined);
+    };
+
+    const handleDeleteRoom = (roomId: string) => {
+        onUpdateRooms(rooms.filter(r => r.id !== roomId));
+    };
+
+    return (
+        <>
+            {/* Summary Bar — always visible, click to expand */}
+            <div
+                onClick={() => setIsExpanded(v => !v)}
+                className="border-t border-slate-100 px-3 md:px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition-colors select-none"
+            >
+                <div className="flex items-center gap-2 flex-wrap">
+                    <BedDouble className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    {rooms.length === 0 ? (
+                        <span className="text-xs text-slate-400 font-medium">לא הוגדרו חדרים — לחץ להוספה</span>
+                    ) : (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-slate-700">{rooms.length} {rooms.length === 1 ? 'חדר' : 'חדרים'}</span>
+                            <span className="text-slate-300 text-xs">•</span>
+                            <span className="text-xs text-slate-500">
+                                {totalAdults} מבוגרים
+                                {totalChildren > 0 && <span> + {totalChildren} ילדים</span>}
+                            </span>
+                        </div>
+                    )}
+                    {isAllGood && (
+                        <div className="flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                            <CheckCheck className="w-2.5 h-2.5" /> תקין
+                        </div>
+                    )}
+                    {hasDiscrepancy && (
+                        <div className="flex items-center gap-1 bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                            <AlertTriangle className="w-2.5 h-2.5" /> אי-התאמה
+                        </div>
+                    )}
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {rooms.length === 0 && (
+                        <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full">+ הוסף</span>
+                    )}
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                </div>
+            </div>
+
+            {/* Expanded Content */}
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="px-3 md:px-4 pb-4 pt-1 space-y-2">
+                            {/* Discrepancy Alert */}
+                            {hasDiscrepancy && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5">
+                                    <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <div className="text-xs font-bold text-amber-800">אי-התאמה באורחים</div>
+                                        <div className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
+                                            הטיול מוגדר ל-{expectedTotal} אנשים, אבל בחדרים {totalGuests} אנשים.
+                                            ייתכן ששכחת להוסיף חדר או לעדכן מספר אורחים.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Room Cards */}
+                            {rooms.map((room, idx) => {
+                                const color = ROOM_COLORS[idx % ROOM_COLORS.length];
+                                return (
+                                    <motion.div
+                                        key={room.id}
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                        className={`${color.bg} border ${color.border} rounded-xl p-3 flex items-start gap-3 group/room`}
+                                    >
+                                        {/* Room Number Badge */}
+                                        <div className={`w-9 h-9 rounded-xl ${color.badge} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                                            <span className={`text-sm font-black ${color.num}`}>{idx + 1}</span>
+                                        </div>
+
+                                        {/* Room Details */}
+                                        <div className="flex-grow min-w-0">
+                                            <div className={`font-bold text-sm ${color.text} truncate leading-tight`}>
+                                                {room.label || `חדר ${idx + 1}`}
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                                {room.roomType && (
+                                                    <span className="text-[10px] font-semibold text-slate-600 bg-white/80 rounded-lg px-2 py-0.5 border border-white shadow-sm truncate max-w-[140px]">
+                                                        {room.roomType}
+                                                    </span>
+                                                )}
+                                                <span className="text-[10px] text-slate-600 flex items-center gap-1 bg-white/80 rounded-lg px-2 py-0.5 border border-white shadow-sm">
+                                                    <Users className="w-2.5 h-2.5" />
+                                                    {room.adults} מבוגרים
+                                                    {room.children > 0 && <span>+ {room.children} ילדים</span>}
+                                                </span>
+                                                {room.beds && (
+                                                    <span className="text-[10px] text-slate-500 flex items-center gap-1 bg-white/80 rounded-lg px-2 py-0.5 border border-white shadow-sm">
+                                                        <BedDouble className="w-2.5 h-2.5" />
+                                                        {room.beds}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {room.notes && (
+                                                <div className="mt-1.5 text-[10px] text-slate-500 italic truncate">
+                                                    💬 {room.notes}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Actions — always visible on mobile, hover on desktop */}
+                                        <div className="flex gap-1 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/room:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => setEditingRoom(room)}
+                                                className="p-2 md:p-1.5 hover:bg-white/80 active:bg-white rounded-lg transition-colors"
+                                                title="עריכה"
+                                            >
+                                                <Edit className="w-3.5 h-3.5 md:w-3 md:h-3 text-slate-400" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteRoom(room.id)}
+                                                className="p-2 md:p-1.5 hover:bg-white/80 active:bg-white rounded-lg transition-colors"
+                                                title="מחיקה"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5 md:w-3 md:h-3 text-slate-400" />
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+
+                            {/* Add Room Button */}
+                            <button
+                                onClick={() => setEditingRoom(null)}
+                                className="w-full py-2.5 border-2 border-dashed border-indigo-200 text-indigo-600 text-xs font-bold rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-all flex items-center justify-center gap-1.5"
+                            >
+                                <Plus className="w-3.5 h-3.5" /> הוסף חדר
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Room Form Modal */}
+            {editingRoom !== undefined && (
+                <RoomFormModal
+                    initialData={editingRoom ?? undefined}
+                    onClose={() => setEditingRoom(undefined)}
+                    onSave={handleSaveRoom}
+                />
+            )}
+        </>
+    );
+};
+
+
+// ─────────────────────────────────────────────────────────
+// HotelCard
+// ─────────────────────────────────────────────────────────
+const HotelCard: React.FC<{
+    data: HotelBooking;
+    tripDestination: string;
+    tripTravelers?: TravelersComposition;
+    onSaveNote: (n: string) => void;
+    onSaveVibe: (v: string) => void;
+    onDelete: () => void;
+    onEdit: () => void;
+    onUpdateRooms: (rooms: HotelRoom[]) => void;
+}> = ({ data, tripDestination, tripTravelers, onSaveNote, onSaveVibe, onDelete, onEdit, onUpdateRooms }) => {
+    const [isEditingNote, setIsEditingNote] = useState(false);
+    const [noteText, setNoteText] = useState(data.notes || '');
+    const [analyzing, setAnalyzing] = useState(false);
+
+    const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
+
+    const analyzeLocation = async () => {
+        setAnalyzing(true);
+        try {
+            const prompt = `Analyze location: "${data.name}", "${data.address}". Short Hebrew "Vibe Check" (max 15 words). e.g. "מרכזי, קרוב לרכבת, אזור בילויים".`;
+            const response = await generateWithFallback(null, [prompt], {}, 'FAST');
+            if (response.text) onSaveVibe(response.text);
+        } catch (e) { console.error(e); } finally { setAnalyzing(false); }
+    };
+
+    const displayImage = data.imageUrl || getPlaceImage(data.address || data.name);
+    const rooms = data.rooms || [];
+
+    return (
+        <div className="bg-white rounded-xl md:rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all group relative flex flex-col">
+            {/* Edit / Delete buttons */}
+            <div className="absolute top-1.5 left-1.5 md:top-2 md:left-2 z-20 flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={onEdit} className="bg-white/90 p-1 md:p-1.5 rounded-md md:rounded-lg text-slate-600 hover:text-blue-600 shadow-md backdrop-blur-sm">
+                    <Edit className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                </button>
+                <button onClick={onDelete} className="bg-white/90 p-1 md:p-1.5 rounded-md md:rounded-lg text-slate-600 hover:text-red-600 shadow-md backdrop-blur-sm">
+                    <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                </button>
+            </div>
+
+            {/* Main Row: Image + Content */}
+            <div className="flex flex-row h-28 md:h-[200px]">
+                {/* Image */}
+                <div className="w-24 md:w-48 h-full relative bg-slate-100 flex-shrink-0">
+                    <img src={displayImage} alt={data.name} className="w-full h-full object-cover" />
+
+                    <div className="absolute top-1.5 right-1.5 md:top-2 md:right-2 flex flex-col gap-1 items-end">
+                        <div className="hidden md:flex bg-white/90 backdrop-blur px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-800 shadow-sm items-center">
+                            <CheckCircle className="w-2.5 h-2.5 ml-1 text-green-500" />{data.bookingSource}
+                        </div>
+                        {data.breakfastIncluded && (
+                            <div className="bg-orange-100/90 backdrop-blur px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold text-orange-700 shadow-sm flex items-center">
+                                <Coffee className="w-2 h-2 md:w-2.5 md:h-2.5 ml-0.5 md:ml-1" />
+                                <span className="hidden md:inline">ארוחת בוקר</span>
+                                <span className="md:hidden">בוקר</span>
+                            </div>
+                        )}
+                        {/* Room count badge on image */}
+                        {rooms.length > 0 && (
+                            <div className="bg-indigo-600/90 backdrop-blur px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white shadow-sm flex items-center gap-0.5">
+                                <BedDouble className="w-2 h-2" />
+                                {rooms.length}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-2 md:p-4 flex-grow flex flex-col justify-between min-w-0 overflow-hidden">
+                    <div>
+                        <div className="flex justify-between items-start">
+                            <div className="flex-grow min-w-0">
+                                <h3 className="text-sm md:text-lg font-bold md:font-black text-slate-900 mb-0 md:mb-0.5 truncate leading-tight">{data.name}</h3>
+                                <div className="flex items-center text-[10px] md:text-xs text-slate-500 font-medium truncate">
+                                    <MapPin className="w-2.5 h-2.5 md:w-3 md:h-3 ml-0.5 md:ml-1 flex-shrink-0 text-slate-400" />
+                                    <span className="truncate">{data.address}</span>
+                                </div>
+                            </div>
+                            <span className="hidden md:block flex-shrink-0 text-[10px] font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200 ml-2">#{data.confirmationCode}</span>
+                        </div>
+
+                        {/* Desktop Only: Vibe & Cancellation */}
+                        <div className="hidden md:block mt-2">
+                            {data.cancellationPolicy && (
+                                <div className="mb-2 text-[10px] text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100 flex items-start gap-1.5 w-fit">
+                                    <ShieldCheck className="w-3 h-3 flex-shrink-0" />
+                                    <span className="font-bold">{data.cancellationPolicy}</span>
+                                </div>
+                            )}
+                            {data.locationVibe ? (
+                                <div className="bg-purple-50 border border-purple-100 p-2 rounded-xl flex items-start gap-2">
+                                    <div className="bg-white p-1 rounded-full shadow-sm flex-shrink-0"><Sparkles className="w-3 h-3 text-purple-600" /></div>
+                                    <div className="min-w-0">
+                                        <div className="text-[9px] font-bold text-purple-700 uppercase mb-0 leading-none">Vibe Check</div>
+                                        <p className="text-xs text-purple-900 leading-tight font-medium line-clamp-2">{data.locationVibe}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <button onClick={analyzeLocation} disabled={analyzing} className="flex items-center gap-1.5 text-[10px] font-bold text-purple-600 hover:bg-purple-50 px-2 py-1.5 rounded-lg transition-colors border border-dashed border-purple-200 w-full justify-center">
+                                    {analyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                    {analyzing ? 'מנתח...' : 'מה ה-Vibe של האזור?'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Bottom: Dates & Actions */}
+                    <div className="flex items-center justify-between mt-1 md:mt-0 md:border-t md:border-dashed md:border-slate-200 md:pt-3">
+                        <div className="flex gap-1 md:gap-2 flex-wrap">
+                            <div className="bg-indigo-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded md:rounded-lg border border-indigo-100 flex items-center gap-1 md:gap-2">
+                                <div className="text-[8px] md:text-[9px] text-indigo-600 font-bold uppercase">IN</div>
+                                <div className="font-bold text-slate-900 text-[10px] md:text-sm">
+                                    {data.checkInDate?.split('T')[0].split('-').reverse().join('/') || ''}
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded md:rounded-lg border border-slate-200 flex items-center gap-1 md:gap-2">
+                                <div className="text-[8px] md:text-[9px] text-slate-500 font-bold uppercase">OUT</div>
+                                <div className="font-bold text-slate-900 text-[10px] md:text-sm">
+                                    {data.checkOutDate?.split('T')[0].split('-').reverse().join('/') || ''}
+                                </div>
+                            </div>
+                            {data.nights > 0 && (
+                                <div className="hidden md:flex bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 items-center gap-1">
+                                    <span className="text-[9px] text-slate-500 font-bold">{data.nights} לילות</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-1 md:gap-2">
+                            {/* Note - Hidden on Mobile */}
+                            <div className="hidden md:block">
+                                {isEditingNote ? (
+                                    <div className="flex bg-yellow-50 p-1 rounded-lg border border-yellow-200 w-48">
+                                        <input className="w-full bg-transparent border-none outline-none text-xs text-slate-800" placeholder="הוסף הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} />
+                                        <button onClick={saveNote} className="text-[10px] bg-yellow-400 text-yellow-900 px-1.5 rounded font-bold whitespace-nowrap ml-1">שמור</button>
+                                    </div>
+                                ) : (
+                                    <div onClick={() => setIsEditingNote(true)} className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center gap-1.5 cursor-pointer max-w-[150px] ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900 hover:bg-yellow-100' : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100 border-dashed border-slate-200'}`}>
+                                        <StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-slate-400'}`} />
+                                        <span className="truncate font-medium">{data.notes || 'הערה'}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <a
+                                href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''} ${tripDestination || ''}`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-indigo-600 text-white p-1.5 md:p-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                            >
+                                <MapPin className="w-3 h-3 md:w-4 md:h-4" />
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Rooms Panel — always rendered below main row */}
+            <RoomsPanel
+                rooms={rooms}
+                tripTravelers={tripTravelers}
+                onUpdateRooms={onUpdateRooms}
+            />
+        </div>
+    );
+};
+
+
+// ─────────────────────────────────────────────────────────
+// HotelsView — main view
+// ─────────────────────────────────────────────────────────
 export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
     const { hotels } = trip;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,23 +578,26 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const newDocs = Array.from(e.target.files).map((f: File) => f.name);
-            const updatedTrip = { ...trip, documents: [...(trip.documents || []), ...newDocs] };
-            onUpdateTrip(updatedTrip);
+            onUpdateTrip({ ...trip, documents: [...(trip.documents || []), ...newDocs] });
         }
     };
-
 
     const handleNoteUpdate = (hotelId: string, newNote: string) => {
         const updatedHotels = (trip.hotels || []).map(h => h.id === hotelId ? { ...h, notes: newNote } : h);
         onUpdateTrip({ ...trip, hotels: updatedHotels });
     };
+
     const handleVibeUpdate = (hotelId: string, vibe: string) => {
         const updatedHotels = (trip.hotels || []).map(h => h.id === hotelId ? { ...h, locationVibe: vibe } : h);
         onUpdateTrip({ ...trip, hotels: updatedHotels });
     };
-    const handleDeleteHotel = (hotelId: string) => {
-        setHotelToDelete(hotelId);
+
+    const handleUpdateRooms = (hotelId: string, rooms: HotelRoom[]) => {
+        const updatedHotels = (trip.hotels || []).map(h => h.id === hotelId ? { ...h, rooms } : h);
+        onUpdateTrip({ ...trip, hotels: updatedHotels });
     };
+
+    const handleDeleteHotel = (hotelId: string) => setHotelToDelete(hotelId);
 
     const confirmDeleteHotel = () => {
         if (hotelToDelete) {
@@ -92,11 +625,18 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
         setEditingHotel(null);
     };
 
+    // Compute summary stats
+    const totalRooms = (hotels || []).reduce((s, h) => s + (h.rooms?.length || 0), 0);
+    const totalGuests = (hotels || []).reduce((s, h) => s + (h.rooms || []).reduce((r, room) => r + room.adults + room.children, 0), 0);
+    const hotelsWithNoRooms = (hotels || []).filter(h => !h.rooms || h.rooms.length === 0);
+    const expectedGuests = trip.travelers ? (trip.travelers.adults || 0) + (trip.travelers.children || 0) : null;
+
     return (
-        <div className="space-y-8 animate-fade-in pb-10">
+        <div className="space-y-6 animate-fade-in pb-10">
 
             {hotels && hotels.length > 0 ? (
                 <>
+                    {/* Header */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <h2 className="text-3xl font-extrabold text-slate-800 flex items-center tracking-tight">
                             <span className="bg-indigo-100 p-2 rounded-xl ml-3 text-indigo-600 shadow-sm"><Hotel className="w-7 h-7" /></span>
@@ -111,20 +651,94 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                             </button>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 gap-6">
+
+                    {/* Rooms Summary Card */}
+                    {hotels.length > 0 && (
+                        <div className="bg-gradient-to-r from-indigo-50 via-violet-50 to-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-wrap gap-4 items-center">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-white p-2 rounded-xl shadow-sm border border-indigo-100">
+                                    <Hotel className="w-5 h-5 text-indigo-600" />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide">מלונות</div>
+                                    <div className="text-xl font-black text-slate-800">{hotels.length}</div>
+                                </div>
+                            </div>
+
+                            <div className="w-px h-10 bg-indigo-200 hidden sm:block" />
+
+                            <div className="flex items-center gap-2">
+                                <div className="bg-white p-2 rounded-xl shadow-sm border border-indigo-100">
+                                    <BedDouble className="w-5 h-5 text-violet-600" />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-violet-500 uppercase tracking-wide">חדרים כולל</div>
+                                    <div className="text-xl font-black text-slate-800">{totalRooms}</div>
+                                </div>
+                            </div>
+
+                            <div className="w-px h-10 bg-indigo-200 hidden sm:block" />
+
+                            <div className="flex items-center gap-2">
+                                <div className="bg-white p-2 rounded-xl shadow-sm border border-indigo-100">
+                                    <Users className="w-5 h-5 text-emerald-600" />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">אורחים מוגדרים</div>
+                                    <div className="text-xl font-black text-slate-800">
+                                        {totalGuests}
+                                        {expectedGuests && <span className="text-sm font-medium text-slate-400"> / {expectedGuests}</span>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Warnings */}
+                            <div className="mr-auto flex flex-wrap gap-2">
+                                {hotelsWithNoRooms.length > 0 && (
+                                    <div className="flex items-center gap-1.5 bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                        {hotelsWithNoRooms.length === 1
+                                            ? `${hotelsWithNoRooms[0].name} — לא הוגדרו חדרים`
+                                            : `${hotelsWithNoRooms.length} מלונות ללא חדרים`}
+                                    </div>
+                                )}
+                                {totalRooms > 0 && hotelsWithNoRooms.length === 0 && expectedGuests && totalGuests === expectedGuests && (
+                                    <div className="flex items-center gap-1.5 bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+                                        <CheckCheck className="w-3.5 h-3.5" />
+                                        הכל תקין — כל האורחים מכוסים
+                                    </div>
+                                )}
+                                {totalRooms > 0 && expectedGuests && totalGuests !== expectedGuests && (
+                                    <div className="flex items-center gap-1.5 bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                        {totalGuests < expectedGuests
+                                            ? `חסרים ${expectedGuests - totalGuests} אנשים בחדרים`
+                                            : `${totalGuests - expectedGuests} אנשים עודפים בחדרים`}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Hotel Cards */}
+                    <div className="grid grid-cols-1 gap-5">
                         {hotels.map((hotel, index) => (
                             <motion.div
                                 key={hotel.id || index}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{
-                                    delay: index * 0.1,
-                                    type: 'spring',
-                                    stiffness: 300,
-                                    damping: 25
-                                }}
+                                transition={{ delay: index * 0.08, type: 'spring', stiffness: 300, damping: 25 }}
                             >
-                                <HotelCard data={hotel} tripDestination={trip.destination} onSaveNote={(note) => handleNoteUpdate(hotel.id, note)} onSaveVibe={(vibe) => handleVibeUpdate(hotel.id, vibe)} onDelete={() => handleDeleteHotel(hotel.id)} onEdit={() => handleEditHotel(hotel)} />
+                                <HotelCard
+                                    data={hotel}
+                                    tripDestination={trip.destination}
+                                    tripTravelers={trip.travelers}
+                                    onSaveNote={(note) => handleNoteUpdate(hotel.id, note)}
+                                    onSaveVibe={(vibe) => handleVibeUpdate(hotel.id, vibe)}
+                                    onDelete={() => handleDeleteHotel(hotel.id)}
+                                    onEdit={() => handleEditHotel(hotel)}
+                                    onUpdateRooms={(rooms) => handleUpdateRooms(hotel.id, rooms)}
+                                />
                             </motion.div>
                         ))}
                     </div>
@@ -138,14 +752,12 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                             <Hotel className="w-24 h-24 text-indigo-500" strokeWidth={1.5} />
                         </div>
                     </div>
-
                     <div className="space-y-3 max-w-md">
                         <h2 className="text-3xl font-black text-slate-800 tracking-tight">איפה ישנים?</h2>
                         <p className="text-slate-500 text-lg font-medium leading-relaxed">
                             עדיין לא הזנתם מלונות. אפשר להדביק את אישור ההזמנה כאן וה-AI יעשה את השאר.
                         </p>
                     </div>
-
                     <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm sm:max-w-lg justify-center">
                         <button onClick={() => setIsSmartAddOpen(true)} className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-3 rounded-xl font-bold text-sm md:text-base shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
                             <Sparkles className="w-5 h-5" /> הדבק אישור (AI)
@@ -168,21 +780,15 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                         <p className="text-slate-500 text-sm">אישורי הזמנת מלון, שוברים וקבלות</p>
                     </div>
                     {onUpdateTrip && (
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-200"
-                        >
+                        <button onClick={() => fileInputRef.current?.click()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-200">
                             <UploadCloud className="w-4 h-4" /> העלה קובץ
                         </button>
                     )}
                     <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} />
                 </div>
 
-                {/* Privacy Notice Banner */}
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex items-start gap-3">
-                    <div className="bg-white p-1.5 rounded-full shadow-sm text-blue-600 mt-0.5">
-                        <ShieldCheck className="w-4 h-4" />
-                    </div>
+                    <div className="bg-white p-1.5 rounded-full shadow-sm text-blue-600 mt-0.5"><ShieldCheck className="w-4 h-4" /></div>
                     <div>
                         <h4 className="text-sm font-bold text-blue-900">הגנת פרטיות מופעלת</h4>
                         <p className="text-xs text-blue-700 mt-1">
@@ -197,7 +803,6 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                         {trip.documents.map((doc, idx) => {
                             const isPdf = doc.toLowerCase().endsWith('.pdf');
                             const isImage = doc.match(/\.(jpg|jpeg|png|webp)$/i);
-
                             return (
                                 <div key={idx} className="group relative bg-white border border-slate-200 rounded-2xl p-3 aspect-[4/5] flex flex-col items-center justify-center text-center overflow-hidden opacity-90 hover:opacity-100 transition-opacity">
                                     {isImage ? (
@@ -206,14 +811,13 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                                             <div className="absolute inset-0 bg-slate-100/50"></div>
                                         </div>
                                     ) : (
-                                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-sm z-10 ${isPdf ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
+                                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-sm z-10 relative ${isPdf ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
                                             {isPdf ? <FileText className="w-8 h-8" /> : <ImageIcon className="w-8 h-8" />}
                                             <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm border border-slate-100">
                                                 <Lock className="w-3 h-3 text-slate-400" />
                                             </div>
                                         </div>
                                     )}
-
                                     <div className="relative z-10 w-full px-2">
                                         <div className={`text-xs font-bold truncate w-full ${isImage ? 'text-white drop-shadow-md' : 'text-slate-700'}`}>{doc}</div>
                                         <div className={`text-[10px] font-medium uppercase mt-1 ${isImage ? 'text-white/80' : 'text-slate-400'}`}>{isPdf ? 'PDF DOC' : 'IMAGE'}</div>
@@ -223,10 +827,7 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                         })}
                     </div>
                 ) : (
-                    <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="border-3 border-dashed border-slate-100 hover:border-blue-200 bg-slate-50/50 hover:bg-blue-50/50 rounded-3xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer group min-h-[200px]"
-                    >
+                    <div onClick={() => fileInputRef.current?.click()} className="border-3 border-dashed border-slate-100 hover:border-blue-200 bg-slate-50/50 hover:bg-blue-50/50 rounded-3xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer group min-h-[200px]">
                         <div className="bg-white p-4 rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform">
                             <UploadCloud className="w-8 h-8 text-blue-400" />
                         </div>
@@ -249,127 +850,10 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
     );
 };
 
-const HotelCard: React.FC<{
-    data: HotelBooking,
-    tripDestination: string,
-    onSaveNote: (n: string) => void,
-    onSaveVibe: (v: string) => void,
-    onDelete: () => void,
-    onEdit: () => void
-}> = ({ data, tripDestination, onSaveNote, onSaveVibe, onDelete, onEdit }) => {
-    const [isEditingNote, setIsEditingNote] = useState(false);
-    const [noteText, setNoteText] = useState(data.notes || '');
-    const [analyzing, setAnalyzing] = useState(false);
-    const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
-    const analyzeLocation = async () => {
-        setAnalyzing(true);
-        try {
-            const prompt = `Analyze location: "${data.name}", "${data.address}". Short Hebrew "Vibe Check" (max 15 words). e.g. "מרכזי, קרוב לרכבת, אזור בילויים".`;
-            // Using FAST intent as requested for "Vibe"
-            const response = await generateWithFallback(null, [prompt], {}, 'FAST');
-            if (response.text) onSaveVibe(response.text);
-        } catch (e) { console.error(e); } finally { setAnalyzing(false); }
-    };
 
-    // Use smart image selection
-    const displayImage = data.imageUrl || getPlaceImage(data.address || data.name);
-
-    return (
-        <div className="bg-white rounded-xl md:rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-row group relative h-28 md:h-[200px]">
-            <div className="absolute top-1.5 left-1.5 md:top-2 md:left-2 z-20 flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={onEdit} className="bg-white/90 p-1 md:p-1.5 rounded-md md:rounded-lg text-slate-600 hover:text-blue-600 shadow-md backdrop-blur-sm"><Edit className="w-3 h-3 md:w-3.5 md:h-3.5" /></button>
-                <button onClick={onDelete} className="bg-white/90 p-1 md:p-1.5 rounded-md md:rounded-lg text-slate-600 hover:text-red-600 shadow-md backdrop-blur-sm"><Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" /></button>
-            </div>
-
-            {/* Image Section - Compact Square on Mobile */}
-            <div className="w-24 md:w-48 h-full relative bg-slate-100 flex-shrink-0">
-                <img src={displayImage} alt={data.name} className="w-full h-full object-cover" />
-
-                {/* Badges Overlay - Hidden on Mobile for density */}
-                <div className="absolute top-1.5 right-1.5 md:top-2 md:right-2 flex flex-col gap-1 items-end">
-                    <div className="hidden md:flex bg-white/90 backdrop-blur px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-800 shadow-sm items-center"><CheckCircle className="w-2.5 h-2.5 ml-1 text-green-500" />{data.bookingSource}</div>
-                    {data.breakfastIncluded && (
-                        <div className="bg-orange-100/90 backdrop-blur px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold text-orange-700 shadow-sm flex items-center"><Coffee className="w-2 h-2 md:w-2.5 md:h-2.5 ml-0.5 md:ml-1" /><span className="hidden md:inline">ארוחת בוקר</span><span className="md:hidden">בוקר</span></div>
-                    )}
-                </div>
-            </div>
-
-            {/* Content - Compact for Mobile */}
-            <div className="p-2 md:p-4 flex-grow flex flex-col justify-between min-w-0 overflow-hidden">
-                {/* Top: Name & Address */}
-                <div>
-                    <div className="flex justify-between items-start">
-                        <div className="flex-grow min-w-0">
-                            <h3 className="text-sm md:text-lg font-bold md:font-black text-slate-900 mb-0 md:mb-0.5 truncate leading-tight">{data.name}</h3>
-                            <div className="flex items-center text-[10px] md:text-xs text-slate-500 font-medium truncate">
-                                <MapPin className="w-2.5 h-2.5 md:w-3 md:h-3 ml-0.5 md:ml-1 flex-shrink-0 text-slate-400" />
-                                <span className="truncate">{data.address}</span>
-                            </div>
-                        </div>
-                        <span className="hidden md:block flex-shrink-0 text-[10px] font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200 ml-2">#{data.confirmationCode}</span>
-                    </div>
-
-                    {/* Desktop Only: Vibe & Cancellation */}
-                    <div className="hidden md:block mt-2">
-                        {data.cancellationPolicy && (
-                            <div className="mb-2 text-[10px] text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100 flex items-start gap-1.5 w-fit">
-                                <ShieldCheck className="w-3 h-3 flex-shrink-0" />
-                                <span className="font-bold">{data.cancellationPolicy}</span>
-                            </div>
-                        )}
-                        {data.locationVibe ? (
-                            <div className="bg-purple-50 border border-purple-100 p-2 rounded-xl flex items-start gap-2">
-                                <div className="bg-white p-1 rounded-full shadow-sm flex-shrink-0"><Sparkles className="w-3 h-3 text-purple-600" /></div>
-                                <div className="min-w-0"><div className="text-[9px] font-bold text-purple-700 uppercase mb-0 leading-none">Vibe Check</div><p className="text-xs text-purple-900 leading-tight font-medium line-clamp-2">{data.locationVibe}</p></div>
-                            </div>
-                        ) : (
-                            <button onClick={analyzeLocation} disabled={analyzing} className="flex items-center gap-1.5 text-[10px] font-bold text-purple-600 hover:bg-purple-50 px-2 py-1.5 rounded-lg transition-colors border border-dashed border-purple-200 w-full justify-center">{analyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{analyzing ? 'מנתח...' : 'מה ה-Vibe של האזור?'}</button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Bottom: Dates & Actions */}
-                <div className="flex items-center justify-between mt-1 md:mt-0 md:border-t md:border-dashed md:border-slate-200 md:pt-3">
-                    <div className="flex gap-1 md:gap-2 flex-wrap">
-                        <div className="bg-indigo-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded md:rounded-lg border border-indigo-100 flex items-center gap-1 md:gap-2">
-                            <div className="text-[8px] md:text-[9px] text-indigo-600 font-bold uppercase">IN</div>
-                            <div className="font-bold text-slate-900 text-[10px] md:text-sm flex items-center">{
-                                // Inline formatter for display
-                                data.checkInDate?.split('T')[0].split('-').reverse().join('/') || ''
-                            }</div>
-                        </div>
-                        <div className="bg-slate-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded md:rounded-lg border border-slate-200 flex items-center gap-1 md:gap-2">
-                            <div className="text-[8px] md:text-[9px] text-slate-500 font-bold uppercase">OUT</div>
-                            <div className="font-bold text-slate-900 text-[10px] md:text-sm flex items-center">{
-                                data.checkOutDate?.split('T')[0].split('-').reverse().join('/') || ''
-                            }</div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 md:gap-2">
-                        {/* Note - Hidden on Mobile */}
-                        <div className="hidden md:block">
-                            {isEditingNote ? (
-                                <div className="flex bg-yellow-50 p-1 rounded-lg border border-yellow-200 w-48">
-                                    <input className="w-full bg-transparent border-none outline-none text-xs text-slate-800" placeholder="הוסף הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} />
-                                    <button onClick={saveNote} className="text-[10px] bg-yellow-400 text-yellow-900 px-1.5 rounded font-bold whitespace-nowrap ml-1">שמור</button>
-                                </div>
-                            ) : (
-                                <div onClick={() => setIsEditingNote(true)} className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center gap-1.5 cursor-pointer max-w-[150px] ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900 hover:bg-yellow-100' : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100 border-dashed border-slate-200'}`}>
-                                    <StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-slate-400'}`} />
-                                    <span className="truncate font-medium">{data.notes || 'הערה'}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <a href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''} ${tripDestination || ''}`)}`} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white p-1.5 md:p-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"><MapPin className="w-3 h-3 md:w-4 md:h-4" /></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
+// ─────────────────────────────────────────────────────────
+// HotelFormModal
+// ─────────────────────────────────────────────────────────
 const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () => void; onSave: (data: HotelBooking) => void; }> = ({ initialData, onClose, onSave }) => {
     const [formData, setFormData] = useState<Partial<HotelBooking>>(initialData || { name: '', address: '', checkInDate: '', checkOutDate: '', bookingSource: 'Direct', price: '' });
     const [showInPicker, setShowInPicker] = useState(false);
@@ -379,14 +863,14 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
     const formatForDisplay = (d?: string) => {
         if (!d) return "בחר תאריך";
         if (d.match(/^\d{4}-\d{2}-\d{2}/)) {
-            const datePart = d.split('T')[0];
-            const [y, m, day] = datePart.split('-');
+            const [y, m, day] = d.split('T')[0].split('-');
             return `${day}/${m}/${y}`;
         }
         return d;
     };
 
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData as HotelBooking); };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -403,25 +887,13 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
                         <label className="text-xs font-bold text-slate-400 mr-2">כתובת</label>
                         <input className="w-full p-4 bg-slate-50 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-indigo-100 transition-all" placeholder="כתובת" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
                     </div>
-
-                    {/* City field */}
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-400 mr-2">עיר (לסינון במפה)</label>
-                        <input
-                            className="w-full p-4 bg-slate-50 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
-                            placeholder="למשל: Tbilisi, Napareuli..."
-                            value={(formData as any).city || ''}
-                            onChange={e => setFormData({ ...formData, city: e.target.value } as any)}
-                        />
+                        <input className="w-full p-4 bg-slate-50 rounded-2xl font-medium outline-none focus:ring-2 focus:ring-indigo-100 transition-all" placeholder="למשל: Tbilisi, Napareuli..." value={(formData as any).city || ''} onChange={e => setFormData({ ...formData, city: e.target.value } as any)} />
                     </div>
 
-                    {/* Override coordinates toggle */}
                     <div>
-                        <button
-                            type="button"
-                            onClick={() => setShowCoords(!showCoords)}
-                            className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-xl transition-colors border border-dashed border-indigo-200"
-                        >
+                        <button type="button" onClick={() => setShowCoords(!showCoords)} className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-xl transition-colors border border-dashed border-indigo-200">
                             <Navigation className="w-3.5 h-3.5" />
                             {showCoords ? 'הסתר קואורדינטות' : '📍 עקוף מיקום על המפה (lat/lng)'}
                         </button>
@@ -429,23 +901,11 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
                             <div className="grid grid-cols-2 gap-3 mt-3">
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-slate-400 mr-2">Latitude</label>
-                                    <input
-                                        type="number" step="any"
-                                        className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100"
-                                        placeholder="41.6938"
-                                        value={formData.lat || ''}
-                                        onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) } as any)}
-                                    />
+                                    <input type="number" step="any" className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder="41.6938" value={formData.lat || ''} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) } as any)} />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-slate-400 mr-2">Longitude</label>
-                                    <input
-                                        type="number" step="any"
-                                        className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100"
-                                        placeholder="44.8015"
-                                        value={formData.lng || ''}
-                                        onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) } as any)}
-                                    />
+                                    <input type="number" step="any" className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder="44.8015" value={formData.lng || ''} onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) } as any)} />
                                 </div>
                                 <div className="col-span-2 text-[10px] text-slate-400 px-1">
                                     💡 ניתן למצוא קואורדינטות דרך <a href="https://maps.google.com" target="_blank" className="text-indigo-500 underline">Google Maps</a> — לחץ ימני על מיקום → "What's here"
@@ -457,41 +917,19 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1 relative">
                             <label className="text-xs font-bold text-slate-400 mr-2">צ'ק-אין</label>
-                            <button
-                                type="button"
-                                onClick={() => setShowInPicker(true)}
-                                className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm text-right flex items-center justify-between hover:bg-indigo-50 transition-colors"
-                            >
+                            <button type="button" onClick={() => setShowInPicker(true)} className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm text-right flex items-center justify-between hover:bg-indigo-50 transition-colors">
                                 <span>{formatForDisplay(formData.checkInDate)}</span>
                                 <Calendar className="w-4 h-4 text-slate-400" />
                             </button>
-                            {showInPicker && (
-                                <CalendarDatePicker
-                                    value={formData.checkInDate || ''}
-                                    title="צ'ק-אין"
-                                    onChange={(iso) => setFormData({ ...formData, checkInDate: iso })}
-                                    onClose={() => setShowInPicker(false)}
-                                />
-                            )}
+                            {showInPicker && <CalendarDatePicker value={formData.checkInDate || ''} title="צ'ק-אין" onChange={(iso) => setFormData({ ...formData, checkInDate: iso })} onClose={() => setShowInPicker(false)} />}
                         </div>
                         <div className="space-y-1 relative">
                             <label className="text-xs font-bold text-slate-400 mr-2">צ'ק-אאוט</label>
-                            <button
-                                type="button"
-                                onClick={() => setShowOutPicker(true)}
-                                className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm text-right flex items-center justify-between hover:bg-indigo-50 transition-colors"
-                            >
+                            <button type="button" onClick={() => setShowOutPicker(true)} className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm text-right flex items-center justify-between hover:bg-indigo-50 transition-colors">
                                 <span>{formatForDisplay(formData.checkOutDate)}</span>
                                 <Calendar className="w-4 h-4 text-slate-400" />
                             </button>
-                            {showOutPicker && (
-                                <CalendarDatePicker
-                                    value={formData.checkOutDate || ''}
-                                    title="צ'ק-אאוט"
-                                    onChange={(iso) => setFormData({ ...formData, checkOutDate: iso })}
-                                    onClose={() => setShowOutPicker(false)}
-                                />
-                            )}
+                            {showOutPicker && <CalendarDatePicker value={formData.checkOutDate || ''} title="צ'ק-אאוט" onChange={(iso) => setFormData({ ...formData, checkOutDate: iso })} onClose={() => setShowOutPicker(false)} />}
                         </div>
                     </div>
 
@@ -510,7 +948,9 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
 };
 
 
-
+// ─────────────────────────────────────────────────────────
+// SmartHotelAddModal
+// ─────────────────────────────────────────────────────────
 const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBooking) => void }> = ({ onClose, onSave }) => {
     const [textInput, setTextInput] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
@@ -521,9 +961,42 @@ const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBo
         try {
             const contentParts: any[] = [
                 {
-                    text: `Extract a SINGLE Hotel Booking from this content.
-                Return JSON in 'HotelBooking' format: { name, address, checkInDate (DD/MM/YYYY), checkOutDate (DD/MM/YYYY), bookingSource, price, roomType, confirmationCode, breakfastIncluded (boolean), cancellationPolicy (string) }.
-                If details are missing, omit them or guess logically.` }
+                    text: `Extract a hotel booking from this confirmation email or document.
+
+Return ONLY valid JSON in this exact structure:
+{
+  "name": "Hotel Name",
+  "address": "Full address",
+  "city": "City name",
+  "checkInDate": "DD/MM/YYYY",
+  "checkOutDate": "DD/MM/YYYY",
+  "nights": number,
+  "confirmationCode": "code",
+  "bookingSource": "Booking.com" | "Agoda" | "Airbnb" | "Direct",
+  "price": "total price with currency symbol",
+  "breakfastIncluded": true | false,
+  "cancellationPolicy": "cancellation policy text or null",
+  "mealPlan": "Room Only" | "Breakfast" | "Half Board" | "All Inclusive" | null,
+  "rooms": [
+    {
+      "id": "room-1",
+      "label": "family label if mentioned, otherwise null",
+      "roomType": "Exact room type name from the booking e.g. Deluxe Double Room",
+      "adults": number,
+      "children": number,
+      "beds": "King Bed" | "Twin Beds" | "Double Bed" | "Queen Bed" | null,
+      "notes": "any special requests or preferences mentioned"
+    }
+  ]
+}
+
+IMPORTANT for rooms:
+- If the booking has multiple rooms of the same type, create MULTIPLE entries in the rooms array
+- Each room should have the exact room type name as written in the booking
+- Extract the number of adults AND children per room (not total)
+- If only total guests are mentioned and it's one room, put all in one room entry
+- Always include at least 1 room entry if you can identify room type or guest count`
+                }
             ];
 
             if (text) contentParts.push({ text: `Text: ${text}` });
@@ -541,8 +1014,7 @@ const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBo
                             reader.readAsDataURL(file);
                         }
                     });
-                    const part = await promise;
-                    contentParts.push(part);
+                    contentParts.push(await promise);
                 }
             }
 
@@ -557,13 +1029,10 @@ const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBo
             let hotelData;
             try {
                 hotelData = JSON.parse(textContent);
-            } catch (e) {
+            } catch {
                 const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    hotelData = JSON.parse(jsonMatch[0]);
-                } else {
-                    throw new Error('Could not extract JSON from response');
-                }
+                if (jsonMatch) hotelData = JSON.parse(jsonMatch[0]);
+                else throw new Error('Could not extract JSON from response');
             }
             onSave(hotelData);
         } catch (e) {
@@ -577,8 +1046,10 @@ const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBo
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
             <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col relative">
-                <div className="bg-indigo-50 p-6 border-b border-indigo-100 flex justify-between items-center"><h3 className="text-xl font-black text-indigo-900 flex items-center gap-2"><Sparkles className="w-5 h-5" /> הוספה חכמה</h3><button onClick={onClose}><X className="w-6 h-6 text-indigo-300 hover:text-indigo-600" /></button></div>
-
+                <div className="bg-indigo-50 p-6 border-b border-indigo-100 flex justify-between items-center">
+                    <h3 className="text-xl font-black text-indigo-900 flex items-center gap-2"><Sparkles className="w-5 h-5" /> הוספה חכמה</h3>
+                    <button onClick={onClose}><X className="w-6 h-6 text-indigo-300 hover:text-indigo-600" /></button>
+                </div>
                 <div className="p-6 space-y-6">
                     {isProcessing ? (
                         <div className="py-10 text-center">
@@ -593,27 +1064,17 @@ const SmartHotelAddModal: React.FC<{ onClose: () => void; onSave: (data: HotelBo
                                 value={textInput}
                                 onChange={e => setTextInput(e.target.value)}
                             />
-
                             <div className="flex items-center gap-4">
                                 <div className="h-px bg-slate-200 flex-grow"></div>
                                 <span className="text-xs font-bold text-slate-400">או</span>
                                 <div className="h-px bg-slate-200 flex-grow"></div>
                             </div>
-
-                            <div
-                                onClick={() => fileInputRef.current?.click()}
-                                className="border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-2xl p-6 flex flex-col items-center cursor-pointer hover:bg-indigo-50 transition-colors"
-                            >
+                            <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-2xl p-6 flex flex-col items-center cursor-pointer hover:bg-indigo-50 transition-colors">
                                 <UploadCloud className="w-8 h-8 text-indigo-400 mb-2" />
                                 <span className="font-bold text-indigo-700 text-sm">העלה צילום מסך או PDF</span>
                                 <input type="file" multiple className="hidden" ref={fileInputRef} onChange={e => e.target.files && processContent("", e.target.files)} />
                             </div>
-
-                            <button
-                                onClick={() => processContent(textInput)}
-                                disabled={!textInput.trim()}
-                                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-200 hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
+                            <button onClick={() => processContent(textInput)} disabled={!textInput.trim()} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-200 hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
                                 צור מלון
                             </button>
                         </>

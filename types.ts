@@ -110,6 +110,16 @@ export interface Reservation {
   status: 'CONFIRMED' | 'PENDING';
 }
 
+export interface HotelRoom {
+  id: string;
+  label?: string;        // Family name / room label, e.g. "משפחת כהן"
+  roomType?: string;     // e.g. "Deluxe Double Room", "Junior Suite"
+  adults: number;
+  children: number;
+  beds?: string;         // "King Bed", "Twin Beds", "Double Bed"
+  notes?: string;        // Special requests / preferences
+}
+
 export interface HotelBooking {
   id: string;
   name: string;
@@ -138,7 +148,8 @@ export interface HotelBooking {
   mealPlan?: string; // "Room Only", "Half Board", "All Inclusive"
   roomView?: string; // "Sea View"
   checkInInstructions?: string; // "Keybox 1234"
-  guests?: string[]; // Multiple guests
+  guests?: string[]; // Multiple guests (legacy)
+  rooms?: HotelRoom[]; // Detailed room breakdown
 }
 
 export interface Restaurant {
