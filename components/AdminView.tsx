@@ -507,17 +507,67 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         document.body.removeChild(link);
     };
 
+    // Helper: parse a simple date string (YYYY-MM-DD, DD/MM/YYYY, or text) to Date
+    const parseAnyDate = (s: string): Date | null => {
+        if (!s) return null;
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+            const [y, m, d] = s.split('-').map(Number);
+            return new Date(y, m - 1, d, 12, 0, 0);
+        }
+        if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+            const [d, m, y] = s.split('/').map(Number);
+            return new Date(y, m - 1, d, 12, 0, 0);
+        }
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+    };
+
+    // Helper: Calculate expanded trip.dates that spans existing + new hotels/flights
+    const recalculateTripDates = (hotels: HotelBooking[], flights: FlightSegment[], currentDates?: string): string | null => {
+        const allDates: Date[] = [];
+
+        // Parse current range
+        if (currentDates?.includes(' - ')) {
+            const [a, b] = currentDates.split(' - ').map(p => parseAnyDate(p.trim()));
+            if (a) allDates.push(a);
+            if (b) allDates.push(b);
+        }
+
+        hotels.forEach(h => {
+            const ci = parseAnyDate(h.checkInDate);
+            const co = parseAnyDate(h.checkOutDate);
+            if (ci) allDates.push(ci);
+            if (co) allDates.push(co);
+        });
+
+        flights.forEach(f => {
+            const fd = parseAnyDate(f.date);
+            if (fd) allDates.push(fd);
+        });
+
+        if (allDates.length === 0) return null;
+        allDates.sort((a, b) => a.getTime() - b.getTime());
+
+        const fmt = (d: Date) =>
+            `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+
+        return `${fmt(allDates[0])} - ${fmt(allDates[allDates.length - 1])}`;
+    };
+
     const handleAiUpdate = (updatedTripData: Trip) => {
         if (!activeTrip) return;
+        const mergedHotels = [
+            ...(activeTrip.hotels || []),
+            ...(updatedTripData.hotels || []).filter(newH => !activeTrip.hotels?.some(existingH => existingH.id === newH.id))
+        ];
+        const mergedSegments = updatedTripData.flights?.segments || activeTrip.flights?.segments || [];
+        const newDates = recalculateTripDates(mergedHotels, mergedSegments, activeTrip.dates);
         const mergedTrip = {
             ...activeTrip,
             ...updatedTripData,
             documents: [...(activeTrip.documents || []), ...(updatedTripData.documents || [])].filter((v, i, a) => a.indexOf(v) === i),
-            // Fix: Intelligent Merge for Hotels to prevent duplication
-            hotels: [
-                ...(activeTrip.hotels || []),
-                ...(updatedTripData.hotels || []).filter(newH => !activeTrip.hotels?.some(existingH => existingH.id === newH.id))
-            ]
+            hotels: mergedHotels,
+            ...(newDates ? { dates: newDates } : {}),
         };
 
         handleUpdateTrip(mergedTrip);
@@ -636,7 +686,15 @@ ${freeText}`;
             !existingSegments.some(s => s.flightNumber === f.flightNumber && s.date === f.date)
         )];
 
-        const mergedTrip = { ...activeTrip, hotels: newHotels, flights: { ...activeTrip.flights, segments: newFlights } };
+        // Auto-extend trip.dates to cover all hotel & flight dates so they appear in the itinerary
+        const newDates = recalculateTripDates(newHotels, newFlights, activeTrip.dates);
+
+        const mergedTrip = {
+            ...activeTrip,
+            hotels: newHotels,
+            flights: { ...activeTrip.flights, segments: newFlights },
+            ...(newDates ? { dates: newDates } : {}),
+        };
         handleUpdateTrip(mergedTrip);
         const newTrips = trips.map(t => t.id === activeTripId ? mergedTrip : t);
         onSave(newTrips);
