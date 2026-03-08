@@ -220,7 +220,19 @@ export const generateWithFallback = async (
     try {
       console.log(`🤖 [AI] Attempt ${i + 1}/${chain.length}: ${modelId} (${intent})`);
 
-      const adaptedContents = Array.isArray(contents) ? contents : [{ role: 'user', parts: contents }];
+      // Normalize contents → always Content[] format: [{role:'user', parts:[{text:...}]}]
+      let adaptedContents: any[];
+      if (Array.isArray(contents) && contents.length > 0 && typeof contents[0] === 'object' && contents[0] !== null && 'role' in contents[0]) {
+        // Already in Content[] format: [{role: 'user', parts: [...]}]
+        adaptedContents = contents;
+      } else if (Array.isArray(contents)) {
+        // Array of strings/Parts → wrap into single Content
+        adaptedContents = [{ role: 'user', parts: contents.map((c: any) => typeof c === 'string' ? { text: c } : c) }];
+      } else if (typeof contents === 'string') {
+        adaptedContents = [{ role: 'user', parts: [{ text: contents }] }];
+      } else {
+        adaptedContents = [{ role: 'user', parts: [contents] }];
+      }
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
@@ -263,7 +275,11 @@ export const generateWithFallback = async (
             }
           })
         });
-        if (!retryResponse.ok) throw new Error(`Retry failed: ${retryResponse.status}`);
+        if (!retryResponse.ok) {
+          let errDetail = '';
+          try { const e = await retryResponse.json(); errDetail = e.error || ''; } catch { /* ignore */ }
+          throw new Error(`Retry failed: ${retryResponse.status}${errDetail ? ` — ${errDetail}` : ''}`);
+        }
         const retryData = await retryResponse.json();
         const text = retryData.text;
         JSON.parse(text);
@@ -272,7 +288,13 @@ export const generateWithFallback = async (
       }
 
       if (!response.ok) {
-        throw new Error(`Worker Error: ${response.status} ${response.statusText}`);
+        let errDetail = '';
+        try {
+          const errBody = await response.json();
+          errDetail = errBody.error || errBody.message || '';
+        } catch { /* ignore parse error */ }
+        console.error(`❌ [AI] Worker ${response.status} on ${modelId}:`, errDetail || response.statusText);
+        throw new Error(`Worker Error: ${response.status}${errDetail ? ` — ${errDetail}` : ''}`);
       }
 
       const data = await response.json();
