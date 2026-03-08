@@ -122,6 +122,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [tripToDelete, setTripToDelete] = useState<string | null>(null);
     const [tripToLeave, setTripToLeave] = useState<string | null>(null); // NEW: For shared trip leave confirmation
     const [hotelToDelete, setHotelToDelete] = useState<string | null>(null); // For Admin hotel deletion
+    const [hotelConflicts, setHotelConflicts] = useState<{ existing: HotelBooking, incoming: HotelBooking }[]>([]);
+    const [conflictResolutions, setConflictResolutions] = useState<Record<number, 'keep' | 'replace' | 'both'>>({});
+    const [pendingApplyData, setPendingApplyData] = useState<{ hotels: HotelBooking[], flights: FlightSegment[] } | null>(null);
 
 
     // Helper: Format for Display (e.g. "08 Aug")
@@ -676,23 +679,13 @@ ${freeText}`;
         }
     };
 
-    const handleFreeTextApply = () => {
-        if (!freeTextResult || !activeTrip) return;
-        const existingHotelIds = new Set((activeTrip.hotels || []).map(h => h.id));
-        const newHotels = [...(activeTrip.hotels || []), ...freeTextResult.hotels.filter(h => !existingHotelIds.has(h.id))];
-
-        const existingSegments = activeTrip.flights?.segments || [];
-        const newFlights = [...existingSegments, ...freeTextResult.flights.filter(f =>
-            !existingSegments.some(s => s.flightNumber === f.flightNumber && s.date === f.date)
-        )];
-
-        // Auto-extend trip.dates to cover all hotel & flight dates so they appear in the itinerary
-        const newDates = recalculateTripDates(newHotels, newFlights, activeTrip.dates);
-
+    const applyMergedData = (resolvedHotels: HotelBooking[], resolvedFlights: FlightSegment[]) => {
+        if (!activeTrip) return;
+        const newDates = recalculateTripDates(resolvedHotels, resolvedFlights, activeTrip.dates);
         const mergedTrip = {
             ...activeTrip,
-            hotels: newHotels,
-            flights: { ...activeTrip.flights, segments: newFlights },
+            hotels: resolvedHotels,
+            flights: { ...activeTrip.flights, segments: resolvedFlights },
             ...(newDates ? { dates: newDates } : {}),
         };
         handleUpdateTrip(mergedTrip);
@@ -700,6 +693,75 @@ ${freeText}`;
         onSave(newTrips);
         setFreeText('');
         setFreeTextResult(null);
+        setHotelConflicts([]);
+        setConflictResolutions({});
+        setPendingApplyData(null);
+    };
+
+    const handleFreeTextApply = () => {
+        if (!freeTextResult || !activeTrip) return;
+
+        const existing = activeTrip.hotels || [];
+        const conflicts: { existing: HotelBooking, incoming: HotelBooking }[] = [];
+        const directMerge: HotelBooking[] = [...existing];
+
+        for (const incoming of freeTextResult.hotels) {
+            const sameName = existing.find(e =>
+                e.name.trim().toLowerCase() === incoming.name.trim().toLowerCase()
+            );
+            if (!sameName) {
+                // No match — add directly
+                directMerge.push(incoming);
+            } else if (sameName.checkInDate === incoming.checkInDate) {
+                // Same hotel, same check-in → ENRICH (keep existing, merge missing fields)
+                const idx = directMerge.findIndex(h => h.id === sameName.id);
+                if (idx >= 0) {
+                    directMerge[idx] = {
+                        ...incoming,
+                        id: sameName.id,
+                        rooms: sameName.rooms?.length ? sameName.rooms : incoming.rooms,
+                        address: sameName.address || incoming.address,
+                        confirmationCode: sameName.confirmationCode || incoming.confirmationCode,
+                        price: sameName.price || incoming.price,
+                    };
+                }
+            } else {
+                // Same name, different check-in → CONFLICT
+                conflicts.push({ existing: sameName, incoming });
+            }
+        }
+
+        // Flights: deduplicate by flightNumber+date, enrich if same
+        const existingSegments = activeTrip.flights?.segments || [];
+        const mergedFlights: FlightSegment[] = [...existingSegments];
+        for (const incoming of freeTextResult.flights) {
+            const dup = existingSegments.find(s => s.flightNumber === incoming.flightNumber && s.date === incoming.date);
+            if (!dup) mergedFlights.push(incoming);
+        }
+
+        if (conflicts.length > 0) {
+            setHotelConflicts(conflicts);
+            setConflictResolutions({});
+            setPendingApplyData({ hotels: directMerge, flights: mergedFlights });
+        } else {
+            applyMergedData(directMerge, mergedFlights);
+        }
+    };
+
+    const handleResolveConflicts = () => {
+        if (!pendingApplyData) return;
+        let hotels = [...pendingApplyData.hotels];
+        hotelConflicts.forEach((conflict, i) => {
+            const resolution = conflictResolutions[i] || 'keep';
+            if (resolution === 'replace') {
+                const idx = hotels.findIndex(h => h.id === conflict.existing.id);
+                if (idx >= 0) hotels[idx] = { ...conflict.incoming, id: conflict.existing.id };
+            } else if (resolution === 'both') {
+                hotels.push(conflict.incoming);
+            }
+            // 'keep' → do nothing, existing stays
+        });
+        applyMergedData(hotels, pendingApplyData.flights);
     };
 
     return (
@@ -717,6 +779,66 @@ ${freeText}`;
                 <span className="font-black text-slate-800">ניהול טיול</span>
                 <div className="w-20" /> {/* spacer for centering */}
             </div>
+
+            {/* Hotel Conflict Resolution Modal */}
+            {hotelConflicts.length > 0 && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col" dir="rtl">
+                        <div className="p-5 border-b border-slate-100">
+                            <h2 className="text-lg font-black text-slate-800">נמצאו מלונות דומים</h2>
+                            <p className="text-sm text-slate-500 mt-1">בחר מה לעשות עם כל מלון שנמצא כבר ברשימה</p>
+                        </div>
+                        <div className="overflow-y-auto flex-1 p-5 space-y-5">
+                            {hotelConflicts.map((conflict, i) => (
+                                <div key={i} className="border border-amber-200 rounded-xl bg-amber-50 p-4 space-y-3">
+                                    <div className="flex items-center gap-2 text-amber-700 font-bold text-sm">
+                                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                                        <span>{conflict.incoming.name}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                        <div className="bg-white rounded-lg p-3 border border-slate-200">
+                                            <div className="font-bold text-slate-600 mb-1">קיים</div>
+                                            <div className="text-slate-700">{conflict.existing.checkInDate} → {conflict.existing.checkOutDate}</div>
+                                            {conflict.existing.confirmationCode && <div className="text-slate-400 mt-1">אישור: {conflict.existing.confirmationCode}</div>}
+                                        </div>
+                                        <div className="bg-white rounded-lg p-3 border border-blue-200">
+                                            <div className="font-bold text-blue-600 mb-1">חדש</div>
+                                            <div className="text-slate-700">{conflict.incoming.checkInDate} → {conflict.incoming.checkOutDate}</div>
+                                            {conflict.incoming.confirmationCode && <div className="text-slate-400 mt-1">אישור: {conflict.incoming.confirmationCode}</div>}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {(['keep', 'replace', 'both'] as const).map(opt => (
+                                            <button
+                                                key={opt}
+                                                onClick={() => setConflictResolutions(r => ({ ...r, [i]: opt }))}
+                                                className={`flex-1 text-xs font-bold py-2 px-3 rounded-lg border transition-all ${conflictResolutions[i] === opt ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`}
+                                            >
+                                                {opt === 'keep' ? 'שמור קיים' : opt === 'replace' ? 'החלף בחדש' : 'שמור שניהם'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
+                            <button
+                                onClick={() => { setHotelConflicts([]); setConflictResolutions({}); setPendingApplyData(null); }}
+                                className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all"
+                            >
+                                ביטול
+                            </button>
+                            <button
+                                onClick={handleResolveConflicts}
+                                disabled={hotelConflicts.some((_, i) => !conflictResolutions[i])}
+                                className="px-5 py-2 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                אשר והוסף
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <ConfirmModal
                 isOpen={!!tripToDelete}

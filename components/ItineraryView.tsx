@@ -202,6 +202,16 @@ export const ItineraryView: React.FC<{
                 }
             }
 
+            // Extend startDate/endDate to cover all hotel check-in/out dates.
+            // We extend ONLY based on hotels (not flights) to avoid stale data with
+            // wrong years polluting the timeline with apparent duplicate dates.
+            trip.hotels?.forEach(hotel => {
+                const ci = parseDateString(hotel.checkInDate);
+                const co = parseDateString(hotel.checkOutDate);
+                if (ci && ci < startDate) startDate = new Date(ci);
+                if (co && co > endDate) endDate = new Date(co);
+            });
+
             const dayMap = new Map<string, DayPlan>();
             const loopDate = new Date(startDate);
 
@@ -218,42 +228,6 @@ export const ItineraryView: React.FC<{
                 });
                 loopDate.setDate(loopDate.getDate() + 1);
             }
-
-            // Helper: ensure a date exists in the day map (extends range if needed)
-            const ensureDay = (d: Date) => {
-                const isoKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-                if (!dayMap.has(isoKey)) {
-                    dayMap.set(isoKey, {
-                        dateIso: isoKey,
-                        displayDate: formatDateDisplay(d),
-                        displayDayOfWeek: getDayOfWeek(d),
-                        locationContext: '',
-                        events: [],
-                        stats: { food: 0, attr: 0, flight: 0, travel: 0, hotel: 0 },
-                        hasHotel: false
-                    });
-                }
-            };
-
-            // Extend day map to cover all hotel check-in/out and flight dates
-            // (so events aren't silently dropped if trip.dates doesn't span them)
-            trip.hotels?.forEach(hotel => {
-                [hotel.checkInDate, hotel.checkOutDate].forEach(ds => {
-                    const d = parseDateString(ds);
-                    if (d) ensureDay(d);
-                });
-                // Also ensure all nights between check-in and check-out exist
-                const ci = parseDateString(hotel.checkInDate);
-                const co = parseDateString(hotel.checkOutDate);
-                if (ci && co) {
-                    const cur = new Date(ci);
-                    while (cur <= co) { ensureDay(new Date(cur)); cur.setDate(cur.getDate() + 1); }
-                }
-            });
-            trip.flights?.segments?.forEach(seg => {
-                const d = parseDateString(seg.date);
-                if (d) ensureDay(d);
-            });
 
             const addToDay = (dateStr: string, event: TimelineEvent) => {
                 const d = parseDateString(dateStr);

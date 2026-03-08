@@ -4,7 +4,7 @@ import { Trip, HotelBooking, HotelRoom, TravelersComposition } from '../types';
 import {
     Hotel, MapPin, Calendar, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X,
     Image as ImageIcon, Sparkles, Loader2, Navigation, UploadCloud, FileText, Coffee,
-    ShieldCheck, Lock, AlertTriangle, ChevronDown, Users, Tag, Info, CheckCheck
+    ShieldCheck, Lock, AlertTriangle, ChevronDown, Users, Tag, Info, CheckCheck, DollarSign, ArrowRight
 } from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
@@ -394,8 +394,16 @@ const RoomsPanel: React.FC<{
 
 
 // ─────────────────────────────────────────────────────────
-// HotelCard
+// HotelCard — Redesigned (Booking.com-inspired)
 // ─────────────────────────────────────────────────────────
+const SOURCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+    'Booking.com': { bg: 'bg-blue-600', text: 'text-white', label: 'Booking.com' },
+    'Agoda':       { bg: 'bg-orange-500', text: 'text-white', label: 'Agoda' },
+    'Airbnb':      { bg: 'bg-rose-500', text: 'text-white', label: 'Airbnb' },
+    'Expedia':     { bg: 'bg-yellow-400', text: 'text-slate-900', label: 'Expedia' },
+    'Direct':      { bg: 'bg-slate-700', text: 'text-white', label: 'Direct' },
+};
+
 const HotelCard: React.FC<{
     data: HotelBooking;
     tripDestination: string;
@@ -424,136 +432,193 @@ const HotelCard: React.FC<{
     const displayImage = data.imageUrl || getPlaceImage(data.address || data.name);
     const rooms = data.rooms || [];
 
+    // Compute nights count from dates if not provided
+    const nightsCount = (() => {
+        if (data.nights && data.nights > 0) return data.nights;
+        const ci = data.checkInDate ? new Date(data.checkInDate.split('T')[0]) : null;
+        const co = data.checkOutDate ? new Date(data.checkOutDate.split('T')[0]) : null;
+        if (ci && co && !isNaN(ci.getTime()) && !isNaN(co.getTime())) {
+            const diff = Math.round((co.getTime() - ci.getTime()) / (1000 * 60 * 60 * 24));
+            return diff > 0 ? diff : null;
+        }
+        return null;
+    })();
+
+    const formatDate = (ds?: string) => {
+        if (!ds) return '—';
+        const d = new Date(ds.split('T')[0]);
+        if (isNaN(d.getTime())) return ds;
+        return new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'short' }).format(d);
+    };
+
+    const sourceStyle = SOURCE_STYLES[data.bookingSource || ''] || { bg: 'bg-slate-200', text: 'text-slate-700', label: data.bookingSource || 'Direct' };
+
     return (
-        <div className="bg-white rounded-xl md:rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all group relative flex flex-col">
-            {/* Edit / Delete buttons */}
-            <div className="absolute top-1.5 left-1.5 md:top-2 md:left-2 z-20 flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={onEdit} className="bg-white/90 p-1 md:p-1.5 rounded-md md:rounded-lg text-slate-600 hover:text-blue-600 shadow-md backdrop-blur-sm">
-                    <Edit className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                </button>
-                <button onClick={onDelete} className="bg-white/90 p-1 md:p-1.5 rounded-md md:rounded-lg text-slate-600 hover:text-red-600 shadow-md backdrop-blur-sm">
-                    <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                </button>
-            </div>
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 group border border-slate-100 flex flex-col">
 
-            {/* Main Row: Image + Content */}
-            <div className="flex flex-row h-28 md:h-[200px]">
-                {/* Image */}
-                <div className="w-24 md:w-48 h-full relative bg-slate-100 flex-shrink-0">
-                    <img src={displayImage} alt={data.name} className="w-full h-full object-cover" />
+            {/* ── Hero Image ── */}
+            <div className="relative h-44 md:h-52 overflow-hidden bg-slate-200 flex-shrink-0">
+                <img
+                    src={displayImage}
+                    alt={data.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                {/* Gradient: dark at bottom for text legibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
-                    <div className="absolute top-1.5 right-1.5 md:top-2 md:right-2 flex flex-col gap-1 items-end">
-                        <div className="hidden md:flex bg-white/90 backdrop-blur px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-800 shadow-sm items-center">
-                            <CheckCircle className="w-2.5 h-2.5 ml-1 text-green-500" />{data.bookingSource}
-                        </div>
-                        {data.breakfastIncluded && (
-                            <div className="bg-orange-100/90 backdrop-blur px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold text-orange-700 shadow-sm flex items-center">
-                                <Coffee className="w-2 h-2 md:w-2.5 md:h-2.5 ml-0.5 md:ml-1" />
-                                <span className="hidden md:inline">ארוחת בוקר</span>
-                                <span className="md:hidden">בוקר</span>
-                            </div>
-                        )}
-                        {/* Room count badge on image */}
-                        {rooms.length > 0 && (
-                            <div className="bg-indigo-600/90 backdrop-blur px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white shadow-sm flex items-center gap-0.5">
-                                <BedDouble className="w-2 h-2" />
-                                {rooms.length}
-                            </div>
-                        )}
-                    </div>
+                {/* Top-right: source badge + breakfast */}
+                <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
+                    <span className={`text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg ${sourceStyle.bg} ${sourceStyle.text}`}>
+                        {sourceStyle.label}
+                    </span>
+                    {data.breakfastIncluded && (
+                        <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
+                            <Coffee className="w-2.5 h-2.5" /> ארוחת בוקר
+                        </span>
+                    )}
                 </div>
 
-                {/* Content */}
-                <div className="p-2 md:p-4 flex-grow flex flex-col justify-between min-w-0 overflow-hidden">
-                    <div>
-                        <div className="flex justify-between items-start">
-                            <div className="flex-grow min-w-0">
-                                <h3 className="text-sm md:text-lg font-bold md:font-black text-slate-900 mb-0 md:mb-0.5 truncate leading-tight">{data.name}</h3>
-                                <div className="flex items-center text-[10px] md:text-xs text-slate-500 font-medium truncate">
-                                    <MapPin className="w-2.5 h-2.5 md:w-3 md:h-3 ml-0.5 md:ml-1 flex-shrink-0 text-slate-400" />
-                                    <span className="truncate">{data.address}</span>
-                                </div>
-                            </div>
-                            <span className="hidden md:block flex-shrink-0 text-[10px] font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200 ml-2">#{data.confirmationCode}</span>
-                        </div>
+                {/* Top-left: Edit / Delete */}
+                <div className="absolute top-3 left-3 flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+                    <button onClick={onEdit} className="bg-white/90 backdrop-blur-sm p-2 rounded-xl shadow-md hover:bg-white transition-colors" title="עריכה">
+                        <Edit className="w-4 h-4 text-slate-700" />
+                    </button>
+                    <button onClick={onDelete} className="bg-white/90 backdrop-blur-sm p-2 rounded-xl shadow-md hover:bg-white transition-colors" title="מחיקה">
+                        <Trash2 className="w-4 h-4 text-rose-500" />
+                    </button>
+                </div>
 
-                        {/* Desktop Only: Vibe & Cancellation */}
-                        <div className="hidden md:block mt-2">
-                            {data.cancellationPolicy && (
-                                <div className="mb-2 text-[10px] text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100 flex items-start gap-1.5 w-fit">
-                                    <ShieldCheck className="w-3 h-3 flex-shrink-0" />
-                                    <span className="font-bold">{data.cancellationPolicy}</span>
-                                </div>
-                            )}
-                            {data.locationVibe ? (
-                                <div className="bg-purple-50 border border-purple-100 p-2 rounded-xl flex items-start gap-2">
-                                    <div className="bg-white p-1 rounded-full shadow-sm flex-shrink-0"><Sparkles className="w-3 h-3 text-purple-600" /></div>
-                                    <div className="min-w-0">
-                                        <div className="text-[9px] font-bold text-purple-700 uppercase mb-0 leading-none">Vibe Check</div>
-                                        <p className="text-xs text-purple-900 leading-tight font-medium line-clamp-2">{data.locationVibe}</p>
-                                    </div>
+                {/* Bottom overlay: name + address */}
+                <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="text-white font-black text-lg md:text-xl leading-tight drop-shadow-lg line-clamp-2">{data.name}</h3>
+                    {data.address && (
+                        <div className="flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3 text-white/75 flex-shrink-0" />
+                            <span className="text-white/75 text-xs font-medium truncate">{data.address}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Bottom-right: rooms badge */}
+                {rooms.length > 0 && (
+                    <div className="absolute bottom-3 right-3">
+                        <div className="bg-indigo-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1.5">
+                            <BedDouble className="w-3 h-3" />
+                            {rooms.length} {rooms.length === 1 ? 'חדר' : 'חדרים'}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* ── Content ── */}
+            <div className="p-4 space-y-3 flex-grow">
+
+                {/* Dates strip — the most important info */}
+                <div className="flex items-center bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
+                    <div className="flex-1 text-center py-3 px-2">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">צ׳ק-אין</div>
+                        <div className="font-black text-slate-800 text-sm md:text-base mt-0.5">{formatDate(data.checkInDate)}</div>
+                    </div>
+
+                    <div className="flex flex-col items-center px-2 py-2">
+                        <div className="flex items-center gap-1">
+                            <div className="w-5 h-px bg-slate-300" />
+                            {nightsCount ? (
+                                <div className="bg-indigo-100 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap">
+                                    {nightsCount} לילות
                                 </div>
                             ) : (
-                                <button onClick={analyzeLocation} disabled={analyzing} className="flex items-center gap-1.5 text-[10px] font-bold text-purple-600 hover:bg-purple-50 px-2 py-1.5 rounded-lg transition-colors border border-dashed border-purple-200 w-full justify-center">
-                                    {analyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                    {analyzing ? 'מנתח...' : 'מה ה-Vibe של האזור?'}
-                                </button>
+                                <ArrowRight className="w-4 h-4 text-slate-300" />
                             )}
+                            <div className="w-5 h-px bg-slate-300" />
                         </div>
                     </div>
 
-                    {/* Bottom: Dates & Actions */}
-                    <div className="flex items-center justify-between mt-1 md:mt-0 md:border-t md:border-dashed md:border-slate-200 md:pt-3">
-                        <div className="flex gap-1 md:gap-2 flex-wrap">
-                            <div className="bg-indigo-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded md:rounded-lg border border-indigo-100 flex items-center gap-1 md:gap-2">
-                                <div className="text-[8px] md:text-[9px] text-indigo-600 font-bold uppercase">IN</div>
-                                <div className="font-bold text-slate-900 text-[10px] md:text-sm">
-                                    {data.checkInDate?.split('T')[0].split('-').reverse().join('/') || ''}
-                                </div>
-                            </div>
-                            <div className="bg-slate-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded md:rounded-lg border border-slate-200 flex items-center gap-1 md:gap-2">
-                                <div className="text-[8px] md:text-[9px] text-slate-500 font-bold uppercase">OUT</div>
-                                <div className="font-bold text-slate-900 text-[10px] md:text-sm">
-                                    {data.checkOutDate?.split('T')[0].split('-').reverse().join('/') || ''}
-                                </div>
-                            </div>
-                            {data.nights > 0 && (
-                                <div className="hidden md:flex bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 items-center gap-1">
-                                    <span className="text-[9px] text-slate-500 font-bold">{data.nights} לילות</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex items-center gap-1 md:gap-2">
-                            {/* Note - Hidden on Mobile */}
-                            <div className="hidden md:block">
-                                {isEditingNote ? (
-                                    <div className="flex bg-yellow-50 p-1 rounded-lg border border-yellow-200 w-48">
-                                        <input className="w-full bg-transparent border-none outline-none text-xs text-slate-800" placeholder="הוסף הערה..." value={noteText} onChange={e => setNoteText(e.target.value)} />
-                                        <button onClick={saveNote} className="text-[10px] bg-yellow-400 text-yellow-900 px-1.5 rounded font-bold whitespace-nowrap ml-1">שמור</button>
-                                    </div>
-                                ) : (
-                                    <div onClick={() => setIsEditingNote(true)} className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center gap-1.5 cursor-pointer max-w-[150px] ${data.notes ? 'bg-yellow-50 border-yellow-100 text-yellow-900 hover:bg-yellow-100' : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100 border-dashed border-slate-200'}`}>
-                                        <StickyNote className={`w-3 h-3 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-slate-400'}`} />
-                                        <span className="truncate font-medium">{data.notes || 'הערה'}</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            <a
-                                href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''} ${tripDestination || ''}`)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="bg-indigo-600 text-white p-1.5 md:p-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-                            >
-                                <MapPin className="w-3 h-3 md:w-4 md:h-4" />
-                            </a>
-                        </div>
+                    <div className="flex-1 text-center py-3 px-2 border-r border-slate-100">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">צ׳ק-אאוט</div>
+                        <div className="font-black text-slate-800 text-sm md:text-base mt-0.5">{formatDate(data.checkOutDate)}</div>
                     </div>
                 </div>
+
+                {/* Meta row: confirmation + price + map button */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    {data.confirmationCode && (
+                        <div className="flex items-center gap-1 bg-slate-100 rounded-lg px-2.5 py-1.5 min-w-0">
+                            <CheckCircle className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                            <span className="text-[10px] text-slate-500 font-bold flex-shrink-0">אישור:</span>
+                            <span className="text-[10px] font-mono text-slate-700 font-bold truncate">{data.confirmationCode}</span>
+                        </div>
+                    )}
+                    {data.price && (
+                        <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5">
+                            <DollarSign className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                            <span className="text-xs font-bold text-emerald-700">{data.price}</span>
+                        </div>
+                    )}
+                    <a
+                        href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''} ${tripDestination || ''}`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mr-auto flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-sm flex-shrink-0"
+                    >
+                        <Navigation className="w-3 h-3" />
+                        מפה
+                    </a>
+                </div>
+
+                {/* Cancellation policy */}
+                {data.cancellationPolicy && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                        <ShieldCheck className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                        <span className="text-xs text-red-700 font-semibold leading-snug">{data.cancellationPolicy}</span>
+                    </div>
+                )}
+
+                {/* Vibe Check */}
+                {data.locationVibe ? (
+                    <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 flex items-start gap-2">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-purple-900 font-medium leading-relaxed">{data.locationVibe}</p>
+                    </div>
+                ) : (
+                    <button
+                        onClick={analyzeLocation}
+                        disabled={analyzing}
+                        className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-purple-600 hover:bg-purple-50 py-2 px-3 rounded-xl transition-colors border border-dashed border-purple-200"
+                    >
+                        {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        {analyzing ? 'מנתח מיקום...' : 'מה ה-Vibe של האזור?'}
+                    </button>
+                )}
+
+                {/* Notes */}
+                {isEditingNote ? (
+                    <div className="flex gap-2 bg-yellow-50 p-2.5 rounded-xl border border-yellow-200">
+                        <input
+                            className="flex-grow bg-transparent text-sm outline-none text-slate-800 placeholder:text-slate-400"
+                            placeholder="הוסף הערה לטיול..."
+                            value={noteText}
+                            onChange={e => setNoteText(e.target.value)}
+                            autoFocus
+                            onKeyDown={e => e.key === 'Enter' && saveNote()}
+                        />
+                        <button onClick={saveNote} className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">שמור</button>
+                        <button onClick={() => setIsEditingNote(false)} className="text-slate-400 hover:text-slate-600 p-1 flex-shrink-0">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => setIsEditingNote(true)}
+                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs transition-colors text-right ${data.notes ? 'bg-yellow-50 border border-yellow-100 text-yellow-900 hover:bg-yellow-100' : 'text-slate-400 hover:bg-slate-50 border border-dashed border-slate-200'}`}
+                    >
+                        <StickyNote className={`w-3.5 h-3.5 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-slate-400'}`} />
+                        <span className="font-medium truncate">{data.notes || 'הוסף הערה...'}</span>
+                    </button>
+                )}
             </div>
 
-            {/* Rooms Panel — always rendered below main row */}
+            {/* ── Rooms Panel ── */}
             <RoomsPanel
                 rooms={rooms}
                 tripTravelers={tripTravelers}
@@ -637,97 +702,81 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
             {hotels && hotels.length > 0 ? (
                 <>
                     {/* Header */}
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <h2 className="text-3xl font-extrabold text-slate-800 flex items-center tracking-tight">
-                            <span className="bg-indigo-100 p-2 rounded-xl ml-3 text-indigo-600 shadow-sm"><Hotel className="w-7 h-7" /></span>
-                            המלונות שלי
-                        </h2>
-                        <div className="flex gap-2 w-full md:w-auto">
-                            <button onClick={() => setIsSmartAddOpen(true)} className="flex-1 md:flex-none bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-3 py-2 md:px-5 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 md:gap-2 transition-all shadow-md hover:shadow-lg">
-                                <Sparkles className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden xs:inline">הוספה חכמה</span><span className="xs:hidden">חכם +</span>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                            <h2 className="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-3 tracking-tight">
+                                <span className="bg-indigo-100 p-2 rounded-xl text-indigo-600 shadow-sm flex-shrink-0"><Hotel className="w-6 h-6 md:w-7 md:h-7" /></span>
+                                המלונות שלי
+                            </h2>
+                            <p className="text-slate-400 text-sm font-medium mt-0.5 mr-14">{hotels.length} {hotels.length === 1 ? 'מלון' : 'מלונות'} ברשימה</p>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto flex-shrink-0">
+                            <button
+                                onClick={() => setIsSmartAddOpen(true)}
+                                className="flex-1 sm:flex-none bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
+                            >
+                                <Sparkles className="w-4 h-4" /> הוספה חכמה (AI)
                             </button>
-                            <button onClick={handleAddNew} className="flex-1 md:flex-none bg-white text-indigo-600 border border-indigo-200 px-3 py-2 md:px-5 md:py-2.5 rounded-lg md:rounded-xl text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 md:gap-2 transition-all hover:bg-indigo-50">
-                                <Plus className="w-4 h-4 md:w-5 md:h-5" /> ידני
+                            <button
+                                onClick={handleAddNew}
+                                className="flex-1 sm:flex-none bg-white text-indigo-600 border border-indigo-200 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all hover:bg-indigo-50"
+                            >
+                                <Plus className="w-4 h-4" /> ידני
                             </button>
                         </div>
                     </div>
 
-                    {/* Rooms Summary Card */}
-                    {hotels.length > 0 && (
-                        <div className="bg-gradient-to-r from-indigo-50 via-violet-50 to-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-wrap gap-4 items-center">
-                            <div className="flex items-center gap-2">
-                                <div className="bg-white p-2 rounded-xl shadow-sm border border-indigo-100">
-                                    <Hotel className="w-5 h-5 text-indigo-600" />
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide">מלונות</div>
-                                    <div className="text-xl font-black text-slate-800">{hotels.length}</div>
-                                </div>
+                    {/* Trip Summary Card */}
+                    <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-5 text-white shadow-xl shadow-indigo-200">
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="text-center">
+                                <div className="text-2xl md:text-3xl font-black">{hotels.length}</div>
+                                <div className="text-indigo-200 text-xs font-bold mt-0.5">מלונות</div>
                             </div>
-
-                            <div className="w-px h-10 bg-indigo-200 hidden sm:block" />
-
-                            <div className="flex items-center gap-2">
-                                <div className="bg-white p-2 rounded-xl shadow-sm border border-indigo-100">
-                                    <BedDouble className="w-5 h-5 text-violet-600" />
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-bold text-violet-500 uppercase tracking-wide">חדרים כולל</div>
-                                    <div className="text-xl font-black text-slate-800">{totalRooms}</div>
-                                </div>
+                            <div className="text-center border-x border-indigo-500/40">
+                                <div className="text-2xl md:text-3xl font-black">{totalRooms}</div>
+                                <div className="text-indigo-200 text-xs font-bold mt-0.5">חדרים</div>
                             </div>
-
-                            <div className="w-px h-10 bg-indigo-200 hidden sm:block" />
-
-                            <div className="flex items-center gap-2">
-                                <div className="bg-white p-2 rounded-xl shadow-sm border border-indigo-100">
-                                    <Users className="w-5 h-5 text-emerald-600" />
+                            <div className="text-center">
+                                <div className="text-2xl md:text-3xl font-black">
+                                    {totalGuests}
+                                    {expectedGuests ? <span className="text-lg text-indigo-300">/{expectedGuests}</span> : null}
                                 </div>
-                                <div>
-                                    <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-wide">אורחים מוגדרים</div>
-                                    <div className="text-xl font-black text-slate-800">
-                                        {totalGuests}
-                                        {expectedGuests && <span className="text-sm font-medium text-slate-400"> / {expectedGuests}</span>}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Warnings */}
-                            <div className="mr-auto flex flex-wrap gap-2">
-                                {hotelsWithNoRooms.length > 0 && (
-                                    <div className="flex items-center gap-1.5 bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-xl">
-                                        <AlertTriangle className="w-3.5 h-3.5" />
-                                        {hotelsWithNoRooms.length === 1
-                                            ? `${hotelsWithNoRooms[0].name} — לא הוגדרו חדרים`
-                                            : `${hotelsWithNoRooms.length} מלונות ללא חדרים`}
-                                    </div>
-                                )}
-                                {totalRooms > 0 && hotelsWithNoRooms.length === 0 && expectedGuests && totalGuests === expectedGuests && (
-                                    <div className="flex items-center gap-1.5 bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-xl">
-                                        <CheckCheck className="w-3.5 h-3.5" />
-                                        הכל תקין — כל האורחים מכוסים
-                                    </div>
-                                )}
-                                {totalRooms > 0 && expectedGuests && totalGuests !== expectedGuests && (
-                                    <div className="flex items-center gap-1.5 bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-xl">
-                                        <AlertTriangle className="w-3.5 h-3.5" />
-                                        {totalGuests < expectedGuests
-                                            ? `חסרים ${expectedGuests - totalGuests} אנשים בחדרים`
-                                            : `${totalGuests - expectedGuests} אנשים עודפים בחדרים`}
-                                    </div>
-                                )}
+                                <div className="text-indigo-200 text-xs font-bold mt-0.5">אורחים</div>
                             </div>
                         </div>
-                    )}
 
-                    {/* Hotel Cards */}
-                    <div className="grid grid-cols-1 gap-5">
+                        {/* Alert banner inside card */}
+                        {(hotelsWithNoRooms.length > 0 || (totalRooms > 0 && expectedGuests && totalGuests !== expectedGuests)) && (
+                            <div className="mt-4 bg-white/15 rounded-xl px-3 py-2.5 flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4 text-amber-300 flex-shrink-0" />
+                                <span className="text-xs font-bold text-white/90">
+                                    {hotelsWithNoRooms.length > 0
+                                        ? hotelsWithNoRooms.length === 1
+                                            ? `${hotelsWithNoRooms[0].name} — לא הוגדרו חדרים`
+                                            : `${hotelsWithNoRooms.length} מלונות ללא חדרים`
+                                        : totalGuests < (expectedGuests || 0)
+                                            ? `חסרים ${(expectedGuests || 0) - totalGuests} אנשים בהגדרת החדרים`
+                                            : `${totalGuests - (expectedGuests || 0)} אנשים עודפים בחדרים`}
+                                </span>
+                            </div>
+                        )}
+                        {totalRooms > 0 && hotelsWithNoRooms.length === 0 && expectedGuests && totalGuests === expectedGuests && (
+                            <div className="mt-4 bg-emerald-500/30 rounded-xl px-3 py-2.5 flex items-center gap-2">
+                                <CheckCheck className="w-4 h-4 text-emerald-300 flex-shrink-0" />
+                                <span className="text-xs font-bold text-white/90">הכל תקין — כל האורחים מכוסים בחדרים</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Hotel Cards — 1 column on mobile, 2 on desktop */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {hotels.map((hotel, index) => (
                             <motion.div
                                 key={hotel.id || index}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.08, type: 'spring', stiffness: 300, damping: 25 }}
+                                transition={{ delay: index * 0.07, type: 'spring', stiffness: 300, damping: 25 }}
                             >
                                 <HotelCard
                                     data={hotel}
