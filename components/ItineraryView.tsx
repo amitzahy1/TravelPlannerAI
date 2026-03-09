@@ -242,8 +242,16 @@ export const ItineraryView: React.FC<{
                 dayMap.get(isoKey)?.events.push(event);
             };
 
+            // Determine trip year to filter stale flights (wrong-year segments from past imports)
+            const itinTripYearStr = (trip.dates || '').match(/\b(20\d{2})\b/)?.[1];
+            const itinTripYear = itinTripYearStr ? parseInt(itinTripYearStr) : null;
+
             // --- Ingest Trip Structure ---
-            trip.flights?.segments?.forEach(seg => {
+            trip.flights?.segments?.filter(seg => {
+                if (!itinTripYear) return true;
+                const y = seg.date?.match(/^(\d{4})/)?.[1] || seg.departureTime?.match(/^(\d{4})/)?.[1];
+                return !y || parseInt(y) === itinTripYear;
+            }).forEach(seg => {
                 addToDay(seg.date, {
                     id: `flight-dep-${seg.flightNumber}`,
                     type: 'flight',

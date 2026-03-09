@@ -266,55 +266,55 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
       {/* ── Main row — dir=ltr for clean left→right reading ── */}
       <div
         dir="ltr"
-        className={`flex items-center gap-4 px-5 py-4 cursor-pointer select-none transition-colors ${isStale ? 'bg-amber-50/70 hover:bg-amber-50' : 'hover:bg-slate-50/50'}`}
+        className={`flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 cursor-pointer select-none transition-colors ${isStale ? 'bg-amber-50/70 hover:bg-amber-50' : 'hover:bg-slate-50/50'}`}
         onClick={() => setIsExpanded(v => !v)}
       >
         {/* ── Airline column ── */}
-        <div className="flex flex-col items-center gap-1.5 w-14 flex-shrink-0">
-          <div className="w-11 h-11 rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden flex items-center justify-center p-0.5">
+        <div className="flex flex-col items-center gap-1 w-10 sm:w-14 flex-shrink-0">
+          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden flex items-center justify-center p-0.5">
             <img src={logoUrl} alt={segment.airline}
               onError={e => (e.currentTarget.style.display = 'none')}
               className="w-full h-full object-contain" />
           </div>
-          <span className="text-[9px] font-black text-slate-400 font-mono tracking-widest leading-none text-center">{segment.flightNumber}</span>
+          <span className="text-[8px] sm:text-[9px] font-black text-slate-400 font-mono tracking-widest leading-none text-center">{segment.flightNumber}</span>
         </div>
 
         {/* ── Route hero ── */}
-        <div className="flex-grow flex items-center gap-2 min-w-0">
+        <div className="flex-grow flex items-center gap-1.5 sm:gap-2 min-w-0">
 
           {/* Departure block */}
-          <div className="flex-shrink-0 text-left" style={{ minWidth: '72px' }}>
-            <div className="text-[28px] font-black text-slate-900 leading-none tracking-tighter font-mono tabular-nums">{depTime || '—'}</div>
-            <div className="text-base font-black text-slate-400 leading-none mt-0.5 tracking-wide">{segment.fromCode || segment.fromCity}</div>
+          <div className="flex-shrink-0 text-left" style={{ minWidth: '60px' }}>
+            <div className="text-[22px] sm:text-[28px] font-black text-slate-900 leading-none tracking-tighter font-mono tabular-nums">{depTime || '—'}</div>
+            <div className="text-sm sm:text-base font-black text-slate-400 leading-none mt-0.5 tracking-wide">{segment.fromCode || segment.fromCity}</div>
             {depDateShort && <div className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap font-medium">{depDateShort}</div>}
           </div>
 
           {/* Timeline */}
-          <div className="flex-grow flex flex-col items-center min-w-[40px]">
+          <div className="flex-grow flex flex-col items-center min-w-[30px]">
             {durationDisplay && (
-              <span className="text-[10px] font-bold text-slate-400 mb-1.5 whitespace-nowrap">{durationDisplay}</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 mb-1 sm:mb-1.5 whitespace-nowrap">{durationDisplay}</span>
             )}
-            <div className="w-full flex items-center gap-1">
+            <div className="w-full flex items-center gap-0.5 sm:gap-1">
               <div className="flex-1 border-t-2 border-dashed border-slate-200" />
-              <Plane className="w-3.5 h-3.5 text-blue-400 -scale-x-100 flex-shrink-0" />
+              <Plane className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-400 -scale-x-100 flex-shrink-0" />
               <div className="flex-1 border-t-2 border-dashed border-slate-200" />
             </div>
             <span className="hidden md:block text-[9px] text-slate-300 mt-1.5 truncate max-w-full">{segment.airline}</span>
           </div>
 
           {/* Arrival block */}
-          <div className="flex-shrink-0 text-right" style={{ minWidth: '72px' }}>
-            <div className="text-[28px] font-black text-slate-900 leading-none tracking-tighter font-mono tabular-nums inline-flex items-start gap-1">
+          <div className="flex-shrink-0 text-right" style={{ minWidth: '60px' }}>
+            <div className="text-[22px] sm:text-[28px] font-black text-slate-900 leading-none tracking-tighter font-mono tabular-nums inline-flex items-start gap-0.5 sm:gap-1">
               {arrTime || '—'}
-              {dayDiff > 0 && <span className="text-[13px] font-black text-orange-500 mt-0.5">+{dayDiff}</span>}
+              {dayDiff > 0 && <span className="text-[11px] sm:text-[13px] font-black text-orange-500 mt-0.5">+{dayDiff}</span>}
             </div>
-            <div className="text-base font-black text-slate-400 leading-none mt-0.5 tracking-wide">{segment.toCode || segment.toCity}</div>
+            <div className="text-sm sm:text-base font-black text-slate-400 leading-none mt-0.5 tracking-wide">{segment.toCode || segment.toCity}</div>
             {arrDateShort && <div className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap font-medium">{arrDateShort}</div>}
           </div>
         </div>
 
         {/* ── Right: badges + actions ── */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
           {depYear && (
             <span className="hidden lg:block text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">{depYear}</span>
           )}
@@ -384,12 +384,12 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
               {/* From / To cities */}
               <div className="grid grid-cols-2 gap-3" dir="ltr">
                 <div className="bg-white rounded-xl p-3 border border-slate-100">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Origin</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">מוצא</div>
                   <div className="text-sm font-black text-slate-800">{segment.fromCity || segment.fromCode}</div>
                   <div className="text-xs font-mono text-slate-400">{segment.fromCode}</div>
                 </div>
                 <div className="bg-white rounded-xl p-3 border border-slate-100">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Destination</div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">יעד</div>
                   <div className="text-sm font-black text-slate-800">{segment.toCity || segment.toCode}</div>
                   <div className="text-xs font-mono text-slate-400">{segment.toCode}</div>
                 </div>
@@ -440,7 +440,7 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
     return !!y && parseInt(y) !== tripYear;
   };
 
-  const staleCount = flights.segments.filter(isSegmentStale).length;
+  const activeSegments = flights.segments.filter(seg => !isSegmentStale(seg));
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && onUpdateTrip) {
@@ -464,12 +464,6 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
     onUpdateTrip({ ...trip, flights: { ...trip.flights, segments: newSegments } });
   };
 
-  const handleCleanStale = () => {
-    if (!onUpdateTrip) return;
-    const cleaned = flights.segments.filter(seg => !isSegmentStale(seg));
-    onUpdateTrip({ ...trip, flights: { ...trip.flights, segments: cleaned } });
-  };
-
   return (
     <div className="space-y-12 animate-fade-in pb-20">
 
@@ -478,15 +472,15 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
         <div>
           <h2 className="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-3 tracking-tight">
             <span className="bg-blue-100 p-2 rounded-xl text-blue-600 shadow-sm flex-shrink-0"><Plane className="w-6 h-6 md:w-7 md:h-7" /></span>
-            My Flights
+            הטיסות שלי
           </h2>
-          <p className="text-slate-400 text-sm font-medium mt-0.5 mr-14">{flights.segments.length} {flights.segments.length === 1 ? 'segment' : 'segments'}</p>
+          <p className="text-slate-400 text-sm font-medium mt-0.5 mr-14">{activeSegments.length} {activeSegments.length === 1 ? 'טיסה' : 'טיסות'}</p>
         </div>
         {(flights.pnr || (flights.passengers && flights.passengers.length > 0)) && (
           <div dir="ltr" className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-sm">
             {flights.pnr && (
               <div>
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Booking Ref</div>
+                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">מספר הזמנה</div>
                 <div className="text-lg font-mono font-black text-slate-800 tracking-widest">{flights.pnr}</div>
               </div>
             )}
@@ -501,46 +495,29 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
         )}
       </div>
 
-      {/* Stale flights warning banner */}
-      {staleCount > 0 && onUpdateTrip && (
-        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 gap-3">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-            <span className="text-sm font-bold text-amber-800">
-              {staleCount} outdated {staleCount === 1 ? 'segment' : 'segments'} found from a different year
-              {tripYear ? ` (not ${tripYear})` : ''} — likely imported by mistake
-            </span>
-          </div>
-          <button onClick={handleCleanStale}
-            className="flex-shrink-0 text-xs font-bold bg-amber-600 text-white px-3 py-1.5 rounded-lg hover:bg-amber-700 transition-colors">
-            Remove all
-          </button>
-        </div>
-      )}
-
       {/* Flight Segments List */}
       <section>
-        {flights.segments.length > 0 ? (
+        {activeSegments.length > 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
-            {flights.segments.map((seg, i) => {
+            {activeSegments.map((seg, i) => {
+              // find real index in flights.segments for edit/delete handlers
+              const realIndex = flights.segments.indexOf(seg);
               const isMissingData = !seg.departureTime || !seg.arrivalTime || seg.departureTime === 'INVALID DATE';
-              const stale = isSegmentStale(seg);
               return (
                 <div key={i}>
-                  {isMissingData && onUpdateTrip && !stale && (
+                  {isMissingData && onUpdateTrip && (
                     <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <ShieldCheck className="w-4 h-4 text-amber-500" />
                         <span className="text-xs font-bold text-amber-800">חסרים פרטי טיסה חיוניים</span>
                       </div>
-                      <button onClick={() => setEditingIndex(i)} className="text-xs bg-amber-200 text-amber-900 px-3 py-1 rounded-lg font-bold hover:bg-amber-300 transition-colors">השלם פרטים</button>
+                      <button onClick={() => setEditingIndex(realIndex)} className="text-xs bg-amber-200 text-amber-900 px-3 py-1 rounded-lg font-bold hover:bg-amber-300 transition-colors">השלם פרטים</button>
                     </div>
                   )}
                   <FlightRow
                     segment={seg}
-                    isStale={stale}
-                    onEdit={onUpdateTrip ? () => setEditingIndex(i) : undefined}
-                    onDelete={onUpdateTrip ? () => handleDeleteSegment(i) : undefined}
+                    onEdit={onUpdateTrip ? () => setEditingIndex(realIndex) : undefined}
+                    onDelete={onUpdateTrip ? () => handleDeleteSegment(realIndex) : undefined}
                   />
                 </div>
               );
