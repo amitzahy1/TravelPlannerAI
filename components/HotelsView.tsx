@@ -564,7 +564,15 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
     const [hotelToDelete, setHotelToDelete] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const hotelGroups = groupHotels(hotels || []);
+    const parseCheckIn = (ds?: string): number => {
+        if (!ds) return 0;
+        if (ds.match(/^\d{4}-\d{2}-\d{2}/)) return new Date(ds.split('T')[0] + 'T12:00:00').getTime();
+        if (ds.match(/^\d{2}\/\d{2}\/\d{4}/)) { const [d, m, y] = ds.split('/'); return new Date(`${y}-${m}-${d}T12:00:00`).getTime(); }
+        return 0;
+    };
+    const hotelGroups = groupHotels(hotels || []).sort((a, b) =>
+        parseCheckIn(a.primary.checkInDate) - parseCheckIn(b.primary.checkInDate)
+    );
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
