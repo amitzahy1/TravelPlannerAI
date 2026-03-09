@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Trip, FlightSegment } from '../types';
-import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check, Lock, ShieldCheck } from 'lucide-react';
+import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check, Lock, ShieldCheck, ChevronDown } from 'lucide-react';
 import { formatDateTime, formatDateOnly, parseFlightTime, calculateFlightDuration, parseDateToIso, formatFlightTime } from '../utils/dateUtils';
 
 // --- Assets & Helpers ---
@@ -219,147 +220,185 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onCl
 
 // --- Sub-components ---
 
-interface FlightCardProps {
-  segment: FlightSegment;
-  isLast: boolean;
-  onEdit?: () => void;
-}
-
-const FlightCard: React.FC<FlightCardProps> = ({ segment, isLast, onEdit }) => {
-  // DEBUG: Diagnose 00:00 issue
-  console.log('✈️ FlightCard Render:', {
-    dep: segment.departureTime,
-    arr: segment.arrivalTime,
-    type: typeof segment.departureTime
-  });
-
+const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void }> = ({ segment, onEdit }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const logoUrl = getAirlineLogo(segment.airline, segment.flightNumber);
 
-  // Use the new timezone-aware duration calculator
   const durationDisplay = (segment.duration && segment.duration !== '0h' && segment.duration !== '0h 0m')
     ? segment.duration
     : calculateFlightDuration(segment.departureTime || '', segment.arrivalTime || '');
 
-  // Extract display times using ROBUST utility
-  // We use formatFlightTime directly imported from utils (it replaced parseFlightTime logic)
   const depTime = formatFlightTime(segment.departureTime);
   const arrTime = formatFlightTime(segment.arrivalTime);
 
+  const depDate = (() => {
+    try {
+      let d: Date | null = null;
+      if (segment.departureTime?.includes('T')) d = new Date(segment.departureTime);
+      else if (segment.date) d = new Date(segment.date);
+      return (d && !isNaN(d.getTime())) ? d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    } catch { return ''; }
+  })();
+
+  const arrDate = (() => {
+    try {
+      let d: Date | null = null;
+      if (segment.arrivalTime?.includes('T')) d = new Date(segment.arrivalTime);
+      else if (segment.date) d = new Date(segment.date);
+      return (d && !isNaN(d.getTime())) ? d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' }) : '';
+    } catch { return ''; }
+  })();
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow p-6 mb-4 relative overflow-hidden group">
-      {/* Decorative Top Line */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-sky-400 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+    <div className="group/row">
+      {/* ── Main compact row ── */}
+      <div
+        className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50/70 transition-colors cursor-pointer select-none"
+        onClick={() => setIsExpanded(v => !v)}
+      >
+        {/* Airline logo */}
+        <img
+          src={logoUrl}
+          alt={segment.airline}
+          onError={e => (e.currentTarget.style.display = 'none')}
+          className="w-10 h-10 rounded-lg object-contain border border-slate-100 bg-white p-0.5 flex-shrink-0"
+        />
 
-      {/* Edit Button */}
-      {onEdit && (
-        <button
-          onClick={onEdit}
-          className="absolute top-4 left-4 p-2 bg-slate-100 hover:bg-blue-100 rounded-full text-slate-500 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all z-10"
-          title="ערוך טיסה"
-        >
-          <Edit2 className="w-4 h-4" />
-        </button>
-      )}
+        {/* Airline + flight# — desktop */}
+        <div className="hidden sm:block w-28 flex-shrink-0">
+          <div className="text-sm font-bold text-slate-800 truncate">{segment.airline}</div>
+          <div className="text-[10px] font-mono text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md w-fit mt-0.5 border border-slate-100">{segment.flightNumber}</div>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-
-        {/* 1. Airline Info (Left) */}
-        <div className="md:col-span-3 flex flex-row md:flex-col items-center md:items-start gap-3">
-          <img
-            src={logoUrl}
-            alt={segment.airline}
-            onError={(e) => e.currentTarget.style.display = 'none'}
-            className="w-16 h-16 rounded-full object-cover border border-slate-100 p-0.5 bg-white shadow-sm"
-          />
-          <div>
-            <div className="font-black text-slate-800 text-sm md:text-lg leading-tight">{segment.airline}</div>
-            <div className="text-[10px] md:text-xs font-bold text-slate-400 font-mono tracking-wider mt-0.5 bg-slate-50 px-1.5 md:px-2 py-0.5 rounded-md w-fit">
-              {segment.flightNumber}
-            </div>
+        {/* Route — main visual */}
+        <div className="flex-grow flex items-center gap-2 min-w-0">
+          <div className="text-right flex-shrink-0 min-w-[52px]">
+            <div className="font-black text-slate-800 text-base leading-none">{segment.fromCode || segment.fromCity}</div>
+            <div className="text-xs font-bold text-blue-600 font-mono mt-0.5" dir="ltr">{depTime}</div>
+          </div>
+          <div className="flex-grow flex items-center justify-center gap-1 min-w-[40px]">
+            <div className="flex-1 h-px bg-slate-200" />
+            <Plane className="w-3.5 h-3.5 text-sky-500 -scale-x-100 flex-shrink-0" />
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+          <div className="text-left flex-shrink-0 min-w-[52px]">
+            <div className="font-black text-slate-800 text-base leading-none">{segment.toCode || segment.toCity}</div>
+            <div className="text-xs font-bold text-blue-600 font-mono mt-0.5" dir="ltr">{arrTime}</div>
           </div>
         </div>
 
-        {/* 2. The Flight Timeline (Center - Main Visual) */}
-        <div className="md:col-span-6 flex items-center justify-between gap-2 md:gap-8 w-full">
-
-          {/* Departure */}
-          <div className="text-right min-w-[70px] md:min-w-[130px]">
-            <div className="text-xl md:text-3xl font-black text-slate-800 leading-none truncate max-w-[120px] md:max-w-[180px]" title={segment.fromCity}>
-              {segment.fromCity || segment.fromCode || 'ORG'}
-            </div>
-            <div className="text-base md:text-xl font-bold text-blue-600 mt-1 md:mt-2 font-mono" dir="ltr">{depTime}</div>
-            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">
-              {(() => {
-                try {
-                  // Fallback Logic: if departureTime is just "HH:MM", use segment.date
-                  let d = null;
-                  if (segment.departureTime && segment.departureTime.includes('T')) {
-                    d = new Date(segment.departureTime);
-                  } else if (segment.date) {
-                    d = new Date(segment.date);
-                  }
-
-                  return (d && !isNaN(d.getTime())) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '---';
-                } catch { return '---'; }
-              })()}
-            </div>
-          </div>
-
-          {/* Visual Path */}
-          <div className="flex-1 flex flex-col items-center px-2 md:px-6 relative min-w-[80px]">
-            <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-slate-100 shadow-sm z-10 whitespace-nowrap">
-              <Clock className="w-3 h-3 text-slate-300" /> {durationDisplay}
-            </div>
-            <div className="w-full flex items-center relative h-6">
-              {/* Line */}
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full h-0.5 bg-slate-200"></div>
-              </div>
-              {/* Plane Icon (RTL Aware: Pointing Left) */}
-              <div className="absolute left-1/2 -translate-x-1/2 bg-white px-2 z-10">
-                <Plane className="w-5 h-5 text-sky-500 transform -scale-x-100" />
-              </div>
-              {/* Dots at ends */}
-              <div className="absolute right-0 w-2.5 h-2.5 bg-slate-300 rounded-full ring-2 ring-white"></div>
-              <div className="absolute left-0 w-2.5 h-2.5 bg-blue-500 rounded-full ring-4 ring-blue-50"></div>
-            </div>
-            <div className="text-[10px] text-slate-400 mt-1 font-mono tracking-widest uppercase">DIRECT</div>
-          </div>
-
-          {/* Arrival */}
-          <div className="text-left min-w-[70px] md:min-w-[130px]">
-            <div className="text-xl md:text-3xl font-black text-slate-800 leading-none truncate max-w-[120px] md:max-w-[180px]" title={segment.toCity}>
-              {segment.toCity || segment.toCode || 'DES'}
-            </div>
-            <div className="text-base md:text-xl font-bold text-blue-600 mt-1 md:mt-2 font-mono" dir="ltr">{arrTime}</div>
-            <div className="text-sm font-bold text-slate-600 mt-1 uppercase">
-              {(() => {
-                try {
-                  // Fallback Logic: if arrivalTime is just "HH:MM", we might not have a date unless we calc duration
-                  // But usually arrivalTime from AI is ISO if date is known. If not, fallback to segment.date (same day)
-                  let d = null;
-                  if (segment.arrivalTime && segment.arrivalTime.includes('T')) {
-                    d = new Date(segment.arrivalTime);
-                  } else if (segment.date) {
-                    d = new Date(segment.date);
-                  }
-                  return (d && !isNaN(d.getTime())) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '---';
-                } catch { return '---'; }
-              })()}
-            </div>
-          </div>
-
+        {/* Duration badge */}
+        <div className="hidden sm:flex items-center gap-1 bg-slate-100 rounded-lg px-2.5 py-1.5 flex-shrink-0">
+          <Clock className="w-3 h-3 text-slate-400" />
+          <span className="text-xs font-bold text-slate-600 whitespace-nowrap">{durationDisplay}</span>
         </div>
 
-        {/* 3. Class & Status (Right) */}
-        <div className="md:col-span-3 flex flex-row md:flex-col justify-end items-end gap-2 border-t md:border-t-0 md:border-r border-slate-100 pt-4 md:pt-0 md:pr-6">
-          {segment.baggage && (
-            <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-              <Briefcase className="w-3.5 h-3.5" /> {segment.baggage}
-            </div>
-          )}
-        </div>
+        {/* Date */}
+        {depDate && (
+          <div className="hidden md:block text-xs font-semibold text-slate-500 flex-shrink-0 whitespace-nowrap">{depDate}</div>
+        )}
+
+        {/* Edit button */}
+        {onEdit && (
+          <button
+            onClick={e => { e.stopPropagation(); onEdit(); }}
+            className="p-2 rounded-lg hover:bg-slate-100 transition-colors opacity-100 md:opacity-0 md:group-hover/row:opacity-100 flex-shrink-0"
+            title="ערוך טיסה"
+          >
+            <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+          </button>
+        )}
+
+        {/* Expand chevron */}
+        <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
       </div>
+
+      {/* ── Expanded panel ── */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-3 bg-slate-50/40 border-t border-slate-100">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">מוצא</div>
+                  <div className="text-sm font-bold text-slate-700">{segment.fromCity}</div>
+                  <div className="text-xs text-slate-400 font-mono">{segment.fromCode}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">יעד</div>
+                  <div className="text-sm font-bold text-slate-700">{segment.toCity}</div>
+                  <div className="text-xs text-slate-400 font-mono">{segment.toCode}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">תאריך נחיתה</div>
+                  <div className="text-sm font-bold text-slate-700">{arrDate || '—'}</div>
+                </div>
+                {/* Airline on mobile */}
+                <div className="sm:hidden">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">חברת תעופה</div>
+                  <div className="text-sm font-bold text-slate-700">{segment.airline}</div>
+                  <div className="text-xs font-mono text-slate-400">{segment.flightNumber}</div>
+                </div>
+                {segment.class && (
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">מחלקה</div>
+                    <div className="text-sm font-bold text-slate-700">{segment.class}</div>
+                  </div>
+                )}
+                {segment.seat && (
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">מושב</div>
+                    <div className="text-sm font-bold text-slate-700 font-mono">{segment.seat}</div>
+                  </div>
+                )}
+                {segment.baggage && (
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">כבודה</div>
+                    <div className="text-sm font-bold text-slate-700 flex items-center gap-1"><Briefcase className="w-3 h-3 text-slate-400" />{segment.baggage}</div>
+                  </div>
+                )}
+                {segment.terminal && (
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">טרמינל</div>
+                    <div className="text-sm font-bold text-slate-700">{segment.terminal}</div>
+                  </div>
+                )}
+                {segment.mealPlan && (
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">ארוחה</div>
+                    <div className="text-sm font-bold text-slate-700">{segment.mealPlan}</div>
+                  </div>
+                )}
+                {segment.status && (
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">סטטוס</div>
+                    <div className={`text-xs font-bold px-2 py-1 rounded-lg w-fit ${
+                      segment.status === 'ON_TIME' ? 'bg-emerald-100 text-emerald-700'
+                      : segment.status === 'DELAYED' ? 'bg-amber-100 text-amber-700'
+                      : segment.status === 'CANCELLED' ? 'bg-red-100 text-red-700'
+                      : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {segment.status === 'ON_TIME' ? 'בזמן' : segment.status === 'DELAYED' ? 'מאחר' : segment.status === 'CANCELLED' ? 'בוטל' : 'מתוכנן'}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {segment.cancellationPolicy && (
+                <div className="mt-3 bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                  <span className="text-xs text-red-700">{segment.cancellationPolicy}</span>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -398,61 +437,55 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
   return (
     <div className="space-y-12 animate-fade-in pb-20">
 
-      {/* Hero Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
-        <div className="relative z-10 flex justify-between items-end">
-          <div>
-            <h1 className="text-3xl font-black mb-2 flex items-center gap-3">
-              <Plane className="w-8 h-8" /> טיסות
-            </h1>
-            <p className="text-blue-100 text-lg font-medium opacity-90 max-w-2xl">
-              כל פרטי הטיסות שלך, כרטיסי עלייה למטוס ומסמכים חשובים במקום אחד.
-            </p>
-          </div>
-          <div className="text-left hidden md:block">
-            <div className="text-sm font-bold opacity-60 uppercase tracking-widest mb-1">מספר הזמנה (PNR)</div>
-            <div className="text-4xl font-mono font-black tracking-widest">{flights.pnr || '---'}</div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-3 tracking-tight">
+            <span className="bg-blue-100 p-2 rounded-xl text-blue-600 shadow-sm flex-shrink-0"><Plane className="w-6 h-6 md:w-7 md:h-7" /></span>
+            טיסות
+          </h2>
+          <p className="text-slate-400 text-sm font-medium mt-0.5 mr-14">{flights.segments.length} {flights.segments.length === 1 ? 'טיסה' : 'טיסות'}</p>
+        </div>
+        {flights.pnr && (
+          <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-sm">
+            <div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">מספר הזמנה (PNR)</div>
+              <div className="text-lg font-mono font-black text-slate-800 tracking-widest">{flights.pnr}</div>
+            </div>
             {flights.passengers && flights.passengers.length > 0 && (
-              <div className="mt-4">
-                <div className="text-sm font-bold opacity-60 uppercase tracking-widest mb-1">נוסעים</div>
-                <div className="flex flex-wrap gap-2 justify-end">
-                  {flights.passengers.map((p, idx) => (
-                    <span key={idx} className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold backdrop-blur-sm">
-                      {p}
-                    </span>
-                  ))}
-                </div>
+              <div className="flex flex-wrap gap-1.5">
+                {flights.passengers.map((p, idx) => (
+                  <span key={idx} className="bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full">{p}</span>
+                ))}
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Flight Segments List */}
-      <section className="max-w-5xl mx-auto -mt-6">
+      <section>
         {flights.segments.length > 0 ? (
-          <div className="space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
             {flights.segments.map((seg, i) => {
-              const isMissingData = !seg.departureTime || !seg.arrivalTime || seg.departureTime === 'INVALID DATE'; // Crude check
+              const isMissingData = !seg.departureTime || !seg.arrivalTime || seg.departureTime === 'INVALID DATE';
               return (
-                <div key={i} className="relative">
+                <div key={i}>
                   {isMissingData && onUpdateTrip && (
-                    <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r-lg mb-2 flex justify-between items-center animate-pulse">
+                    <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <div className="bg-amber-100 p-1 rounded-full"><ShieldCheck className="w-4 h-4 text-amber-600" /></div>
+                        <ShieldCheck className="w-4 h-4 text-amber-500" />
                         <span className="text-xs font-bold text-amber-800">חסרים פרטי טיסה חיוניים</span>
                       </div>
                       <button onClick={() => setEditingIndex(i)} className="text-xs bg-amber-200 text-amber-900 px-3 py-1 rounded-lg font-bold hover:bg-amber-300 transition-colors">השלם פרטים</button>
                     </div>
                   )}
-                  <FlightCard
+                  <FlightRow
                     segment={seg}
-                    isLast={i === flights.segments.length - 1}
                     onEdit={onUpdateTrip ? () => setEditingIndex(i) : undefined}
                   />
                 </div>
-              )
+              );
             })}
           </div>
         ) : (

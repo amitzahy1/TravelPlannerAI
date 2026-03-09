@@ -394,7 +394,7 @@ const RoomsPanel: React.FC<{
 
 
 // ─────────────────────────────────────────────────────────
-// HotelCard — Redesigned (Booking.com-inspired)
+// HotelRow — compact expandable list row
 // ─────────────────────────────────────────────────────────
 const SOURCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
     'Booking.com': { bg: 'bg-blue-600', text: 'text-white', label: 'Booking.com' },
@@ -404,7 +404,7 @@ const SOURCE_STYLES: Record<string, { bg: string; text: string; label: string }>
     'Direct':      { bg: 'bg-slate-700', text: 'text-white', label: 'Direct' },
 };
 
-const HotelCard: React.FC<{
+const HotelRow: React.FC<{
     data: HotelBooking;
     tripDestination: string;
     tripTravelers?: TravelersComposition;
@@ -414,6 +414,7 @@ const HotelCard: React.FC<{
     onEdit: () => void;
     onUpdateRooms: (rooms: HotelRoom[]) => void;
 }> = ({ data, tripDestination, tripTravelers, onSaveNote, onSaveVibe, onDelete, onEdit, onUpdateRooms }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
     const [analyzing, setAnalyzing] = useState(false);
@@ -432,7 +433,6 @@ const HotelCard: React.FC<{
     const displayImage = data.imageUrl || getPlaceImage(data.address || data.name);
     const rooms = data.rooms || [];
 
-    // Compute nights count from dates if not provided
     const nightsCount = (() => {
         if (data.nights && data.nights > 0) return data.nights;
         const ci = data.checkInDate ? new Date(data.checkInDate.split('T')[0]) : null;
@@ -451,179 +451,201 @@ const HotelCard: React.FC<{
         return new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'short' }).format(d);
     };
 
-    const sourceStyle = SOURCE_STYLES[data.bookingSource || ''] || { bg: 'bg-slate-200', text: 'text-slate-700', label: data.bookingSource || 'Direct' };
+    const sourceStyle = SOURCE_STYLES[data.bookingSource || ''] || { bg: 'bg-slate-100', text: 'text-slate-600', label: data.bookingSource || '' };
 
     return (
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 group border border-slate-100 flex flex-col">
-
-            {/* ── Hero Image ── */}
-            <div className="relative h-44 md:h-52 overflow-hidden bg-slate-200 flex-shrink-0">
+        <div className="group/row">
+            {/* ── Main compact row ── */}
+            <div
+                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50/70 transition-colors cursor-pointer select-none"
+                onClick={() => setIsExpanded(v => !v)}
+            >
+                {/* Thumbnail */}
                 <img
                     src={displayImage}
                     alt={data.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-slate-100"
                 />
-                {/* Gradient: dark at bottom for text legibility */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
-                {/* Top-right: source badge + breakfast */}
-                <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
-                    <span className={`text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg ${sourceStyle.bg} ${sourceStyle.text}`}>
-                        {sourceStyle.label}
-                    </span>
-                    {data.breakfastIncluded && (
-                        <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
-                            <Coffee className="w-2.5 h-2.5" /> ארוחת בוקר
+                {/* Name + Address */}
+                <div className="flex-grow min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-slate-800 text-sm leading-tight truncate max-w-[160px] sm:max-w-none">{data.name}</span>
+                        {data.bookingSource && (
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${sourceStyle.bg} ${sourceStyle.text}`}>
+                                {sourceStyle.label}
+                            </span>
+                        )}
+                        {data.breakfastIncluded && (
+                            <span className="hidden sm:inline-flex text-[10px] bg-orange-100 text-orange-700 font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 items-center gap-0.5">
+                                <Coffee className="w-2.5 h-2.5" /> ב.בוקר
+                            </span>
+                        )}
+                    </div>
+                    {data.address && (
+                        <div className="text-xs text-slate-400 truncate flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{data.address}</span>
+                        </div>
+                    )}
+                    {/* Mobile: dates below name */}
+                    <div className="flex items-center gap-1.5 mt-1 sm:hidden text-xs text-slate-600">
+                        <Calendar className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                        <span>{formatDate(data.checkInDate)}</span>
+                        <ArrowRight className="w-3 h-3 text-slate-300 flex-shrink-0" />
+                        <span>{formatDate(data.checkOutDate)}</span>
+                        {nightsCount && (
+                            <span className="bg-indigo-100 text-indigo-700 text-[10px] font-black px-1.5 py-0.5 rounded-full">{nightsCount}ל׳</span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Dates — desktop */}
+                <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                    <div className="text-center">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">צ׳ק-אין</div>
+                        <div className="text-sm font-black text-slate-700 whitespace-nowrap">{formatDate(data.checkInDate)}</div>
+                    </div>
+                    <div className="flex flex-col items-center">
+                        {nightsCount ? (
+                            <span className="bg-indigo-100 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap">{nightsCount} לילות</span>
+                        ) : (
+                            <ArrowRight className="w-3 h-3 text-slate-300" />
+                        )}
+                    </div>
+                    <div className="text-center">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">צ׳ק-אאוט</div>
+                        <div className="text-sm font-black text-slate-700 whitespace-nowrap">{formatDate(data.checkOutDate)}</div>
+                    </div>
+                </div>
+
+                {/* Badges — desktop */}
+                <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
+                    {rooms.length > 0 && (
+                        <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+                            <BedDouble className="w-3 h-3" />{rooms.length}
+                        </span>
+                    )}
+                    {data.price && (
+                        <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+                            <DollarSign className="w-3 h-3" />{data.price}
                         </span>
                     )}
                 </div>
 
-                {/* Top-left: Edit / Delete */}
-                <div className="absolute top-3 left-3 flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
-                    <button onClick={onEdit} className="bg-white/90 backdrop-blur-sm p-2 rounded-xl shadow-md hover:bg-white transition-colors" title="עריכה">
-                        <Edit className="w-4 h-4 text-slate-700" />
+                {/* Edit / Delete on hover */}
+                <div className="flex items-center gap-1 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                    <button onClick={onEdit} className="p-2 rounded-lg hover:bg-slate-100 transition-colors" title="עריכה">
+                        <Edit className="w-3.5 h-3.5 text-slate-400 hover:text-slate-700" />
                     </button>
-                    <button onClick={onDelete} className="bg-white/90 backdrop-blur-sm p-2 rounded-xl shadow-md hover:bg-white transition-colors" title="מחיקה">
-                        <Trash2 className="w-4 h-4 text-rose-500" />
+                    <button onClick={onDelete} className="p-2 rounded-lg hover:bg-rose-50 transition-colors" title="מחיקה">
+                        <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-rose-500" />
                     </button>
                 </div>
 
-                {/* Bottom overlay: name + address */}
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="text-white font-black text-lg md:text-xl leading-tight drop-shadow-lg line-clamp-2">{data.name}</h3>
-                    {data.address && (
-                        <div className="flex items-center gap-1 mt-1">
-                            <MapPin className="w-3 h-3 text-white/75 flex-shrink-0" />
-                            <span className="text-white/75 text-xs font-medium truncate">{data.address}</span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Bottom-right: rooms badge */}
-                {rooms.length > 0 && (
-                    <div className="absolute bottom-3 right-3">
-                        <div className="bg-indigo-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1.5">
-                            <BedDouble className="w-3 h-3" />
-                            {rooms.length} {rooms.length === 1 ? 'חדר' : 'חדרים'}
-                        </div>
-                    </div>
-                )}
+                {/* Expand chevron */}
+                <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
             </div>
 
-            {/* ── Content ── */}
-            <div className="p-4 space-y-3 flex-grow">
+            {/* ── Expanded panel ── */}
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="px-4 pb-4 pt-3 bg-slate-50/40 border-t border-slate-100 space-y-3">
 
-                {/* Dates strip — the most important info */}
-                <div className="flex items-center bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
-                    <div className="flex-1 text-center py-3 px-2">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">צ׳ק-אין</div>
-                        <div className="font-black text-slate-800 text-sm md:text-base mt-0.5">{formatDate(data.checkInDate)}</div>
-                    </div>
+                            {/* Confirmation + price + map */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {data.confirmationCode && (
+                                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                                        <CheckCircle className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                                        <span className="text-[10px] text-slate-500 font-bold">אישור:</span>
+                                        <span className="text-[10px] font-mono text-slate-700 font-bold">{data.confirmationCode}</span>
+                                    </div>
+                                )}
+                                {data.price && (
+                                    <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5 md:hidden">
+                                        <DollarSign className="w-3 h-3 text-emerald-600" />
+                                        <span className="text-xs font-bold text-emerald-700">{data.price}</span>
+                                    </div>
+                                )}
+                                <a
+                                    href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''} ${tripDestination || ''}`)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mr-auto flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    <Navigation className="w-3 h-3" /> מפה
+                                </a>
+                            </div>
 
-                    <div className="flex flex-col items-center px-2 py-2">
-                        <div className="flex items-center gap-1">
-                            <div className="w-5 h-px bg-slate-300" />
-                            {nightsCount ? (
-                                <div className="bg-indigo-100 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap">
-                                    {nightsCount} לילות
+                            {/* Cancellation policy */}
+                            {data.cancellationPolicy && (
+                                <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                                    <span className="text-xs text-red-700 font-semibold">{data.cancellationPolicy}</span>
+                                </div>
+                            )}
+
+                            {/* Vibe Check */}
+                            {data.locationVibe ? (
+                                <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 flex items-start gap-2">
+                                    <Sparkles className="w-3.5 h-3.5 text-purple-500 flex-shrink-0 mt-0.5" />
+                                    <p className="text-xs text-purple-900 font-medium">{data.locationVibe}</p>
                                 </div>
                             ) : (
-                                <ArrowRight className="w-4 h-4 text-slate-300" />
+                                <button
+                                    onClick={e => { e.stopPropagation(); analyzeLocation(); }}
+                                    disabled={analyzing}
+                                    className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-purple-600 hover:bg-purple-50 py-2 px-3 rounded-xl transition-colors border border-dashed border-purple-200"
+                                >
+                                    {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                    {analyzing ? 'מנתח מיקום...' : 'מה ה-Vibe של האזור?'}
+                                </button>
                             )}
-                            <div className="w-5 h-px bg-slate-300" />
+
+                            {/* Notes */}
+                            {isEditingNote ? (
+                                <div className="flex gap-2 bg-yellow-50 p-2.5 rounded-xl border border-yellow-200" onClick={e => e.stopPropagation()}>
+                                    <input
+                                        className="flex-grow bg-transparent text-sm outline-none text-slate-800 placeholder:text-slate-400"
+                                        placeholder="הוסף הערה לטיול..."
+                                        value={noteText}
+                                        onChange={e => setNoteText(e.target.value)}
+                                        autoFocus
+                                        onKeyDown={e => e.key === 'Enter' && saveNote()}
+                                    />
+                                    <button onClick={saveNote} className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">שמור</button>
+                                    <button onClick={() => setIsEditingNote(false)} className="text-slate-400 p-1 flex-shrink-0"><X className="w-4 h-4" /></button>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={e => { e.stopPropagation(); setIsEditingNote(true); }}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-colors text-right ${data.notes ? 'bg-yellow-50 border border-yellow-100 text-yellow-900 hover:bg-yellow-100' : 'text-slate-400 hover:bg-slate-50 border border-dashed border-slate-200'}`}
+                                >
+                                    <StickyNote className={`w-3.5 h-3.5 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-slate-400'}`} />
+                                    <span className="font-medium truncate">{data.notes || 'הוסף הערה...'}</span>
+                                </button>
+                            )}
+
+                            {/* Rooms Panel */}
+                            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                                <RoomsPanel
+                                    rooms={rooms}
+                                    tripTravelers={tripTravelers}
+                                    onUpdateRooms={onUpdateRooms}
+                                />
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="flex-1 text-center py-3 px-2 border-r border-slate-100">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">צ׳ק-אאוט</div>
-                        <div className="font-black text-slate-800 text-sm md:text-base mt-0.5">{formatDate(data.checkOutDate)}</div>
-                    </div>
-                </div>
-
-                {/* Meta row: confirmation + price + map button */}
-                <div className="flex items-center gap-2 flex-wrap">
-                    {data.confirmationCode && (
-                        <div className="flex items-center gap-1 bg-slate-100 rounded-lg px-2.5 py-1.5 min-w-0">
-                            <CheckCircle className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                            <span className="text-[10px] text-slate-500 font-bold flex-shrink-0">אישור:</span>
-                            <span className="text-[10px] font-mono text-slate-700 font-bold truncate">{data.confirmationCode}</span>
-                        </div>
-                    )}
-                    {data.price && (
-                        <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5">
-                            <DollarSign className="w-3 h-3 text-emerald-600 flex-shrink-0" />
-                            <span className="text-xs font-bold text-emerald-700">{data.price}</span>
-                        </div>
-                    )}
-                    <a
-                        href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''} ${tripDestination || ''}`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mr-auto flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-sm flex-shrink-0"
-                    >
-                        <Navigation className="w-3 h-3" />
-                        מפה
-                    </a>
-                </div>
-
-                {/* Cancellation policy */}
-                {data.cancellationPolicy && (
-                    <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center gap-2">
-                        <ShieldCheck className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-                        <span className="text-xs text-red-700 font-semibold leading-snug">{data.cancellationPolicy}</span>
-                    </div>
+                    </motion.div>
                 )}
-
-                {/* Vibe Check */}
-                {data.locationVibe ? (
-                    <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 flex items-start gap-2">
-                        <Sparkles className="w-3.5 h-3.5 text-purple-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-purple-900 font-medium leading-relaxed">{data.locationVibe}</p>
-                    </div>
-                ) : (
-                    <button
-                        onClick={analyzeLocation}
-                        disabled={analyzing}
-                        className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-purple-600 hover:bg-purple-50 py-2 px-3 rounded-xl transition-colors border border-dashed border-purple-200"
-                    >
-                        {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                        {analyzing ? 'מנתח מיקום...' : 'מה ה-Vibe של האזור?'}
-                    </button>
-                )}
-
-                {/* Notes */}
-                {isEditingNote ? (
-                    <div className="flex gap-2 bg-yellow-50 p-2.5 rounded-xl border border-yellow-200">
-                        <input
-                            className="flex-grow bg-transparent text-sm outline-none text-slate-800 placeholder:text-slate-400"
-                            placeholder="הוסף הערה לטיול..."
-                            value={noteText}
-                            onChange={e => setNoteText(e.target.value)}
-                            autoFocus
-                            onKeyDown={e => e.key === 'Enter' && saveNote()}
-                        />
-                        <button onClick={saveNote} className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">שמור</button>
-                        <button onClick={() => setIsEditingNote(false)} className="text-slate-400 hover:text-slate-600 p-1 flex-shrink-0">
-                            <X className="w-4 h-4" />
-                        </button>
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => setIsEditingNote(true)}
-                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs transition-colors text-right ${data.notes ? 'bg-yellow-50 border border-yellow-100 text-yellow-900 hover:bg-yellow-100' : 'text-slate-400 hover:bg-slate-50 border border-dashed border-slate-200'}`}
-                    >
-                        <StickyNote className={`w-3.5 h-3.5 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-slate-400'}`} />
-                        <span className="font-medium truncate">{data.notes || 'הוסף הערה...'}</span>
-                    </button>
-                )}
-            </div>
-
-            {/* ── Rooms Panel ── */}
-            <RoomsPanel
-                rooms={rooms}
-                tripTravelers={tripTravelers}
-                onUpdateRooms={onUpdateRooms}
-            />
+            </AnimatePresence>
         </div>
     );
 };
@@ -769,26 +791,20 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                         )}
                     </div>
 
-                    {/* Hotel Cards — 1 column on mobile, 2 on desktop */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        {hotels.map((hotel, index) => (
-                            <motion.div
-                                key={hotel.id || index}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.07, type: 'spring', stiffness: 300, damping: 25 }}
-                            >
-                                <HotelCard
-                                    data={hotel}
-                                    tripDestination={trip.destination}
-                                    tripTravelers={trip.travelers}
-                                    onSaveNote={(note) => handleNoteUpdate(hotel.id, note)}
-                                    onSaveVibe={(vibe) => handleVibeUpdate(hotel.id, vibe)}
-                                    onDelete={() => handleDeleteHotel(hotel.id)}
-                                    onEdit={() => handleEditHotel(hotel)}
-                                    onUpdateRooms={(rooms) => handleUpdateRooms(hotel.id, rooms)}
-                                />
-                            </motion.div>
+                    {/* Hotel List — compact expandable rows */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
+                        {hotels.map((hotel) => (
+                            <HotelRow
+                                key={hotel.id}
+                                data={hotel}
+                                tripDestination={trip.destination}
+                                tripTravelers={trip.travelers}
+                                onSaveNote={(note) => handleNoteUpdate(hotel.id, note)}
+                                onSaveVibe={(vibe) => handleVibeUpdate(hotel.id, vibe)}
+                                onDelete={() => handleDeleteHotel(hotel.id)}
+                                onEdit={() => handleEditHotel(hotel)}
+                                onUpdateRooms={(rooms) => handleUpdateRooms(hotel.id, rooms)}
+                            />
                         ))}
                     </div>
                 </>
