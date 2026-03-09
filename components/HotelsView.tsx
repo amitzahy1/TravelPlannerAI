@@ -462,125 +462,112 @@ const HotelRow: React.FC<{
         return 'amber';
     })();
 
+    // English-formatted date: "Thu, 7 Aug"
+    const fmtDateEn = (ds?: string) => {
+        if (!ds) return '—';
+        const d = new Date(ds.includes('T') ? ds : ds + 'T12:00:00');
+        if (isNaN(d.getTime())) return ds;
+        return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    };
+
+    const locationLine = data.city
+        ? `${data.city}, ${data.address?.split(',').slice(-1)[0]?.trim() || ''}`
+        : data.address?.split(',').slice(-2).join(', ').trim() || '';
+
     return (
         <div className="group/row">
-            {/* ── Main row — Booking.com inspired ── */}
+            {/* ── Main row — dir=ltr so image is on left, content on right ── */}
             <div
-                className="flex items-start gap-0 cursor-pointer select-none hover:bg-slate-50/60 transition-colors"
+                dir="ltr"
+                className="flex cursor-pointer hover:bg-slate-50/40 transition-colors"
                 onClick={() => setIsExpanded(v => !v)}
             >
-                {/* Thumbnail — taller, left side */}
-                <div className="flex-shrink-0 w-20 sm:w-24 self-stretch">
+                {/* ── Left: Hotel photo strip ── */}
+                <div className="relative flex-shrink-0 w-28 sm:w-32" style={{ minHeight: '120px' }}>
                     <img
                         src={displayImage}
                         alt={data.name}
-                        className="w-full h-full object-cover"
-                        style={{ minHeight: '80px' }}
+                        className="absolute inset-0 w-full h-full object-cover"
                     />
+                    {/* Source badge overlay */}
+                    {data.bookingSource && (
+                        <span className={`absolute top-2 left-2 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm ${sourceStyle.bg} ${sourceStyle.text}`}>
+                            {sourceStyle.label}
+                        </span>
+                    )}
                 </div>
 
-                {/* Content */}
-                <div className="flex-grow min-w-0 px-3 py-3 flex flex-col gap-1.5">
+                {/* ── Right: Content ── */}
+                <div className="flex-grow min-w-0 px-4 py-3 flex flex-col justify-between gap-2">
 
-                    {/* Row 1: Name + source badge + actions */}
+                    {/* Row 1: Name + actions */}
                     <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap min-w-0">
-                            <span className="font-black text-slate-800 text-base leading-tight">{data.name}</span>
-                            {data.bookingSource && (
-                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md flex-shrink-0 ${sourceStyle.bg} ${sourceStyle.text}`}>
-                                    {sourceStyle.label}
-                                </span>
+                        <div className="min-w-0">
+                            <h3 className="text-base font-black text-slate-900 leading-snug truncate">{data.name}</h3>
+                            {locationLine && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                    <MapPin className="w-2.5 h-2.5 text-slate-300 flex-shrink-0" />
+                                    <span className="text-xs text-slate-400 truncate">{locationLine}</span>
+                                </div>
                             )}
                         </div>
-
-                        {/* Action buttons + chevron */}
                         <div className="flex items-center gap-0.5 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                            <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="עריכה">
-                                <Edit className="w-3.5 h-3.5 text-slate-400" />
-                            </button>
-                            <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-rose-50 transition-colors" title="מחיקה">
-                                <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-rose-500" />
-                            </button>
-                            <ChevronDown className={`w-4 h-4 text-slate-300 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                            <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-slate-100" title="Edit"><Edit className="w-3.5 h-3.5 text-slate-400" /></button>
+                            <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-50" title="Delete"><Trash2 className="w-3.5 h-3.5 text-rose-400" /></button>
+                            <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                         </div>
                     </div>
 
-                    {/* Row 2: Address */}
-                    {data.address && (
-                        <div className="text-xs text-slate-400 truncate flex items-center gap-1">
-                            <MapPin className="w-3 h-3 flex-shrink-0 text-slate-300" />
-                            <span className="truncate">{data.address}</span>
-                        </div>
-                    )}
-
-                    {/* Row 3: THE HERO — Dates + Nights (Booking.com style) */}
-                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                        {/* Check-in block */}
-                        <div className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex flex-col items-center shadow-sm flex-shrink-0">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">כניסה</span>
-                            <span className="text-sm font-black text-slate-800 whitespace-nowrap leading-tight">{formatDate(data.checkInDate)}</span>
+                    {/* Row 2: THE HERO — Check-in / Nights / Check-out */}
+                    <div className="flex items-stretch gap-0 rounded-xl overflow-hidden border border-slate-200 bg-white w-fit shadow-sm">
+                        {/* Check-in */}
+                        <div className="flex flex-col items-center justify-center px-3 py-2 min-w-[80px]">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Check-in</span>
+                            <span className="text-sm font-black text-slate-800 whitespace-nowrap mt-0.5 leading-tight">{fmtDateEn(data.checkInDate)}</span>
                         </div>
 
-                        {/* Nights pill — the bridge */}
-                        <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                            <div className="w-6 h-px bg-slate-200" />
-                            {nightsCount ? (
-                                <span className="bg-indigo-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm shadow-indigo-200">
-                                    {nightsCount} לילות
-                                </span>
-                            ) : (
-                                <ArrowRight className="w-3 h-3 text-slate-300" />
-                            )}
-                            <div className="w-6 h-px bg-slate-200" />
+                        {/* Nights divider */}
+                        <div className="flex flex-col items-center justify-center bg-indigo-600 px-3 py-2 min-w-[68px]">
+                            <span className="text-[9px] font-black text-indigo-200 uppercase tracking-wider">nights</span>
+                            <span className="text-xl font-black text-white leading-none mt-0.5">{nightsCount ?? '—'}</span>
                         </div>
 
-                        {/* Check-out block */}
-                        <div className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex flex-col items-center shadow-sm flex-shrink-0">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">יציאה</span>
-                            <span className="text-sm font-black text-slate-800 whitespace-nowrap leading-tight">{formatDate(data.checkOutDate)}</span>
+                        {/* Check-out */}
+                        <div className="flex flex-col items-center justify-center px-3 py-2 min-w-[80px]">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Check-out</span>
+                            <span className="text-sm font-black text-slate-800 whitespace-nowrap mt-0.5 leading-tight">{fmtDateEn(data.checkOutDate)}</span>
                         </div>
-
-                        {/* Confirmation code — always visible when exists */}
-                        {data.confirmationCode && (
-                            <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 flex-shrink-0">
-                                <CheckCircle className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                                <span className="text-[10px] font-black text-emerald-700 font-mono tracking-wider">{data.confirmationCode}</span>
-                            </div>
-                        )}
                     </div>
 
-                    {/* Row 4: Badges — meal plan, cancellation, rooms, price */}
+                    {/* Row 3: Badges */}
                     <div className="flex items-center gap-1.5 flex-wrap">
-                        {/* Meal plan / breakfast */}
-                        {(data.mealPlan || data.breakfastIncluded) && (
-                            <span className="text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded-lg flex items-center gap-1 flex-shrink-0">
-                                <Coffee className="w-2.5 h-2.5" />
-                                {data.mealPlan || 'ארוחת בוקר'}
+                        {data.confirmationCode && (
+                            <span className="flex items-center gap-1 text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-mono tracking-wider">
+                                <CheckCircle className="w-2.5 h-2.5 flex-shrink-0" /> {data.confirmationCode}
                             </span>
                         )}
-
-                        {/* Cancellation policy badge */}
+                        {rooms.length > 0 && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md">
+                                <BedDouble className="w-2.5 h-2.5" /> {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'}
+                            </span>
+                        )}
+                        {(data.mealPlan || data.breakfastIncluded) && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100 px-2 py-0.5 rounded-md">
+                                <Coffee className="w-2.5 h-2.5" /> {data.mealPlan || 'Breakfast incl.'}
+                            </span>
+                        )}
                         {cancellationColor && (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 flex-shrink-0 border
+                            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border
                                 ${cancellationColor === 'emerald' ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                                 : cancellationColor === 'red'     ? 'bg-red-50 text-red-700 border-red-100'
                                 :                                   'bg-amber-50 text-amber-700 border-amber-100'}`}>
                                 <ShieldCheck className="w-2.5 h-2.5" />
-                                {cancellationColor === 'emerald' ? 'ביטול חינם' : cancellationColor === 'red' ? 'לא ניתן לביטול' : 'מדיניות ביטול'}
+                                {cancellationColor === 'emerald' ? 'Free cancellation' : cancellationColor === 'red' ? 'Non-refundable' : 'Cancellation policy'}
                             </span>
                         )}
-
-                        {/* Room count */}
-                        {rooms.length > 0 && (
-                            <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-lg flex items-center gap-1 flex-shrink-0">
-                                <BedDouble className="w-2.5 h-2.5" /> {rooms.length} חדרים
-                            </span>
-                        )}
-
-                        {/* Price */}
                         {data.price && (
-                            <span className="text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-lg flex items-center gap-1 flex-shrink-0">
-                                <DollarSign className="w-2.5 h-2.5" /> {data.price}
+                            <span className="flex items-center gap-1 text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md ml-auto">
+                                {data.price}
                             </span>
                         )}
                     </div>
@@ -748,73 +735,59 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
 
             {hotels && hotels.length > 0 ? (
                 <>
-                    {/* Header */}
+                    {/* ── Header ── */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div>
                             <h2 className="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-3 tracking-tight">
                                 <span className="bg-indigo-100 p-2 rounded-xl text-indigo-600 shadow-sm flex-shrink-0"><Hotel className="w-6 h-6 md:w-7 md:h-7" /></span>
-                                המלונות שלי
+                                My Hotels
                             </h2>
-                            <p className="text-slate-400 text-sm font-medium mt-0.5 mr-14">{hotels.length} {hotels.length === 1 ? 'מלון' : 'מלונות'} ברשימה</p>
+                            <p className="text-slate-400 text-sm font-medium mt-0.5 mr-14">{hotels.length} {hotels.length === 1 ? 'property' : 'properties'}</p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto flex-shrink-0">
-                            <button
-                                onClick={() => setIsSmartAddOpen(true)}
-                                className="flex-1 sm:flex-none bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
-                            >
-                                <Sparkles className="w-4 h-4" /> הוספה חכמה (AI)
+                            <button onClick={() => setIsSmartAddOpen(true)}
+                                className="flex-1 sm:flex-none bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md">
+                                <Sparkles className="w-4 h-4" /> Smart Add (AI)
                             </button>
-                            <button
-                                onClick={handleAddNew}
-                                className="flex-1 sm:flex-none bg-white text-indigo-600 border border-indigo-200 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all hover:bg-indigo-50"
-                            >
-                                <Plus className="w-4 h-4" /> ידני
+                            <button onClick={handleAddNew}
+                                className="flex-1 sm:flex-none bg-white text-indigo-600 border border-indigo-200 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all hover:bg-indigo-50">
+                                <Plus className="w-4 h-4" /> Manual
                             </button>
                         </div>
                     </div>
 
-                    {/* Trip Summary Card */}
-                    <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-5 text-white shadow-xl shadow-indigo-200">
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="text-center">
-                                <div className="text-2xl md:text-3xl font-black">{hotels.length}</div>
-                                <div className="text-indigo-200 text-xs font-bold mt-0.5">מלונות</div>
-                            </div>
-                            <div className="text-center border-x border-indigo-500/40">
-                                <div className="text-2xl md:text-3xl font-black">{totalRooms}</div>
-                                <div className="text-indigo-200 text-xs font-bold mt-0.5">חדרים</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl md:text-3xl font-black">
-                                    {totalGuests}
-                                    {expectedGuests ? <span className="text-lg text-indigo-300">/{expectedGuests}</span> : null}
+                    {/* ── Summary strip ── */}
+                    <div dir="ltr" className="grid grid-cols-3 gap-3">
+                        {[
+                            { value: hotels.length, label: 'Hotels', icon: <Hotel className="w-4 h-4" />, color: 'indigo' },
+                            { value: totalRooms, label: 'Rooms', icon: <BedDouble className="w-4 h-4" />, color: 'violet' },
+                            { value: expectedGuests ? `${totalGuests}/${expectedGuests}` : totalGuests, label: 'Guests', icon: <Users className="w-4 h-4" />, color: totalRooms > 0 && expectedGuests && totalGuests !== expectedGuests ? 'amber' : 'emerald' },
+                        ].map(({ value, label, icon, color }) => (
+                            <div key={label} className={`bg-white rounded-2xl border border-slate-200 px-4 py-3 flex items-center gap-3 shadow-sm`}>
+                                <span className={`p-2 rounded-xl flex-shrink-0
+                                    ${color === 'indigo'  ? 'bg-indigo-50 text-indigo-600'
+                                    : color === 'violet'  ? 'bg-violet-50 text-violet-600'
+                                    : color === 'amber'   ? 'bg-amber-50 text-amber-600'
+                                    :                       'bg-emerald-50 text-emerald-600'}`}>{icon}</span>
+                                <div>
+                                    <div className="text-xl font-black text-slate-800 leading-none">{value}</div>
+                                    <div className="text-xs font-bold text-slate-400 mt-0.5">{label}</div>
                                 </div>
-                                <div className="text-indigo-200 text-xs font-bold mt-0.5">אורחים</div>
                             </div>
-                        </div>
-
-                        {/* Alert banner inside card */}
-                        {(hotelsWithNoRooms.length > 0 || (totalRooms > 0 && expectedGuests && totalGuests !== expectedGuests)) && (
-                            <div className="mt-4 bg-white/15 rounded-xl px-3 py-2.5 flex items-center gap-2">
-                                <AlertTriangle className="w-4 h-4 text-amber-300 flex-shrink-0" />
-                                <span className="text-xs font-bold text-white/90">
-                                    {hotelsWithNoRooms.length > 0
-                                        ? hotelsWithNoRooms.length === 1
-                                            ? `${hotelsWithNoRooms[0].name} — לא הוגדרו חדרים`
-                                            : `${hotelsWithNoRooms.length} מלונות ללא חדרים`
-                                        : totalGuests < (expectedGuests || 0)
-                                            ? `חסרים ${(expectedGuests || 0) - totalGuests} אנשים בהגדרת החדרים`
-                                            : `${totalGuests - (expectedGuests || 0)} אנשים עודפים בחדרים`}
-                                </span>
-                            </div>
-                        )}
-                        {totalRooms > 0 && hotelsWithNoRooms.length === 0 && expectedGuests && totalGuests === expectedGuests && (
-                            <div className="mt-4 bg-emerald-500/30 rounded-xl px-3 py-2.5 flex items-center gap-2">
-                                <CheckCheck className="w-4 h-4 text-emerald-300 flex-shrink-0" />
-                                <span className="text-xs font-bold text-white/90">הכל תקין — כל האורחים מכוסים בחדרים</span>
-                            </div>
-                        )}
+                        ))}
                     </div>
+
+                    {/* Warning if rooms don't match */}
+                    {hotelsWithNoRooms.length > 0 && (
+                        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+                            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                            <span className="text-sm font-bold text-amber-800">
+                                {hotelsWithNoRooms.length === 1
+                                    ? `${hotelsWithNoRooms[0].name} has no rooms configured`
+                                    : `${hotelsWithNoRooms.length} properties have no rooms configured`}
+                            </span>
+                        </div>
+                    )}
 
                     {/* Hotel List — compact expandable rows */}
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
