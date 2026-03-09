@@ -4,7 +4,7 @@ import { Trip, HotelBooking, HotelRoom, TravelersComposition } from '../types';
 import {
     Hotel, MapPin, Calendar, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X,
     Image as ImageIcon, Sparkles, Loader2, Navigation, UploadCloud, FileText, Coffee,
-    ShieldCheck, Lock, AlertTriangle, ChevronDown, Users, Tag, Info, CheckCheck, DollarSign, ArrowRight
+    ShieldCheck, Lock, ChevronDown, Users, Tag, CheckCheck, DollarSign
 } from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
@@ -14,8 +14,6 @@ import { ConfirmModal } from './ConfirmModal';
 // Helper to determine placeholder image based on address
 const getPlaceImage = (address: string): string => {
     const lowerAddr = (address || '').toLowerCase();
-
-    // Thailand
     if (lowerAddr.includes('bangkok') || lowerAddr.includes('bkk')) return 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?auto=format&fit=crop&q=80';
     if (lowerAddr.includes('phuket')) return 'https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?auto=format&fit=crop&q=80';
     if (lowerAddr.includes('samui') || lowerAddr.includes('koh samui')) return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80';
@@ -24,23 +22,15 @@ const getPlaceImage = (address: string): string => {
     if (lowerAddr.includes('krabi')) return 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80';
     if (lowerAddr.includes('koh chang')) return 'https://images.unsplash.com/photo-1559530432-62dc0442c549?auto=format&fit=crop&q=80';
     if (lowerAddr.includes('tao') || lowerAddr.includes('koh tao')) return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80';
-
-    // Europe
     if (lowerAddr.includes('london') || lowerAddr.includes('uk')) return 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80';
     if (lowerAddr.includes('paris') || lowerAddr.includes('france')) return 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80';
     if (lowerAddr.includes('rome') || lowerAddr.includes('italy')) return 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80';
     if (lowerAddr.includes('barcelona') || lowerAddr.includes('spain')) return 'https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&q=80';
-
-    // US
     if (lowerAddr.includes('new york') || lowerAddr.includes('nyc')) return 'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?auto=format&fit=crop&q=80';
-
-    // General
     if (lowerAddr.includes('beach') || lowerAddr.includes('resort') || lowerAddr.includes('island')) return 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&q=80';
-
     return 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&q=80';
 };
 
-// Room color palette — each room gets a distinct look
 const ROOM_COLORS = [
     { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', badge: 'bg-indigo-100', num: 'text-indigo-600' },
     { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100', num: 'text-emerald-600' },
@@ -96,7 +86,6 @@ const RoomFormModal: React.FC<{
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
-                    {/* Label / Family Name */}
                     <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
                             <Tag className="w-3 h-3" /> כותרת / שם משפחה לחדר
@@ -109,7 +98,6 @@ const RoomFormModal: React.FC<{
                         />
                     </div>
 
-                    {/* Room Type */}
                     <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
                             <Hotel className="w-3 h-3" /> סוג חדר
@@ -126,43 +114,25 @@ const RoomFormModal: React.FC<{
                         </datalist>
                     </div>
 
-                    {/* Guests — Adults & Children */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-500">מבוגרים</label>
                             <div className="flex items-center gap-2 bg-slate-50 rounded-2xl p-2 border border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setForm({ ...form, adults: Math.max(1, (form.adults ?? 1) - 1) })}
-                                    className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none"
-                                >−</button>
+                                <button type="button" onClick={() => setForm({ ...form, adults: Math.max(1, (form.adults ?? 1) - 1) })} className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none">−</button>
                                 <span className="flex-1 text-center font-black text-slate-800 text-lg">{form.adults ?? 1}</span>
-                                <button
-                                    type="button"
-                                    onClick={() => setForm({ ...form, adults: (form.adults ?? 1) + 1 })}
-                                    className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none"
-                                >+</button>
+                                <button type="button" onClick={() => setForm({ ...form, adults: (form.adults ?? 1) + 1 })} className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none">+</button>
                             </div>
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-500">ילדים</label>
                             <div className="flex items-center gap-2 bg-slate-50 rounded-2xl p-2 border border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setForm({ ...form, children: Math.max(0, (form.children ?? 0) - 1) })}
-                                    className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none"
-                                >−</button>
+                                <button type="button" onClick={() => setForm({ ...form, children: Math.max(0, (form.children ?? 0) - 1) })} className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none">−</button>
                                 <span className="flex-1 text-center font-black text-slate-800 text-lg">{form.children ?? 0}</span>
-                                <button
-                                    type="button"
-                                    onClick={() => setForm({ ...form, children: (form.children ?? 0) + 1 })}
-                                    className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none"
-                                >+</button>
+                                <button type="button" onClick={() => setForm({ ...form, children: (form.children ?? 0) + 1 })} className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-lg leading-none">+</button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Bed Type */}
                     <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
                             <BedDouble className="w-3 h-3" /> סוג מיטות מועדף
@@ -177,7 +147,6 @@ const RoomFormModal: React.FC<{
                         </select>
                     </div>
 
-                    {/* Notes / Preferences */}
                     <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-500">בקשות / העדפות מראש</label>
                         <input
@@ -188,10 +157,7 @@ const RoomFormModal: React.FC<{
                         />
                     </div>
 
-                    <button
-                        type="submit"
-                        className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-bold text-base shadow-xl shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                    >
+                    <button type="submit" className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-bold text-base shadow-xl shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all">
                         שמור חדר
                     </button>
                 </form>
@@ -202,199 +168,47 @@ const RoomFormModal: React.FC<{
 
 
 // ─────────────────────────────────────────────────────────
-// RoomsPanel — expandable section inside HotelCard
+// HotelGroup — type + grouping function
+// Groups bookings for the same hotel+dates into one card
 // ─────────────────────────────────────────────────────────
-const RoomsPanel: React.FC<{
-    rooms: HotelRoom[];
-    tripTravelers?: TravelersComposition;
-    onUpdateRooms: (rooms: HotelRoom[]) => void;
-}> = ({ rooms, tripTravelers, onUpdateRooms }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-    // undefined = modal closed, null = adding new, HotelRoom = editing existing
-    const [editingRoom, setEditingRoom] = useState<HotelRoom | null | undefined>(undefined);
+interface HotelGroup {
+    key: string;
+    primary: HotelBooking;
+    hotels: HotelBooking[];
+    mergedRooms: Array<HotelRoom & { _hotelId: string }>;
+    confirmationCodes: string[];
+}
 
-    const totalAdults = rooms.reduce((s, r) => s + r.adults, 0);
-    const totalChildren = rooms.reduce((s, r) => s + r.children, 0);
-    const totalGuests = totalAdults + totalChildren;
-
-    const expectedTotal = tripTravelers
-        ? (tripTravelers.adults || 0) + (tripTravelers.children || 0)
-        : null;
-    const hasDiscrepancy = expectedTotal !== null && rooms.length > 0 && totalGuests !== expectedTotal;
-    const isAllGood = rooms.length > 0 && !hasDiscrepancy;
-
-    const handleSaveRoom = (room: HotelRoom) => {
-        if (editingRoom) {
-            onUpdateRooms(rooms.map(r => r.id === room.id ? room : r));
+const groupHotels = (hotels: HotelBooking[]): HotelGroup[] => {
+    const map = new Map<string, HotelGroup>();
+    for (const h of hotels) {
+        const key = [
+            h.name.toLowerCase().trim().replace(/\s+/g, ' '),
+            h.checkInDate?.split('T')[0] || '',
+            h.checkOutDate?.split('T')[0] || '',
+        ].join('|');
+        const existing = map.get(key);
+        if (existing) {
+            existing.hotels.push(h);
+            if (h.confirmationCode && !existing.confirmationCodes.includes(h.confirmationCode))
+                existing.confirmationCodes.push(h.confirmationCode);
+            (h.rooms || []).forEach(r => existing.mergedRooms.push({ ...r, _hotelId: h.id }));
         } else {
-            onUpdateRooms([...rooms, room]);
+            map.set(key, {
+                key,
+                primary: h,
+                hotels: [h],
+                mergedRooms: (h.rooms || []).map(r => ({ ...r, _hotelId: h.id })),
+                confirmationCodes: h.confirmationCode ? [h.confirmationCode] : [],
+            });
         }
-        setEditingRoom(undefined);
-    };
-
-    const handleDeleteRoom = (roomId: string) => {
-        onUpdateRooms(rooms.filter(r => r.id !== roomId));
-    };
-
-    return (
-        <>
-            {/* Summary Bar — always visible, click to expand */}
-            <div
-                onClick={() => setIsExpanded(v => !v)}
-                className="border-t border-slate-100 px-3 md:px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition-colors select-none"
-            >
-                <div className="flex items-center gap-2 flex-wrap">
-                    <BedDouble className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                    {rooms.length === 0 ? (
-                        <span className="text-xs text-slate-400 font-medium">לא הוגדרו חדרים — לחץ להוספה</span>
-                    ) : (
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs font-bold text-slate-700">{rooms.length} {rooms.length === 1 ? 'חדר' : 'חדרים'}</span>
-                            <span className="text-slate-300 text-xs">•</span>
-                            <span className="text-xs text-slate-500">
-                                {totalAdults} מבוגרים
-                                {totalChildren > 0 && <span> + {totalChildren} ילדים</span>}
-                            </span>
-                        </div>
-                    )}
-                    {isAllGood && (
-                        <div className="flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                            <CheckCheck className="w-2.5 h-2.5" /> תקין
-                        </div>
-                    )}
-                    {hasDiscrepancy && (
-                        <div className="flex items-center gap-1 bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                            <AlertTriangle className="w-2.5 h-2.5" /> אי-התאמה
-                        </div>
-                    )}
-                </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {rooms.length === 0 && (
-                        <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full">+ הוסף</span>
-                    )}
-                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-                </div>
-            </div>
-
-            {/* Expanded Content */}
-            <AnimatePresence>
-                {isExpanded && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-                        className="overflow-hidden"
-                    >
-                        <div className="px-3 md:px-4 pb-4 pt-1 space-y-2">
-                            {/* Discrepancy Alert */}
-                            {hasDiscrepancy && (
-                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5">
-                                    <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                                    <div>
-                                        <div className="text-xs font-bold text-amber-800">אי-התאמה באורחים</div>
-                                        <div className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
-                                            הטיול מוגדר ל-{expectedTotal} אנשים, אבל בחדרים {totalGuests} אנשים.
-                                            ייתכן ששכחת להוסיף חדר או לעדכן מספר אורחים.
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Room Cards */}
-                            {rooms.map((room, idx) => {
-                                const color = ROOM_COLORS[idx % ROOM_COLORS.length];
-                                return (
-                                    <motion.div
-                                        key={room.id}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: idx * 0.05 }}
-                                        className={`${color.bg} border ${color.border} rounded-xl p-3 flex items-start gap-3 group/room`}
-                                    >
-                                        {/* Room Number Badge */}
-                                        <div className={`w-9 h-9 rounded-xl ${color.badge} flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                                            <span className={`text-sm font-black ${color.num}`}>{idx + 1}</span>
-                                        </div>
-
-                                        {/* Room Details */}
-                                        <div className="flex-grow min-w-0">
-                                            <div className={`font-bold text-sm ${color.text} truncate leading-tight`}>
-                                                {room.label || `חדר ${idx + 1}`}
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                                {room.roomType && (
-                                                    <span className="text-[10px] font-semibold text-slate-600 bg-white/80 rounded-lg px-2 py-0.5 border border-white shadow-sm truncate max-w-[140px]">
-                                                        {room.roomType}
-                                                    </span>
-                                                )}
-                                                <span className="text-[10px] text-slate-600 flex items-center gap-1 bg-white/80 rounded-lg px-2 py-0.5 border border-white shadow-sm">
-                                                    <Users className="w-2.5 h-2.5" />
-                                                    {room.adults} מבוגרים
-                                                    {room.children > 0 && <span>+ {room.children} ילדים</span>}
-                                                </span>
-                                                {room.beds && (
-                                                    <span className="text-[10px] text-slate-500 flex items-center gap-1 bg-white/80 rounded-lg px-2 py-0.5 border border-white shadow-sm">
-                                                        <BedDouble className="w-2.5 h-2.5" />
-                                                        {room.beds}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {room.notes && (
-                                                <div className="mt-1.5 text-[10px] text-slate-500 italic truncate">
-                                                    💬 {room.notes}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Actions — always visible on mobile, hover on desktop */}
-                                        <div className="flex gap-1 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/room:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => setEditingRoom(room)}
-                                                className="p-2 md:p-1.5 hover:bg-white/80 active:bg-white rounded-lg transition-colors"
-                                                title="עריכה"
-                                            >
-                                                <Edit className="w-3.5 h-3.5 md:w-3 md:h-3 text-slate-400" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteRoom(room.id)}
-                                                className="p-2 md:p-1.5 hover:bg-white/80 active:bg-white rounded-lg transition-colors"
-                                                title="מחיקה"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5 md:w-3 md:h-3 text-slate-400" />
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
-
-                            {/* Add Room Button */}
-                            <button
-                                onClick={() => setEditingRoom(null)}
-                                className="w-full py-2.5 border-2 border-dashed border-indigo-200 text-indigo-600 text-xs font-bold rounded-xl hover:bg-indigo-50 hover:border-indigo-300 transition-all flex items-center justify-center gap-1.5"
-                            >
-                                <Plus className="w-3.5 h-3.5" /> הוסף חדר
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Room Form Modal */}
-            {editingRoom !== undefined && (
-                <RoomFormModal
-                    initialData={editingRoom ?? undefined}
-                    onClose={() => setEditingRoom(undefined)}
-                    onSave={handleSaveRoom}
-                />
-            )}
-        </>
-    );
+    }
+    return Array.from(map.values());
 };
 
 
 // ─────────────────────────────────────────────────────────
-// HotelRow — compact expandable list row
+// Source badge styles
 // ─────────────────────────────────────────────────────────
 const SOURCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
     'Booking.com': { bg: 'bg-blue-600', text: 'text-white', label: 'Booking.com' },
@@ -404,41 +218,36 @@ const SOURCE_STYLES: Record<string, { bg: string; text: string; label: string }>
     'Direct':      { bg: 'bg-slate-700', text: 'text-white', label: 'Direct' },
 };
 
-const HotelRow: React.FC<{
-    data: HotelBooking;
+
+// ─────────────────────────────────────────────────────────
+// HotelCard — clean redesign with grouping support
+// ─────────────────────────────────────────────────────────
+const HotelCard: React.FC<{
+    group: HotelGroup;
     tripDestination: string;
     tripTravelers?: TravelersComposition;
-    onSaveNote: (n: string) => void;
-    onSaveVibe: (v: string) => void;
-    onDelete: () => void;
-    onEdit: () => void;
-    onUpdateRooms: (rooms: HotelRoom[]) => void;
-}> = ({ data, tripDestination, tripTravelers, onSaveNote, onSaveVibe, onDelete, onEdit, onUpdateRooms }) => {
+    onUpdateGroupRooms: (rooms: Array<HotelRoom & { _hotelId: string }>) => void;
+    onDeleteGroup: () => void;
+    onEditPrimary: () => void;
+    onSaveNote: (note: string) => void;
+    onSaveVibe: (vibe: string) => void;
+}> = ({ group, tripDestination, onUpdateGroupRooms, onDeleteGroup, onEditPrimary, onSaveNote, onSaveVibe }) => {
+    const { primary, mergedRooms, confirmationCodes } = group;
     const [isExpanded, setIsExpanded] = useState(false);
+    const [editingRoom, setEditingRoom] = useState<(HotelRoom & { _hotelId?: string }) | null | undefined>(undefined);
     const [isEditingNote, setIsEditingNote] = useState(false);
-    const [noteText, setNoteText] = useState(data.notes || '');
+    const [noteText, setNoteText] = useState(primary.notes || '');
     const [analyzing, setAnalyzing] = useState(false);
 
-    const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
-
-    const analyzeLocation = async () => {
-        setAnalyzing(true);
-        try {
-            const prompt = `Analyze location: "${data.name}", "${data.address}". Short Hebrew "Vibe Check" (max 15 words). e.g. "מרכזי, קרוב לרכבת, אזור בילויים".`;
-            const response = await generateWithFallback(null, [prompt], {}, 'FAST');
-            if (response.text) onSaveVibe(response.text);
-        } catch (e) { console.error(e); } finally { setAnalyzing(false); }
-    };
-
-    const displayImage = data.imageUrl || getPlaceImage(data.address || data.name);
-    const rooms = data.rooms || [];
+    const displayImage = primary.imageUrl || getPlaceImage(primary.address || primary.name);
+    const sourceStyle = SOURCE_STYLES[primary.bookingSource || ''] || { bg: 'bg-slate-600', text: 'text-white', label: primary.bookingSource || '' };
 
     const nightsCount = (() => {
-        if (data.nights && data.nights > 0) return data.nights;
-        const ci = data.checkInDate ? new Date(data.checkInDate.split('T')[0]) : null;
-        const co = data.checkOutDate ? new Date(data.checkOutDate.split('T')[0]) : null;
+        if (primary.nights && primary.nights > 0) return primary.nights;
+        const ci = primary.checkInDate ? new Date(primary.checkInDate.split('T')[0] + 'T12:00:00') : null;
+        const co = primary.checkOutDate ? new Date(primary.checkOutDate.split('T')[0] + 'T12:00:00') : null;
         if (ci && co && !isNaN(ci.getTime()) && !isNaN(co.getTime())) {
-            const diff = Math.round((co.getTime() - ci.getTime()) / (1000 * 60 * 60 * 24));
+            const diff = Math.round((co.getTime() - ci.getTime()) / 86400000);
             return diff > 0 ? diff : null;
         }
         return null;
@@ -446,135 +255,202 @@ const HotelRow: React.FC<{
 
     const formatDate = (ds?: string) => {
         if (!ds) return '—';
-        const d = new Date(ds.split('T')[0]);
+        const d = new Date(ds.split('T')[0] + 'T12:00:00');
         if (isNaN(d.getTime())) return ds;
-        return new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'short' }).format(d);
+        return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
     };
 
-    const sourceStyle = SOURCE_STYLES[data.bookingSource || ''] || { bg: 'bg-slate-100', text: 'text-slate-600', label: data.bookingSource || '' };
+    const formatDay = (ds?: string) => {
+        if (!ds) return '';
+        const d = new Date(ds.split('T')[0] + 'T12:00:00');
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleDateString('he-IL', { weekday: 'short' });
+    };
 
-    // Cancellation policy color
     const cancellationColor = (() => {
-        if (!data.cancellationPolicy) return null;
-        const p = data.cancellationPolicy.toLowerCase();
+        if (!primary.cancellationPolicy) return null;
+        const p = primary.cancellationPolicy.toLowerCase();
         if (p.includes('free') || p.includes('חינם') || p.includes('ללא עלות')) return 'emerald';
         if (p.includes('non-refund') || p.includes('לא ניתן') || p.includes('אי-החזר')) return 'red';
         return 'amber';
     })();
 
-    // English-formatted date: "Thu, 7 Aug"
-    const fmtDateEn = (ds?: string) => {
-        if (!ds) return '—';
-        const d = new Date(ds.includes('T') ? ds : ds + 'T12:00:00');
-        if (isNaN(d.getTime())) return ds;
-        return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    const locationLine = primary.city
+        ? `${primary.city}${primary.address ? ', ' + primary.address.split(',').slice(-1)[0]?.trim() : ''}`
+        : primary.address?.split(',').slice(-2).join(', ').trim() || '';
+
+    const handleSaveRoom = (room: HotelRoom) => {
+        if (editingRoom && editingRoom.id) {
+            onUpdateGroupRooms(mergedRooms.map(r => r.id === room.id ? { ...room, _hotelId: r._hotelId } : r));
+        } else {
+            onUpdateGroupRooms([...mergedRooms, { ...room, _hotelId: primary.id }]);
+        }
+        setEditingRoom(undefined);
     };
 
-    const locationLine = data.city
-        ? `${data.city}, ${data.address?.split(',').slice(-1)[0]?.trim() || ''}`
-        : data.address?.split(',').slice(-2).join(', ').trim() || '';
+    const handleDeleteRoom = (roomId: string) => {
+        onUpdateGroupRooms(mergedRooms.filter(r => r.id !== roomId));
+    };
+
+    const analyzeLocation = async () => {
+        setAnalyzing(true);
+        try {
+            const response = await generateWithFallback(null, [`Analyze: "${primary.name}", "${primary.address}". Hebrew vibe check, max 15 words.`], {}, 'FAST');
+            if (response.text) onSaveVibe(response.text);
+        } catch { } finally { setAnalyzing(false); }
+    };
+
+    const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
 
     return (
-        <div className="group/row">
-            {/* ── Main row — dir=ltr so image is on left, content on right ── */}
-            <div
-                dir="ltr"
-                className="flex cursor-pointer hover:bg-slate-50/40 transition-colors"
-                onClick={() => setIsExpanded(v => !v)}
-            >
-                {/* ── Left: Hotel photo strip ── */}
-                <div className="relative flex-shrink-0 w-24 sm:w-32" style={{ minHeight: '110px' }}>
-                    <img
-                        src={displayImage}
-                        alt={data.name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    {/* Source badge overlay */}
-                    {data.bookingSource && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group/card">
+
+            {/* ── Photo + Info ── */}
+            <div dir="ltr" className="flex">
+                {/* Photo strip */}
+                <div className="relative w-24 sm:w-32 flex-shrink-0 self-stretch" style={{ minHeight: '140px' }}>
+                    <img src={displayImage} alt={primary.name} className="absolute inset-0 w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
+                    {primary.bookingSource && (
                         <span className={`absolute top-2 left-2 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm ${sourceStyle.bg} ${sourceStyle.text}`}>
                             {sourceStyle.label}
                         </span>
                     )}
+                    {group.hotels.length > 1 && (
+                        <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+                            <span className="bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+                                {group.hotels.length} הזמנות
+                            </span>
+                        </div>
+                    )}
                 </div>
 
-                {/* ── Right: Content ── */}
-                <div className="flex-grow min-w-0 px-3 sm:px-4 py-3 flex flex-col justify-between gap-2">
-
-                    {/* Row 1: Name + actions */}
-                    <div className="flex items-start justify-between gap-2">
+                {/* Content */}
+                <div className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col gap-2.5">
+                    {/* Name + edit/delete */}
+                    <div className="flex items-start justify-between gap-1">
                         <div className="min-w-0">
-                            <h3 className="text-base font-black text-slate-900 leading-snug truncate">{data.name}</h3>
+                            <h3 className="font-black text-slate-900 text-base leading-snug truncate">{primary.name}</h3>
                             {locationLine && (
-                                <div className="flex items-center gap-1 mt-0.5">
-                                    <MapPin className="w-2.5 h-2.5 text-slate-300 flex-shrink-0" />
-                                    <span className="text-xs text-slate-400 truncate">{locationLine}</span>
-                                </div>
+                                <p className="flex items-center gap-0.5 text-xs text-slate-400 mt-0.5 truncate">
+                                    <MapPin className="w-2.5 h-2.5 flex-shrink-0" />{locationLine}
+                                </p>
                             )}
                         </div>
-                        <div className="flex items-center gap-0.5 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                            <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-slate-100" title="Edit"><Edit className="w-3.5 h-3.5 text-slate-400" /></button>
-                            <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-50" title="Delete"><Trash2 className="w-3.5 h-3.5 text-rose-400" /></button>
-                            <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                        <div className="flex gap-0.5 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity">
+                            <button onClick={e => { e.stopPropagation(); onEditPrimary(); }} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="עריכה">
+                                <Edit className="w-3.5 h-3.5 text-slate-400" />
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); onDeleteGroup(); }} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="מחיקה">
+                                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                            </button>
                         </div>
                     </div>
 
-                    {/* Row 2: THE HERO — Check-in / Nights / Check-out */}
-                    <div className="flex items-stretch gap-0 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm self-stretch">
-                        {/* Check-in */}
-                        <div className="flex-1 flex flex-col items-center justify-center px-2 py-2">
-                            <span className="text-[7px] sm:text-[8px] font-black text-slate-400 uppercase tracking-widest">כניסה</span>
-                            <span className="text-xs sm:text-sm font-black text-slate-800 whitespace-nowrap mt-0.5 leading-tight">{formatDate(data.checkInDate)}</span>
+                    {/* Date bar */}
+                    <div className="flex items-stretch rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                        <div className="flex-1 flex flex-col items-center justify-center py-2 bg-slate-50">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">כניסה</span>
+                            <span className="text-xs sm:text-sm font-black text-slate-800 whitespace-nowrap mt-0.5">{formatDate(primary.checkInDate)}</span>
+                            <span className="text-[9px] text-slate-400 font-medium">{formatDay(primary.checkInDate)}</span>
                         </div>
-
-                        {/* Nights divider */}
-                        <div className="flex flex-col items-center justify-center bg-indigo-600 px-2 sm:px-3 py-2">
-                            <span className="text-[7px] sm:text-[9px] font-black text-indigo-200 uppercase tracking-wider">לילות</span>
-                            <span className="text-lg sm:text-xl font-black text-white leading-none mt-0.5">{nightsCount ?? '—'}</span>
+                        <div className="flex flex-col items-center justify-center bg-indigo-600 px-3 py-2">
+                            <span className="text-[8px] font-black text-indigo-200 uppercase tracking-wider">לילות</span>
+                            <span className="text-xl font-black text-white leading-none mt-0.5">{nightsCount ?? '—'}</span>
                         </div>
-
-                        {/* Check-out */}
-                        <div className="flex-1 flex flex-col items-center justify-center px-2 py-2">
-                            <span className="text-[7px] sm:text-[8px] font-black text-slate-400 uppercase tracking-widest">יציאה</span>
-                            <span className="text-xs sm:text-sm font-black text-slate-800 whitespace-nowrap mt-0.5 leading-tight">{formatDate(data.checkOutDate)}</span>
+                        <div className="flex-1 flex flex-col items-center justify-center py-2 bg-slate-50">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">יציאה</span>
+                            <span className="text-xs sm:text-sm font-black text-slate-800 whitespace-nowrap mt-0.5">{formatDate(primary.checkOutDate)}</span>
+                            <span className="text-[9px] text-slate-400 font-medium">{formatDay(primary.checkOutDate)}</span>
                         </div>
                     </div>
 
-                    {/* Row 3: Badges */}
+                    {/* Badges */}
                     <div className="flex items-center gap-1.5 flex-wrap">
-                        {data.confirmationCode && (
-                            <span className="flex items-center gap-1 text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-mono tracking-wider">
-                                <CheckCircle className="w-2.5 h-2.5 flex-shrink-0" /> {data.confirmationCode}
+                        {confirmationCodes.map(code => (
+                            <span key={code} className="flex items-center gap-1 text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-mono">
+                                <CheckCircle className="w-2.5 h-2.5" /> {code}
                             </span>
-                        )}
-                        {rooms.length > 0 && (
-                            <span className="flex items-center gap-1 text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md">
-                                <BedDouble className="w-2.5 h-2.5" /> {rooms.length} {rooms.length === 1 ? 'חדר' : 'חדרים'}
-                            </span>
-                        )}
-                        {(data.mealPlan || data.breakfastIncluded) && (
+                        ))}
+                        {(primary.mealPlan || primary.breakfastIncluded) && (
                             <span className="flex items-center gap-1 text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100 px-2 py-0.5 rounded-md">
-                                <Coffee className="w-2.5 h-2.5" /> {data.mealPlan || 'כולל ארוחת בוקר'}
+                                <Coffee className="w-2.5 h-2.5" /> {primary.mealPlan || 'ארוחת בוקר'}
                             </span>
                         )}
                         {cancellationColor && (
-                            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border
-                                ${cancellationColor === 'emerald' ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                : cancellationColor === 'red'     ? 'bg-red-50 text-red-700 border-red-100'
-                                :                                   'bg-amber-50 text-amber-700 border-amber-100'}`}>
+                            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                                cancellationColor === 'emerald' ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                : cancellationColor === 'red'   ? 'bg-red-50 text-red-700 border-red-100'
+                                :                                 'bg-amber-50 text-amber-700 border-amber-100'
+                            }`}>
                                 <ShieldCheck className="w-2.5 h-2.5" />
                                 {cancellationColor === 'emerald' ? 'ביטול חינם' : cancellationColor === 'red' ? 'לא ניתן לביטול' : 'מדיניות ביטול'}
                             </span>
                         )}
-                        {data.price && (
-                            <span className="flex items-center gap-1 text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md ml-auto">
-                                {data.price}
+                        {primary.price && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md ms-auto">
+                                {primary.price}
                             </span>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* ── Expanded panel ── */}
+            {/* ── Rooms — always visible inline ── */}
+            <div className="border-t border-slate-100 px-3 sm:px-4 py-3 bg-slate-50/40">
+                <div className="flex items-center gap-2 flex-wrap">
+                    {mergedRooms.length === 0 && (
+                        <span className="text-xs text-slate-400 font-medium">לא הוגדרו חדרים</span>
+                    )}
+                    {mergedRooms.map((room, idx) => {
+                        const color = ROOM_COLORS[idx % ROOM_COLORS.length];
+                        return (
+                            <button
+                                key={room.id}
+                                onClick={() => setEditingRoom(room)}
+                                className={`group/room flex items-center gap-1.5 ${color.bg} border ${color.border} rounded-xl px-2.5 py-1.5 hover:shadow-sm active:scale-95 transition-all cursor-pointer`}
+                            >
+                                <div className={`w-5 h-5 rounded-lg ${color.badge} flex items-center justify-center flex-shrink-0`}>
+                                    <BedDouble className={`w-2.5 h-2.5 ${color.num}`} />
+                                </div>
+                                <div className="text-right leading-none">
+                                    <div className={`text-xs font-bold ${color.text} max-w-[100px] truncate`}>
+                                        {room.label || room.roomType || `חדר ${idx + 1}`}
+                                    </div>
+                                    <div className="text-[9px] text-slate-500 mt-0.5">
+                                        {room.adults}{room.children > 0 ? `+${room.children}` : ''} אנשים
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={e => { e.stopPropagation(); handleDeleteRoom(room.id); }}
+                                    className="opacity-0 group-hover/room:opacity-100 p-0.5 hover:bg-red-100 rounded transition-all"
+                                >
+                                    <X className="w-2.5 h-2.5 text-red-400" />
+                                </button>
+                            </button>
+                        );
+                    })}
+                    <button
+                        onClick={() => setEditingRoom(null)}
+                        className="flex items-center gap-1 text-xs font-bold text-indigo-500 hover:bg-indigo-50 px-2.5 py-1.5 rounded-xl border border-dashed border-indigo-200 transition-colors whitespace-nowrap"
+                    >
+                        <Plus className="w-3.5 h-3.5" /> הוסף חדר
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Expand toggle ── */}
+            <button
+                className="w-full border-t border-slate-100 px-4 py-2 flex items-center justify-between hover:bg-slate-50/60 transition-colors"
+                onClick={() => setIsExpanded(v => !v)}
+            >
+                <span className="text-xs text-slate-400 font-medium">
+                    {isExpanded ? 'הסתר פרטים' : 'פרטים נוספים'}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-300 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* ── Expandable details ── */}
             <AnimatePresence>
                 {isExpanded && (
                     <motion.div
@@ -584,38 +460,35 @@ const HotelRow: React.FC<{
                         transition={{ type: 'spring', damping: 30, stiffness: 400 }}
                         className="overflow-hidden"
                     >
-                        <div className="px-4 pb-4 pt-3 bg-slate-50/40 border-t border-slate-100 space-y-3">
-
-                            {/* Map link + full cancellation policy */}
+                        <div className="px-4 pb-4 pt-2 space-y-3 bg-slate-50/30">
+                            {/* Map + cancellation */}
                             <div className="flex items-center gap-2 flex-wrap">
                                 <a
-                                    href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''} ${tripDestination || ''}`)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-                                    onClick={e => e.stopPropagation()}
+                                    href={primary.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${primary.name} ${primary.address || ''} ${tripDestination || ''}`)}`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                                 >
                                     <Navigation className="w-3 h-3" /> הצג במפה
                                 </a>
-                                {data.cancellationPolicy && (
-                                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-600">
+                                {primary.cancellationPolicy && (
+                                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 flex-1 min-w-0">
                                         <ShieldCheck className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                                        <span>{data.cancellationPolicy}</span>
+                                        <span className="truncate">{primary.cancellationPolicy}</span>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Vibe Check */}
-                            {data.locationVibe ? (
+                            {/* Vibe check */}
+                            {primary.locationVibe ? (
                                 <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 flex items-start gap-2">
                                     <Sparkles className="w-3.5 h-3.5 text-purple-500 flex-shrink-0 mt-0.5" />
-                                    <p className="text-xs text-purple-900 font-medium">{data.locationVibe}</p>
+                                    <p className="text-xs text-purple-900 font-medium">{primary.locationVibe}</p>
                                 </div>
                             ) : (
                                 <button
-                                    onClick={e => { e.stopPropagation(); analyzeLocation(); }}
+                                    onClick={analyzeLocation}
                                     disabled={analyzing}
-                                    className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-purple-600 hover:bg-purple-50 py-2 px-3 rounded-xl transition-colors border border-dashed border-purple-200"
+                                    className="flex items-center gap-1.5 text-xs font-bold text-purple-600 hover:bg-purple-50 py-2 px-3 rounded-xl transition-colors border border-dashed border-purple-200"
                                 >
                                     {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                                     {analyzing ? 'מנתח מיקום...' : 'מה ה-Vibe של האזור?'}
@@ -624,10 +497,10 @@ const HotelRow: React.FC<{
 
                             {/* Notes */}
                             {isEditingNote ? (
-                                <div className="flex gap-2 bg-yellow-50 p-2.5 rounded-xl border border-yellow-200" onClick={e => e.stopPropagation()}>
+                                <div className="flex gap-2 bg-yellow-50 p-2.5 rounded-xl border border-yellow-200">
                                     <input
                                         className="flex-grow bg-transparent text-sm outline-none text-slate-800 placeholder:text-slate-400"
-                                        placeholder="הוסף הערה לטיול..."
+                                        placeholder="הוסף הערה..."
                                         value={noteText}
                                         onChange={e => setNoteText(e.target.value)}
                                         autoFocus
@@ -638,26 +511,43 @@ const HotelRow: React.FC<{
                                 </div>
                             ) : (
                                 <button
-                                    onClick={e => { e.stopPropagation(); setIsEditingNote(true); }}
-                                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-colors text-right ${data.notes ? 'bg-yellow-50 border border-yellow-100 text-yellow-900 hover:bg-yellow-100' : 'text-slate-400 hover:bg-slate-50 border border-dashed border-slate-200'}`}
+                                    onClick={() => setIsEditingNote(true)}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-colors text-right ${primary.notes ? 'bg-yellow-50 border border-yellow-100 text-yellow-900 hover:bg-yellow-100' : 'text-slate-400 hover:bg-slate-50 border border-dashed border-slate-200'}`}
                                 >
-                                    <StickyNote className={`w-3.5 h-3.5 flex-shrink-0 ${data.notes ? 'text-yellow-600' : 'text-slate-400'}`} />
-                                    <span className="font-medium truncate">{data.notes || 'הוסף הערה...'}</span>
+                                    <StickyNote className={`w-3.5 h-3.5 flex-shrink-0 ${primary.notes ? 'text-yellow-600' : 'text-slate-400'}`} />
+                                    <span className="font-medium truncate">{primary.notes || 'הוסף הערה...'}</span>
                                 </button>
                             )}
 
-                            {/* Rooms Panel */}
-                            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                                <RoomsPanel
-                                    rooms={rooms}
-                                    tripTravelers={tripTravelers}
-                                    onUpdateRooms={onUpdateRooms}
-                                />
-                            </div>
+                            {/* Multi-booking breakdown */}
+                            {group.hotels.length > 1 && (
+                                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+                                    <div className="text-xs font-black text-indigo-800 mb-2">מוזג מ-{group.hotels.length} הזמנות נפרדות</div>
+                                    <div className="space-y-1.5">
+                                        {group.hotels.map((h, i) => (
+                                            <div key={h.id} className="flex items-center gap-2 text-xs text-indigo-700 bg-white/60 rounded-lg px-2.5 py-1.5">
+                                                <span className="font-black text-indigo-400">#{i + 1}</span>
+                                                {h.confirmationCode && <span className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-indigo-100">{h.confirmationCode}</span>}
+                                                {h.rooms && h.rooms.length > 0 && <span>{h.rooms.length} חדרים</span>}
+                                                {h.price && <span className="ms-auto font-bold">{h.price}</span>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Room form modal */}
+            {editingRoom !== undefined && (
+                <RoomFormModal
+                    initialData={editingRoom ?? undefined}
+                    onClose={() => setEditingRoom(undefined)}
+                    onSave={handleSaveRoom}
+                />
+            )}
         </div>
     );
 };
@@ -673,6 +563,8 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
     const [editingHotel, setEditingHotel] = useState<HotelBooking | null>(null);
     const [hotelToDelete, setHotelToDelete] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const hotelGroups = groupHotels(hotels || []);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -691,17 +583,27 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
         onUpdateTrip({ ...trip, hotels: updatedHotels });
     };
 
-    const handleUpdateRooms = (hotelId: string, rooms: HotelRoom[]) => {
-        const updatedHotels = (trip.hotels || []).map(h => h.id === hotelId ? { ...h, rooms } : h);
+    const handleUpdateGroupRooms = (group: HotelGroup, newRooms: Array<HotelRoom & { _hotelId: string }>) => {
+        // Distribute rooms back to their respective hotels
+        const updates: Record<string, HotelRoom[]> = {};
+        group.hotels.forEach(h => { updates[h.id] = []; });
+        newRooms.forEach(({ _hotelId, ...room }) => {
+            const targetId = (_hotelId && updates.hasOwnProperty(_hotelId)) ? _hotelId : group.primary.id;
+            updates[targetId].push(room as HotelRoom);
+        });
+        const updatedHotels = (trip.hotels || []).map(h =>
+            updates.hasOwnProperty(h.id) ? { ...h, rooms: updates[h.id] } : h
+        );
         onUpdateTrip({ ...trip, hotels: updatedHotels });
     };
 
-    const handleDeleteHotel = (hotelId: string) => setHotelToDelete(hotelId);
+    const handleDeleteGroup = (group: HotelGroup) => setHotelToDelete(group.primary.id);
 
     const confirmDeleteHotel = () => {
         if (hotelToDelete) {
-            const updatedHotels = (trip.hotels || []).filter(h => h.id !== hotelToDelete);
-            onUpdateTrip({ ...trip, hotels: updatedHotels });
+            const group = hotelGroups.find(g => g.primary.id === hotelToDelete);
+            const idsToDelete = new Set(group ? group.hotels.map(h => h.id) : [hotelToDelete]);
+            onUpdateTrip({ ...trip, hotels: (trip.hotels || []).filter(h => !idsToDelete.has(h.id)) });
             setHotelToDelete(null);
         }
     };
@@ -724,8 +626,29 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
         setEditingHotel(null);
     };
 
-    // Compute summary stats
-    const hotelsWithNoRooms = (hotels || []).filter(h => !h.rooms || h.rooms.length === 0);
+    // City breakdown — based on groups (no double-counting)
+    const cityBreakdown = (() => {
+        const cityMap: Record<string, number> = {};
+        hotelGroups.forEach(g => {
+            const city = g.primary.city || g.primary.address?.split(',')[0]?.trim() || 'אחר';
+            const n = g.primary.nights && g.primary.nights > 0 ? g.primary.nights : (() => {
+                const ci = g.primary.checkInDate ? new Date(g.primary.checkInDate.split('T')[0] + 'T12:00:00') : null;
+                const co = g.primary.checkOutDate ? new Date(g.primary.checkOutDate.split('T')[0] + 'T12:00:00') : null;
+                if (ci && co && !isNaN(ci.getTime()) && !isNaN(co.getTime())) {
+                    const d = Math.round((co.getTime() - ci.getTime()) / 86400000);
+                    return d > 0 ? d : 0;
+                }
+                return 0;
+            })();
+            cityMap[city] = (cityMap[city] || 0) + n;
+        });
+        return cityMap;
+    })();
+    const cities = Object.entries(cityBreakdown);
+    const totalNights = cities.reduce((s, [, n]) => s + n, 0);
+
+    // Group to delete info (for confirm message)
+    const groupToDelete = hotelGroups.find(g => g.primary.id === hotelToDelete);
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">
@@ -739,7 +662,10 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                                 <span className="bg-indigo-100 p-2 rounded-xl text-indigo-600 shadow-sm flex-shrink-0"><Hotel className="w-6 h-6 md:w-7 md:h-7" /></span>
                                 המלונות שלי
                             </h2>
-                            <p className="text-slate-400 text-sm font-medium mt-0.5 mr-14">{hotels.length} {hotels.length === 1 ? 'מלון' : 'מלונות'}</p>
+                            <p className="text-slate-400 text-sm font-medium mt-0.5 mr-14">
+                                {hotelGroups.length} {hotelGroups.length === 1 ? 'מלון' : 'מלונות'}
+                                {hotels.length > hotelGroups.length && ` (${hotels.length} הזמנות)`}
+                            </p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto flex-shrink-0">
                             <button onClick={() => setIsSmartAddOpen(true)}
@@ -753,79 +679,46 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                         </div>
                     </div>
 
-                    {/* ── Destination breakdown strip ── */}
-                    {(() => {
-                        // Group hotels by city and sum nights
-                        const cityMap: Record<string, number> = {};
-                        (hotels || []).forEach(h => {
-                            const city = h.city || h.address?.split(',')[0]?.trim() || 'אחר';
-                            const n = h.nights && h.nights > 0 ? h.nights : (() => {
-                                const ci = h.checkInDate ? new Date(h.checkInDate.split('T')[0]) : null;
-                                const co = h.checkOutDate ? new Date(h.checkOutDate.split('T')[0]) : null;
-                                if (ci && co && !isNaN(ci.getTime()) && !isNaN(co.getTime())) {
-                                    const d = Math.round((co.getTime() - ci.getTime()) / 86400000);
-                                    return d > 0 ? d : 0;
-                                }
-                                return 0;
-                            })();
-                            cityMap[city] = (cityMap[city] || 0) + n;
-                        });
-                        const cities = Object.entries(cityMap);
-                        const totalNights = cities.reduce((s, [, n]) => s + n, 0);
-                        return (
-                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                    <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600"><Calendar className="w-4 h-4" /></span>
-                                    <div>
-                                        <div className="text-xl font-black text-slate-800 leading-none">{totalNights}</div>
-                                        <div className="text-xs font-bold text-slate-400">לילות בסה״כ</div>
-                                    </div>
-                                </div>
-                                {cities.length > 0 && <div className="w-px h-8 bg-slate-100 flex-shrink-0" />}
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    {cities.map(([city, nights], idx) => (
-                                        <span key={city} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-lg">
-                                            <MapPin className="w-3 h-3 flex-shrink-0" />
-                                            {city}
-                                            {nights > 0 && <span className="bg-indigo-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md ml-1">{nights}L</span>}
-                                        </span>
-                                    ))}
-                                </div>
+                    {/* ── Destination nights breakdown ── */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600"><Calendar className="w-4 h-4" /></span>
+                            <div>
+                                <div className="text-xl font-black text-slate-800 leading-none">{totalNights}</div>
+                                <div className="text-xs font-bold text-slate-400">לילות בסה״כ</div>
                             </div>
-                        );
-                    })()}
-
-                    {/* Warning if rooms don't match */}
-                    {hotelsWithNoRooms.length > 0 && (
-                        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
-                            <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                            <span className="text-sm font-bold text-amber-800">
-                                {hotelsWithNoRooms.length === 1
-                                    ? `ל-${hotelsWithNoRooms[0].name} אין חדרים מוגדרים`
-                                    : `${hotelsWithNoRooms.length} מלונות ללא חדרים מוגדרים`}
-                            </span>
                         </div>
-                    )}
+                        {cities.length > 0 && <div className="w-px h-8 bg-slate-100 flex-shrink-0" />}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {cities.map(([city, nights]) => (
+                                <span key={city} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-lg">
+                                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                                    {city}
+                                    {nights > 0 && <span className="bg-indigo-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md ml-1">{nights}L</span>}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
 
-                    {/* Hotel List — compact expandable rows */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
-                        {hotels.map((hotel) => (
-                            <HotelRow
-                                key={hotel.id}
-                                data={hotel}
+                    {/* ── Hotel cards grid ── */}
+                    <div className="grid grid-cols-1 gap-4">
+                        {hotelGroups.map((group) => (
+                            <HotelCard
+                                key={group.key}
+                                group={group}
                                 tripDestination={trip.destination}
                                 tripTravelers={trip.travelers}
-                                onSaveNote={(note) => handleNoteUpdate(hotel.id, note)}
-                                onSaveVibe={(vibe) => handleVibeUpdate(hotel.id, vibe)}
-                                onDelete={() => handleDeleteHotel(hotel.id)}
-                                onEdit={() => handleEditHotel(hotel)}
-                                onUpdateRooms={(rooms) => handleUpdateRooms(hotel.id, rooms)}
+                                onUpdateGroupRooms={(rooms) => handleUpdateGroupRooms(group, rooms)}
+                                onDeleteGroup={() => handleDeleteGroup(group)}
+                                onEditPrimary={() => handleEditHotel(group.primary)}
+                                onSaveNote={(note) => handleNoteUpdate(group.primary.id, note)}
+                                onSaveVibe={(vibe) => handleVibeUpdate(group.primary.id, vibe)}
                             />
                         ))}
                     </div>
                 </>
             ) : (
-                /* PREMIUM EMPTY STATE */
+                /* EMPTY STATE */
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8">
                     <div className="relative">
                         <div className="absolute inset-0 bg-indigo-200 rounded-full blur-3xl opacity-20 animate-pulse"></div>
@@ -920,7 +813,11 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
             <ConfirmModal
                 isOpen={!!hotelToDelete}
                 title="מחיקת מלון"
-                message="האם אתה בטוח שברצונך למחוק את המלון מהרשימה?"
+                message={
+                    groupToDelete && groupToDelete.hotels.length > 1
+                        ? `האם למחוק את ${groupToDelete.primary.name} ואת כל ${groupToDelete.hotels.length} ההזמנות שלו?`
+                        : 'האם אתה בטוח שברצונך למחוק את המלון מהרשימה?'
+                }
                 confirmText="מחק"
                 cancelText="ביטול"
                 onConfirm={confirmDeleteHotel}
@@ -987,9 +884,6 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-slate-400 mr-2">Longitude</label>
                                     <input type="number" step="any" className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder="44.8015" value={formData.lng || ''} onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) } as any)} />
-                                </div>
-                                <div className="col-span-2 text-[10px] text-slate-400 px-1">
-                                    💡 ניתן למצוא קואורדינטות דרך <a href="https://maps.google.com" target="_blank" className="text-indigo-500 underline">Google Maps</a> — לחץ ימני על מיקום → "What's here"
                                 </div>
                             </div>
                         )}

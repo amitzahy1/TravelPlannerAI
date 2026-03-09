@@ -8,17 +8,16 @@ import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 const GOOGLE_MODELS = {
   // Tier 1: Heavy Reasoning (Files, Complex Analysis, Vision)
   SMART_CANDIDATES: [
-    "gemini-3-pro-preview",
     "gemini-2.5-pro",
-    "gemini-3-flash-preview",
-    "gemini-1.5-pro-latest",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-1.5-flash-latest",
   ],
   // Tier 2: Speed & Chat (Fast Conversations)
   FAST_CANDIDATES: [
-    "gemini-3-flash-preview",
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
-    "gemini-1.5-flash-latest"
+    "gemini-1.5-flash-latest",
   ]
 };
 

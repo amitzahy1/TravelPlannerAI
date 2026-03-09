@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Family Trip to Georgia — יומן מסע</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/*═══════════════════════════════════════════════════════════════
+  Travel Journal v3 — Premium Redesign
+═══════════════════════════════════════════════════════════════*/
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --font: 'Rubik',-apple-system,sans-serif;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-light: #94a3b8;
+  --border: #e2e8f0;
+  --primary: #2563eb;
+  --primary-dark: #1e40af;
+  --accent: #f59e0b;
+  --danger: #ef4444;
+  --success: #10b981;
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  
+  --r: 16px;
+}
+
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:100px;
+}
+
+a{color:var(--primary);text-decoration:none}
+
+/* ═══ HERO ═══ */
+.hero{
+  position:relative;
+  height:350px; /* Reduced height as requested */
+  display:flex;
+  align-items:flex-end;
+  overflow:hidden;
+  border-bottom:1px solid rgba(0,0,0,0.1);
+}
+
+.hero-bg{
+  position:absolute;inset:0;
+  background-size:cover;background-position:center;
+  filter:brightness(0.65);
+  animation:pan 40s ease-in-out infinite alternate;
+}
+@keyframes pan{from{transform:scale(1)}to{transform:scale(1.1)}}
+
+.hero-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 60%);
+}
+
+.hero-content{
+  position:relative;z-index:2;
+  width:100%;max-width:800px;margin:0 auto;
+  padding:0 24px 32px;
+  color:white;
+}
+
+.hero h1{
+  font-size:clamp(32px, 5vw, 48px);
+  font-weight:800;
+  line-height:1.1;
+  margin-bottom:8px;
+  text-shadow:0 2px 10px rgba(0,0,0,0.3);
+}
+
+.hero-meta{
+  display:flex;gap:12px;font-size:16px;font-weight:500;opacity:0.9;
+  align-items:center;
+}
+
+/* ═══ STATS BAR ═══ */
+.stats-bar{
+  max-width:800px;margin:-24px auto 32px;
+  position:relative;z-index:10;
+  display:flex;gap:12px;padding:0 20px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+.stat-pill{
+  background:white;padding:10px 16px;
+  border-radius:100px;
+  display:flex;align-items:center;gap:8px;
+  box-shadow:var(--shadow-lg);
+  font-size:14px;font-weight:700;color:var(--text);
+}
+
+/* ═══ CALENDAR STRIP ═══ */
+.calendar-section{
+  max-width:800px;margin:0 auto 40px;
+  padding:0 20px;
+}
+.cal-strip{
+  display:flex;gap:6px;overflow-x:auto;padding:4px;
+  scrollbar-width:none;
+}
+.cal-strip::-webkit-scrollbar{display:none}
+
+.cal-day{
+  flex-shrink:0;width:56px;height:72px;
+  background:white;border:1px solid var(--border);
+  border-radius:12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-shadow:var(--shadow-sm);
+  transition:all 0.2s;
+  cursor:pointer;position:relative;
+  text-decoration:none; color:inherit;
+}
+.cal-day:hover{transform:translateY(-2px);border-color:var(--primary)}
+.cal-day.is-today{border:2px solid var(--primary);background:#eff6ff}
+.cal-day.has-flight{background:#fdf4ff;border-color:#fae8ff}
+.cal-day.has-hotel{background:#f0fdf4;border-color:#dcfce7}
+
+.cal-dow{font-size:11px;font-weight:500;color:var(--text-muted)}
+.cal-num{font-size:18px;font-weight:800;line-height:1.2}
+.cal-month{font-size:9px;font-weight:600;color:var(--primary);text-transform:uppercase}
+.cal-icons{font-size:10px;margin-top:2px}
+.cal-hotel-dot{
+  position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;
+  background:var(--success);
+}
+
+/* ═══ SECTIONS ═══ */
+.section{max-width:800px;margin:0 auto 48px;padding:0 20px}
+.section-title{
+  font-size:22px;font-weight:800;margin-bottom:20px;
+  display:flex;align-items:center;gap:10px;
+  color:var(--text);
+}
+
+/* ═══ BOARDING PASS ═══ */
+.boarding-passes{display:flex;flex-direction:column;gap:16px}
+.boarding-pass{
+  background:white;border-radius:16px;overflow:hidden;
+  box-shadow:var(--shadow);position:relative;
+  border:1px solid var(--border);
+}
+.bp-main{padding:20px}
+.bp-header{display:flex;justify-content:space-between;margin-bottom:20px;border-bottom:1px dashed var(--border);padding-bottom:12px}
+.bp-airline-name{font-weight:700;font-size:14px;text-transform:uppercase}
+.bp-flight-num{background:var(--bg);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;margin-right:8px}
+.bp-date{font-size:13px;color:var(--text-muted);font-weight:500}
+
+.bp-route{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.bp-city{text-align:center;flex:1}
+.bp-code{font-size:32px;font-weight:900;line-height:1}
+.bp-time{font-size:18px;font-weight:700;color:var(--primary);margin-top:4px}
+.bp-city-name{font-size:12px;color:var(--text-muted)}
+
+.bp-flight-path{flex:1;display:flex;flex-direction:column;align-items:center;padding:0 10px}
+.bp-path-line{width:100%;height:2px;background:var(--border);position:relative;margin:8px 0}
+.bp-path-line::after{content:'✈';position:absolute;top:-10px;left:50%;transform:translateX(-50%) rotate(90deg);font-size:14px;color:var(--text-light)}
+
+.bp-details-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;background:var(--bg);padding:12px;border-radius:12px}
+.bp-det{text-align:center}
+.bp-lbl{display:block;font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase}
+.bp-val{font-size:14px;font-weight:700}
+
+/* ═══ HOTEL CARDS ═══ */
+.hotels-timeline{display:flex;flex-direction:column;gap:16px}
+.hotel-card{
+  background:white;border-radius:16px;overflow:hidden;
+  box-shadow:var(--shadow);border:1px solid var(--border);
+  display:flex;
+}
+.hotel-image-col{
+  width:80px;background:var(--bg);display:flex;align-items:center;justify-content:center;
+  font-size:32px;border-left:1px solid var(--border);
+}
+.hotel-body{padding:20px;flex:1}
+.hotel-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+.hotel-name{font-size:18px;font-weight:800;line-height:1.2}
+.map-btn{font-size:12px;font-weight:700;color:var(--primary);background:#eff6ff;padding:4px 10px;border-radius:6px}
+.hotel-city{font-size:13px;font-weight:600;color:var(--primary)}
+.hotel-address{font-size:13px;color:var(--text-muted);margin-bottom:16px}
+
+.hotel-stay-row{
+  display:flex;align-items:center;gap:12px;
+  background:var(--bg);padding:10px 16px;border-radius:10px;
+  margin-bottom:12px;
+}
+.stay-item{display:flex;flex-direction:column}
+.stay-lbl{font-size:10px;font-weight:600;color:var(--text-muted)}
+.stay-val{font-size:14px;font-weight:700}
+.stay-arrow{font-size:18px;color:var(--text-light)}
+.stay-badge{margin-right:auto;font-size:12px;font-weight:700;background:white;padding:4px 10px;border-radius:100px;box-shadow:var(--shadow-sm)}
+
+.hotel-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.htag{font-size:11px;font-weight:600;background:#f1f5f9;padding:4px 8px;border-radius:6px;color:var(--text-muted)}
+.hotel-conf{font-size:12px;background:#fffbeb;padding:6px 10px;border-radius:6px;display:inline-block;color:#b45309}
+
+/* ═══ JOURNAL TIMELINE ═══ */
+.journal-entry{display:flex;gap:16px;margin-bottom:24px;scroll-margin-top:100px}
+.journal-side{
+  width:50px;text-align:center;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;
+}
+.js-dow{font-size:12px;font-weight:500;color:var(--text-muted)}
+.js-num{font-size:24px;font-weight:800;line-height:1}
+
+.journal-divider{display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0;position:relative}
+.jd-dot{width:12px;height:12px;border-radius:50%;background:var(--border);border:2px solid white;box-shadow:0 0 0 2px var(--border);margin-top:10px;z-index:2}
+.jd-line{width:2px;background:var(--border);flex:1;margin-top:-2px}
+.is-today .jd-dot{background:var(--primary);box-shadow:0 0 0 2px var(--primary)}
+
+.journal-content{flex:1}
+.journal-card{
+  background:white;border-radius:16px;border:1px solid var(--border);
+  box-shadow:var(--shadow-sm);overflow:hidden;
+}
+.jc-header{
+  padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.jc-title{font-size:16px;font-weight:800}
+.jc-date{font-size:12px;font-weight:600;color:var(--text-muted)}
+
+.journal-flight{
+  background:#eff6ff;padding:10px 16px;display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--border);
+}
+.jf-icon{font-size:16px}
+.jf-info{display:flex;flex-direction:column}
+.jf-route{font-size:13px;font-weight:700;color:var(--primary-dark)}
+.jf-time{font-size:11px;color:var(--primary)}
+
+.jc-body{padding:16px}
+.journal-activities{list-style:none}
+.journal-activities li{
+  position:relative;padding-right:16px;margin-bottom:6px;font-size:15px;
+}
+.journal-activities li::before{
+  content:'•';color:var(--accent);font-weight:bold;position:absolute;right:0;
+}
+.journal-empty{font-size:13px;color:var(--text-light);font-style:italic;text-align:center}
+.journal-notes{
+  margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);
+  font-size:13px;color:var(--text-muted);
+}
+
+.journal-footer-hotel{
+  background:#f0fdf4;padding:8px 16px;font-size:13px;color:#166534;
+  border-top:1px solid #dcfce7;display:flex;align-items:center;gap:6px;
+}
+
+/* ═══ RESTAURANTS ═══ */
+.resto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.resto-card{
+  background:white;padding:16px;border-radius:16px;
+  border:1px solid var(--border);box-shadow:var(--shadow-sm);
+}
+.resto-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.resto-name{font-weight:700;font-size:15px}
+.resto-price{font-size:12px;color:var(--text-light)}
+.resto-cuisine{font-size:12px;color:var(--text-muted);margin-bottom:8px;background:var(--bg);display:inline-block;padding:2px 8px;border-radius:4px}
+.resto-loc{font-size:12px;color:var(--text-light);margin-bottom:8px}
+.resto-dish{font-size:12px;font-weight:600;color:var(--accent)}
+
+/* ═══ PRINT ═══ */
+@media print {
+  .hero{height:200px}
+  .boarding-pass,.hotel-card,.journal-entry{break-inside:avoid}
+  .cal-strip{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-bg" style="background-image:url('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80')"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+     <h1>Family Trip to Georgia</h1>
+     <div class="hero-meta">
+        <span>📍 Georgia - Tbilisi</span>
+        <span>•</span>
+        <span>8 ימים</span>
+     </div>
+  </div>
+</header>
+
+<div class="stats-bar">
+   <div class="stat-pill">✈️ 2 טיסות</div>
+   <div class="stat-pill">🏨 2 מלונות</div>
+   <div class="stat-pill">📅 8 ימים</div>
+</div>
+
+
+    <section class="calendar-section">
+      <div class="cal-strip">
+      <a href="#day-2026-03-30" class="cal-day has-flight has-hotel check-in" onclick="document.getElementById('day-2026-03-30').scrollIntoView({behavior: 'smooth'}); return false;">
+        <div class="cal-dow">ב׳</div>
+        <div class="cal-num">30</div>
+        <div class="cal-month">מרץ</div>
+        <div class="cal-icons">✈️</div>
+        <div class="cal-hotel-dot" title="Lopota Lake Resort &amp; Spa"></div>
+      </a>
+    
+      <a href="#day-2026-03-31" class="cal-day has-hotel" onclick="document.getElementById('day-2026-03-31').scrollIntoView({behavior: 'smooth'}); return false;">
+        <div class="cal-dow">ג׳</div>
+        <div class="cal-num">31</div>
+        <div class="cal-month"></div>
+        <div class="cal-icons"></div>
+        
+      </a>
+    
+      <a href="#day-2026-04-01" class="cal-day has-hotel" onclick="document.getElementById('day-2026-04-01').scrollIntoView({behavior: 'smooth'}); return false;">
+        <div class="cal-dow">ד׳</div>
+        <div class="cal-num">1</div>
+        <div class="cal-month">אפר׳</div>
+        <div class="cal-icons"></div>
+        
+      </a>
+    
+      <a href="#day-2026-04-02" class="cal-day has-hotel" onclick="document.getElementById('day-2026-04-02').scrollIntoView({behavior: 'smooth'}); return false;">
+        <div class="cal-dow">ה׳</div>
+        <div class="cal-num">2</div>
+        <div class="cal-month"></div>
+        <div class="cal-icons"></div>
+        
+      </a>
+    
+      <a href="#day-2026-04-03" class="cal-day has-hotel" onclick="document.getElementById('day-2026-04-03').scrollIntoView({behavior: 'smooth'}); return false;">
+        <div class="cal-dow">ו׳</div>
+        <div class="cal-num">3</div>
+        <div class="cal-month"></div>
+        <div class="cal-icons"></div>
+        
+      </a>
+    
+      <a href="#day-2026-04-04" class="cal-day has-hotel check-in" onclick="document.getElementById('day-2026-04-04').scrollIntoView({behavior: 'smooth'}); return false;">
+        <div class="cal-dow">ש׳</div>
+        <div class="cal-num">4</div>
+        <div class="cal-month"></div>
+        <div class="cal-icons">🏨</div>
+        <div class="cal-hotel-dot" title="The Gate Hotel City Centre"></div>
+      </a>
+    
+      <a href="#day-2026-04-05" class="cal-day has-hotel" onclick="document.getElementById('day-2026-04-05').scrollIntoView({behavior: 'smooth'}); return false;">
+        <div class="cal-dow">א׳</div>
+        <div class="cal-num">5</div>
+        <div class="cal-month"></div>
+        <div class="cal-icons"></div>
+        
+      </a>
+    
+      <a href="#day-2026-04-06" class="cal-day has-flight has-hotel check-out" onclick="document.getElementById('day-2026-04-06').scrollIntoView({behavior: 'smooth'}); return false;">
+        <div class="cal-dow">ב׳</div>
+        <div class="cal-num">6</div>
+        <div class="cal-month"></div>
+        <div class="cal-icons">✈️</div>
+        <div class="cal-hotel-dot" title="The Gate Hotel City Centre"></div>
+      </a>
+    </div>
+    </section>
+  
+
+    <section class="section">
+      <h2 class="section-title"><span class="section-emoji">✈️</span> טיסות</h2>
+      <div class="boarding-passes">
+    <div class="boarding-pass">
+      <div class="bp-tear-left"></div>
+      <div class="bp-tear-right"></div>
+      <div class="bp-main">
+        <div class="bp-header">
+           <div class="bp-airline">
+             <span class="bp-airline-name">Israir Airlines</span>
+             <span class="bp-flight-num">6H 897</span>
+           </div>
+           <div class="bp-date">יום שני, 30 במרץ 2026</div>
+        </div>
+        
+        <div class="bp-route">
+          <div class="bp-city">
+            <div class="bp-code">TLV</div>
+            <div class="bp-city-name">Tel Aviv</div>
+            <div class="bp-time">19:30</div>
+          </div>
+          <div class="bp-flight-path">
+            <div class="bp-path-line"></div>
+            <div class="bp-plane">✈</div>
+            
+          </div>
+          <div class="bp-city">
+            <div class="bp-code">TBS</div>
+            <div class="bp-city-name">Tbilisi</div>
+            <div class="bp-time">23:05</div>
+          </div>
+        </div>
+
+        <div class="bp-details-grid">
+           
+           
+           
+           
+        </div>
+      </div>
+      <!-- Stub removed for cleaner look on mobile/print based on user feedback -->
+    </div>
+    <div class="boarding-pass">
+      <div class="bp-tear-left"></div>
+      <div class="bp-tear-right"></div>
+      <div class="bp-main">
+        <div class="bp-header">
+           <div class="bp-airline">
+             <span class="bp-airline-name">Israir Airlines</span>
+             <span class="bp-flight-num">6H 892</span>
+           </div>
+           <div class="bp-date">יום שני, 6 באפריל 2026</div>
+        </div>
+        
+        <div class="bp-route">
+          <div class="bp-city">
+            <div class="bp-code">TBS</div>
+            <div class="bp-city-name">Tbilisi</div>
+            <div class="bp-time">00:30</div>
+          </div>
+          <div class="bp-flight-path">
+            <div class="bp-path-line"></div>
+            <div class="bp-plane">✈</div>
+            
+          </div>
+          <div class="bp-city">
+            <div class="bp-code">TLV</div>
+            <div class="bp-city-name">Tel Aviv</div>
+            <div class="bp-time">02:10</div>
+          </div>
+        </div>
+
+        <div class="bp-details-grid">
+           
+           
+           
+           
+        </div>
+      </div>
+      <!-- Stub removed for cleaner look on mobile/print based on user feedback -->
+    </div></div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title"><span class="section-emoji">🏨</span> מלונות</h2>
+      <div class="hotels-timeline">
+    <div class="hotel-card">
+      <div class="hotel-image-col">
+         <div class="hotel-icon">🏨</div>
+      </div>
+      <div class="hotel-body">
+        <div class="hotel-header">
+          <div>
+            <h3 class="hotel-name">Lopota Lake Resort &amp; Spa</h3>
+            
+          </div>
+          
+        </div>
+        <p class="hotel-address">Lopota, 2200 Napareuli, Georgia</p>
+        
+        <div class="hotel-stay-row">
+           <div class="stay-item">
+              <span class="stay-lbl">צ'ק-אין</span>
+              <span class="stay-val">יום ב׳, 30 במרץ</span>
+           </div>
+           <div class="stay-arrow">➝</div>
+           <div class="stay-item">
+              <span class="stay-lbl">צ'ק-אאוט</span>
+              <span class="stay-val">שבת, 4 באפר׳</span>
+           </div>
+           <div class="stay-badge">5 לילות</div>
+        </div>
+
+        
+        
+        <div class="hotel-conf">קוד אישור: <strong>6803.070.206</strong></div>
+      </div>
+    </div>
+    <div class="hotel-card">
+      <div class="hotel-image-col">
+         <div class="hotel-icon">🏨</div>
+      </div>
+      <div class="hotel-body">
+        <div class="hotel-header">
+          <div>
+            <h3 class="hotel-name">The Gate Hotel City Centre</h3>
+            <span class="hotel-city">Tbilisi</span>
+          </div>
+          
+        </div>
+        <p class="hotel-address">Freedom Square 4 Bld.2A, 0105 Tbilisi</p>
+        
+        <div class="hotel-stay-row">
+           <div class="stay-item">
+              <span class="stay-lbl">צ'ק-אין</span>
+              <span class="stay-val">שבת, 4 באפר׳</span>
+           </div>
+           <div class="stay-arrow">➝</div>
+           <div class="stay-item">
+              <span class="stay-lbl">צ'ק-אאוט</span>
+              <span class="stay-val">יום ב׳, 6 באפר׳</span>
+           </div>
+           <div class="stay-badge">2 לילות</div>
+        </div>
+
+        <div class="hotel-tags"><span class="htag">🥐 ארוחת בוקר</span></div>
+        
+        <div class="hotel-conf">קוד אישור: <strong>6547.465.319</strong></div>
+      </div>
+    </div></div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title"><span class="section-emoji">📖</span> יומן מסע</h2>
+      <div class="journal-timeline">
+    <div class="journal-entry" id="day-2026-03-30">
+      <div class="journal-side">
+         <div class="js-dow">ב׳</div>
+         <div class="js-num">30</div>
+      </div>
+      <div class="journal-divider">
+         <div class="jd-dot"></div>
+         <div class="jd-line"></div>
+      </div>
+      <div class="journal-content">
+        <div class="journal-card">
+           <div class="jc-header">
+              <h3 class="jc-title">Arrival in Georgia</h3>
+              <div class="jc-date">מרץ 30, 2026</div>
+           </div>
+           
+           <div class="journal-flight">
+               <span class="jf-icon">✈️</span>
+               <div class="jf-info">
+                 <span class="jf-route">TLV ➝ TBS</span>
+                 <span class="jf-time">19:30</span>
+               </div>
+             </div>
+           
+           <div class="jc-body">
+              <ul class="journal-activities"><li>10:00 הסעה לשדה תעופה</li></ul>
+              
+           </div>
+
+           <div class="journal-footer-hotel">
+              <span class="jh-icon">🌙</span> לינה: <strong>Lopota Lake Resort &amp; Spa</strong>
+           </div>
+        </div>
+      </div>
+    </div>
+    <div class="journal-entry" id="day-2026-03-31">
+      <div class="journal-side">
+         <div class="js-dow">ג׳</div>
+         <div class="js-num">31</div>
+      </div>
+      <div class="journal-divider">
+         <div class="jd-dot"></div>
+         <div class="jd-line"></div>
+      </div>
+      <div class="journal-content">
+        <div class="journal-card">
+           <div class="jc-header">
+              <h3 class="jc-title">טיול חופשי</h3>
+              <div class="jc-date">מרץ 31, 2026</div>
+           </div>
+           
+           
+           
+           <div class="jc-body">
+              <div class="journal-empty">אין פעילויות מתוכננות ליום זה</div>
+              
+           </div>
+
+           <div class="journal-footer-hotel">
+              <span class="jh-icon">🌙</span> לינה: <strong>Lopota Lake Resort &amp; Spa</strong>
+           </div>
+        </div>
+      </div>
+    </div>
+    <div class="journal-entry" id="day-2026-04-01">
+      <div class="journal-side">
+         <div class="js-dow">ד׳</div>
+         <div class="js-num">1</div>
+      </div>
+      <div class="journal-divider">
+         <div class="jd-dot"></div>
+         <div class="jd-line"></div>
+      </div>
+      <div class="journal-content">
+        <div class="journal-card">
+           <div class="jc-header">
+              <h3 class="jc-title">טיול חופשי</h3>
+              <div class="jc-date">אפר׳ 1, 2026</div>
+           </div>
+           
+           
+           
+           <div class="jc-body">
+              <div class="journal-empty">אין פעילויות מתוכננות ליום זה</div>
+              
+           </div>
+
+           <div class="journal-footer-hotel">
+              <span class="jh-icon">🌙</span> לינה: <strong>Lopota Lake Resort &amp; Spa</strong>
+           </div>
+        </div>
+      </div>
+    </div>
+    <div class="journal-entry" id="day-2026-04-02">
+      <div class="journal-side">
+         <div class="js-dow">ה׳</div>
+         <div class="js-num">2</div>
+      </div>
+      <div class="journal-divider">
+         <div class="jd-dot"></div>
+         <div class="jd-line"></div>
+      </div>
+      <div class="journal-content">
+        <div class="journal-card">
+           <div class="jc-header">
+              <h3 class="jc-title">טיול חופשי</h3>
+              <div class="jc-date">אפר׳ 2, 2026</div>
+           </div>
+           
+           
+           
+           <div class="jc-body">
+              <div class="journal-empty">אין פעילויות מתוכננות ליום זה</div>
+              
+           </div>
+
+           <div class="journal-footer-hotel">
+              <span class="jh-icon">🌙</span> לינה: <strong>Lopota Lake Resort &amp; Spa</strong>
+           </div>
+        </div>
+      </div>
+    </div>
+    <div class="journal-entry" id="day-2026-04-03">
+      <div class="journal-side">
+         <div class="js-dow">ו׳</div>
+         <div class="js-num">3</div>
+      </div>
+      <div class="journal-divider">
+         <div class="jd-dot"></div>
+         <div class="jd-line"></div>
+      </div>
+      <div class="journal-content">
+        <div class="journal-card">
+           <div class="jc-header">
+              <h3 class="jc-title">טיול חופשי</h3>
+              <div class="jc-date">אפר׳ 3, 2026</div>
+           </div>
+           
+           
+           
+           <div class="jc-body">
+              <div class="journal-empty">אין פעילויות מתוכננות ליום זה</div>
+              
+           </div>
+
+           <div class="journal-footer-hotel">
+              <span class="jh-icon">🌙</span> לינה: <strong>Lopota Lake Resort &amp; Spa</strong>
+           </div>
+        </div>
+      </div>
+    </div>
+    <div class="journal-entry" id="day-2026-04-04">
+      <div class="journal-side">
+         <div class="js-dow">ש׳</div>
+         <div class="js-num">4</div>
+      </div>
+      <div class="journal-divider">
+         <div class="jd-dot"></div>
+         <div class="jd-line"></div>
+      </div>
+      <div class="journal-content">
+        <div class="journal-card">
+           <div class="jc-header">
+              <h3 class="jc-title">טיול חופשי</h3>
+              <div class="jc-date">אפר׳ 4, 2026</div>
+           </div>
+           
+           
+           
+           <div class="jc-body">
+              <div class="journal-empty">אין פעילויות מתוכננות ליום זה</div>
+              
+           </div>
+
+           <div class="journal-footer-hotel">
+              <span class="jh-icon">🌙</span> לינה: <strong>The Gate Hotel City Centre</strong>
+           </div>
+        </div>
+      </div>
+    </div>
+    <div class="journal-entry" id="day-2026-04-05">
+      <div class="journal-side">
+         <div class="js-dow">א׳</div>
+         <div class="js-num">5</div>
+      </div>
+      <div class="journal-divider">
+         <div class="jd-dot"></div>
+         <div class="jd-line"></div>
+      </div>
+      <div class="journal-content">
+        <div class="journal-card">
+           <div class="jc-header">
+              <h3 class="jc-title">טיול חופשי</h3>
+              <div class="jc-date">אפר׳ 5, 2026</div>
+           </div>
+           
+           
+           
+           <div class="jc-body">
+              <div class="journal-empty">אין פעילויות מתוכננות ליום זה</div>
+              
+           </div>
+
+           <div class="journal-footer-hotel">
+              <span class="jh-icon">🌙</span> לינה: <strong>The Gate Hotel City Centre</strong>
+           </div>
+        </div>
+      </div>
+    </div>
+    <div class="journal-entry" id="day-2026-04-06">
+      <div class="journal-side">
+         <div class="js-dow">ב׳</div>
+         <div class="js-num">6</div>
+      </div>
+      <div class="journal-divider">
+         <div class="jd-dot"></div>
+         
+      </div>
+      <div class="journal-content">
+        <div class="journal-card">
+           <div class="jc-header">
+              <h3 class="jc-title">יום טיסה</h3>
+              <div class="jc-date">אפר׳ 6, 2026</div>
+           </div>
+           
+           <div class="journal-flight">
+               <span class="jf-icon">✈️</span>
+               <div class="jf-info">
+                 <span class="jf-route">TBS ➝ TLV</span>
+                 <span class="jf-time">00:30</span>
+               </div>
+             </div>
+           
+           <div class="jc-body">
+              
+              
+           </div>
+
+           
+        </div>
+      </div>
+    </div></div>
+    </section>
+
+<section class="section">
+  <h2 class="section-title"><span class="section-emoji">🍴</span> קולינריה</h2>
+  <div class="resto-grid">
+<div class="resto-card">
+  <div class="resto-header">
+     <div class="resto-name">Salobie Bia</div>
+     
+  </div>
+  <div class="resto-cuisine">Local</div>
+  <div class="resto-loc">Shota Rustaveli Ave 17, Tbilisi</div>
+  
+  <a href="https://www.google.com/maps/search/?api=1&amp;query=Salobie+Bia+Tbilisi" target="_blank" class="map-link">📍 נווט</a>
+</div>
+<div class="resto-card">
+  <div class="resto-header">
+     <div class="resto-name">Barbarestan</div>
+     
+  </div>
+  <div class="resto-cuisine">Local</div>
+  <div class="resto-loc">D. Aghmashenebeli Ave 132, Tbilisi</div>
+  
+  <a href="https://www.google.com/maps/search/?api=1&amp;query=Barbarestan+Tbilisi" target="_blank" class="map-link">📍 נווט</a>
+</div>
+<div class="resto-card">
+  <div class="resto-header">
+     <div class="resto-name">Mapshalia</div>
+     
+  </div>
+  <div class="resto-cuisine">Local</div>
+  <div class="resto-loc">D. Aghmashenebeli Ave 137, Tbilisi</div>
+  
+  <a href="https://www.google.com/maps/search/?api=1&amp;query=Mapshalia+Tbilisi" target="_blank" class="map-link">📍 נווט</a>
+</div>
+<div class="resto-card">
+  <div class="resto-header">
+     <div class="resto-name">Shavi Lomi</div>
+     
+  </div>
+  <div class="resto-cuisine">Local</div>
+  <div class="resto-loc">Zurab Kvlividze St 28, Tbilisi</div>
+  
+  <a href="https://www.google.com/maps/search/?api=1&amp;query=Shavi+Lomi+Tbilisi" target="_blank" class="map-link">📍 נווט</a>
+</div></div>
+</section>
+
+<div class="section" style="text-align:center;margin-top:60px;color:var(--text-light);font-size:12px;">
+  נוצר ע״י Travel Planner Pro • 19 בפברואר 2026
+</div>
+
+</body>
+</html>
