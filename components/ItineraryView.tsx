@@ -386,6 +386,16 @@ export const ItineraryView: React.FC<{
             // Sort manually to ensure order
             const sortedTimeline = Array.from(dayMap.values()).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
+            // Trim trailing empty days — days after the last hotel/flight with no events
+            // (prevents blank "Unknown" days from appearing when endDate overshoots due to hotel dates)
+            while (sortedTimeline.length > 0 && sortedTimeline[sortedTimeline.length - 1].events.length === 0) {
+                sortedTimeline.pop();
+            }
+            // Also trim leading empty days before any events
+            while (sortedTimeline.length > 0 && sortedTimeline[0].events.length === 0) {
+                sortedTimeline.shift();
+            }
+
             // Sticky Location Logic variables
             const defaultLocation = trip.destinationEnglish || (trip.destination || '').split('-')[0].trim();
             let currentStickyLocation = defaultLocation;
