@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip, HotelBooking, HotelRoom, TravelersComposition } from '../types';
 import {
@@ -11,24 +12,33 @@ import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
 
 
-// Helper to determine placeholder image based on address
-const getPlaceImage = (address: string): string => {
-    const lowerAddr = (address || '').toLowerCase();
-    if (lowerAddr.includes('bangkok') || lowerAddr.includes('bkk')) return 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('phuket')) return 'https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('samui') || lowerAddr.includes('koh samui')) return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('pattaya')) return 'https://images.unsplash.com/photo-1598970434795-0c54fe7c0648?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('chiang mai')) return 'https://images.unsplash.com/photo-1598135753163-6167c1a1ad65?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('krabi')) return 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('koh chang')) return 'https://images.unsplash.com/photo-1559530432-62dc0442c549?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('tao') || lowerAddr.includes('koh tao')) return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('london') || lowerAddr.includes('uk')) return 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('paris') || lowerAddr.includes('france')) return 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('rome') || lowerAddr.includes('italy')) return 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('barcelona') || lowerAddr.includes('spain')) return 'https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('new york') || lowerAddr.includes('nyc')) return 'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?auto=format&fit=crop&q=80';
-    if (lowerAddr.includes('beach') || lowerAddr.includes('resort') || lowerAddr.includes('island')) return 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&q=80';
-    return 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&q=80';
+// Generic hotel fallback image
+const HOTEL_FALLBACK = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80';
+
+// Helper to determine placeholder image based on hotel data
+const getPlaceImage = (hotel: HotelBooking): string => {
+    if (hotel.imageUrl) return hotel.imageUrl;
+    const combined = [hotel.name, hotel.city, hotel.address].filter(Boolean).join(' ').toLowerCase();
+    if (combined.includes('bangkok') || combined.includes('bkk')) return 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('phuket')) return 'https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('samui') || combined.includes('koh samui')) return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('pattaya')) return 'https://images.unsplash.com/photo-1598970434795-0c54fe7c0648?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('chiang mai')) return 'https://images.unsplash.com/photo-1598135753163-6167c1a1ad65?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('krabi')) return 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('koh chang')) return 'https://images.unsplash.com/photo-1559530432-62dc0442c549?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('koh tao') || (combined.includes('koh') && combined.includes('tao'))) return 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('georgia') || combined.includes('tbilisi') || combined.includes('batumi')) return 'https://images.unsplash.com/photo-1590673937616-938877545ee1?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('london') || combined.includes(' uk ') || combined.includes('england')) return 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('paris') || combined.includes('france')) return 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('rome') || combined.includes('italy')) return 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('barcelona') || combined.includes('spain')) return 'https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('new york') || combined.includes('nyc')) return 'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('dubai')) return 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('tokyo') || combined.includes('japan')) return 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('bali') || combined.includes('indonesia')) return 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('beach') || combined.includes('resort') || combined.includes('island')) return 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('holiday inn') || combined.includes('marriott') || combined.includes('hilton') || combined.includes('sheraton') || combined.includes('hyatt')) return 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=800&q=80';
+    return HOTEL_FALLBACK;
 };
 
 const ROOM_COLORS = [
@@ -72,8 +82,8 @@ const RoomFormModal: React.FC<{
         });
     };
 
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={onClose}>
             <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <div className="bg-gradient-to-r from-indigo-50 to-violet-50 p-5 border-b border-indigo-100 flex justify-between items-center sticky top-0">
                     <h3 className="text-lg font-black text-indigo-900 flex items-center gap-2">
@@ -162,7 +172,8 @@ const RoomFormModal: React.FC<{
                     </button>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
@@ -179,22 +190,54 @@ interface HotelGroup {
     confirmationCodes: string[];
 }
 
+// Normalize any date format to YYYY-MM-DD for comparison
+const normDate = (ds?: string): string => {
+    if (!ds) return '';
+    if (ds.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+        const [d, m, y] = ds.split('/');
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+    return ds.split('T')[0];
+};
+
+const normName = (n: string): string => n.toLowerCase().trim().replace(/\s+/g, ' ');
+
+// Check if two hotel names refer to the same property (fuzzy match)
+const isSameHotelName = (a: string, b: string): boolean => {
+    const na = normName(a), nb = normName(b);
+    if (na === nb) return true;
+    // One name contains the other (e.g. "Holiday Inn Pattaya" vs "Holiday Inn Pattaya Beach")
+    if (na.includes(nb) || nb.includes(na)) return true;
+    // First 3 significant words match (handles slight suffix differences)
+    const wordsA = na.split(' ').filter(w => w.length > 2);
+    const wordsB = nb.split(' ').filter(w => w.length > 2);
+    const minLen = Math.min(wordsA.length, wordsB.length, 3);
+    if (minLen >= 2 && wordsA.slice(0, minLen).join(' ') === wordsB.slice(0, minLen).join(' ')) return true;
+    return false;
+};
+
 const groupHotels = (hotels: HotelBooking[]): HotelGroup[] => {
-    const map = new Map<string, HotelGroup>();
+    const groups: HotelGroup[] = [];
+
     for (const h of hotels) {
-        const key = [
-            h.name.toLowerCase().trim().replace(/\s+/g, ' '),
-            h.checkInDate?.split('T')[0] || '',
-            h.checkOutDate?.split('T')[0] || '',
-        ].join('|');
-        const existing = map.get(key);
+        const ci = normDate(h.checkInDate);
+        const co = normDate(h.checkOutDate);
+
+        // Try to find an existing group that matches (same dates + similar name)
+        const existing = groups.find(g =>
+            normDate(g.primary.checkInDate) === ci &&
+            normDate(g.primary.checkOutDate) === co &&
+            isSameHotelName(g.primary.name, h.name)
+        );
+
         if (existing) {
             existing.hotels.push(h);
             if (h.confirmationCode && !existing.confirmationCodes.includes(h.confirmationCode))
                 existing.confirmationCodes.push(h.confirmationCode);
             (h.rooms || []).forEach(r => existing.mergedRooms.push({ ...r, _hotelId: h.id }));
         } else {
-            map.set(key, {
+            const key = `${normName(h.name)}|${ci}|${co}`;
+            groups.push({
                 key,
                 primary: h,
                 hotels: [h],
@@ -203,7 +246,7 @@ const groupHotels = (hotels: HotelBooking[]): HotelGroup[] => {
             });
         }
     }
-    return Array.from(map.values());
+    return groups;
 };
 
 
@@ -220,7 +263,7 @@ const SOURCE_STYLES: Record<string, { bg: string; text: string; label: string }>
 
 
 // ─────────────────────────────────────────────────────────
-// HotelCard — clean redesign with grouping support
+// HotelCard — compact row, expands on click
 // ─────────────────────────────────────────────────────────
 const HotelCard: React.FC<{
     group: HotelGroup;
@@ -239,7 +282,7 @@ const HotelCard: React.FC<{
     const [noteText, setNoteText] = useState(primary.notes || '');
     const [analyzing, setAnalyzing] = useState(false);
 
-    const displayImage = primary.imageUrl || getPlaceImage(primary.address || primary.name);
+    const displayImage = getPlaceImage(primary);
     const sourceStyle = SOURCE_STYLES[primary.bookingSource || ''] || { bg: 'bg-slate-600', text: 'text-white', label: primary.bookingSource || '' };
 
     const nightsCount = (() => {
@@ -275,10 +318,6 @@ const HotelCard: React.FC<{
         return 'amber';
     })();
 
-    const locationLine = primary.city
-        ? `${primary.city}${primary.address ? ', ' + primary.address.split(',').slice(-1)[0]?.trim() : ''}`
-        : primary.address?.split(',').slice(-2).join(', ').trim() || '';
-
     const handleSaveRoom = (room: HotelRoom) => {
         if (editingRoom && editingRoom.id) {
             onUpdateGroupRooms(mergedRooms.map(r => r.id === room.id ? { ...room, _hotelId: r._hotelId } : r));
@@ -303,154 +342,77 @@ const HotelCard: React.FC<{
     const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group/card">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group/card">
 
-            {/* ── Photo + Info ── */}
-            <div dir="ltr" className="flex">
-                {/* Photo strip */}
-                <div className="relative w-24 sm:w-32 flex-shrink-0 self-stretch" style={{ minHeight: '140px' }}>
-                    <img src={displayImage} alt={primary.name} className="absolute inset-0 w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
-                    {primary.bookingSource && (
-                        <span className={`absolute top-2 left-2 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm ${sourceStyle.bg} ${sourceStyle.text}`}>
-                            {sourceStyle.label}
-                        </span>
-                    )}
-                    {group.hotels.length > 1 && (
-                        <div className="absolute bottom-2 left-0 right-0 flex justify-center">
-                            <span className="bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow">
-                                {group.hotels.length} הזמנות
-                            </span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col gap-2.5">
-                    {/* Name + edit/delete */}
-                    <div className="flex items-start justify-between gap-1">
-                        <div className="min-w-0">
-                            <h3 className="font-black text-slate-900 text-base leading-snug truncate">{primary.name}</h3>
-                            {locationLine && (
-                                <p className="flex items-center gap-0.5 text-xs text-slate-400 mt-0.5 truncate">
-                                    <MapPin className="w-2.5 h-2.5 flex-shrink-0" />{locationLine}
-                                </p>
-                            )}
-                        </div>
-                        <div className="flex gap-0.5 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity">
-                            <button onClick={e => { e.stopPropagation(); onEditPrimary(); }} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="עריכה">
-                                <Edit className="w-3.5 h-3.5 text-slate-400" />
-                            </button>
-                            <button onClick={e => { e.stopPropagation(); onDeleteGroup(); }} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="מחיקה">
-                                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Date bar */}
-                    <div className="flex items-stretch rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-                        <div className="flex-1 flex flex-col items-center justify-center py-2 bg-slate-50">
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">כניסה</span>
-                            <span className="text-xs sm:text-sm font-black text-slate-800 whitespace-nowrap mt-0.5">{formatDate(primary.checkInDate)}</span>
-                            <span className="text-[9px] text-slate-400 font-medium">{formatDay(primary.checkInDate)}</span>
-                        </div>
-                        <div className="flex flex-col items-center justify-center bg-indigo-600 px-3 py-2">
-                            <span className="text-[8px] font-black text-indigo-200 uppercase tracking-wider">לילות</span>
-                            <span className="text-xl font-black text-white leading-none mt-0.5">{nightsCount ?? '—'}</span>
-                        </div>
-                        <div className="flex-1 flex flex-col items-center justify-center py-2 bg-slate-50">
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">יציאה</span>
-                            <span className="text-xs sm:text-sm font-black text-slate-800 whitespace-nowrap mt-0.5">{formatDate(primary.checkOutDate)}</span>
-                            <span className="text-[9px] text-slate-400 font-medium">{formatDay(primary.checkOutDate)}</span>
-                        </div>
-                    </div>
-
-                    {/* Badges */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                        {confirmationCodes.map(code => (
-                            <span key={code} className="flex items-center gap-1 text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-mono">
-                                <CheckCircle className="w-2.5 h-2.5" /> {code}
-                            </span>
-                        ))}
-                        {(primary.mealPlan || primary.breakfastIncluded) && (
-                            <span className="flex items-center gap-1 text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100 px-2 py-0.5 rounded-md">
-                                <Coffee className="w-2.5 h-2.5" /> {primary.mealPlan || 'ארוחת בוקר'}
-                            </span>
-                        )}
-                        {cancellationColor && (
-                            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${
-                                cancellationColor === 'emerald' ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                : cancellationColor === 'red'   ? 'bg-red-50 text-red-700 border-red-100'
-                                :                                 'bg-amber-50 text-amber-700 border-amber-100'
-                            }`}>
-                                <ShieldCheck className="w-2.5 h-2.5" />
-                                {cancellationColor === 'emerald' ? 'ביטול חינם' : cancellationColor === 'red' ? 'לא ניתן לביטול' : 'מדיניות ביטול'}
-                            </span>
-                        )}
-                        {primary.price && (
-                            <span className="flex items-center gap-1 text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md ms-auto">
-                                {primary.price}
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Rooms — always visible inline ── */}
-            <div className="border-t border-slate-100 px-3 sm:px-4 py-3 bg-slate-50/40">
-                <div className="flex items-center gap-2 flex-wrap">
-                    {mergedRooms.length === 0 && (
-                        <span className="text-xs text-slate-400 font-medium">לא הוגדרו חדרים</span>
-                    )}
-                    {mergedRooms.map((room, idx) => {
-                        const color = ROOM_COLORS[idx % ROOM_COLORS.length];
-                        return (
-                            <button
-                                key={room.id}
-                                onClick={() => setEditingRoom(room)}
-                                className={`group/room flex items-center gap-1.5 ${color.bg} border ${color.border} rounded-xl px-2.5 py-1.5 hover:shadow-sm active:scale-95 transition-all cursor-pointer`}
-                            >
-                                <div className={`w-5 h-5 rounded-lg ${color.badge} flex items-center justify-center flex-shrink-0`}>
-                                    <BedDouble className={`w-2.5 h-2.5 ${color.num}`} />
-                                </div>
-                                <div className="text-right leading-none">
-                                    <div className={`text-xs font-bold ${color.text} max-w-[100px] truncate`}>
-                                        {room.label || room.roomType || `חדר ${idx + 1}`}
-                                    </div>
-                                    <div className="text-[9px] text-slate-500 mt-0.5">
-                                        {room.adults}{room.children > 0 ? `+${room.children}` : ''} אנשים
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={e => { e.stopPropagation(); handleDeleteRoom(room.id); }}
-                                    className="opacity-0 group-hover/room:opacity-100 p-0.5 hover:bg-red-100 rounded transition-all"
-                                >
-                                    <X className="w-2.5 h-2.5 text-red-400" />
-                                </button>
-                            </button>
-                        );
-                    })}
-                    <button
-                        onClick={() => setEditingRoom(null)}
-                        className="flex items-center gap-1 text-xs font-bold text-indigo-500 hover:bg-indigo-50 px-2.5 py-1.5 rounded-xl border border-dashed border-indigo-200 transition-colors whitespace-nowrap"
-                    >
-                        <Plus className="w-3.5 h-3.5" /> הוסף חדר
-                    </button>
-                </div>
-            </div>
-
-            {/* ── Expand toggle ── */}
-            <button
-                className="w-full border-t border-slate-100 px-4 py-2 flex items-center justify-between hover:bg-slate-50/60 transition-colors"
+            {/* ── Compact row — always visible, click to expand ── */}
+            <div
+                dir="ltr"
+                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50/70 transition-colors select-none"
                 onClick={() => setIsExpanded(v => !v)}
             >
-                <span className="text-xs text-slate-400 font-medium">
-                    {isExpanded ? 'הסתר פרטים' : 'פרטים נוספים'}
-                </span>
-                <ChevronDown className={`w-3.5 h-3.5 text-slate-300 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
-            </button>
+                {/* Thumbnail */}
+                <img
+                    src={displayImage}
+                    alt={primary.name}
+                    className="w-11 h-11 rounded-xl object-cover flex-shrink-0 bg-slate-100"
+                    onError={e => { (e.target as HTMLImageElement).src = HOTEL_FALLBACK; }}
+                />
 
-            {/* ── Expandable details ── */}
+                {/* Name + city */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-sm text-slate-900 truncate leading-snug">{primary.name}</span>
+                        {group.hotels.length > 1 && (
+                            <span className="bg-indigo-100 text-indigo-700 text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
+                                {group.hotels.length} הזמנות
+                            </span>
+                        )}
+                    </div>
+                    {primary.city && (
+                        <div className="flex items-center gap-1 text-[11px] text-slate-400 leading-none mt-0.5">
+                            <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+                            <span className="truncate">{primary.city}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Date range + nights */}
+                <div className="flex items-center gap-1.5 flex-shrink-0 text-xs">
+                    <span className="text-slate-600 font-semibold whitespace-nowrap hidden sm:inline">{formatDate(primary.checkInDate)}</span>
+                    <span className="bg-indigo-600 text-white font-black text-[11px] px-2 py-0.5 rounded-lg whitespace-nowrap">
+                        {nightsCount ?? '?'} לילות
+                    </span>
+                    <span className="text-slate-600 font-semibold whitespace-nowrap hidden sm:inline">{formatDate(primary.checkOutDate)}</span>
+                </div>
+
+                {/* Room count badge */}
+                {mergedRooms.length > 0 && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg flex-shrink-0 whitespace-nowrap">
+                        <BedDouble className="w-3 h-3" /> {mergedRooms.length} חדר{mergedRooms.length !== 1 ? 'ים' : ''}
+                    </span>
+                )}
+
+                {/* Source badge */}
+                {primary.bookingSource && (
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0 hidden md:inline ${sourceStyle.bg} ${sourceStyle.text}`}>
+                        {sourceStyle.label}
+                    </span>
+                )}
+
+                {/* Edit / Delete */}
+                <div className="flex items-center gap-0.5 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                    <button onClick={onEditPrimary} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="עריכה">
+                        <Edit className="w-3 h-3 text-slate-400" />
+                    </button>
+                    <button onClick={onDeleteGroup} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="מחיקה">
+                        <Trash2 className="w-3 h-3 text-rose-400" />
+                    </button>
+                </div>
+
+                <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform duration-200 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+            </div>
+
+            {/* ── Expanded panel ── */}
             <AnimatePresence>
                 {isExpanded && (
                     <motion.div
@@ -460,8 +422,97 @@ const HotelCard: React.FC<{
                         transition={{ type: 'spring', damping: 30, stiffness: 400 }}
                         className="overflow-hidden"
                     >
-                        <div className="px-4 pb-4 pt-2 space-y-3 bg-slate-50/30">
-                            {/* Map + cancellation */}
+                        <div className="border-t border-slate-100 px-4 py-4 space-y-4 bg-slate-50/40">
+
+                            {/* Date bar */}
+                            <div className="flex items-stretch rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                                <div className="flex-1 flex flex-col items-center justify-center py-2.5 bg-white">
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">כניסה</span>
+                                    <span className="text-sm font-black text-slate-800 whitespace-nowrap mt-0.5">{formatDate(primary.checkInDate)}</span>
+                                    <span className="text-[9px] text-slate-400 font-medium">{formatDay(primary.checkInDate)}</span>
+                                </div>
+                                <div className="flex flex-col items-center justify-center bg-indigo-600 px-4 py-2.5">
+                                    <span className="text-[8px] font-black text-indigo-200 uppercase tracking-wider">לילות</span>
+                                    <span className="text-2xl font-black text-white leading-none mt-0.5">{nightsCount ?? '—'}</span>
+                                </div>
+                                <div className="flex-1 flex flex-col items-center justify-center py-2.5 bg-white">
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">יציאה</span>
+                                    <span className="text-sm font-black text-slate-800 whitespace-nowrap mt-0.5">{formatDate(primary.checkOutDate)}</span>
+                                    <span className="text-[9px] text-slate-400 font-medium">{formatDay(primary.checkOutDate)}</span>
+                                </div>
+                            </div>
+
+                            {/* Rooms */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {mergedRooms.length === 0 && (
+                                    <span className="text-xs text-slate-400 font-medium">לא הוגדרו חדרים</span>
+                                )}
+                                {mergedRooms.map((room, idx) => {
+                                    const color = ROOM_COLORS[idx % ROOM_COLORS.length];
+                                    return (
+                                        <button
+                                            key={room.id}
+                                            onClick={() => setEditingRoom(room)}
+                                            className={`group/room flex items-center gap-1.5 ${color.bg} border ${color.border} rounded-xl px-2.5 py-1.5 hover:shadow-sm active:scale-95 transition-all`}
+                                        >
+                                            <div className={`w-5 h-5 rounded-lg ${color.badge} flex items-center justify-center flex-shrink-0`}>
+                                                <BedDouble className={`w-2.5 h-2.5 ${color.num}`} />
+                                            </div>
+                                            <div className="text-right leading-none">
+                                                <div className={`text-xs font-bold ${color.text} max-w-[110px] truncate`}>
+                                                    {room.label || room.roomType || `חדר ${idx + 1}`}
+                                                </div>
+                                                <div className="text-[9px] text-slate-500 mt-0.5">
+                                                    {room.adults}{room.children > 0 ? `+${room.children}` : ''} אנשים
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={e => { e.stopPropagation(); handleDeleteRoom(room.id); }}
+                                                className="opacity-0 group-hover/room:opacity-100 p-0.5 hover:bg-red-100 rounded transition-all"
+                                            >
+                                                <X className="w-2.5 h-2.5 text-red-400" />
+                                            </button>
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    onClick={() => setEditingRoom(null)}
+                                    className="flex items-center gap-1 text-xs font-bold text-indigo-500 hover:bg-indigo-50 px-2.5 py-1.5 rounded-xl border border-dashed border-indigo-200 transition-colors whitespace-nowrap"
+                                >
+                                    <Plus className="w-3.5 h-3.5" /> הוסף חדר
+                                </button>
+                            </div>
+
+                            {/* Badges */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                {confirmationCodes.map(code => (
+                                    <span key={code} className="flex items-center gap-1 text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-mono">
+                                        <CheckCircle className="w-2.5 h-2.5" /> {code}
+                                    </span>
+                                ))}
+                                {(primary.mealPlan || primary.breakfastIncluded) && (
+                                    <span className="flex items-center gap-1 text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100 px-2 py-0.5 rounded-md">
+                                        <Coffee className="w-2.5 h-2.5" /> {primary.mealPlan || 'ארוחת בוקר'}
+                                    </span>
+                                )}
+                                {cancellationColor && (
+                                    <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                                        cancellationColor === 'emerald' ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                        : cancellationColor === 'red'   ? 'bg-red-50 text-red-700 border-red-100'
+                                        :                                 'bg-amber-50 text-amber-700 border-amber-100'
+                                    }`}>
+                                        <ShieldCheck className="w-2.5 h-2.5" />
+                                        {cancellationColor === 'emerald' ? 'ביטול חינם' : cancellationColor === 'red' ? 'לא ניתן לביטול' : 'מדיניות ביטול'}
+                                    </span>
+                                )}
+                                {primary.price && (
+                                    <span className="flex items-center gap-1 text-[10px] font-bold bg-white text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md ms-auto">
+                                        {primary.price}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Map + cancellation full text */}
                             <div className="flex items-center gap-2 flex-wrap">
                                 <a
                                     href={primary.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${primary.name} ${primary.address || ''} ${tripDestination || ''}`)}`}
@@ -634,26 +685,46 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
         setEditingHotel(null);
     };
 
+    // Filter: a string is a valid city name if it has no digits, no slashes, reasonable length, no street keywords
+    const isRealCity = (c: string): boolean => {
+        if (!c || c.length < 2 || c.length > 40) return false;
+        if (/\d/.test(c)) return false;
+        if (/[\/\\]/.test(c)) return false;
+        if (/^(road|street|sai|moo|apt|floor|building|avenue|lane|blvd|drive|way|place|plaza|square)/i.test(c.trim())) return false;
+        return true;
+    };
+
+    const extractCity = (hotel: HotelBooking): string => {
+        if (hotel.city && isRealCity(hotel.city)) return hotel.city;
+        if (hotel.address) {
+            const parts = hotel.address.split(',').map(p => p.trim()).filter(isRealCity);
+            // Prefer the part that looks most like a city (not the first segment which is often street)
+            if (parts.length >= 2) return parts[1];
+            if (parts.length === 1) return parts[0];
+        }
+        return '';
+    };
+
     // City breakdown — based on groups (no double-counting)
     const cityBreakdown = (() => {
         const cityMap: Record<string, number> = {};
         hotelGroups.forEach(g => {
-            const city = g.primary.city || g.primary.address?.split(',')[0]?.trim() || 'אחר';
+            const city = extractCity(g.primary) || 'אחר';
             const n = g.primary.nights && g.primary.nights > 0 ? g.primary.nights : (() => {
-                const ci = g.primary.checkInDate ? new Date(g.primary.checkInDate.split('T')[0] + 'T12:00:00') : null;
-                const co = g.primary.checkOutDate ? new Date(g.primary.checkOutDate.split('T')[0] + 'T12:00:00') : null;
+                const ci = g.primary.checkInDate ? new Date(normDate(g.primary.checkInDate) + 'T12:00:00') : null;
+                const co = g.primary.checkOutDate ? new Date(normDate(g.primary.checkOutDate) + 'T12:00:00') : null;
                 if (ci && co && !isNaN(ci.getTime()) && !isNaN(co.getTime())) {
                     const d = Math.round((co.getTime() - ci.getTime()) / 86400000);
                     return d > 0 ? d : 0;
                 }
                 return 0;
             })();
-            cityMap[city] = (cityMap[city] || 0) + n;
+            if (n > 0 || city !== 'אחר') cityMap[city] = (cityMap[city] || 0) + n;
         });
         return cityMap;
     })();
-    const cities = Object.entries(cityBreakdown);
-    const totalNights = cities.reduce((s, [, n]) => s + n, 0);
+    const cities = Object.entries(cityBreakdown).filter(([city]) => city !== 'אחר' || Object.keys(cityBreakdown).length === 1);
+    const totalNights = Object.values(cityBreakdown).reduce((s, n) => s + n, 0);
 
     // Group to delete info (for confirm message)
     const groupToDelete = hotelGroups.find(g => g.primary.id === hotelToDelete);
@@ -857,9 +928,9 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
 
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData as HotelBooking); };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
-            <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" onClick={onClose}>
+            <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
                     <h3 className="text-xl font-black text-slate-800">{initialData ? 'עריכת מלון' : 'הוספת מלון ידנית'}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X className="w-6 h-6 text-slate-400" /></button>
@@ -926,7 +997,8 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
                     <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all">שמור</button>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
@@ -1026,14 +1098,14 @@ IMPORTANT for rooms:
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col relative">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="bg-indigo-50 p-6 border-b border-indigo-100 flex justify-between items-center">
                     <h3 className="text-xl font-black text-indigo-900 flex items-center gap-2"><Sparkles className="w-5 h-5" /> הוספה חכמה</h3>
                     <button onClick={onClose}><X className="w-6 h-6 text-indigo-300 hover:text-indigo-600" /></button>
                 </div>
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-6 overflow-y-auto">
                     {isProcessing ? (
                         <div className="py-10 text-center">
                             <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
@@ -1064,6 +1136,7 @@ IMPORTANT for rooms:
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
