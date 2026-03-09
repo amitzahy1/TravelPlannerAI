@@ -127,14 +127,6 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [pendingApplyData, setPendingApplyData] = useState<{ hotels: HotelBooking[], flights: FlightSegment[] } | null>(null);
 
 
-    // Helper: Format for Display (e.g. "08 Aug")
-    const formatDisplayDate = (iso: string) => {
-        if (!iso) return '';
-        const date = new Date(iso);
-        if (isNaN(date.getTime())) return iso;
-        return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short' }).format(date);
-    };
-
     // Wizard auto-open removed (handled by App.tsx for better UX)
     const importFileRef = useRef<HTMLInputElement>(null);
 
@@ -217,7 +209,12 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         }
 
         if (newStart && newEnd) {
-            const formatted = `${formatDisplayDate(newStart)} - ${formatDisplayDate(newEnd)}`;
+            // Use DD/MM/YYYY format to avoid UTC/local-timezone round-trip bugs
+            const toDDMMYYYY = (iso: string) => {
+                const [y, m, d] = iso.split('-');
+                return (y && m && d && y.length === 4) ? `${d}/${m}/${y}` : iso;
+            };
+            const formatted = `${toDDMMYYYY(newStart)} - ${toDDMMYYYY(newEnd)}`;
             handleUpdateTrip({ dates: formatted });
         }
     };
@@ -563,13 +560,40 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             ...(activeTrip.hotels || []),
             ...(updatedTripData.hotels || []).filter(newH => !activeTrip.hotels?.some(existingH => existingH.id === newH.id))
         ];
-        const mergedSegments = updatedTripData.flights?.segments || activeTrip.flights?.segments || [];
+
+        // Smart flight merge: if new segments exist, use them.
+        // Also drop any OLD segments from a different year to prevent stale data accumulation.
+        const newSegs = updatedTripData.flights?.segments;
+        let mergedSegments: FlightSegment[];
+        if (newSegs && newSegs.length > 0) {
+            // Determine year of the new import
+            const newYear = newSegs.find(s => s.date?.match(/^(\d{4})/))?.[`date`]?.match(/^(\d{4})/)?.[1];
+            if (newYear) {
+                // Keep existing segments that match the same year, then add new ones (dedup by flightNumber+date)
+                const keptOld = (activeTrip.flights?.segments || []).filter(s => {
+                    const y = s.date?.match(/^(\d{4})/)?.[1] || s.departureTime?.match(/^(\d{4})/)?.[1];
+                    return y === newYear;
+                });
+                const deduped = [...keptOld];
+                newSegs.forEach(ns => {
+                    const exists = deduped.some(s => s.flightNumber === ns.flightNumber && s.date === ns.date);
+                    if (!exists) deduped.push(ns);
+                });
+                mergedSegments = deduped;
+            } else {
+                mergedSegments = newSegs;
+            }
+        } else {
+            mergedSegments = activeTrip.flights?.segments || [];
+        }
+
         const newDates = recalculateTripDates(mergedHotels, mergedSegments, activeTrip.dates);
         const mergedTrip = {
             ...activeTrip,
             ...updatedTripData,
             documents: [...(activeTrip.documents || []), ...(updatedTripData.documents || [])].filter((v, i, a) => a.indexOf(v) === i),
             hotels: mergedHotels,
+            flights: { ...(updatedTripData.flights || activeTrip.flights), segments: mergedSegments },
             ...(newDates ? { dates: newDates } : {}),
         };
 

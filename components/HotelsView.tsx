@@ -453,98 +453,138 @@ const HotelRow: React.FC<{
 
     const sourceStyle = SOURCE_STYLES[data.bookingSource || ''] || { bg: 'bg-slate-100', text: 'text-slate-600', label: data.bookingSource || '' };
 
+    // Cancellation policy color
+    const cancellationColor = (() => {
+        if (!data.cancellationPolicy) return null;
+        const p = data.cancellationPolicy.toLowerCase();
+        if (p.includes('free') || p.includes('חינם') || p.includes('ללא עלות')) return 'emerald';
+        if (p.includes('non-refund') || p.includes('לא ניתן') || p.includes('אי-החזר')) return 'red';
+        return 'amber';
+    })();
+
     return (
         <div className="group/row">
-            {/* ── Main compact row ── */}
+            {/* ── Main row — Booking.com inspired ── */}
             <div
-                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50/70 transition-colors cursor-pointer select-none"
+                className="flex items-start gap-0 cursor-pointer select-none hover:bg-slate-50/60 transition-colors"
                 onClick={() => setIsExpanded(v => !v)}
             >
-                {/* Thumbnail */}
-                <img
-                    src={displayImage}
-                    alt={data.name}
-                    className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-slate-100"
-                />
+                {/* Thumbnail — taller, left side */}
+                <div className="flex-shrink-0 w-20 sm:w-24 self-stretch">
+                    <img
+                        src={displayImage}
+                        alt={data.name}
+                        className="w-full h-full object-cover"
+                        style={{ minHeight: '80px' }}
+                    />
+                </div>
 
-                {/* Name + Address */}
-                <div className="flex-grow min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-800 text-sm leading-tight truncate max-w-[160px] sm:max-w-none">{data.name}</span>
-                        {data.bookingSource && (
-                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${sourceStyle.bg} ${sourceStyle.text}`}>
-                                {sourceStyle.label}
-                            </span>
-                        )}
-                        {data.breakfastIncluded && (
-                            <span className="hidden sm:inline-flex text-[10px] bg-orange-100 text-orange-700 font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 items-center gap-0.5">
-                                <Coffee className="w-2.5 h-2.5" /> ב.בוקר
-                            </span>
-                        )}
+                {/* Content */}
+                <div className="flex-grow min-w-0 px-3 py-3 flex flex-col gap-1.5">
+
+                    {/* Row 1: Name + source badge + actions */}
+                    <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <span className="font-black text-slate-800 text-base leading-tight">{data.name}</span>
+                            {data.bookingSource && (
+                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md flex-shrink-0 ${sourceStyle.bg} ${sourceStyle.text}`}>
+                                    {sourceStyle.label}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Action buttons + chevron */}
+                        <div className="flex items-center gap-0.5 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                            <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="עריכה">
+                                <Edit className="w-3.5 h-3.5 text-slate-400" />
+                            </button>
+                            <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-rose-50 transition-colors" title="מחיקה">
+                                <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-rose-500" />
+                            </button>
+                            <ChevronDown className={`w-4 h-4 text-slate-300 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                        </div>
                     </div>
+
+                    {/* Row 2: Address */}
                     {data.address && (
-                        <div className="text-xs text-slate-400 truncate flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                        <div className="text-xs text-slate-400 truncate flex items-center gap-1">
+                            <MapPin className="w-3 h-3 flex-shrink-0 text-slate-300" />
                             <span className="truncate">{data.address}</span>
                         </div>
                     )}
-                    {/* Mobile: dates below name */}
-                    <div className="flex items-center gap-1.5 mt-1 sm:hidden text-xs text-slate-600">
-                        <Calendar className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                        <span>{formatDate(data.checkInDate)}</span>
-                        <ArrowRight className="w-3 h-3 text-slate-300 flex-shrink-0" />
-                        <span>{formatDate(data.checkOutDate)}</span>
-                        {nightsCount && (
-                            <span className="bg-indigo-100 text-indigo-700 text-[10px] font-black px-1.5 py-0.5 rounded-full">{nightsCount}ל׳</span>
+
+                    {/* Row 3: THE HERO — Dates + Nights (Booking.com style) */}
+                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                        {/* Check-in block */}
+                        <div className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex flex-col items-center shadow-sm flex-shrink-0">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">כניסה</span>
+                            <span className="text-sm font-black text-slate-800 whitespace-nowrap leading-tight">{formatDate(data.checkInDate)}</span>
+                        </div>
+
+                        {/* Nights pill — the bridge */}
+                        <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                            <div className="w-6 h-px bg-slate-200" />
+                            {nightsCount ? (
+                                <span className="bg-indigo-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm shadow-indigo-200">
+                                    {nightsCount} לילות
+                                </span>
+                            ) : (
+                                <ArrowRight className="w-3 h-3 text-slate-300" />
+                            )}
+                            <div className="w-6 h-px bg-slate-200" />
+                        </div>
+
+                        {/* Check-out block */}
+                        <div className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex flex-col items-center shadow-sm flex-shrink-0">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">יציאה</span>
+                            <span className="text-sm font-black text-slate-800 whitespace-nowrap leading-tight">{formatDate(data.checkOutDate)}</span>
+                        </div>
+
+                        {/* Confirmation code — always visible when exists */}
+                        {data.confirmationCode && (
+                            <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1 flex-shrink-0">
+                                <CheckCircle className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                                <span className="text-[10px] font-black text-emerald-700 font-mono tracking-wider">{data.confirmationCode}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Row 4: Badges — meal plan, cancellation, rooms, price */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Meal plan / breakfast */}
+                        {(data.mealPlan || data.breakfastIncluded) && (
+                            <span className="text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded-lg flex items-center gap-1 flex-shrink-0">
+                                <Coffee className="w-2.5 h-2.5" />
+                                {data.mealPlan || 'ארוחת בוקר'}
+                            </span>
+                        )}
+
+                        {/* Cancellation policy badge */}
+                        {cancellationColor && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 flex-shrink-0 border
+                                ${cancellationColor === 'emerald' ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                : cancellationColor === 'red'     ? 'bg-red-50 text-red-700 border-red-100'
+                                :                                   'bg-amber-50 text-amber-700 border-amber-100'}`}>
+                                <ShieldCheck className="w-2.5 h-2.5" />
+                                {cancellationColor === 'emerald' ? 'ביטול חינם' : cancellationColor === 'red' ? 'לא ניתן לביטול' : 'מדיניות ביטול'}
+                            </span>
+                        )}
+
+                        {/* Room count */}
+                        {rooms.length > 0 && (
+                            <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-lg flex items-center gap-1 flex-shrink-0">
+                                <BedDouble className="w-2.5 h-2.5" /> {rooms.length} חדרים
+                            </span>
+                        )}
+
+                        {/* Price */}
+                        {data.price && (
+                            <span className="text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-lg flex items-center gap-1 flex-shrink-0">
+                                <DollarSign className="w-2.5 h-2.5" /> {data.price}
+                            </span>
                         )}
                     </div>
                 </div>
-
-                {/* Dates — desktop */}
-                <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-                    <div className="text-center">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">צ׳ק-אין</div>
-                        <div className="text-sm font-black text-slate-700 whitespace-nowrap">{formatDate(data.checkInDate)}</div>
-                    </div>
-                    <div className="flex flex-col items-center">
-                        {nightsCount ? (
-                            <span className="bg-indigo-100 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap">{nightsCount} לילות</span>
-                        ) : (
-                            <ArrowRight className="w-3 h-3 text-slate-300" />
-                        )}
-                    </div>
-                    <div className="text-center">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">צ׳ק-אאוט</div>
-                        <div className="text-sm font-black text-slate-700 whitespace-nowrap">{formatDate(data.checkOutDate)}</div>
-                    </div>
-                </div>
-
-                {/* Badges — desktop */}
-                <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
-                    {rooms.length > 0 && (
-                        <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-                            <BedDouble className="w-3 h-3" />{rooms.length}
-                        </span>
-                    )}
-                    {data.price && (
-                        <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1">
-                            <DollarSign className="w-3 h-3" />{data.price}
-                        </span>
-                    )}
-                </div>
-
-                {/* Edit / Delete on hover */}
-                <div className="flex items-center gap-1 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/row:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                    <button onClick={onEdit} className="p-2 rounded-lg hover:bg-slate-100 transition-colors" title="עריכה">
-                        <Edit className="w-3.5 h-3.5 text-slate-400 hover:text-slate-700" />
-                    </button>
-                    <button onClick={onDelete} className="p-2 rounded-lg hover:bg-rose-50 transition-colors" title="מחיקה">
-                        <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-rose-500" />
-                    </button>
-                </div>
-
-                {/* Expand chevron */}
-                <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
             </div>
 
             {/* ── Expanded panel ── */}
@@ -559,39 +599,24 @@ const HotelRow: React.FC<{
                     >
                         <div className="px-4 pb-4 pt-3 bg-slate-50/40 border-t border-slate-100 space-y-3">
 
-                            {/* Confirmation + price + map */}
+                            {/* Map link + full cancellation policy */}
                             <div className="flex items-center gap-2 flex-wrap">
-                                {data.confirmationCode && (
-                                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-                                        <CheckCircle className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                                        <span className="text-[10px] text-slate-500 font-bold">אישור:</span>
-                                        <span className="text-[10px] font-mono text-slate-700 font-bold">{data.confirmationCode}</span>
-                                    </div>
-                                )}
-                                {data.price && (
-                                    <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5 md:hidden">
-                                        <DollarSign className="w-3 h-3 text-emerald-600" />
-                                        <span className="text-xs font-bold text-emerald-700">{data.price}</span>
-                                    </div>
-                                )}
                                 <a
                                     href={data.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${data.name} ${data.address || ''} ${tripDestination || ''}`)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="mr-auto flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                                    className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                                     onClick={e => e.stopPropagation()}
                                 >
-                                    <Navigation className="w-3 h-3" /> מפה
+                                    <Navigation className="w-3 h-3" /> הצג במפה
                                 </a>
+                                {data.cancellationPolicy && (
+                                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-600">
+                                        <ShieldCheck className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                                        <span>{data.cancellationPolicy}</span>
+                                    </div>
+                                )}
                             </div>
-
-                            {/* Cancellation policy */}
-                            {data.cancellationPolicy && (
-                                <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center gap-2">
-                                    <ShieldCheck className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-                                    <span className="text-xs text-red-700 font-semibold">{data.cancellationPolicy}</span>
-                                </div>
-                            )}
 
                             {/* Vibe Check */}
                             {data.locationVibe ? (

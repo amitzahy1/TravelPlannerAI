@@ -190,6 +190,7 @@ export const ItineraryView: React.FC<{
 
             // Trip dates might be "DD/MM/YYYY - DD/MM/YYYY" OR "08 Aug 2026 - ..." OR ISO
             const dateStr = trip.dates || '';
+            let canonicalEnd: Date | null = null; // hard cap from trip.dates
             if (dateStr.includes(' - ')) {
                 const rangeParts = dateStr.split(' - ').map(s => s.trim());
                 if (rangeParts.length === 2) {
@@ -198,6 +199,7 @@ export const ItineraryView: React.FC<{
                     if (s && e) {
                         startDate = s;
                         endDate = e;
+                        canonicalEnd = e;
                     }
                 }
             }
@@ -394,6 +396,24 @@ export const ItineraryView: React.FC<{
             // Also trim leading empty days before any events
             while (sortedTimeline.length > 0 && sortedTimeline[0].events.length === 0) {
                 sortedTimeline.shift();
+            }
+            // Trim trailing days beyond canonical trip end that only have auto-generated hotel events.
+            // This handles the case where a hotel has a wrong checkout date far past the trip end.
+            if (canonicalEnd) {
+                const canonicalEndIso = `${canonicalEnd.getFullYear()}-${(canonicalEnd.getMonth() + 1).toString().padStart(2, '0')}-${canonicalEnd.getDate().toString().padStart(2, '0')}`;
+                while (sortedTimeline.length > 0) {
+                    const last = sortedTimeline[sortedTimeline.length - 1];
+                    if (last.dateIso > canonicalEndIso) {
+                        const hasUserContent = last.events.some(e =>
+                            e.type !== 'hotel_stay' && e.type !== 'hotel_checkout'
+                        );
+                        if (!hasUserContent) {
+                            sortedTimeline.pop();
+                            continue;
+                        }
+                    }
+                    break;
+                }
             }
 
             // Sticky Location Logic variables
