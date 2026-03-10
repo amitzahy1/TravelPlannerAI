@@ -193,26 +193,37 @@ interface HotelGroup {
 // Normalize any date format to YYYY-MM-DD for comparison
 const normDate = (ds?: string): string => {
     if (!ds) return '';
-    if (ds.match(/^\d{2}\/\d{2}\/\d{4}/)) {
-        const [d, m, y] = ds.split('/');
-        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    // Handle D/M/YYYY, DD/MM/YYYY, D/MM/YYYY, DD/M/YYYY
+    const dmyMatch = ds.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (dmyMatch) {
+        return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
     }
     return ds.split('T')[0];
 };
 
 const normName = (n: string): string => n.toLowerCase().trim().replace(/\s+/g, ' ');
 
-// Check if two hotel names refer to the same property (fuzzy match)
+// Split hotel name into meaningful words for comparison
+const toNameWords = (name: string): string[] =>
+    normName(name).split(/[\s,&\-–—.]+/).filter(w => w.length >= 2);
+
+// Check if two hotel names refer to the same property (fuzzy word-overlap)
 const isSameHotelName = (a: string, b: string): boolean => {
     const na = normName(a), nb = normName(b);
     if (na === nb) return true;
     // One name contains the other (e.g. "Holiday Inn Pattaya" vs "Holiday Inn Pattaya Beach")
     if (na.includes(nb) || nb.includes(na)) return true;
-    // First 3 significant words match (handles slight suffix differences)
-    const wordsA = na.split(' ').filter(w => w.length > 2);
-    const wordsB = nb.split(' ').filter(w => w.length > 2);
-    const minLen = Math.min(wordsA.length, wordsB.length, 3);
-    if (minLen >= 2 && wordsA.slice(0, minLen).join(' ') === wordsB.slice(0, minLen).join(' ')) return true;
+
+    // Word-overlap similarity: if ≥60% of the shorter name's words appear in the longer
+    const wordsA = toNameWords(a);
+    const wordsB = toNameWords(b);
+    if (wordsA.length === 0 || wordsB.length === 0) return false;
+    const setB = new Set(wordsB);
+    const shared = wordsA.filter(w => setB.has(w)).length;
+    const minLen = Math.min(wordsA.length, wordsB.length);
+    // Require at least 2 shared words AND ≥60% coverage of shorter name
+    if (shared >= 2 && shared / minLen >= 0.6) return true;
+
     return false;
 };
 
@@ -287,8 +298,10 @@ const HotelCard: React.FC<{
 
     const nightsCount = (() => {
         if (primary.nights && primary.nights > 0) return primary.nights;
-        const ci = primary.checkInDate ? new Date(primary.checkInDate.split('T')[0] + 'T12:00:00') : null;
-        const co = primary.checkOutDate ? new Date(primary.checkOutDate.split('T')[0] + 'T12:00:00') : null;
+        const ciStr = normDate(primary.checkInDate);
+        const coStr = normDate(primary.checkOutDate);
+        const ci = ciStr ? new Date(ciStr + 'T12:00:00') : null;
+        const co = coStr ? new Date(coStr + 'T12:00:00') : null;
         if (ci && co && !isNaN(ci.getTime()) && !isNaN(co.getTime())) {
             const diff = Math.round((co.getTime() - ci.getTime()) / 86400000);
             return diff > 0 ? diff : null;
@@ -298,14 +311,18 @@ const HotelCard: React.FC<{
 
     const formatDate = (ds?: string) => {
         if (!ds) return '—';
-        const d = new Date(ds.split('T')[0] + 'T12:00:00');
+        const iso = normDate(ds);
+        if (!iso) return ds;
+        const d = new Date(iso + 'T12:00:00');
         if (isNaN(d.getTime())) return ds;
         return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
     };
 
     const formatDay = (ds?: string) => {
         if (!ds) return '';
-        const d = new Date(ds.split('T')[0] + 'T12:00:00');
+        const iso = normDate(ds);
+        if (!iso) return '';
+        const d = new Date(iso + 'T12:00:00');
         if (isNaN(d.getTime())) return '';
         return d.toLocaleDateString('he-IL', { weekday: 'short' });
     };
@@ -344,10 +361,9 @@ const HotelCard: React.FC<{
     return (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group/card">
 
-            {/* ── Compact row — always visible, click to expand ── */}
+            {/* ── Compact row — RTL flow, click to expand ── */}
             <div
-                dir="ltr"
-                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-slate-50/70 transition-colors select-none"
+                className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer hover:bg-slate-50/70 transition-colors select-none"
                 onClick={() => setIsExpanded(v => !v)}
             >
                 {/* Thumbnail */}
@@ -359,8 +375,8 @@ const HotelCard: React.FC<{
                 />
 
                 {/* Name + city */}
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="min-w-0 max-w-[180px] sm:max-w-[240px] flex-shrink-1">
+                    <div className="flex items-center gap-1.5">
                         <span className="font-bold text-sm text-slate-900 truncate leading-snug">{primary.name}</span>
                         {group.hotels.length > 1 && (
                             <span className="bg-indigo-100 text-indigo-700 text-[9px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
@@ -377,12 +393,12 @@ const HotelCard: React.FC<{
                 </div>
 
                 {/* Date range + nights */}
-                <div className="flex items-center gap-1.5 flex-shrink-0 text-xs">
-                    <span className="text-slate-600 font-semibold whitespace-nowrap hidden sm:inline">{formatDate(primary.checkInDate)}</span>
+                <div className="flex items-center gap-1.5 flex-shrink-0 text-xs" dir="ltr">
+                    <span className="text-slate-500 font-semibold whitespace-nowrap hidden sm:inline">{formatDate(primary.checkInDate)}</span>
                     <span className="bg-indigo-600 text-white font-black text-[11px] px-2 py-0.5 rounded-lg whitespace-nowrap">
                         {nightsCount ?? '?'} לילות
                     </span>
-                    <span className="text-slate-600 font-semibold whitespace-nowrap hidden sm:inline">{formatDate(primary.checkOutDate)}</span>
+                    <span className="text-slate-500 font-semibold whitespace-nowrap hidden sm:inline">{formatDate(primary.checkOutDate)}</span>
                 </div>
 
                 {/* Room count badge */}
@@ -398,6 +414,9 @@ const HotelCard: React.FC<{
                         {sourceStyle.label}
                     </span>
                 )}
+
+                {/* Spacer — pushes edit/chevron to far left */}
+                <div className="flex-1" />
 
                 {/* Edit / Delete */}
                 <div className="flex items-center gap-0.5 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover/card:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
@@ -780,7 +799,7 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                     </div>
 
                     {/* ── Hotel cards grid ── */}
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 gap-2">
                         {hotelGroups.map((group) => (
                             <HotelCard
                                 key={group.key}
