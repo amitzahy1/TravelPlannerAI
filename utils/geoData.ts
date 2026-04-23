@@ -283,15 +283,28 @@ export const cityKey = (name: string): string => {
 };
 
 /**
+ * Build a lowercase lookup: country key → cities-in-country list. So
+ * 'thailand' maps to ['bangkok', 'phuket', 'pattaya', ...] and we can tell
+ * a restaurant in 'Sukhumvit, Bangkok' belongs to the 'thailand' scope.
+ */
+const COUNTRY_KEY_TO_CITIES: Record<string, string[]> = (() => {
+        const map: Record<string, string[]> = {};
+        for (const [country, cities] of Object.entries(WORLD_DESTINATIONS)) {
+                map[country.toLowerCase()] = cities.map(c => c.toLowerCase());
+        }
+        return map;
+})();
+
+/**
  * Does a free-form location string (e.g. 'Bangkok, Thailand' or 'רחוב סילום,
- * בנגקוק') refer to the given city (which might be in either language)?
+ * בנגקוק') refer to the given city/country (in either language)?
  *
- * Language-agnostic — returns true if:
- *   1. The location string contains the city's canonical key
- *      (e.g. 'bangkok' → matches 'Bangkok, Thailand' AND 'בנגקוק, תאילנד'
- *       because both resolve to the 'bangkok' key via the hebrew table).
- *   2. OR the location string contains any known alias (Hebrew, English, or
- *      variant) for the city's key.
+ * Accepts both cities AND countries — critical, because the trip's wizard
+ * destination is often a country ('תאילנד'). Previous version dropped
+ * every restaurant whose location said 'Sukhumvit, Bangkok' when the user
+ * filtered by 'תאילנד' because 'bangkok' doesn't contain the substring
+ * 'thailand'. Now we expand country filters to any of the country's known
+ * major cities.
  */
 export const locationMatchesCity = (location: string, cityDisplayName: string): boolean => {
         if (!location || !cityDisplayName) return false;
@@ -300,12 +313,24 @@ export const locationMatchesCity = (location: string, cityDisplayName: string): 
 
         const locLower = location.toLowerCase().trim();
 
-        // Quick path: the English key is directly in the location string
+        // Direct substring match of the canonical key
         if (locLower.includes(targetKey)) return true;
 
-        // Check all known aliases of this city — Hebrew, capitalized, etc.
+        // Hebrew form of a known city
         const hebrewForm = CITY_HEBREW_NAMES[targetKey];
         if (hebrewForm && location.includes(hebrewForm)) return true;
+
+        // Country-level filter: match any major city in the country.
+        // 'thailand' → matches 'Bangkok', 'Pattaya', 'Chiang Mai', etc.
+        const countryCities = COUNTRY_KEY_TO_CITIES[targetKey];
+        if (countryCities) {
+                if (countryCities.some(c => locLower.includes(c))) return true;
+                // Also try the Hebrew forms of each city in the country
+                for (const cityLower of countryCities) {
+                        const he = CITY_HEBREW_NAMES[cityLower];
+                        if (he && location.includes(he)) return true;
+                }
+        }
 
         return false;
 };

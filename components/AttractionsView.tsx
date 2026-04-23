@@ -350,14 +350,30 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setAddedIds(prev => { const next = new Set(prev); if (existingCatIndex !== -1) next.delete(attraction.id); else next.add(attraction.id); return next; });
     };
 
+    // Keep only attractions that belong to any city/country the user is visiting.
+    // Guards against legacy / hallucinated data (Banff Canada, Eiffel Tower etc.
+    // showing up on a Thailand trip) regardless of which city filter is active.
+    const inTripScope = useMemo(() => {
+        return (a: any) => {
+                const loc = a.location || '';
+                if (!loc) return true; // no location info → give benefit of the doubt
+                return tripCities.some(c =>
+                        locationMatchesCity(loc, c) ||
+                        locationMatchesCity(a.description || '', c)
+                );
+        };
+    }, [tripCities]);
+
     const filteredRecommendations = useMemo(() => {
         let list: any[] = [];
         if (selectedCategory === 'all') aiCategories.forEach(c => list.push(...c.attractions.map(a => ({ ...a, categoryTitle: c.title }))));
         else { const cat = aiCategories.find(c => c.id === selectedCategory); if (cat) list = cat.attractions.map(a => ({ ...a, categoryTitle: cat.title })); }
+
+        // Always trim to trip scope first — drops out-of-country items the AI
+        // may have cached from a previous bugged session.
+        if (tripCities.length > 0) list = list.filter(inTripScope);
+
         if (selectedCity !== 'all') {
-            // Language-agnostic match: selectedCity may be Hebrew ('בנגקוק') while
-            // attraction location is English ('Bangkok, Thailand'). locationMatchesCity
-            // compares via the shared cityKey lookup so both forms resolve.
             list = list.filter(a =>
                 locationMatchesCity(a.location || '', selectedCity) ||
                 locationMatchesCity(a.description || '', selectedCity)
@@ -365,7 +381,19 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         }
         if (selectedRater !== 'all') list = list.filter(a => a.recommendationSource === selectedRater);
         return list;
-    }, [aiCategories, selectedCategory, selectedRater, selectedCity]);
+    }, [aiCategories, selectedCategory, selectedRater, selectedCity, tripCities, inTripScope]);
+
+    // True when there's stored research data, but NONE of it belongs to this trip
+    // (i.e. stale data from a previous destination).
+    const hasStaleData = useMemo(() => {
+        if (aiCategories.length === 0) return false;
+        const total = aiCategories.reduce((acc, c) => acc + c.attractions.length, 0);
+        if (total === 0) return false;
+        const inScope = aiCategories.reduce(
+                (acc, c) => acc + c.attractions.filter(inTripScope).length, 0
+        );
+        return inScope === 0;
+    }, [aiCategories, inTripScope]);
 
     // --- Data Management ---
     const handleUpdateAttraction = (id: string, updates: Partial<Attraction>) => {
@@ -601,29 +629,45 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                             {loadingRecs ? <ThinkingLoader texts={["סורק אטרקציות...", "מחפש פנינים נסתרות...", "בודק דירוגים...", "מצליב מידע עם מקומיים..."]} /> : (
                                 <>
-                                    {allAiAttractions().length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                                    {allAiAttractions().length === 0 || hasStaleData ? (
+                                        <div className="flex flex-col items-center justify-center py-10 space-y-4 text-center px-4">
                                             <div className="bg-purple-100 p-4 rounded-full"><BrainCircuit className="w-8 h-8 text-purple-600" /></div>
                                             <h3 className="text-xl font-black text-slate-800">
-                                                {tripCities.length > 1 ? 'באיזו עיר נתמקד?' : 'בחר עיר לחיפוש'}
+                                                {hasStaleData ? 'הנתונים השמורים לא מתאימים לטיול הזה' : (tripCities.length > 1 ? 'באיזו עיר נתמקד?' : 'בחר עיר לחיפוש')}
                                             </h3>
+                                            {hasStaleData && (
+                                                <p className="text-sm text-slate-500 max-w-sm">
+                                                    מצאנו אטרקציות שמורות ממחקר ישן שאינן ב-{trip.destination}. בצע מחקר חדש לקבלת המלצות מותאמות לטיול.
+                                                </p>
+                                            )}
 
-                                            {tripCities.length > 1 ? (
-                                                <div className="flex flex-wrap justify-center gap-3 max-w-md">
-                                                    {tripCities.map(city => (
-                                                        <button
-                                                            key={city}
-                                                            onClick={() => initiateResearch(city)}
-                                                            className="bg-white border-2 border-slate-100 text-slate-700 px-6 py-2 rounded-xl text-sm font-bold shadow-sm hover:border-purple-500 hover:text-purple-600 hover:bg-purple-50 transition-all"
-                                                        >
-                                                            {city}
-                                                        </button>
-                                                    ))}
+                                            {/* Primary CTA: one clear button that starts research for ALL
+                                                trip cities at once (user's main complaint: wanted a big
+                                                clear button). City-specific buttons offered as secondary. */}
+                                            <button
+                                                onClick={researchAllCities}
+                                                disabled={isResearchingAll}
+                                                className="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-8 py-3 rounded-2xl text-base font-black shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-60"
+                                            >
+                                                {isResearchingAll
+                                                    ? <><Loader2 className="w-5 h-5 animate-spin" /> סורק ({researchProgress.current}/{researchProgress.total})</>
+                                                    : <><BrainCircuit className="w-5 h-5" /> בצע מחקר לכל הטיול (AI)</>}
+                                            </button>
+                                            {tripCities.length > 1 && !isResearchingAll && (
+                                                <div className="pt-3 border-t border-slate-100 w-full max-w-md">
+                                                    <div className="text-[11px] font-bold text-slate-400 mb-2">או מחקר ממוקד לעיר בודדת:</div>
+                                                    <div className="flex flex-wrap justify-center gap-2">
+                                                        {tripCities.map(city => (
+                                                            <button
+                                                                key={city}
+                                                                onClick={() => initiateResearch(city)}
+                                                                className="bg-white border border-slate-200 text-slate-700 px-4 py-1.5 rounded-full text-xs font-bold hover:border-purple-500 hover:text-purple-600 hover:bg-purple-50 transition-all"
+                                                            >
+                                                                {city}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            ) : (
-                                                <button onClick={() => initiateResearch()} className="bg-white border-2 border-purple-500 text-purple-600 px-8 py-3 rounded-2xl text-base font-bold shadow-md hover:shadow-lg hover:bg-purple-50 transition-all">
-                                                    {trip.destination} - בצע מחקר שוק
-                                                </button>
                                             )}
                                         </div>
                                     ) : (
