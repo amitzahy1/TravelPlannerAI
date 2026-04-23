@@ -87,9 +87,13 @@ const buildAiPromptForClipboard = (destination?: string, startDate?: string, end
 מצורפים קבצים / מקורות של ההזמנות והתיאורים שלי.
 
 בבקשה סכם אותם בטקסט אחד בעברית שכולל:
-1. לכל מלון: שם, עיר, תאריך צ'ק-אין (DD/MM/YYYY), תאריך צ'ק-אאוט, סוג חדר, מספר מבוגרים וילדים לחדר, והערות אם יש.
-2. לכל טיסה: חברת התעופה, מספר טיסה, מעיר לעיר (כולל קוד IATA אם ידוע), תאריך טיסה, שעת המראה, שעת נחיתה.
-3. העברות / שאטלים / רכבים אם מוזכרים — כהערה בתוך המלון הרלוונטי.
+
+לכל מלון: שם, עיר, תאריך צ'ק-אין (DD/MM/YYYY), תאריך צ'ק-אאוט, סוג חדר, מספר מבוגרים וילדים לחדר, והערות אם יש.
+תוסיף את כל סוגי החדרים שיש בשורה בנפרדת לכל מלון וכמה אורחים יש שם בכל חדר ומה השם של החדר וכל הנתונים שיש.
+
+לכל טיסה: חברת התעופה, מספר טיסה, מעיר לעיר (כולל קוד IATA אם ידוע), תאריך טיסה, שעת המראה, שעת נחיתה.
+
+העברות / שאטלים / רכבים אם מוזכרים — כהערה בתוך המלון הרלוונטי.
 
 אפשר להחזיר כטקסט מובנה או כטבלה. השתמשו בפורמט תאריך עקבי (DD/MM/YYYY).`;
 };
@@ -801,39 +805,67 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                                                 onCancel={() => setEditingHotelId(null)}
                                                                                         />
                                                                                 ) : (
-                                                                                        <div key={h.id} className="group bg-white rounded-xl border border-slate-200 hover:border-indigo-200 p-3 flex items-center justify-between gap-3 transition-colors">
-                                                                                                <div className="min-w-0 flex-1">
-                                                                                                        <div className="font-bold text-brand-navy truncate">{h.name || '(ללא שם)'}</div>
-                                                                                                        <div className="text-xs text-slate-500 truncate">
-                                                                                                                {h.city || h.address || ''}
-                                                                                                                {h.rooms?.[0] && (
-                                                                                                                        <span className="text-slate-400">
-                                                                                                                                {' · '}{h.rooms[0].adults} מבוגרים, {h.rooms[0].children} ילדים
-                                                                                                                        </span>
-                                                                                                                )}
+                                                                                        <div key={h.id} className="group bg-white rounded-xl border border-slate-200 hover:border-indigo-200 p-3 transition-colors">
+                                                                                                <div className="flex items-start justify-between gap-3">
+                                                                                                        <div className="min-w-0 flex-1">
+                                                                                                                <div className="font-bold text-brand-navy truncate">{h.name || '(ללא שם)'}</div>
+                                                                                                                <div className="text-xs text-slate-500 truncate">
+                                                                                                                        {h.city || h.address || ''}
+                                                                                                                        {h.confirmationCode && (
+                                                                                                                                <span className="text-slate-400 font-mono"> · #{h.confirmationCode}</span>
+                                                                                                                        )}
+                                                                                                                </div>
+                                                                                                        </div>
+                                                                                                        <div className="text-xs text-slate-600 font-medium whitespace-nowrap pt-0.5">
+                                                                                                                {formatHebrewDate(h.checkInDate)} → {formatHebrewDate(h.checkOutDate)}
+                                                                                                        </div>
+                                                                                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                                                                                                <button
+                                                                                                                        type="button"
+                                                                                                                        onClick={() => { setEditingHotelId(h.id); setShowAddHotel(false); }}
+                                                                                                                        className="w-8 h-8 rounded-lg hover:bg-indigo-50 text-indigo-600 flex items-center justify-center"
+                                                                                                                        title="ערוך"
+                                                                                                                >
+                                                                                                                        <Pencil className="w-4 h-4" />
+                                                                                                                </button>
+                                                                                                                <button
+                                                                                                                        type="button"
+                                                                                                                        onClick={() => handleDeleteHotel(h.id)}
+                                                                                                                        className="w-8 h-8 rounded-lg hover:bg-red-50 text-red-500 flex items-center justify-center"
+                                                                                                                        title="מחק"
+                                                                                                                >
+                                                                                                                        <Trash2 className="w-4 h-4" />
+                                                                                                                </button>
                                                                                                         </div>
                                                                                                 </div>
-                                                                                                <div className="text-xs text-slate-600 font-medium whitespace-nowrap">
-                                                                                                        {formatHebrewDate(h.checkInDate)} → {formatHebrewDate(h.checkOutDate)}
-                                                                                                </div>
-                                                                                                <div className="flex items-center gap-1">
-                                                                                                        <button
-                                                                                                                type="button"
-                                                                                                                onClick={() => { setEditingHotelId(h.id); setShowAddHotel(false); }}
-                                                                                                                className="w-8 h-8 rounded-lg hover:bg-indigo-50 text-indigo-600 flex items-center justify-center"
-                                                                                                                title="ערוך"
-                                                                                                        >
-                                                                                                                <Pencil className="w-4 h-4" />
-                                                                                                        </button>
-                                                                                                        <button
-                                                                                                                type="button"
-                                                                                                                onClick={() => handleDeleteHotel(h.id)}
-                                                                                                                className="w-8 h-8 rounded-lg hover:bg-red-50 text-red-500 flex items-center justify-center"
-                                                                                                                title="מחק"
-                                                                                                        >
-                                                                                                                <Trash2 className="w-4 h-4" />
-                                                                                                        </button>
-                                                                                                </div>
+
+                                                                                                {/* Rooms detail */}
+                                                                                                {h.rooms && h.rooms.length > 0 && (
+                                                                                                        <div className="mt-2.5 pt-2.5 border-t border-slate-100">
+                                                                                                                <div className="flex items-center gap-2 mb-1.5">
+                                                                                                                        <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                                                                                                                                {h.rooms.length} {h.rooms.length === 1 ? 'חדר' : 'חדרים'}
+                                                                                                                        </span>
+                                                                                                                        <span className="text-[11px] text-slate-500">
+                                                                                                                                {h.rooms.reduce((a, r) => a + (r.adults || 0), 0)} מבוגרים · {h.rooms.reduce((a, r) => a + (r.children || 0), 0)} ילדים
+                                                                                                                        </span>
+                                                                                                                </div>
+                                                                                                                <ul className="space-y-1">
+                                                                                                                        {h.rooms.map((r, idx) => (
+                                                                                                                                <li key={r.id || idx} className="flex items-start gap-2 text-[11px]">
+                                                                                                                                        <span className="w-5 h-5 rounded-md bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-bold flex-shrink-0">{idx + 1}</span>
+                                                                                                                                        <div className="flex-1 min-w-0">
+                                                                                                                                                <span className="font-bold text-slate-700">{r.roomType || 'חדר'}</span>
+                                                                                                                                                {r.label && <span className="text-slate-400"> · {r.label}</span>}
+                                                                                                                                                <span className="text-slate-500"> · {r.adults || 0}+{r.children || 0}</span>
+                                                                                                                                                {r.beds && <span className="text-slate-400"> · {r.beds}</span>}
+                                                                                                                                                {r.notes && <span className="text-slate-400"> · {r.notes}</span>}
+                                                                                                                                        </div>
+                                                                                                                                </li>
+                                                                                                                        ))}
+                                                                                                                </ul>
+                                                                                                        </div>
+                                                                                                )}
                                                                                         </div>
                                                                                 )
                                                                         )}

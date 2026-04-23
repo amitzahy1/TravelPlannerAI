@@ -48,15 +48,18 @@ Return ONLY valid JSON in this exact structure:
       "checkInDate": "YYYY-MM-DD",
       "checkOutDate": "YYYY-MM-DD",
       "nights": number,
+      "confirmationCode": "booking/reservation number if mentioned",
       "notes": "transfer or arrival info if mentioned",
       "bookingSource": "Direct",
       "rooms": [
         {
           "id": "room-id-1",
-          "roomType": "exact room type name e.g. 2 Bedroom Family Suite",
+          "label": "optional family/guest label, e.g. 'משפחת כהן' or 'Room 1'",
+          "roomType": "exact room type name e.g. '2 Bedroom Family Suite', 'Sea View Grande Deluxe', 'Premium'",
           "adults": number,
           "children": number,
-          "notes": "any room preferences or notes"
+          "beds": "optional bed config if mentioned, e.g. 'King', 'Twin', '2 Queens'",
+          "notes": "any preferences or per-room notes"
         }
       ]
     }
@@ -81,11 +84,20 @@ Rules:
 - For months in Hebrew: ינואר=01, פברואר=02, מרץ=03, אפריל=04, מאי=05, יוני=06, יולי=07, אוגוסט=08, ספטמבר=09, אוקטובר=10, נובמבר=11, דצמבר=12
 - If year is not mentioned, use the current year or next year based on context (and prefer the expected dates from the hints block above if present)
 - Extract ALL hotels mentioned, including ones where "hotel will be chosen later"
-- For room types: extract exactly as written (e.g. "2 Bedroom Family Suite", "Deluxe Room")
-- If no room type is mentioned, use "Standard Room"
-- If guest count not specified per room, distribute travelers evenly; default to 2 adults and 0 children per room when totally unknown
+
+ROOMS — CRITICAL (follow these exactly):
+- Create ONE entry in the rooms[] array per physical room. If a hotel says "5 rooms" or "3 premium + 2 suites", produce 5 room entries total (3 with roomType="Premium", 2 with roomType="Suite").
+- Even when only a summary is given (e.g. "5 חדרים ל-9 מבוגרים ו-6 ילדים"), still create 5 room entries and distribute the guests as evenly as possible across them (e.g. 2+1, 2+1, 2+1, 2+2, 1+1 to sum to 9 adults / 6 children).
+- Preserve the EXACT room name as written in the text (Hebrew or English, keep brand-specific names like "Sea View Grande Deluxe", "Junior Suite", "Villa", "2 Bedroom Family Suite").
+- If per-room bed/view/floor details are given (e.g. "King Bed, Sea View, 5th floor"), put them in the room's "beds" or "notes" field.
+- If per-room adult/child breakdown is given explicitly, use it exactly. Only fall back to even distribution when no per-room breakdown exists.
+- If guest count is totally unknown for a room, default to 2 adults and 0 children.
+- If no room type at all is mentioned for a hotel, use "Standard Room".
+
+OTHER:
 - Flights: a "landing" (נחיתה) = arrival flight, "departure" (המראה) = departure flight
 - For transfers (vans, ferries) mentioned: put them in the hotel's notes field
+- If booking / reservation / confirmation number is given, put it in the hotel's "confirmationCode" field
 - Always return valid JSON, never return markdown or extra text
 
 Trip plan text:
