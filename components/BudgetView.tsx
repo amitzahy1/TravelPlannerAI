@@ -3,6 +3,7 @@ import { Trip, ManualExpense, HotelBooking, Ticket } from '../types';
 import { Wallet, TrendingUp, DollarSign, PieChart as PieChartIcon, ShoppingBag, Utensils, Hotel, Ticket as TicketIcon, Plane, Plus, Trash2, X, Save, Car, Bus, ArrowRight, ChevronRight, UploadCloud, Loader2, Sparkles, AlertCircle, Banknote, LayoutGrid, Coins, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { generateWithFallback, analyzeReceipt } from '../services/aiService';
+import { toast } from '../stores/useToastStore';
 
 interface BudgetViewProps {
     trip: Trip;
@@ -559,11 +560,11 @@ const CategoryDetailModal: React.FC<{
             if (price) {
                 handlePriceUpdate(itemId, price, currency);
             } else {
-                alert("לא הצלחנו לחלץ מחיר מהקבלה.");
+                toast.error("לא הצלחנו לחלץ מחיר מהקבלה.");
             }
         } catch (e) {
             console.error(e);
-            alert("לא הצלחנו לחלץ מחיר מהקבלה.");
+            toast.error("לא הצלחנו לחלץ מחיר מהקבלה.");
         } finally {
             setAnalyzingId(null);
         }

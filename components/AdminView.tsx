@@ -3,6 +3,7 @@ import { Trip, HotelBooking, FlightSegment, HotelRoom } from '../types';
 import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble } from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
 import { parseFreeTextTrip } from '../services/freeTextImportService';
+import { toast } from '../stores/useToastStore';
 import { getTripCities } from '../utils/geoData'; // Imported from new DB
 import { MagicDropZone } from './MagicDropZone';
 import { ShareModal } from './ShareModal';
@@ -372,15 +373,15 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         reader.onload = (event) => {
             try {
                 const json = JSON.parse(event.target?.result as string);
-                if (!json.id || !json.itinerary) { alert("קובץ לא תקין"); return; }
+                if (!json.id || !json.itinerary) { toast.error("קובץ לא תקין"); return; }
                 const newTrip = { ...json, id: `imported-${Date.now()}`, name: `${json.name} (מיובא)` };
                 const updatedTrips = [...trips, newTrip];
                 setTrips(updatedTrips);
                 setActiveTripId(newTrip.id);
                 onSave(updatedTrips);
                 onSwitchTrip(newTrip.id);
-                alert("הטיול יובא בהצלחה!");
-            } catch (err) { console.error(err); alert("שגיאה בקריאת הקובץ"); }
+                toast.success("הטיול יובא בהצלחה!");
+            } catch (err) { console.error(err); toast.error("שגיאה בקריאת הקובץ"); }
         };
         reader.readAsText(file);
         if (importFileRef.current) importFileRef.current.value = '';
@@ -388,7 +389,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
     // CALENDAR IMPORT REMOVED - Feature disabled to eliminate "Unverified App" security warning
     const handleImportFromGoogle = async () => {
-        alert("יבוא מיומן Google הוסר לצורך אבטחה. הלו\"ז מנוהל ישירות באפליקציה.");
+        toast.info("יבוא מיומן Google הוסר לצורך אבטחה. הלו\"ז מנוהל ישירות באפליקציה.");
     };
 
     const handleSyncCalendar = () => {
@@ -612,7 +613,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             setFreeTextResult(result);
         } catch (e) {
             console.error('Free text import error:', e);
-            alert('שגיאה בעיבוד הטקסט. אנא נסה שנית.');
+            toast.error('שגיאה בעיבוד הטקסט. אנא נסה שנית.');
         } finally {
             setIsFreeTextProcessing(false);
         }

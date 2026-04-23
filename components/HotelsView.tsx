@@ -10,6 +10,7 @@ import {
 import { generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
+import { toast } from '../stores/useToastStore';
 
 
 // Generic hotel fallback image
@@ -115,7 +116,7 @@ const RoomFormModal: React.FC<{
                         <input
                             list="room-types-list"
                             className="w-full p-3.5 bg-slate-50 rounded-2xl font-semibold outline-none focus:ring-2 focus:ring-indigo-200 transition-all placeholder:font-normal text-slate-800"
-                            placeholder='Deluxe Double Room, Junior Suite...'
+                            placeholder='חדר דה-לוקס, סוויטה משפחתית, סטנדרט...'
                             value={form.roomType || ''}
                             onChange={e => setForm({ ...form, roomType: e.target.value })}
                         />
@@ -1111,7 +1112,7 @@ IMPORTANT for rooms:
             onSave(hotelData);
         } catch (e) {
             console.error(e);
-            alert('שגיאה בפענוח הנתונים.');
+            toast.error('שגיאה בפענוח הנתונים.');
         } finally {
             setIsProcessing(false);
         }

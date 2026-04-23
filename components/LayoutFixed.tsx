@@ -92,6 +92,18 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         </div>
                                                 </div>
 
+                                                {/* Active trip pill (mobile only — on desktop Row 2 has the full selector) */}
+                                                {activeTrip && (
+                                                        <button
+                                                                onClick={() => setIsTripMenuOpen(true)}
+                                                                title="החלף טיול"
+                                                                className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-full text-[11px] font-bold border border-blue-100 max-w-[140px] transition-colors"
+                                                        >
+                                                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                                                <span className="truncate">{activeTrip.destination || activeTrip.name}</span>
+                                                        </button>
+                                                )}
+
                                                 {/* Center: Desktop Content Nav Tabs (without trip management) */}
                                                 <div className="hidden lg:flex items-center gap-1 bg-slate-100/80 p-1.5 rounded-2xl mx-4">
                                                         {contentNavItems.map(item => (

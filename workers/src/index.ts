@@ -491,12 +491,12 @@ const WORKER_TRIP_SCHEMA: any = {
 async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // User requested specifically this model
+        // Stable Gemini 2.5 family — fastest-first. Matches the client chain in aiService.ts.
+        // Pro is intentionally last because email parsing is usually simple enough for flash-lite.
         const CANDIDATES = [
-                "gemini-3-pro-preview",    // 1. PRIMARY: The best reasoning/vision model
-                "gemini-2.5-pro",          // 2. BACKUP: Strong stable model
-                "gemini-3-flash-preview",  // 3. FALLBACK: Fast but less detailed
-                "gemini-1.5-pro-latest"    // 4. Backup
+                "gemini-2.5-flash-lite",   // 1. PRIMARY: ~2s, free, accurate for structured extraction
+                "gemini-2.5-flash",        // 2. BACKUP: fuller reasoning
+                "gemini-2.5-pro",          // 3. FALLBACK: heaviest PDFs/edge cases
         ];
 
         // THIS IS A SYSTEM GENERATED PROMPT -- DO NOT EDIT MANUALLY IF NOT SYNCING WITH AISERVICE.TS

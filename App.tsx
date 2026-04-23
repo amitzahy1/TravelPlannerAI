@@ -24,8 +24,8 @@ const BudgetView = React.lazy(() => import('./components/BudgetView').then(modul
 const ShoppingView = React.lazy(() => import('./components/ShoppingView').then(module => ({ default: module.ShoppingView })));
 import { JoinTripModal } from './components/JoinTripModal';
 import { AIChatOverlay } from './components/AIChatOverlay';
+import { Toaster } from './components/ui/Toaster';
 import { MagicalWizard } from './components/onboarding/MagicalWizard';
-import { OnboardingModal } from './components/OnboardingModal'; // Keep for now as backup
 
 // ...
 
@@ -361,6 +361,8 @@ const AppContent: React.FC = () => {
       {activeTrip && (
         <AIChatOverlay trip={activeTrip} />
       )}
+
+      <Toaster />
     </HashRouter>
   );
 };

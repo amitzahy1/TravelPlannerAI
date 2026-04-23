@@ -21,7 +21,7 @@ export const AIChatOverlay: React.FC<AIChatOverlayProps> = ({ trip }) => {
                 {
                         id: 'welcome',
                         role: 'assistant',
-                        content: `שלום! אני סוכן הנסיעות האישי שלך ל${trip.tripMetadata?.destination || 'טיול'}.  
+                        content: `שלום! אני סוכן הנסיעות האישי שלך ל${trip.destination || 'טיול'}.
 אני מכיר את כל המלונות, הטיסות והתכנון שלך.  
 איך אוכל לעזור? (למשל: "מתי הטיסה שלי?", "איפה המלון בפריז?", "תן לי רעיונות למסעדות")`,
                         timestamp: new Date()

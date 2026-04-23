@@ -3,6 +3,7 @@ import { HotelBooking } from '../types';
 import { Sparkles, X, Loader2, Search, Hotel, Plus } from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
+import { toast } from '../stores/useToastStore';
 
 // Helper: Input Component for DD/MM/YYYY
 // Duplicated here for standalone usage or could be imported if moved to utils/components
@@ -67,7 +68,7 @@ export const SmartHotelSearchModal: React.FC<{ onClose: () => void; onSave: (dat
                         setStep('DATES');
                 } catch (e) {
                         console.error(e);
-                        alert("לא הצלחנו למצוא את המלון. נסה שם אחר.");
+                        toast.error("לא הצלחנו למצוא את המלון. נסה שם אחר.");
                 } finally {
                         setIsSearching(false);
                 }
@@ -75,7 +76,7 @@ export const SmartHotelSearchModal: React.FC<{ onClose: () => void; onSave: (dat
 
         const handleFinalSave = () => {
                 if (!hotelData.name || !checkIn || !checkOut) {
-                        alert("נא למלא את כל הפרטים");
+                        toast.warning("נא למלא את כל הפרטים");
                         return;
                 }
                 onSave({

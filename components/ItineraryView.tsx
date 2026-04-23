@@ -19,6 +19,7 @@ import { getPlaceImage } from '../services/imageMapper';
 import { CategoryListModal } from './CategoryListModal';
 import { TripDateSelector } from './TripDateSelector';
 import { SmartRecommendationsBar } from './SmartRecommendationsBar';
+import { toast } from '../stores/useToastStore';
 
 // --- Types ---
 // Removed to types.ts
@@ -526,7 +527,7 @@ export const ItineraryView: React.FC<{
 
     // CALENDAR SYNC REMOVED - Feature disabled to eliminate "Unverified App" warning
     const handleSyncCalendar = async () => {
-        alert("סנכרון יומן Google הוסר לצורך אבטחה. כעת הלו\"ז מנוהל ישירות באפליקציה.");
+        toast.info("סנכרון יומן Google הוסר לצורך אבטחה. כעת הלו\"ז מנוהל ישירות באפליקציה.");
     };
 
     const handleManualAdd = (text: string) => {
@@ -953,7 +954,18 @@ export const ItineraryView: React.FC<{
                     {/* TIMELINE GRID */}
                     {
                         timeline.length === 0 ? (
-                            <div className="text-center py-20 text-slate-400">טוען לו"ז...</div>
+                            <div className="flex flex-col items-center text-center py-16 px-6 max-w-md mx-auto" dir="rtl">
+                                <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
+                                    <Calendar className="w-10 h-10 text-blue-500" />
+                                </div>
+                                <h3 className="text-2xl font-black text-brand-navy mb-2">עדיין אין תאריכים לטיול</h3>
+                                <p className="text-slate-500 leading-relaxed mb-2">
+                                    ברגע שתגדירו תאריכי התחלה וסיום לטיול, הלו"ז ייבנה אוטומטית עם יום לכל תאריך.
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                    ניתן לערוך תאריכים מ"ניהול טיולים" בתפריט העליון.
+                                </p>
+                            </div>
                         ) : (
                             <div className={`grid gap-3 ${viewMode === 'compact' ? 'grid-cols-2 md:grid-cols-4 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4'}`}>
                                 {timeline.map((day, index) => {
@@ -1379,7 +1391,7 @@ export const ItineraryView: React.FC<{
                             setScheduleItem(null);
 
                             // Show confirmation
-                            alert(`✅ "${scheduleItem.item?.name}" נוסף ליום ${d}/${m}!`);
+                            toast.success(`"${scheduleItem.item?.name}" נוסף ליום ${d}/${m}`);
                         }}
                     />
                 )

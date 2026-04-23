@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Loader2, CalendarCheck } from 'lucide-react';
 import { planFullDay } from '../services/aiService';
+import { toast } from '../stores/useToastStore';
 
 interface SmartDayPlannerProps {
         city: string;
@@ -22,7 +23,7 @@ export const SmartDayPlanner: React.FC<SmartDayPlannerProps> = ({ city, date, tr
                         }
                 } catch (error) {
                         console.error("Failed to plan day:", error);
-                        alert("מצטערים, חלה שגיאה בתכנון היום. נסה שוב.");
+                        toast.error("מצטערים, חלה שגיאה בתכנון היום. נסה שוב.");
                 } finally {
                         setLoading(false);
                 }
