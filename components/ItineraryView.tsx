@@ -1134,11 +1134,6 @@ export const ItineraryView: React.FC<{
                                                 )}
                                             </div>
 
-                                            {/* Day counter (very subtle, top-left) */}
-                                            <span className="absolute top-1.5 left-2 text-2xs text-white/60 font-bold pointer-events-none select-none">
-                                                {dayNumber}/{timeline.length}
-                                            </span>
-
                                             {/* Flow Arrow (Desktop only, outside the card) */}
                                             {!isLastDay && (
                                                 <div className="hidden xl:block absolute -left-5 top-1/2 -translate-y-1/2 z-0 text-slate-200 pointer-events-none">

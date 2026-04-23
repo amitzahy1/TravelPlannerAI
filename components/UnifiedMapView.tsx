@@ -483,30 +483,37 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 if (h.city) hotelCityKeys.add(cityKey(h.city));
             });
 
-            // Flights → origin on first segment + arrival on every segment
+            // Flights → arrival airport on every segment.
+            // We INTENTIONALLY do not add the origin (first seg fromCity) or
+            // the home-return anchor (last seg toCity) — they're the user's
+            // home base (e.g. Tel Aviv) and showing them on the trip map just
+            // forces the map to zoom out to include a city that isn't part
+            // of the actual trip. First stop on the map should be where the
+            // user LANDS, not where they take off from.
             const segs = [...(trip.flights?.segments || [])].sort((a, b) =>
                 (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0)
             );
 
+            // Identify the home city — typically both the first departure and
+            // the last arrival. Any stop matching this key is dropped from
+            // the numbered route (flight origin + return).
+            const firstFromKey = segs[0]?.fromCity ? cityKey(segs[0].fromCity) : '';
+            const lastToKey = segs.length > 0 && segs[segs.length - 1].toCity
+                ? cityKey(segs[segs.length - 1].toCity!)
+                : '';
+            const homeKeys = new Set<string>();
+            if (firstFromKey) homeKeys.add(firstFromKey);
+            // Only treat last-arrival as home if it matches the first-origin —
+            // otherwise a one-way trip (TLV→Tokyo no return) would lose Tokyo.
+            if (lastToKey && lastToKey === firstFromKey) homeKeys.add(lastToKey);
+
             if (segs.length > 0) {
-                const firstSeg = segs[0];
-                const firstTs = parseTripDate(firstSeg.date)?.getTime() || 0;
-                if (firstSeg.fromCity) {
-                    candidates.push({
-                        name: firstSeg.fromCity,
-                        displayName: firstSeg.fromCity,
-                        type: 'city',
-                        code: firstSeg.fromCode,
-                        date: firstSeg.date,
-                        emoji: '🛫',
-                        sortTs: firstTs - 1, // origin sits just before the first flight
-                        isFlightOnly: false,  // origin always kept as an anchor
-                    });
-                }
                 segs.forEach(seg => {
                     if (!seg.toCity) return;
                     const ts = parseTripDate(seg.date)?.getTime() || 0;
                     const k = cityKey(seg.toCity);
+                    // Skip home-base arrivals (return flight to TLV).
+                    if (homeKeys.has(k)) return;
                     candidates.push({
                         name: seg.toCity,
                         displayName: seg.toCity,
@@ -521,11 +528,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 });
             }
 
-            // Hotels → one stop per hotel (chronological by check-in)
+            // Hotels → one stop per hotel (chronological by check-in).
+            // We add 15 hours to the sortTs so that when a hotel's check-in
+            // date matches a same-day flight arrival, the flight arrival
+            // sorts FIRST (matches the real sequence: land → check in).
             (trip.hotels || []).forEach(h => {
                 const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
                 if (!city) return;
-                const ts = parseTripDate(h.checkInDate || '')?.getTime() || 0;
+                const baseTs = parseTripDate(h.checkInDate || '')?.getTime() || 0;
+                const ts = baseTs ? baseTs + 15 * 3600 * 1000 : 0; // 15:00 = standard check-in
                 candidates.push({
                     name: city,
                     displayName: h.name || city,
@@ -540,24 +551,18 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
 
             candidates.sort((a, b) => (a.sortTs || 0) - (b.sortTs || 0));
 
-            // Identify the LAST flight's destination as the return-home anchor —
-            // we keep it visible even if it's a layover, because it bookends the
-            // journey (e.g. user wants to see TLV at the end of the route).
-            const returnHomeKey = segs.length > 0 && segs[segs.length - 1].toCity
-                ? cityKey(segs[segs.length - 1].toCity!)
-                : '';
-
             // Build final stops list with these rules:
             //   - HOTELS are NEVER deduped against each other — two Bangkok
-            //     hotels get two stops (user requested). A tiny perpendicular
-            //     offset is added downstream so stacked pins stay visible.
-            //   - FLIGHT destinations are dropped if any hotel exists in the
-            //     same city (the hotel is the authoritative stop). This lets
-            //     the user see "Holiday Inn Bangkok" instead of a generic
-            //     "Bangkok" pin when they have a hotel there.
-            //   - FLIGHT-ONLY layovers (no hotel, not origin/return) are
-            //     dropped as before.
-            //   - The flight-origin city stays as its own stop (usually TLV).
+            //     hotels get two stops. A tiny perpendicular offset is added
+            //     downstream so stacked pins stay visible.
+            //   - FLIGHT-ARRIVAL is kept as its OWN stop even when a hotel
+            //     exists in the same city. User wants the landing airport
+            //     to be stop #1 and the hotel to be stop #2.
+            //   - Repeat arrivals (same-city second arrival, e.g. a return
+            //     leg back to Bangkok after a side-trip) collapse into the
+            //     existing airport pin.
+            //   - FLIGHT-ONLY layovers (no hotel in that city AND not the
+            //     user's final destination) are dropped.
             const stops: RouteStop[] = [];
             candidates.forEach(c => {
                 const k = cityKey(c.name);
@@ -569,16 +574,21 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                     return;
                 }
 
-                // City / flight-destination candidate
-                if (c.isFlightOnly && k !== returnHomeKey) return; // drop layovers
+                // Flight-destination candidate — drop real layovers (no
+                // hotel in that city, not user's main destination).
+                if (c.isFlightOnly) return;
 
-                // Skip if any hotel already claims this city
-                const hotelOwnsCity = stops.some(s => s.type === 'hotel' && cityKey(s.name) === k);
-                if (hotelOwnsCity) return;
+                // NOTE: we intentionally do NOT skip flight-dest when a hotel
+                // exists in the same city. The user wants the arrival airport
+                // as its own numbered stop (#1), with the hotel as the next
+                // stop (#2). The pin-offset logic downstream keeps both
+                // visually distinct (~300 m east).
 
-                // Skip if another city/flight pin already represents this city
-                const duplicateCity = stops.some(s => s.type !== 'hotel' && cityKey(s.name) === k);
-                if (duplicateCity) return;
+                // Skip if another flight-pin already represents this city
+                // (e.g. return-leg second arrival in Bangkok — don't double-
+                // count the same airport).
+                const duplicateFlight = stops.some(s => s.type === 'flight' && cityKey(s.name) === k);
+                if (duplicateFlight) return;
 
                 const { sortTs, isFlightOnly, ...stop } = c;
                 stops.push(stop);
@@ -859,8 +869,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         // zoom the map out to a hemisphere view. Layover pins stay drawn —
         // they're just not the focal point.
         const applyBounds = (b: L.LatLngBounds) => {
-            const padding: [number, number] = activeCity !== 'ALL' ? [60, 60] : [80, 80];
-            const maxZoom = activeCity !== 'ALL' ? 15 : 12;
+            // Tighter default zoom + less padding on the "ALL" view so the
+            // trip's actual geography fills more of the screen. Was padding
+            // 80 + maxZoom 12 (too zoomed out, lots of wasted map margin).
+            const padding: [number, number] = activeCity !== 'ALL' ? [50, 50] : [40, 40];
+            const maxZoom = activeCity !== 'ALL' ? 15 : 14;
             map.fitBounds(b, { padding, maxZoom, duration: 1 });
         };
 
