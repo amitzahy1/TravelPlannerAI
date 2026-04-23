@@ -20,6 +20,16 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+        workbox: {
+          // Aggressive update: new SW takes over immediately so users don't
+          // get stuck on stale assets / old worker URLs after a deploy.
+          skipWaiting: true,
+          clientsClaim: true,
+          // Don't cache-first the index.html — always try network so the entry
+          // HTML (which references hashed chunks) stays fresh.
+          cleanupOutdatedCaches: true,
+          navigateFallback: '/index.html',
+        },
         manifest: {
           name: 'Travel Planner Pro',
           short_name: 'TravelPro',
