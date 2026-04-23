@@ -129,36 +129,46 @@ const AppContent: React.FC = () => {
     const analysis = wizardData.analysisResult;
     const rawData = analysis?.rawStagedData;
 
-    // Map Flights
-    const flightSegments = rawData?.categories?.transport?.map((t: any) => ({
-      fromCode: t.data.departure?.iata || "",
-      fromCity: t.data.departure?.city || "",
-      toCode: t.data.arrival?.iata || "",
-      toCity: t.data.arrival?.city || "",
-      departureTime: t.data.departure?.displayTime || "",
-      arrivalTime: t.data.arrival?.displayTime || "",
-      flightNumber: t.data.flightNumber || "",
-      airline: t.data.airline || "",
-      duration: "",
-      date: t.data.departure?.isoDate || "",
-      price: t.data.price?.amount
-    })) || [];
+    let flightSegments: any[] = [];
+    let flightPnr = "";
+    let hotels: any[] = [];
 
-    const flightPnr = rawData?.categories?.transport?.[0]?.data?.pnr || "";
+    if (wizardData.method === 'text' && wizardData.freeTextResult) {
+      // Free-text path: data is already in the target shape (hotels: HotelBooking[], flights: FlightSegment[])
+      hotels = wizardData.freeTextResult.hotels || [];
+      flightSegments = wizardData.freeTextResult.flights || [];
+    } else if (rawData) {
+      // Smart Import path: map from rawStagedData categories
+      flightSegments = rawData.categories?.transport?.map((t: any) => ({
+        fromCode: t.data.departure?.iata || "",
+        fromCity: t.data.departure?.city || "",
+        toCode: t.data.arrival?.iata || "",
+        toCity: t.data.arrival?.city || "",
+        departureTime: t.data.departure?.displayTime || "",
+        arrivalTime: t.data.arrival?.displayTime || "",
+        flightNumber: t.data.flightNumber || "",
+        airline: t.data.airline || "",
+        duration: "",
+        date: t.data.departure?.isoDate || "",
+        price: t.data.price?.amount
+      })) || [];
 
-    // Map Hotels
-    const hotels = rawData?.categories?.accommodation?.map((h: any) => ({
-      id: crypto.randomUUID(),
-      name: h.data.hotelName || "Hotel",
-      address: h.data.address || "",
-      checkInDate: h.data.checkIn?.isoDate || "",
-      checkOutDate: h.data.checkOut?.isoDate || "",
-      nights: 0, // Calculate if needed
-      bookingSource: 'Direct',
-      confirmationCode: h.data.bookingId || "",
-      price: h.data.price?.amount ? `${h.data.price.amount} ${h.data.price.currency || ''}` : "",
-      lat: 0, lng: 0
-    })) || [];
+      flightPnr = rawData.categories?.transport?.[0]?.data?.pnr || "";
+
+      hotels = rawData.categories?.accommodation?.map((h: any) => ({
+        id: crypto.randomUUID(),
+        name: h.data.hotelName || "Hotel",
+        address: h.data.address || "",
+        checkInDate: h.data.checkIn?.isoDate || "",
+        checkOutDate: h.data.checkOut?.isoDate || "",
+        nights: 0, // Calculate if needed
+        bookingSource: 'Direct',
+        confirmationCode: h.data.bookingId || "",
+        price: h.data.price?.amount ? `${h.data.price.amount} ${h.data.price.currency || ''}` : "",
+        lat: 0, lng: 0
+      })) || [];
+    }
+    // Manual path: hotels & flights stay empty
 
     // Determine Metadata from AI or Wizard Input
     const dest = analysis?.metadata?.destination || wizardData.destination || "";

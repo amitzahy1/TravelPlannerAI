@@ -1,10 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Compass, ArrowRight } from 'lucide-react';
+import { Sparkles, Compass, ArrowRight, ClipboardPaste } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 
 interface Step2Props {
-        onSelect: (method: 'smart' | 'manual') => void;
+        onSelect: (method: 'smart' | 'manual' | 'text') => void;
         onBack?: () => void;
 }
 
@@ -104,6 +104,44 @@ export const Step2_ChoosePath: React.FC<Step2Props> = ({ onSelect, onBack }) => 
                                                 </div>
                                         </GlassCard>
                                 </motion.div>
+                        </motion.div>
+
+                        {/* Option C: Free Text — wide card below */}
+                        <motion.div
+                                variants={cardVariants}
+                                initial="hidden"
+                                animate="show"
+                                className="mt-6 md:mt-8"
+                        >
+                                <GlassCard
+                                        hoverEffect={true}
+                                        onClick={() => onSelect('text')}
+                                        className="p-5 md:p-6 group border-2 border-transparent hover:border-indigo-300/40"
+                                >
+                                        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6 text-right">
+                                                {/* Icon */}
+                                                <div className="w-14 h-14 bg-gradient-to-tr from-indigo-500 to-violet-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-300 flex-shrink-0">
+                                                        <ClipboardPaste className="w-7 h-7 text-white" />
+                                                </div>
+
+                                                {/* Text */}
+                                                <div className="flex-1 min-w-0">
+                                                        <h3 className="text-xl md:text-2xl font-bold text-brand-navy mb-1">
+                                                                תיאור הטיול במילים
+                                                        </h3>
+                                                        <p className="text-slate-500 text-sm md:text-base leading-relaxed">
+                                                                הדביקו טקסט חופשי, טבלה או CSV עם פרטי הטיול — ה-AI יחלץ מלונות וטיסות באופן אוטומטי.
+                                                                אידיאלי למי שאסף את המידע במקום אחד (למשל בעזרת ChatGPT או NotebookLM).
+                                                        </p>
+                                                </div>
+
+                                                {/* CTA */}
+                                                <div className="flex items-center text-indigo-600 font-bold group-hover:gap-2 transition-all flex-shrink-0 self-end md:self-auto">
+                                                        <span>הדבק את הטיול</span>
+                                                        <ArrowRight className="w-4 h-4 mr-1 opacity-0 group-hover:opacity-100 transition-opacity transform rotate-180" />
+                                                </div>
+                                        </div>
+                                </GlassCard>
                         </motion.div>
                 </div>
         );

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment, HotelRoom } from '../types';
 import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble } from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
+import { parseFreeTextTrip } from '../services/freeTextImportService';
 import { getTripCities } from '../utils/geoData'; // Imported from new DB
 import { MagicDropZone } from './MagicDropZone';
 import { ShareModal } from './ShareModal';
@@ -607,94 +608,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         setIsFreeTextProcessing(true);
         setFreeTextResult(null);
         try {
-            const prompt = `You are a travel data extractor. Parse the following trip plan text (may be in Hebrew or English) and extract structured data.
-
-Return ONLY valid JSON in this exact structure:
-{
-  "summary": "one line Hebrew summary of what was found",
-  "hotels": [
-    {
-      "id": "unique-id-1",
-      "name": "Hotel Name",
-      "city": "City",
-      "address": "Hotel Name, City, Country",
-      "checkInDate": "YYYY-MM-DD",
-      "checkOutDate": "YYYY-MM-DD",
-      "nights": number,
-      "notes": "transfer or arrival info if mentioned",
-      "bookingSource": "Direct",
-      "rooms": [
-        {
-          "id": "room-id-1",
-          "roomType": "exact room type name e.g. 2 Bedroom Family Suite",
-          "adults": number,
-          "children": number,
-          "notes": "any room preferences or notes"
-        }
-      ]
-    }
-  ],
-  "flights": [
-    {
-      "fromCode": "IATA or ???",
-      "toCode": "IATA or ???",
-      "fromCity": "departure city",
-      "toCity": "arrival city",
-      "date": "YYYY-MM-DD",
-      "departureTime": "HH:MM or 00:00",
-      "arrivalTime": "HH:MM or 00:00",
-      "airline": "airline name or Unknown",
-      "flightNumber": "number or TBD",
-      "duration": "estimated or Unknown"
-    }
-  ]
-}
-
-Rules:
-- For months in Hebrew: ינואר=01, פברואר=02, מרץ=03, אפריל=04, מאי=05, יוני=06, יולי=07, אוגוסט=08, ספטמבר=09, אוקטובר=10, נובמבר=11, דצמבר=12
-- If year is not mentioned, use the current year or next year based on context
-- Extract ALL hotels mentioned, including ones where "hotel will be chosen later"
-- For room types: extract exactly as written (e.g. "2 Bedroom Family Suite", "Deluxe Room")
-- If no room type is mentioned, use "Standard Room"
-- If guest count not specified per room, distribute trip.travelers evenly
-- Flights: a "landing" (נחיתה) = arrival flight, "departure" (המראה) = departure flight
-- For transfers (vans, ferries) mentioned: put them in the hotel's notes field
-- Always return valid JSON, never return markdown or extra text
-
-Trip plan text:
-${freeText}`;
-
-            const response = await generateWithFallback(
-                null,
-                [prompt],
-                { responseMimeType: 'application/json' },
-                'SMART'
-            );
-
-            const textContent = typeof response.text === 'function' ? response.text() : response.text;
-            let parsed: any;
-            try {
-                parsed = JSON.parse(textContent);
-            } catch {
-                const match = textContent?.match(/\{[\s\S]*\}/);
-                if (match) parsed = JSON.parse(match[0]);
-                else throw new Error('Could not parse AI response');
-            }
-
-            // Assign fresh IDs and fix room IDs
-            const hotels: HotelBooking[] = (parsed.hotels || []).map((h: any) => ({
-                ...h,
-                id: crypto.randomUUID(),
-                rooms: (h.rooms || []).map((r: any) => ({
-                    ...r,
-                    id: crypto.randomUUID(),
-                    adults: r.adults || 2,
-                    children: r.children || 0,
-                })),
-            }));
-            const flights: FlightSegment[] = parsed.flights || [];
-
-            setFreeTextResult({ hotels, flights, summary: parsed.summary || `נמצאו ${hotels.length} מלונות ו-${flights.length} טיסות` });
+            const result = await parseFreeTextTrip(freeText);
+            setFreeTextResult(result);
         } catch (e) {
             console.error('Free text import error:', e);
             alert('שגיאה בעיבוד הטקסט. אנא נסה שנית.');
