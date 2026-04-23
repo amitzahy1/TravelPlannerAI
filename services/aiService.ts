@@ -15,7 +15,15 @@ const GOOGLE_MODELS = {
     "gemini-2.5-flash",
     "gemini-2.5-pro",
   ],
-  // Tier 2: Used for FAST intent (chat, quick suggestions)
+  // Tier 2: Used for SEARCH intent (restaurant/attraction market research).
+  // This is a knowledge-recall task where the depth of the model matters far
+  // more than latency — flash-lite misses niche local spots that pro surfaces.
+  // Put pro first; fall back to flash on rate limits.
+  RESEARCH_CANDIDATES: [
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+  ],
+  // Tier 3: Used for FAST intent (chat, quick suggestions)
   FAST_CANDIDATES: [
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
@@ -201,9 +209,14 @@ export const generateWithFallback = async (
   config: any = {},
   intent: AIIntent = 'SMART'
 ): Promise<any> => {
-  // Build model chain WITHOUT mutating the originals
+  // Build model chain WITHOUT mutating the originals.
+  // - SEARCH: market research (food / attractions) — depth matters, pro first.
+  // - SMART / ANALYZE: structured parsing — flash-lite first, pro as fallback.
+  // - FAST: chat / quick lookups — flash-lite only, stay cheap.
   let chain: string[];
-  if (intent === 'SMART' || intent === 'ANALYZE') {
+  if (intent === 'SEARCH') {
+    chain = [...GOOGLE_MODELS.RESEARCH_CANDIDATES];
+  } else if (intent === 'SMART' || intent === 'ANALYZE') {
     chain = [...GOOGLE_MODELS.SMART_CANDIDATES, ...GOOGLE_MODELS.FAST_CANDIDATES];
   } else {
     chain = [...GOOGLE_MODELS.FAST_CANDIDATES];
