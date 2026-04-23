@@ -436,38 +436,92 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         if (!trip || items) return;
 
         const buildRoute = async () => {
-            const stops: RouteStop[] = [];
+            // Collect "stop candidates" from BOTH flights and hotels, each timestamped,
+            // then merge chronologically + dedupe by city. Previous version dropped
+            // hotel cities entirely when flights existed — so Koh Chang / Pattaya
+            // never showed as stops on the trip's route line.
+            type Candidate = RouteStop & { sortTs: number };
+            const candidates: Candidate[] = [];
 
-            // From flight segments (chronological)
+            // Flights → origin on first segment + arrival on every segment
             const segs = [...(trip.flights?.segments || [])].sort((a, b) =>
                 (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0)
             );
 
             if (segs.length > 0) {
-                // Add origin
-                const orig = segs[0];
-                if (orig.fromCity && !stops.some(s => s.name.toLowerCase() === orig.fromCity!.toLowerCase())) {
-                    stops.push({ name: orig.fromCity, displayName: orig.fromCity, type: 'city', code: orig.fromCode, date: orig.date, emoji: '🛫' });
+                const firstSeg = segs[0];
+                const firstTs = parseTripDate(firstSeg.date)?.getTime() || 0;
+                if (firstSeg.fromCity) {
+                    candidates.push({
+                        name: firstSeg.fromCity,
+                        displayName: firstSeg.fromCity,
+                        type: 'city',
+                        code: firstSeg.fromCode,
+                        date: firstSeg.date,
+                        emoji: '🛫',
+                        sortTs: firstTs - 1, // origin sits just before the first flight
+                    });
                 }
                 segs.forEach(seg => {
-                    if (seg.toCity && !stops.some(s => s.name.toLowerCase() === seg.toCity!.toLowerCase())) {
-                        stops.push({ name: seg.toCity, displayName: seg.toCity, type: 'flight', code: seg.toCode, date: seg.date, emoji: '🛬' });
-                    }
+                    if (!seg.toCity) return;
+                    const ts = parseTripDate(seg.date)?.getTime() || 0;
+                    candidates.push({
+                        name: seg.toCity,
+                        displayName: seg.toCity,
+                        type: 'flight',
+                        code: seg.toCode,
+                        date: seg.date,
+                        emoji: '🛬',
+                        sortTs: ts,
+                    });
                 });
             }
 
-            // If no flights, build from hotels
-            if (stops.length <= 1) {
-                const sortedHotels = [...(trip.hotels || [])].sort((a, b) =>
-                    (parseTripDate(a.checkInDate || '')?.getTime() || 0) - (parseTripDate(b.checkInDate || '')?.getTime() || 0)
-                );
-                sortedHotels.forEach(h => {
-                    const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
-                    if (city && !stops.some(s => s.name.toLowerCase() === city.toLowerCase())) {
-                        stops.push({ name: city, displayName: h.name || city, type: 'hotel', date: h.checkInDate, emoji: '🏨', coords: isValidCoordinate(h.lat, h.lng) ? { lat: h.lat!, lng: h.lng! } : undefined });
-                    }
+            // Hotels → one stop per hotel (chronological by check-in)
+            (trip.hotels || []).forEach(h => {
+                const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
+                if (!city) return;
+                const ts = parseTripDate(h.checkInDate || '')?.getTime() || 0;
+                candidates.push({
+                    name: city,
+                    displayName: h.name || city,
+                    type: 'hotel',
+                    date: h.checkInDate,
+                    emoji: '🏨',
+                    coords: isValidCoordinate(h.lat, h.lng) ? { lat: h.lat!, lng: h.lng! } : undefined,
+                    sortTs: ts,
                 });
-            }
+            });
+
+            // Sort chronologically, then dedupe consecutive same-city entries.
+            // Hotels take priority over a flight stop in the same city (better
+            // pin position — flights show the airport, hotel shows where you stay).
+            candidates.sort((a, b) => (a.sortTs || 0) - (b.sortTs || 0));
+
+            const stops: RouteStop[] = [];
+            candidates.forEach(c => {
+                const existing = stops[stops.length - 1];
+                if (existing && existing.name.toLowerCase() === c.name.toLowerCase()) {
+                    // same city as previous stop — prefer hotel over flight
+                    if (c.type === 'hotel' && existing.type !== 'hotel') {
+                        stops[stops.length - 1] = {
+                            name: c.name,
+                            displayName: c.displayName,
+                            type: c.type,
+                            code: existing.code || c.code,
+                            date: existing.date || c.date,
+                            emoji: c.emoji,
+                            coords: c.coords || existing.coords,
+                        };
+                    }
+                    return;
+                }
+                // Also skip if the city already appears earlier in the route —
+                // prevents duplicates when the trip loops back (e.g. TLV → BKK → TLV).
+                // Exception: allow if it's the final stop (round trip back home).
+                const { sortTs, ...stop } = c;
+                stops.push(stop);
+            });
 
             // Fallback: destination string
             if (stops.length === 0 && trip.destination) {
