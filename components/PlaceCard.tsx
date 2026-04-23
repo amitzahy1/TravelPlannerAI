@@ -60,18 +60,18 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                 setRealPhotoTried(false);
         }, [initialUrl]);
 
-        // Try to upgrade the stock-photo fallback to a real photo from Wikipedia
-        // (first cached, then fetched async). Works best for famous attractions
-        // and chain / Michelin restaurants; silently stays on the stock photo
-        // otherwise so the card never renders broken.
+        // Try to upgrade the stock-photo fallback to a real photo from Wikipedia.
+        // Pass the explicit place type so the resolver validates results against
+        // it — 'Sorn' the K-pop singer doesn't get returned when we're asking
+        // about 'Sorn' the Bangkok restaurant.
         useEffect(() => {
                 let cancelled = false;
-                resolveRealPlaceImage(searchName, location).then(real => {
+                resolveRealPlaceImage(searchName, location, type).then(real => {
                         if (!cancelled && real) setImgSrc(real);
                         if (!cancelled) setRealPhotoTried(true);
                 });
                 return () => { cancelled = true; };
-        }, [searchName, location]);
+        }, [searchName, location, type]);
 
         const handleError = () => {
                 // Self-Healing Fallback — if the Wikipedia image 404s, go back to

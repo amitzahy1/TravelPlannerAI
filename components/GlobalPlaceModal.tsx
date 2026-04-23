@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
+import { resolveRealPlaceImage } from '../services/placeImageService';
 
 
 interface GlobalPlaceModalProps {
@@ -91,10 +92,23 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
         // Smart Subtitle (e.g. "Smash Burger") replacing duplicate tag
         const smartSubtitle = getSmartSubtitle(item);
 
-        // Image & Map
-        const { url: imageUrl, label: visualLabel } = (type === 'food' || type === 'restaurant')
+        // Image — same resolver the card uses, so clicking a card doesn't swap
+        // to a different image. Stock photo shows immediately; real photo from
+        // Wikipedia upgrades in when available + validated against the type.
+        const { url: stockUrl, label: visualLabel } = (type === 'food' || type === 'restaurant')
                 ? getFoodImage(item.name, item.description || '', [originalTag])
                 : getAttractionImage(item.name, item.description || '', [originalTag]);
+
+        const placeType = (type === 'food' || type === 'restaurant') ? 'restaurant' : 'attraction';
+        const [imageUrl, setImageUrl] = useState<string>(stockUrl);
+        useEffect(() => {
+                setImageUrl(stockUrl);
+                let cancelled = false;
+                resolveRealPlaceImage(item.name, item.location || '', placeType).then(real => {
+                        if (!cancelled && real) setImageUrl(real);
+                });
+                return () => { cancelled = true; };
+        }, [item.name, item.location, placeType, stockUrl]);
 
         // Fix Navigation: Smart Query Construction
         const cleanLocation = (item.location || '').replace(/\(.*\)/g, '').replace(/near/i, '').trim();
