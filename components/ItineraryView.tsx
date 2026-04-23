@@ -1202,58 +1202,95 @@ export const ItineraryView: React.FC<{
                             })()}
 
                             {/* Events List */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/50 scrollbar-hide">
+                            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 bg-slate-50/50 scrollbar-hide">
                                 {activeDay.events.length > 0 ? (
-                                    activeDay.events.map((event, i) => (
-                                        <div key={`${event.id}-${i}`} className="group flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all relative">
-                                            <div className="w-12 flex-shrink-0 pt-1 text-center">
-                                                <span className="text-xs font-bold text-slate-400 font-mono tracking-tight block">{event.time || ''}</span>
-                                            </div>
-                                            <div className={`mt-0.5 w-1 h-full absolute right-12 top-0 rounded-full opacity-20 ${event.bgClass.replace('bg-', 'bg-')}`}></div>
-
-                                            <div className="flex-1 min-w-0 pr-2 border-r-2 border-slate-50 mr-1">
-                                                <div className="flex justify-between items-start">
-                                                    <h3 className="font-bold text-slate-800 text-sm truncate">{event.title}</h3>
-                                                    <div className={`p-1.5 rounded-lg ${event.bgClass} flex-shrink-0`}><event.icon className={`w-3.5 h-3.5 ${event.colorClass}`} /></div>
+                                    activeDay.events.map((event, i) => {
+                                        const isDeletable = event.isManual || event.type === 'food' || event.type === 'attraction';
+                                        return (
+                                            <div
+                                                key={`${event.id}-${i}`}
+                                                className="group bg-white p-3 sm:p-4 rounded-xl border border-slate-100 shadow-card hover:shadow-card-hover transition-all relative flex items-start gap-3"
+                                            >
+                                                {/* Time column (LTR, tabular) */}
+                                                <div className="shrink-0 w-12 pt-0.5 text-center">
+                                                    <span className="text-sm font-bold text-slate-700 block font-mono tabular-nums" dir="ltr">
+                                                        {event.time || '—'}
+                                                    </span>
                                                 </div>
-                                                <div className="flex flex-wrap items-center gap-2 mt-1">
-                                                    {event.subtitle && <span className="text-[10px] text-slate-500 truncate max-w-[150px]">{event.subtitle}</span>}
-                                                    {event.location && (
-                                                        <a
-                                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event.title} ${event.location}`)}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="flex items-center text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded hover:bg-slate-100 hover:text-blue-500 transition-colors"
-                                                        >
-                                                            <MapPin className="w-2.5 h-2.5 ml-0.5" /> {event.location}
-                                                        </a>
-                                                    )}
-                                                    {event.isExternal && <span className="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 rounded font-bold">G-Cal</span>}
-                                                </div>
-                                            </div>
 
-                                            {/* Quick Delete - Manual activities, Restaurants, Attractions */}
-                                            {(event.isManual || event.type === 'food' || event.type === 'attraction') && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (event.isManual) {
-                                                            handleDeleteActivity(event.dayId!, event.activityIndex!);
-                                                        } else if (event.type === 'food' || event.type === 'attraction') {
-                                                            handleUnscheduleItem(event.id, event.type);
-                                                        }
-                                                    }}
-                                                    className="absolute bottom-2 left-2 text-slate-200 hover:text-red-500 transition-colors p-1"
-                                                    title={event.isManual ? 'מחק מהלוז' : 'הסר מהלוז (יחזור להמלצות)'}
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))
+                                                {/* Accent line */}
+                                                <div className={`absolute right-14 top-3 bottom-3 w-0.5 rounded-pill opacity-30 ${event.bgClass}`} aria-hidden />
+
+                                                {/* Main content */}
+                                                <div className="flex-1 min-w-0 flex gap-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <h3 className="font-bold text-slate-900 text-sm leading-snug break-words">
+                                                            {event.title}
+                                                        </h3>
+                                                        {event.subtitle && (
+                                                            <p className="text-xs text-slate-500 leading-snug mt-1 break-words">{event.subtitle}</p>
+                                                        )}
+                                                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                                            {event.location && (
+                                                                <a
+                                                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event.title} ${event.location}`)}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="inline-flex items-center gap-1 text-2xs font-semibold text-slate-500 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 px-2 py-0.5 rounded-pill border border-slate-100 transition-colors"
+                                                                >
+                                                                    <MapPin className="w-3 h-3" />
+                                                                    <span className="truncate max-w-[180px]">{event.location}</span>
+                                                                </a>
+                                                            )}
+                                                            {event.price && (
+                                                                <span className="inline-flex items-center gap-1 text-2xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-pill border border-emerald-100">
+                                                                    <DollarSign className="w-3 h-3" />
+                                                                    {event.price}
+                                                                </span>
+                                                            )}
+                                                            {event.isExternal && (
+                                                                <span className="inline-flex items-center text-2xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-pill ring-1 ring-emerald-100">
+                                                                    Google Calendar
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Type icon */}
+                                                    <div className={`shrink-0 p-2 rounded-lg ${event.bgClass} ${event.colorClass} h-fit`}>
+                                                        <event.icon className="w-4 h-4" />
+                                                    </div>
+                                                </div>
+
+                                                {isDeletable && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (event.isManual) {
+                                                                handleDeleteActivity(event.dayId!, event.activityIndex!);
+                                                            } else {
+                                                                handleUnscheduleItem(event.id, event.type);
+                                                            }
+                                                        }}
+                                                        className="absolute bottom-1.5 left-1.5 w-7 h-7 rounded-md text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex items-center justify-center md:opacity-0 md:group-hover:opacity-100"
+                                                        title={event.isManual ? 'מחק מהלוז' : 'הסר מהלוז (יחזור להמלצות)'}
+                                                        aria-label="מחק אירוע"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })
                                 ) : (
-                                    <div className="text-center py-10 text-slate-300 text-xs font-bold">אין פעילויות</div>
+                                    <div className="text-center py-12 px-4">
+                                        <div className="w-14 h-14 bg-slate-100 rounded-pill flex items-center justify-center mx-auto mb-3">
+                                            <Calendar className="w-6 h-6 text-slate-400" />
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-600">יום חופשי</p>
+                                        <p className="text-xs text-slate-400 mt-1">הוסף פעילויות כדי לתכנן את היום</p>
+                                    </div>
                                 )}
 
                                 <button
