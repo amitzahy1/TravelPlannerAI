@@ -23,10 +23,12 @@ const DiscoverView = React.lazy(() => import('./components/DiscoverView').then(m
 
 import { JoinTripModal } from './components/JoinTripModal';
 import { AIChatOverlay } from './components/AIChatOverlay';
+import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { Toaster } from './components/ui/Toaster';
 import { toast } from './stores/useToastStore';
 import { runBackgroundResearch } from './services/backgroundResearch';
 import { MagicalWizard } from './components/onboarding/MagicalWizard';
+import { TripListSkeleton, ViewSkeleton } from './components/shared';
 
 // ...
 
@@ -90,9 +92,21 @@ const AppContent: React.FC = () => {
   // Loading State
   if (authLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4 bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <span className="text-slate-500 font-medium animate-pulse">Loading Profile...</span>
+      <div dir="rtl" className="min-h-screen bg-slate-50 flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-500 to-sky-400 animate-pulse" />
+            <div className="space-y-1.5">
+              <div className="h-3.5 w-28 bg-slate-200 rounded-pill animate-pulse" />
+              <div className="h-2 w-20 bg-slate-100 rounded-pill animate-pulse" />
+            </div>
+          </div>
+          <div className="h-9 w-9 rounded-pill bg-slate-200 animate-pulse" />
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
+          <div className="w-10 h-10 rounded-full border-b-2 border-blue-600 animate-spin" />
+          <span className="text-xs text-slate-500 font-semibold">טוען פרופיל…</span>
+        </div>
       </div>
     );
   }
@@ -104,12 +118,7 @@ const AppContent: React.FC = () => {
 
   // Loading Data
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <span className="text-gray-500 font-medium">טוען את הטיולים שלך...</span>
-      </div>
-    );
+    return <TripListSkeleton />;
   }
 
   // Error State
@@ -257,11 +266,7 @@ const AppContent: React.FC = () => {
     // Admin View is now a main tab ('trips')
     if (currentTab === 'trips') {
       return (
-        <React.Suspense fallback={
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          </div>
-        }>
+        <React.Suspense fallback={<ViewSkeleton />}>
           <AdminView
             data={trips}
             currentTripId={activeTripId || undefined}
@@ -373,6 +378,8 @@ const AppContent: React.FC = () => {
       {activeTrip && (
         <AIChatOverlay trip={activeTrip} />
       )}
+
+      <PwaInstallPrompt />
 
       <Toaster />
     </HashRouter>

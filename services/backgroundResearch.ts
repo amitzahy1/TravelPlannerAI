@@ -265,18 +265,35 @@ export const runBackgroundResearch = (
                 onComplete: (phase) => console.log(`[bgResearch] ${phase} done`),
         };
 
+        let foodFailed = false;
+        let attractionsFailed = false;
+
         const tasks: Promise<any>[] = [];
         if (needsFood) {
-                tasks.push(researchRestaurantsForTrip(trip, userId, opts).catch(e => console.error('[bgResearch] food failed', e)));
+                tasks.push(researchRestaurantsForTrip(trip, userId, opts).catch(e => {
+                        console.error('[bgResearch] food failed', e);
+                        foodFailed = true;
+                }));
         }
         if (needsAttractions) {
-                tasks.push(researchAttractionsForTrip(trip, userId, opts).catch(e => console.error('[bgResearch] attractions failed', e)));
+                tasks.push(researchAttractionsForTrip(trip, userId, opts).catch(e => {
+                        console.error('[bgResearch] attractions failed', e);
+                        attractionsFailed = true;
+                }));
         }
 
         return Promise.all(tasks)
                 .then(() => {
                         console.log('[bgResearch] all phases complete for trip', trip.id);
-                        toast.success('✅ המחקר הושלם — אוכל ואטרקציות מוכנים');
+                        if (foodFailed && attractionsFailed) {
+                                toast.error('המחקר האוטומטי נכשל — אפשר להריץ שוב ידנית מתוך הדפים אוכל/אטרקציות.', 6000);
+                        } else if (foodFailed) {
+                                toast.warning('מחקר האוכל נכשל — אפשר להריץ שוב מדף האוכל. האטרקציות נשמרו.', 6000);
+                        } else if (attractionsFailed) {
+                                toast.warning('מחקר האטרקציות נכשל — אפשר להריץ שוב מדף האטרקציות. האוכל נשמר.', 6000);
+                        } else {
+                                toast.success('✅ המחקר הושלם — אוכל ואטרקציות מוכנים');
+                        }
                 })
                 .finally(() => {
                         inFlightTrips.delete(trip.id);

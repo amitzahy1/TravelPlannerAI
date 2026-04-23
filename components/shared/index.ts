@@ -6,3 +6,4 @@ export { Modal } from './Modal';
 export { ProgressDots } from './ProgressDots';
 export type { ProgressDot } from './ProgressDots';
 export { TripProgress } from './TripProgress';
+export { Skeleton, TripListSkeleton, ViewSkeleton } from './Skeleton';

@@ -63,8 +63,13 @@ export default {
                                 'scale-in': 'scaleIn 0.3s ease-out forwards',
                                 'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                                 'float': 'float 6s ease-in-out infinite',
+                                'skeleton': 'skeleton 1.4s ease-in-out infinite',
                         },
                         keyframes: {
+                                skeleton: {
+                                        '0%': { backgroundPosition: '200% 50%' },
+                                        '100%': { backgroundPosition: '-200% 50%' },
+                                },
                                 fadeInUp: {
                                         '0%': { opacity: '0', transform: 'translateY(15px)' },
                                         '100%': { opacity: '1', transform: 'translateY(0)' },
