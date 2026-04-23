@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 
 // --- CONFIG ---
-const WORKER_URL = "https://travelplannerai.amitzahy1.workers.dev/api/generate";
+const WORKER_URL = "https://travelplannerai-api.amitzahy1.workers.dev/api/generate";
 const PDF_PATH = "/Users/amitzahy/Documents/Draft/travel-planner-pro/itinerary-4299947-20251012-212733 (2).pdf";
 
 // --- SCHEMA (Same as Worker) ---
