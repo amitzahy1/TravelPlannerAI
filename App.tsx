@@ -25,6 +25,7 @@ const ShoppingView = React.lazy(() => import('./components/ShoppingView').then(m
 import { JoinTripModal } from './components/JoinTripModal';
 import { AIChatOverlay } from './components/AIChatOverlay';
 import { Toaster } from './components/ui/Toaster';
+import { toast } from './stores/useToastStore';
 import { MagicalWizard } from './components/onboarding/MagicalWizard';
 
 // ...
@@ -231,12 +232,16 @@ const AppContent: React.FC = () => {
     };
 
     try {
-      await saveTrips([...trips, newTrip], user?.uid);
+      // Use saveSingleTrip instead of saveTrips([...trips, newTrip]) — captures fresh state
+      // from Firestore write, avoids stale-closure risk of the `trips` array.
+      await saveSingleTrip(newTrip, user?.uid);
       setActiveTripId(newTrip.id);
       setShowOnboarding(false);
       queryClient.invalidateQueries({ queryKey: ['trips'] });
+      toast.success(`הטיול "${newTrip.name || newTrip.destination}" נוצר בהצלחה!`);
     } catch (error) {
       console.error("Failed to save trip:", error);
+      toast.error("שגיאה בשמירת הטיול. נסה שוב.");
     }
   };
 

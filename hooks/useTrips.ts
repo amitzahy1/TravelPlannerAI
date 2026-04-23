@@ -4,6 +4,7 @@ import { loadTrips, deleteTrip, leaveTrip, saveSingleTrip } from '../services/st
 import { useAuth } from '../contexts/AuthContext';
 import { Trip } from '../types';
 import { useTripStore } from '../stores/useTripStore';
+import { toast } from '../stores/useToastStore';
 
 // Query Key Factory
 const TRIP_KEYS = {
@@ -65,6 +66,7 @@ export const useTripMutations = () => {
                 onError: (err, newTodo, context) => {
                         queryClient.setQueryData(TRIP_KEYS.lists(), context?.previousTrips);
                         setProcessingTripId(null); // Unlock
+                        toast.error('מחיקת הטיול נכשלה. נסה שוב.');
                 },
                 onSuccess: (deletedId) => {
                         // Switch active trip if needed
@@ -72,6 +74,7 @@ export const useTripMutations = () => {
                         if (activeTripId === deletedId) {
                                 setActiveTripId(currentTrips.length > 0 ? currentTrips[0].id : '');
                         }
+                        toast.success('הטיול נמחק');
                 },
                 onSettled: () => {
                         queryClient.invalidateQueries({ queryKey: TRIP_KEYS.lists() });
@@ -94,12 +97,14 @@ export const useTripMutations = () => {
                 onError: (err, vars, context) => {
                         queryClient.setQueryData(TRIP_KEYS.lists(), context?.previousTrips);
                         setProcessingTripId(null);
+                        toast.error('לא הצלחנו לעזוב את הטיול. נסה שוב.');
                 },
                 onSuccess: (leftId) => {
                         const currentTrips = queryClient.getQueryData<Trip[]>(TRIP_KEYS.lists()) || [];
                         if (activeTripId === leftId) {
                                 setActiveTripId(currentTrips.length > 0 ? currentTrips[0].id : '');
                         }
+                        toast.success('עזבת את הטיול');
                 },
                 onSettled: () => {
                         queryClient.invalidateQueries({ queryKey: TRIP_KEYS.lists() });
@@ -120,6 +125,7 @@ export const useTripMutations = () => {
                 },
                 onError: (err, newTrip, context) => {
                         queryClient.setQueryData(TRIP_KEYS.lists(), context?.previousTrips);
+                        toast.error('שמירת השינויים נכשלה. נסה שוב.');
                 },
                 onSettled: () => {
                         queryClient.invalidateQueries({ queryKey: TRIP_KEYS.lists() });
