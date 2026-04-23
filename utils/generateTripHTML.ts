@@ -1,5 +1,4 @@
 import { Trip, FlightSegment, HotelBooking } from '../types';
-import { geocode, readGeoCache } from './geocode';
 
 /**
  * Trip Summary Export — v6 (Full-Width Dashboard)
@@ -265,143 +264,6 @@ const renderFlightsOverview = (trip: Trip): string => {
   `;
 };
 
-// ── Route map (inline SVG, no tiles, no external deps) ─────────
-//
-// Renders the trip as a minimal schematic: coloured numbered pins
-// at each hotel, connecting lines in date order. Uses lat/lng from
-// hotels (or the live map's geo-cache in localStorage, populated
-// whenever the user has already viewed the app's map view). Skips
-// silently if fewer than 2 stops have coordinates.
-
-interface MapStop {
-  name: string;
-  lat: number;
-  lng: number;
-  emoji: string;
-}
-
-/**
- * Candidate lookup keys for a hotel, tried in order. Covers: the
- * hotel's own name; each comma-separated piece of the address; and
- * the `city` field if set. Matches keys the live map also writes.
- */
-const hotelLookupKeys = (h: HotelBooking): string[] => {
-  const keys: string[] = [];
-  if (h.name) keys.push(h.name);
-  if ((h as any).city) keys.push((h as any).city);
-  (h.address || '').split(',').map(s => s.trim()).filter(Boolean).forEach(p => keys.push(p));
-  // Uniq-preserving order
-  return Array.from(new Set(keys));
-};
-
-const lookupFromCache = (
-  cache: Record<string, { lat: number; lng: number }>,
-  keys: string[],
-): { lat: number; lng: number } | undefined => {
-  for (const k of keys) {
-    if (cache[k]) return cache[k];
-    if (cache[k.toLowerCase()]) return cache[k.toLowerCase()];
-    if (cache[k.toUpperCase()]) return cache[k.toUpperCase()];
-  }
-  return undefined;
-};
-
-const buildMapStops = (trip: Trip): MapStop[] => {
-  const cache = readGeoCache();
-  const stops: MapStop[] = [];
-  (trip.hotels || [])
-    .slice()
-    .sort((a, b) => {
-      const ta = a.checkInDate ? new Date(a.checkInDate).getTime() : 0;
-      const tb = b.checkInDate ? new Date(b.checkInDate).getTime() : 0;
-      return ta - tb;
-    })
-    .forEach(h => {
-      let lat = h.lat, lng = h.lng;
-      if (!(typeof lat === 'number' && typeof lng === 'number')) {
-        const c = lookupFromCache(cache, hotelLookupKeys(h));
-        if (c) { lat = c.lat; lng = c.lng; }
-      }
-      if (typeof lat === 'number' && typeof lng === 'number') {
-        stops.push({ name: h.name, lat, lng, emoji: '🏨' });
-      }
-    });
-  return stops;
-};
-
-const renderRouteMap = (trip: Trip): string => {
-  const stops = buildMapStops(trip);
-  if (stops.length < 2) return '';
-
-  const W = 1000, H = 480, padding = 60;
-  const lats = stops.map(s => s.lat);
-  const lngs = stops.map(s => s.lng);
-  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-  const spanLat = Math.max(maxLat - minLat, 0.02);
-  const spanLng = Math.max(maxLng - minLng, 0.02);
-
-  // Simple equirectangular projection scaled to the viewBox.
-  const project = (lat: number, lng: number): [number, number] => {
-    const x = padding + ((lng - minLng) / spanLng) * (W - 2 * padding);
-    // SVG y-axis is top-down, latitude increases northward → invert
-    const y = padding + (1 - (lat - minLat) / spanLat) * (H - 2 * padding);
-    return [x, y];
-  };
-
-  const COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626', '#8b5cf6', '#14b8a6'];
-
-  const points = stops.map(s => project(s.lat, s.lng));
-
-  const lines = points.slice(0, -1).map((p, i) => {
-    const [x1, y1] = p;
-    const [x2, y2] = points[i + 1];
-    const color = COLORS[i % COLORS.length];
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round" opacity="0.85"/>`;
-  }).join('');
-
-  const pins = points.map((p, i) => {
-    const [x, y] = p;
-    const color = COLORS[i % COLORS.length];
-    const name = esc(stops[i].name);
-    return `
-      <g>
-        <circle cx="${x}" cy="${y}" r="18" fill="white" stroke="${color}" stroke-width="3"/>
-        <circle cx="${x}" cy="${y}" r="13" fill="${color}"/>
-        <text x="${x}" y="${y + 5}" text-anchor="middle" fill="white" font-weight="800" font-size="14" font-family="Rubik, sans-serif">${i + 1}</text>
-        <g transform="translate(${x}, ${y + 32})">
-          <rect x="-60" y="-14" width="120" height="22" rx="11" fill="white" stroke="${color}" stroke-width="1" opacity="0.95"/>
-          <text x="0" y="1" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11" font-family="Rubik, sans-serif">${name.length > 18 ? name.slice(0, 17) + '…' : name}</text>
-        </g>
-      </g>
-    `;
-  }).join('');
-
-  const legend = stops.map((s, i) => {
-    const color = COLORS[i % COLORS.length];
-    return `
-      <span class="map-legend-item">
-        <span class="map-legend-dot" style="background:${color}">${i + 1}</span>
-        ${esc(s.name)}
-      </span>
-    `;
-  }).join('');
-
-  return `
-    <section class="overview route-map-section">
-      <h2 class="ov-title">🗺 מפת המסלול <span class="ov-count">${stops.length} עצירות</span></h2>
-      <div class="route-map-card">
-        <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
-          <rect x="0" y="0" width="${W}" height="${H}" fill="#f8fafc"/>
-          ${lines}
-          ${pins}
-        </svg>
-        <div class="map-legend">${legend}</div>
-      </div>
-    </section>
-  `;
-};
-
 const renderHotelsOverview = (trip: Trip): string => {
   const hotels = trip.hotels || [];
   if (hotels.length === 0) return '';
@@ -617,49 +479,6 @@ body {
   background: #faf5ff; padding: 3px 8px; border-radius: 6px;
 }
 
-/* ═══ ROUTE MAP ═══ */
-.route-map-section { margin-bottom: 20px; }
-.route-map-card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 12px;
-  box-shadow: var(--shadow-sm);
-}
-.route-map-card svg {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 10px;
-}
-.map-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  margin-top: 10px;
-  padding: 0 6px;
-}
-.map-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-}
-.map-legend-dot {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  color: white;
-  font-weight: 800;
-  font-size: 11px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
 /* ═══ DAYS GRID ═══ */
 .days-section { margin-top: 8px; }
 .days-grid {
@@ -864,7 +683,6 @@ export const generateTripHTML = (trip: Trip): string => {
     <div class="stat"><div class="stat-v">${itineraryActivityCount}</div><div class="stat-l">פעילויות</div></div>
   </div>
 
-  ${renderRouteMap(trip)}
   ${renderFlightsOverview(trip)}
   ${renderHotelsOverview(trip)}
 
@@ -883,31 +701,7 @@ export const generateTripHTML = (trip: Trip): string => {
 </html>`;
 };
 
-/**
- * Resolve lat/lng for every hotel that doesn't already have one, via
- * the shared geo-cache (populated by the in-app map) and on-demand
- * Nominatim geocoding. Results are written back to the cache so
- * future exports + the live map share them. Stops trying quickly if
- * Nominatim is rate-limiting us.
- */
-const ensureHotelCoords = async (trip: Trip): Promise<void> => {
-  const hotels = trip.hotels || [];
-  for (const h of hotels) {
-    if (typeof h.lat === 'number' && typeof h.lng === 'number') continue;
-    const keys = hotelLookupKeys(h);
-    // Try cache via the fuzzy lookup first (cheap).
-    const cached = lookupFromCache(readGeoCache(), keys);
-    if (cached) { h.lat = cached.lat; h.lng = cached.lng; continue; }
-    // Not in cache — geocode. Try keys in order; stop at first hit.
-    for (const key of keys) {
-      const c = await geocode(key);
-      if (c) { h.lat = c.lat; h.lng = c.lng; break; }
-    }
-  }
-};
-
-export const downloadTripHTML = async (trip: Trip): Promise<void> => {
-  await ensureHotelCoords(trip);
+export const downloadTripHTML = (trip: Trip): void => {
   const html = generateTripHTML(trip);
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);

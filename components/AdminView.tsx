@@ -997,15 +997,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         {/* Export HTML Button */}
                                         {activeTrip && (
                                             <button
-                                                onClick={async () => {
-                                                    try {
-                                                        toast.info('מכין סיכום מסע ומייצר מפה…', 2500);
-                                                        await downloadTripHTML(activeTrip);
-                                                    } catch (e) {
-                                                        console.error('Export failed', e);
-                                                        toast.error('לא ניתן לייצא את הסיכום. נסי שוב.');
-                                                    }
-                                                }}
+                                                onClick={() => downloadTripHTML(activeTrip)}
                                                 className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold border border-blue-100 hover:bg-blue-100 transition-colors"
                                             >
                                                 <FileText className="w-4 h-4" />
