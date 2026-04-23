@@ -146,12 +146,14 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                         x: { type: "spring", stiffness: 300, damping: 30 },
                                                                         opacity: { duration: 0.2 }
                                                                 }}
-                                                                className="w-full absolute"
+                                                                className="absolute inset-0 w-full overflow-y-auto"
                                                         >
-                                                                <Step1_Destination
-                                                                        onNext={handleStep1Next}
-                                                                        initialData={tripData}
-                                                                />
+                                                                <div className="min-h-full flex items-center justify-center p-4 md:p-8">
+                                                                        <Step1_Destination
+                                                                                onNext={handleStep1Next}
+                                                                                initialData={tripData}
+                                                                        />
+                                                                </div>
                                                         </motion.div>
                                                 )}
                                                 {step === 1 && (
@@ -166,13 +168,15 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                         x: { type: "spring", stiffness: 300, damping: 30 },
                                                                         opacity: { duration: 0.2 }
                                                                 }}
-                                                                className="w-full absolute"
+                                                                className="absolute inset-0 w-full overflow-y-auto"
                                                         >
-                                                                <Step1_5_Dates
-                                                                        onNext={handleDatesNext}
-                                                                        onBack={() => setStep(0)}
-                                                                        initialData={tripData}
-                                                                />
+                                                                <div className="min-h-full flex items-center justify-center p-4 md:p-8">
+                                                                        <Step1_5_Dates
+                                                                                onNext={handleDatesNext}
+                                                                                onBack={() => setStep(0)}
+                                                                                initialData={tripData}
+                                                                        />
+                                                                </div>
                                                         </motion.div>
                                                 )}
                                                 {step === 2 && (
@@ -187,12 +191,14 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                         x: { type: "spring", stiffness: 300, damping: 30 },
                                                                         opacity: { duration: 0.2 }
                                                                 }}
-                                                                className="w-full absolute"
+                                                                className="absolute inset-0 w-full overflow-y-auto"
                                                         >
-                                                                <Step2_ChoosePath
-                                                                        onSelect={handleStep2Select}
-                                                                        onBack={() => setStep(1)} // Back to Dates
-                                                                />
+                                                                <div className="min-h-full flex items-center justify-center p-4 md:p-8">
+                                                                        <Step2_ChoosePath
+                                                                                onSelect={handleStep2Select}
+                                                                                onBack={() => setStep(1)} // Back to Dates
+                                                                        />
+                                                                </div>
                                                         </motion.div>
                                                 )}
                                                 {step === 3 && (
