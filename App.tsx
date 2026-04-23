@@ -20,8 +20,6 @@ const ItineraryView = React.lazy(() => import('./components/ItineraryView').then
 const HotelsView = React.lazy(() => import('./components/HotelsView').then(module => ({ default: module.HotelsView })));
 const AdminView = React.lazy(() => import('./components/AdminView').then(module => ({ default: module.AdminView })));
 
-const BudgetView = React.lazy(() => import('./components/BudgetView').then(module => ({ default: module.BudgetView })));
-const ShoppingView = React.lazy(() => import('./components/ShoppingView').then(module => ({ default: module.ShoppingView })));
 import { JoinTripModal } from './components/JoinTripModal';
 import { AIChatOverlay } from './components/AIChatOverlay';
 import { Toaster } from './components/ui/Toaster';
@@ -317,8 +315,6 @@ const AppContent: React.FC = () => {
             case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdate} onSwitchTab={setCurrentTab} onRefresh={() => { }} />;
             case 'hotels': return <HotelsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'map_full': return <UnifiedMapView trip={activeTrip} title="מפת הטיול המלאה" />;
-            case 'budget': return <BudgetView trip={activeTrip} onUpdateTrip={handleUpdate} />;
-            case 'shopping': return <ShoppingView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             default: return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdate} onSwitchTab={setCurrentTab} />;
           }
         })()}

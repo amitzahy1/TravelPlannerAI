@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip } from '../types';
-import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, X, Sparkles, ShoppingBag, Check, List, Calendar, Plus, Settings, ArrowRight, Home } from 'lucide-react';
+import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home } from 'lucide-react';
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
 
@@ -38,11 +38,6 @@ const contentNavItems = [
         { id: 'restaurants', label: 'אוכל', icon: Utensils },
         { id: 'attractions', label: 'אטרקציות', icon: Ticket },
         { id: 'map_full', label: 'מפה', icon: MapPin },
-        // Budget + Shopping hidden from the nav for now — routes still exist
-        // in App.tsx so they can be re-enabled instantly by restoring these
-        // entries. Temporarily removed per user request to reduce menu noise.
-        // { id: 'budget', label: 'תקציב', icon: Wallet },
-        // { id: 'shopping', label: 'קניות', icon: ShoppingBag },
 ];
 
 export const LayoutFixed: React.FC<LayoutProps> = ({
