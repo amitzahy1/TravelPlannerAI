@@ -107,24 +107,24 @@ export const QuickAccessWallet: React.FC<QuickAccessWalletProps> = ({ trip, onCl
                                             <div className="flex items-center gap-2">
                                                 <div className="bg-blue-100 p-2 rounded-xl text-blue-600"><Plane className="w-5 h-5" /></div>
                                                 <div>
-                                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">מספר טיסה</div>
+                                                    <div className="text-2xs text-slate-400 font-bold uppercase tracking-wider">מספר טיסה</div>
                                                     <div className="text-xl font-black text-slate-800">{trip.flights.segments[0].flightNumber}</div>
                                                 </div>
                                             </div>
                                             <div className="text-left bg-blue-50 px-3 py-1 rounded-lg">
-                                                <div className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">קוד הזמנה (PNR)</div>
+                                                <div className="text-2xs text-blue-400 font-bold uppercase tracking-wider">קוד הזמנה (PNR)</div>
                                                 <div className="text-2xl font-mono font-black text-blue-600 tracking-widest">{trip.flights.pnr}</div>
                                             </div>
                                         </div>
                                         <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
                                             <div className="text-center">
                                                 <div className="text-2xl font-black text-slate-800">{trip.flights.segments[0].fromCode}</div>
-                                                <div className="text-[10px] font-bold text-slate-400">{trip.flights.segments[0].departureTime}</div>
+                                                <div className="text-2xs font-bold text-slate-400">{trip.flights.segments[0].departureTime}</div>
                                             </div>
                                             <div className="h-px bg-slate-300 w-10"></div>
                                             <div className="text-center">
                                                 <div className="text-2xl font-black text-slate-800">{trip.flights.segments[0].toCode}</div>
-                                                <div className="text-[10px] font-bold text-slate-400">{trip.flights.segments[0].arrivalTime}</div>
+                                                <div className="text-2xs font-bold text-slate-400">{trip.flights.segments[0].arrivalTime}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -145,13 +145,13 @@ export const QuickAccessWallet: React.FC<QuickAccessWalletProps> = ({ trip, onCl
                                             <div className="flex items-center gap-2">
                                                 <div className="bg-indigo-100 p-2 rounded-xl text-indigo-600"><Hotel className="w-5 h-5" /></div>
                                                 <div className="min-w-0">
-                                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">מלון</div>
+                                                    <div className="text-2xs text-slate-400 font-bold uppercase tracking-wider">מלון</div>
                                                     <div className="text-base font-black text-slate-800 leading-tight truncate w-40">{hotel.name}</div>
                                                 </div>
                                             </div>
                                             {hotel.confirmationCode && (
                                                 <div className="text-left">
-                                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">מספר אישור</div>
+                                                    <div className="text-2xs text-slate-400 font-bold uppercase tracking-wider">מספר אישור</div>
                                                     <div className="text-lg font-mono font-black text-indigo-600">{hotel.confirmationCode}</div>
                                                 </div>
                                             )}
@@ -199,7 +199,7 @@ export const QuickAccessWallet: React.FC<QuickAccessWalletProps> = ({ trip, onCl
                             )}
                             <div className="bg-yellow-50 border border-yellow-100 p-3 rounded-xl flex items-start gap-2">
                                 <Lock className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                                <p className="text-[11px] text-yellow-800 leading-snug font-medium">
+                                <p className="text-2xs text-yellow-800 leading-snug font-medium">
                                     המידע נשמר באופן מקומי על המכשיר שלך בלבד. מומלץ לא לשמור סיסמאות בנקאיות, אלא רק מידע לנסיעה (דרכון, ביטוח).
                                 </p>
                             </div>

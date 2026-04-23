@@ -377,41 +377,47 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
           </div>
         </div>
 
-        {/* Row 2 — route strip (dir=ltr to read time→time naturally) */}
-        <div dir="ltr" className="flex items-center gap-3 bg-slate-50/60 rounded-2xl p-3">
-          <div className="w-10 h-10 rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden flex items-center justify-center p-0.5 flex-shrink-0">
+        {/* Row 2 — boarding-pass route strip (dir=ltr for natural time→time read) */}
+        <div dir="ltr" className="relative flex items-center gap-3 bg-gradient-to-l from-slate-50 to-white rounded-2xl p-3 border border-slate-100">
+          {/* Left accent strip (boarding-pass feel) */}
+          <span aria-hidden className="absolute left-0 top-3 bottom-3 w-1 rounded-pill bg-gradient-to-b from-blue-500 to-sky-400" />
+
+          <div className="w-10 h-10 rounded-xl border border-slate-100 bg-white shadow-card overflow-hidden flex items-center justify-center p-0.5 shrink-0 ml-1">
             <img src={logoUrl} alt={airline || 'airline'}
               onError={e => (e.currentTarget.style.display = 'none')}
+              loading="lazy" decoding="async"
               className="w-full h-full object-contain" />
           </div>
 
           {/* Departure */}
-          <div className="flex-shrink-0 text-left min-w-0" style={{ minWidth: '70px' }}>
-            <div className="text-lg sm:text-xl font-black text-slate-900 leading-none tracking-tight font-mono tabular-nums">{depTime || '—'}</div>
-            <div className="text-xs font-black text-slate-500 leading-none mt-1 tracking-wide">{segment.fromCode || '—'}</div>
-            <div className="text-2xs text-slate-400 mt-0.5 truncate">{fromLabel}</div>
+          <div className="shrink-0 text-left min-w-0" style={{ minWidth: '76px' }}>
+            <div className="text-2xl font-black text-slate-900 leading-none tracking-[0.04em] font-mono tabular-nums">{segment.fromCode || '—'}</div>
+            <div className="text-xs font-bold text-slate-600 leading-none mt-1 font-mono tabular-nums">{depTime || '—'}</div>
+            <div className="text-2xs text-slate-400 mt-0.5 truncate max-w-[90px]">{fromLabel}</div>
           </div>
 
           {/* Timeline */}
-          <div className="flex-grow flex flex-col items-center min-w-[40px]">
+          <div className="grow flex flex-col items-center min-w-[44px]">
             {duration && (
-              <span className="text-[9px] sm:text-2xs font-bold text-slate-500 mb-1 whitespace-nowrap bg-white px-1.5 py-0.5 rounded">{duration}</span>
+              <span className="text-2xs font-bold text-slate-500 mb-1 whitespace-nowrap bg-white px-1.5 py-0.5 rounded-pill border border-slate-100 shadow-card">
+                {duration}
+              </span>
             )}
             <div className="w-full flex items-center gap-0.5">
               <div className="flex-1 border-t-2 border-dashed border-slate-300" />
-              <Plane className="w-3.5 h-3.5 text-blue-500 -scale-x-100 flex-shrink-0" />
+              <Plane className="w-3.5 h-3.5 text-blue-500 -scale-x-100 shrink-0" aria-hidden="true" />
               <div className="flex-1 border-t-2 border-dashed border-slate-300" />
             </div>
           </div>
 
           {/* Arrival */}
-          <div className="flex-shrink-0 text-right min-w-0" style={{ minWidth: '70px' }}>
-            <div className="text-lg sm:text-xl font-black text-slate-900 leading-none tracking-tight font-mono tabular-nums inline-flex items-start gap-0.5 justify-end">
-              {arrTime || '—'}
-              {dayDiff > 0 && <span className="text-2xs sm:text-xs font-black text-orange-500 mt-0.5">+{dayDiff}</span>}
+          <div className="shrink-0 text-right min-w-0" style={{ minWidth: '76px' }}>
+            <div className="text-2xl font-black text-slate-900 leading-none tracking-[0.04em] font-mono tabular-nums inline-flex items-start gap-0.5 justify-end">
+              {segment.toCode || '—'}
+              {dayDiff > 0 && <span className="text-2xs font-black text-orange-500 mt-0.5">+{dayDiff}</span>}
             </div>
-            <div className="text-xs font-black text-slate-500 leading-none mt-1 tracking-wide">{segment.toCode || '—'}</div>
-            <div className="text-2xs text-slate-400 mt-0.5 truncate">{toLabel}</div>
+            <div className="text-xs font-bold text-slate-600 leading-none mt-1 font-mono tabular-nums">{arrTime || '—'}</div>
+            <div className="text-2xs text-slate-400 mt-0.5 truncate max-w-[90px]">{toLabel}</div>
           </div>
         </div>
 

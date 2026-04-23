@@ -775,7 +775,7 @@ export const ItineraryView: React.FC<{
                             <div className="flex flex-col items-center min-w-[60px]">
                                 <Plane className="w-8 h-8 text-blue-400 mb-1" />
                                 <span className="text-3xl font-black text-white leading-none">{totalStats.flights}</span>
-                                <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1">טיסות</span>
+                                <span className="text-2xs uppercase font-bold text-white/60 tracking-wider mt-1">טיסות</span>
                             </div>
                             <div className="w-px bg-white/20"></div>
                             <button
@@ -784,7 +784,7 @@ export const ItineraryView: React.FC<{
                             >
                                 <Hotel className={`w-8 h-8 mb-1 transition-colors ${viewingCategory === 'hotels' ? 'text-indigo-300' : 'text-indigo-400 group-hover:text-indigo-300'}`} />
                                 <span className="text-3xl font-black text-white leading-none">{totalStats.hotels}</span>
-                                <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">מלונות</span>
+                                <span className="text-2xs uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">מלונות</span>
                             </button>
                             <div className="w-px bg-white/20"></div>
                             <button
@@ -793,7 +793,7 @@ export const ItineraryView: React.FC<{
                             >
                                 <Utensils className={`w-8 h-8 mb-1 transition-colors ${viewingCategory === 'food' ? 'text-orange-300' : 'text-orange-400 group-hover:text-orange-300'}`} />
                                 <span className="text-3xl font-black text-white leading-none">{favoriteRestaurants.length}</span>
-                                <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">אוכל</span>
+                                <span className="text-2xs uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">אוכל</span>
                             </button>
                             <div className="w-px bg-white/20"></div>
                             <button
@@ -802,7 +802,7 @@ export const ItineraryView: React.FC<{
                             >
                                 <MapPin className={`w-8 h-8 mb-1 transition-colors ${viewingCategory === 'attractions' ? 'text-emerald-300' : 'text-emerald-400 group-hover:text-emerald-300'}`} />
                                 <span className="text-3xl font-black text-white leading-none">{favoriteAttractions.length}</span>
-                                <span className="text-[10px] uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">מקומות</span>
+                                <span className="text-2xs uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">מקומות</span>
                             </button>
                         </div>
 
@@ -820,7 +820,7 @@ export const ItineraryView: React.FC<{
                                             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
                                                 {viewingCategory === 'hotels' ? 'מלונות' : viewingCategory === 'food' ? 'מסעדות מועדפות' : 'אטרקציות מועדפות'}
                                             </h3>
-                                            <div className="bg-slate-100 px-2 py-0.5 rounded text-[10px] text-slate-400 font-mono hidden">POPUP MODE</div>
+                                            <div className="bg-slate-100 px-2 py-0.5 rounded text-2xs text-slate-400 font-mono hidden">POPUP MODE</div>
                                             <button onClick={() => setViewingCategory(null)} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
                                                 <X className="w-4 h-4 text-slate-400" />
                                             </button>
@@ -887,7 +887,7 @@ export const ItineraryView: React.FC<{
                                                                             const diffTime = Math.abs(end.getTime() - start.getTime());
                                                                             const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                                                                             if (nights > 0) {
-                                                                                return <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full">{nights} לילות</span>;
+                                                                                return <span className="text-2xs font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full">{nights} לילות</span>;
                                                                             }
                                                                         }
                                                                         return null;
@@ -897,7 +897,7 @@ export const ItineraryView: React.FC<{
 
                                                             {(viewingCategory === 'food' || viewingCategory === 'attractions') && (
                                                                 <div className="mt-auto pt-2 flex items-center gap-2">
-                                                                    <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-md">
+                                                                    <span className="text-2xs font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-md">
                                                                         {item.cuisine || item.type || (viewingCategory === 'food' ? 'Restaurant' : 'Activity')}
                                                                     </span>
                                                                 </div>

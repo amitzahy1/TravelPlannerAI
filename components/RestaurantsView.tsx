@@ -1022,7 +1022,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                                             {tripCities.length > 1 && !isResearchingAll && (
                                                 <div className="pt-3 border-t border-slate-100 w-full max-w-md">
-                                                    <div className="text-[11px] font-bold text-slate-400 mb-2">או מחקר ממוקד לעיר בודדת:</div>
+                                                    <div className="text-2xs font-bold text-slate-400 mb-2">או מחקר ממוקד לעיר בודדת:</div>
                                                     <div className="flex flex-wrap justify-center gap-2">
                                                         {tripCities.map(city => (
                                                             <button
@@ -1065,7 +1065,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                                 <div className="mb-3">
                                                     <button
                                                         onClick={() => setShowAdvancedFilters(s => !s)}
-                                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all ${showAdvancedFilters || selectedRater !== 'all' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'text-slate-500 hover:text-slate-700'}`}
+                                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-2xs font-bold transition-all ${showAdvancedFilters || selectedRater !== 'all' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'text-slate-500 hover:text-slate-700'}`}
                                                     >
                                                         סנן לפי מקור המלצה
                                                         {selectedRater !== 'all' && (
@@ -1178,12 +1178,12 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
 
                         {/* Genre / Badge Highlight */}
                         <div className="flex items-center gap-2 mt-1">
-                            <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${visuals.gradient}`}>
+                            <div className={`text-2xs font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${visuals.gradient}`}>
                                 <span>{visuals.icon}</span>
                                 <span>{visuals.label}</span>
                             </div>
                             {data.googleRating && (
-                                <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded">
+                                <div className="flex items-center gap-1 text-2xs font-bold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded">
                                     <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
                                     {data.googleRating}
                                 </div>
@@ -1214,11 +1214,11 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
             <div className="mt-2" onClick={e => e.stopPropagation()}>
                 {isEditingNote ? (
                     <div className="bg-yellow-50 p-2 rounded-lg border border-yellow-100 flex gap-1">
-                        <textarea className="w-full bg-transparent border-none outline-none text-[10px] text-yellow-900 resize-none" rows={1} value={noteText} onChange={e => setNoteText(e.target.value)} />
-                        <button onClick={saveNote} className="text-[10px] font-black text-yellow-700 whitespace-nowrap">שמור</button>
+                        <textarea className="w-full bg-transparent border-none outline-none text-2xs text-yellow-900 resize-none" rows={1} value={noteText} onChange={e => setNoteText(e.target.value)} />
+                        <button onClick={saveNote} className="text-2xs font-black text-yellow-700 whitespace-nowrap">שמור</button>
                     </div>
                 ) : (
-                    <div onClick={() => setIsEditingNote(true)} className="text-[10px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-1.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <div onClick={() => setIsEditingNote(true)} className="text-2xs text-slate-400 border border-dashed border-slate-200 rounded-lg p-1.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors">
                         {data.notes ? <><StickyNote className="w-3 h-3 text-yellow-500" /> <span className="text-yellow-900 truncate">{data.notes}</span></> : <span className="opacity-50">+ הערה</span>}
                     </div>
                 )}

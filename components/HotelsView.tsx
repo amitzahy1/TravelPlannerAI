@@ -5,7 +5,7 @@ import { Trip, HotelBooking, HotelRoom, TravelersComposition } from '../types';
 import {
     Hotel, MapPin, Calendar, BedDouble, CheckCircle, StickyNote, Edit, Plus, Trash2, X,
     Image as ImageIcon, Sparkles, Loader2, Navigation, UploadCloud, FileText, Coffee,
-    ShieldCheck, Lock, ChevronDown, Users, Tag, CheckCheck, DollarSign
+    ShieldCheck, Lock, ChevronDown, Users, Tag, CheckCheck, DollarSign, Copy, Check
 } from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
@@ -386,7 +386,7 @@ const HotelCard: React.FC<{
                         )}
                     </div>
                     {primary.city && (
-                        <div className="flex items-center gap-1 text-[11px] text-slate-400 leading-none mt-0.5">
+                        <div className="flex items-center gap-1 text-2xs text-slate-400 leading-none mt-0.5">
                             <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
                             <span className="truncate">{primary.city}</span>
                         </div>
@@ -396,7 +396,7 @@ const HotelCard: React.FC<{
                 {/* Date range + nights */}
                 <div className="flex items-center gap-1.5 flex-shrink-0 text-xs" dir="ltr">
                     <span className="text-slate-500 font-semibold whitespace-nowrap hidden sm:inline">{formatDate(primary.checkInDate)}</span>
-                    <span className="bg-indigo-600 text-white font-black text-[11px] px-2 py-0.5 rounded-lg whitespace-nowrap">
+                    <span className="bg-indigo-600 text-white font-black text-2xs px-2 py-0.5 rounded-lg whitespace-nowrap">
                         {nightsCount ?? '?'} לילות
                     </span>
                     <span className="text-slate-500 font-semibold whitespace-nowrap hidden sm:inline">{formatDate(primary.checkOutDate)}</span>
@@ -404,7 +404,7 @@ const HotelCard: React.FC<{
 
                 {/* Room count badge */}
                 {mergedRooms.length > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg flex-shrink-0 whitespace-nowrap">
+                    <span className="flex items-center gap-1 text-2xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg flex-shrink-0 whitespace-nowrap">
                         <BedDouble className="w-3 h-3" /> {mergedRooms.length} חדר{mergedRooms.length !== 1 ? 'ים' : ''}
                     </span>
                 )}
@@ -506,17 +506,34 @@ const HotelCard: React.FC<{
                             {/* Badges */}
                             <div className="flex items-center gap-1.5 flex-wrap">
                                 {confirmationCodes.map(code => (
-                                    <span key={code} className="flex items-center gap-1 text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-mono">
-                                        <CheckCircle className="w-2.5 h-2.5" /> {code}
-                                    </span>
+                                    <button
+                                        key={code}
+                                        type="button"
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                                await navigator.clipboard.writeText(code);
+                                                toast.success(`✓ קוד האישור הועתק: ${code}`, 2500);
+                                            } catch {
+                                                toast.error('לא ניתן להעתיק ללוח — בדקי את הרשאת הדפדפן', 4000);
+                                            }
+                                        }}
+                                        title="העתק ללוח"
+                                        aria-label={`העתק את קוד האישור ${code} ללוח`}
+                                        className="group/copy flex items-center gap-1 text-2xs font-black bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-mono cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                                    >
+                                        <CheckCircle className="w-2.5 h-2.5 group-hover/copy:hidden" aria-hidden="true" />
+                                        <Copy className="w-2.5 h-2.5 hidden group-hover/copy:block" aria-hidden="true" />
+                                        {code}
+                                    </button>
                                 ))}
                                 {(primary.mealPlan || primary.breakfastIncluded) && (
-                                    <span className="flex items-center gap-1 text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100 px-2 py-0.5 rounded-md">
+                                    <span className="flex items-center gap-1 text-2xs font-bold bg-orange-50 text-orange-600 border border-orange-100 px-2 py-0.5 rounded-md">
                                         <Coffee className="w-2.5 h-2.5" /> {primary.mealPlan || 'ארוחת בוקר'}
                                     </span>
                                 )}
                                 {cancellationColor && (
-                                    <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                                    <span className={`flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded-md border ${
                                         cancellationColor === 'emerald' ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                                         : cancellationColor === 'red'   ? 'bg-red-50 text-red-700 border-red-100'
                                         :                                 'bg-amber-50 text-amber-700 border-amber-100'
@@ -526,7 +543,7 @@ const HotelCard: React.FC<{
                                     </span>
                                 )}
                                 {primary.price && (
-                                    <span className="flex items-center gap-1 text-[10px] font-bold bg-white text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md ms-auto">
+                                    <span className="flex items-center gap-1 text-2xs font-bold bg-white text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md ms-auto">
                                         {primary.price}
                                     </span>
                                 )}
@@ -793,7 +810,7 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                                 <span key={city} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-lg">
                                     <MapPin className="w-3 h-3 flex-shrink-0" />
                                     {city}
-                                    {nights > 0 && <span className="bg-indigo-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md ml-1">{nights}L</span>}
+                                    {nights > 0 && <span className="bg-indigo-600 text-white text-2xs font-black px-1.5 py-0.5 rounded-md ml-1">{nights}L</span>}
                                 </span>
                             ))}
                         </div>
@@ -893,7 +910,7 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                                     )}
                                     <div className="relative z-10 w-full px-2">
                                         <div className={`text-xs font-bold truncate w-full ${isImage ? 'text-white drop-shadow-md' : 'text-slate-700'}`}>{doc}</div>
-                                        <div className={`text-[10px] font-medium uppercase mt-1 ${isImage ? 'text-white/80' : 'text-slate-400'}`}>{isPdf ? 'PDF DOC' : 'IMAGE'}</div>
+                                        <div className={`text-2xs font-medium uppercase mt-1 ${isImage ? 'text-white/80' : 'text-slate-400'}`}>{isPdf ? 'PDF DOC' : 'IMAGE'}</div>
                                     </div>
                                 </div>
                             );

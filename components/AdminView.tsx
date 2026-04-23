@@ -1053,7 +1053,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
                                                     return (
                                                         <div className="mt-2 animate-fade-in">
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">זוהו מהטיול:</span>
+                                                            <span className="text-2xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">זוהו מהטיול:</span>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {suggestions.map((s, i) => (
                                                                     <button
@@ -1081,7 +1081,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">תאריכים</label>
                                                 <div className="bg-slate-50 p-1 rounded-xl border border-slate-200 flex items-center justify-between relative group">
                                                     <div className="flex-1 p-2 border-l border-slate-200">
-                                                        <span className="text-[10px] font-bold text-slate-400 block mb-1">התחלה</span>
+                                                        <span className="text-2xs font-bold text-slate-400 block mb-1">התחלה</span>
                                                         <DateInput
                                                             value={startDate}
                                                             onChange={(val) => handleDateChange('start', val)}
@@ -1090,7 +1090,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                         />
                                                     </div>
                                                     <div className="flex-1 p-2">
-                                                        <span className="text-[10px] font-bold text-slate-400 block mb-1">סיום</span>
+                                                        <span className="text-2xs font-bold text-slate-400 block mb-1">סיום</span>
                                                         <DateInput
                                                             value={endDate}
                                                             onChange={(val) => handleDateChange('end', val)}
@@ -1207,7 +1207,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                         <div className="space-y-3">
                                                             {/* Airline Name - Text-like Input */}
                                                             <div className="relative pr-1">
-                                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">חברת תעופה</label>
+                                                                <label className="text-2xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">חברת תעופה</label>
                                                                 <input
                                                                     className="w-full font-black text-lg text-slate-800 bg-transparent border-b border-transparent focus:border-slate-300 outline-none placeholder:text-slate-300 transition-colors"
                                                                     value={seg.airline || ''}
@@ -1220,7 +1220,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                             <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                                                                 {/* From */}
                                                                 <div className="flex-1 min-w-0">
-                                                                    <label className="text-[10px] font-bold text-slate-400 block text-center mb-1">מאיפה</label>
+                                                                    <label className="text-2xs font-bold text-slate-400 block text-center mb-1">מאיפה</label>
                                                                     <div className="relative">
                                                                         <input
                                                                             value={seg.fromCode || ''}
@@ -1229,7 +1229,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                                             placeholder="TLV"
                                                                         />
                                                                         {/* City Hint */}
-                                                                        <div className="text-[10px] text-slate-400 font-medium text-center truncate mt-1">{seg.fromCity || '-'}</div>
+                                                                        <div className="text-2xs text-slate-400 font-medium text-center truncate mt-1">{seg.fromCity || '-'}</div>
                                                                     </div>
                                                                 </div>
 
@@ -1240,7 +1240,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
                                                                 {/* To */}
                                                                 <div className="flex-1 min-w-0">
-                                                                    <label className="text-[10px] font-bold text-slate-400 block text-center mb-1">לאן</label>
+                                                                    <label className="text-2xs font-bold text-slate-400 block text-center mb-1">לאן</label>
                                                                     <div className="relative">
                                                                         <input
                                                                             value={seg.toCode || ''}
@@ -1249,7 +1249,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                                             placeholder="JFK"
                                                                         />
                                                                         {/* City Hint */}
-                                                                        <div className="text-[10px] text-slate-400 font-medium text-center truncate mt-1">{seg.toCity || '-'}</div>
+                                                                        <div className="text-2xs text-slate-400 font-medium text-center truncate mt-1">{seg.toCity || '-'}</div>
                                                                     </div>
                                                                 </div>
 
@@ -1258,7 +1258,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
                                                                 {/* Flight No */}
                                                                 <div className="w-20 hidden sm:block">
-                                                                    <label className="text-[10px] font-bold text-slate-400 block mb-1 text-center">מס' טיסה</label>
+                                                                    <label className="text-2xs font-bold text-slate-400 block mb-1 text-center">מס' טיסה</label>
                                                                     <input
                                                                         value={seg.flightNumber || ''}
                                                                         onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)}
@@ -1281,7 +1281,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                             {/* Times - Grid */}
                                                             <div className="grid grid-cols-3 gap-3">
                                                                 <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm relative transition-colors focus-within:border-blue-300">
-                                                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">תאריך</label>
+                                                                    <label className="text-2xs font-bold text-slate-400 block mb-1">תאריך</label>
                                                                     <input
                                                                         type="date"
                                                                         className="w-full text-xs font-bold outline-none bg-transparent text-slate-700"
@@ -1290,7 +1290,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                                     />
                                                                 </div>
                                                                 <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm transition-colors focus-within:border-blue-300">
-                                                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">המראה</label>
+                                                                    <label className="text-2xs font-bold text-slate-400 block mb-1">המראה</label>
                                                                     <input
                                                                         type="time"
                                                                         className="w-full text-xs font-bold font-mono outline-none bg-transparent text-slate-700"
@@ -1299,7 +1299,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                                     />
                                                                 </div>
                                                                 <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm transition-colors focus-within:border-blue-300">
-                                                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">נחיתה</label>
+                                                                    <label className="text-2xs font-bold text-slate-400 block mb-1">נחיתה</label>
                                                                     <input
                                                                         type="time"
                                                                         className="w-full text-xs font-bold font-mono outline-none bg-transparent text-slate-700"
@@ -1335,7 +1335,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                                                 <span className="bg-indigo-100 p-1.5 rounded-lg text-indigo-600"><Hotel className="w-4 h-4" /></span> מלונות
                                             </h3>
-                                            {isSaving && <span className="text-[10px] font-bold text-purple-600 animate-pulse bg-purple-50 px-2 py-0.5 rounded-full">AI Enriching...</span>}
+                                            {isSaving && <span className="text-2xs font-bold text-purple-600 animate-pulse bg-purple-50 px-2 py-0.5 rounded-full">AI Enriching...</span>}
                                         </div>
                                         <button
                                             onClick={() => activeTrip && handleUpdateTrip({ hotels: [...activeTrip.hotels, { id: `h-${Date.now()}`, name: 'מלון חדש', address: '', checkInDate: '', checkOutDate: '', nights: 0 }] })}
@@ -1366,11 +1366,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-3">
                                                         <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm">
-                                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Check-in</label>
+                                                            <label className="text-2xs font-bold text-slate-400 block mb-1">Check-in</label>
                                                             <DateInput className="w-full text-xs font-bold outline-none" value={h.checkInDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkInDate', iso)} />
                                                         </div>
                                                         <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm">
-                                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Check-out</label>
+                                                            <label className="text-2xs font-bold text-slate-400 block mb-1">Check-out</label>
                                                             <DateInput className="w-full text-xs font-bold outline-none" value={h.checkOutDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkOutDate', iso)} />
                                                         </div>
                                                     </div>
@@ -1452,7 +1452,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                                     {h.nights ? ` · ${h.nights} לילות` : ''}
                                                                 </div>
                                                                 {(h.rooms || []).map((r: HotelRoom, ri) => (
-                                                                    <div key={ri} className="mt-1.5 text-[11px] bg-indigo-50 text-indigo-700 rounded-lg px-2 py-1 flex items-center gap-1.5">
+                                                                    <div key={ri} className="mt-1.5 text-2xs bg-indigo-50 text-indigo-700 rounded-lg px-2 py-1 flex items-center gap-1.5">
                                                                         <BedDouble className="w-3 h-3" />
                                                                         {r.roomType || 'Standard Room'} · {r.adults} מבוגרים{r.children > 0 ? ` + ${r.children} ילדים` : ''}
                                                                     </div>
