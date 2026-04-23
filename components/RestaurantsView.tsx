@@ -62,7 +62,7 @@ const getCuisineVisuals = (cuisine: string = '') => {
 };
 
 import { cleanTextForMap } from '../utils/textUtils';
-import { getTripCities } from '../utils/geoData'; // Imported from new DB
+import { getTripCities, locationMatchesCity } from '../utils/geoData';
 
 
 // Sorting helper: Favorites first, then Rating
@@ -135,6 +135,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // UX State
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedRater, setSelectedRater] = useState<string>('all');
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [isResearchingAll, setIsResearchingAll] = useState(false);
     const [researchProgress, setResearchProgress] = useState({ current: 0, total: 0 });
 
@@ -638,9 +639,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             list = cat ? [...cat.restaurants].sort((a, b) => (b.googleRating || 0) - (a.googleRating || 0)) : [];
         }
 
-        // City Filter
+        // City Filter — language-agnostic via locationMatchesCity
         if (selectedCity !== 'all') {
-            list = list.filter(r => (r.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
+            list = list.filter(r => locationMatchesCity(r.location || '', selectedCity));
         }
 
         if (selectedRater !== 'all') {
@@ -664,7 +665,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         // Apply Filters
         let filtered = flatList;
         if (selectedCity !== 'all') {
-            filtered = flatList.filter(r => (r.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
+            filtered = flatList.filter(r => locationMatchesCity(r.location || '', selectedCity));
         }
 
         // Group by Category (User Request: "Food Categories", not streets)
@@ -869,10 +870,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                                     cuisine: r.cuisine || r.iconType || cat.title || 'General' // Ensure genre is passed
                                                 })));
 
-                                                // Apply Filters
+                                                // Apply Filters — language-agnostic city match
                                                 let filtered = flatList;
                                                 if (selectedCity !== 'all') {
-                                                    filtered = flatList.filter(r => (r.location || '').toLowerCase().includes(selectedCity.toLowerCase()));
+                                                    filtered = flatList.filter(r => locationMatchesCity(r.location || '', selectedCity));
                                                 }
 
                                                 // Sort by Favorite then Rating
@@ -904,59 +905,26 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         </>
                     ) : (
                         <div className="animate-fade-in">
-                            {/* Header Section with City Selection (Premium Design) */}
-                            <div className="animate-fade-in bg-white/80 backdrop-blur-lg rounded-2xl p-2 border border-slate-200/60 shadow-lg shadow-slate-100/50 mb-6 flex justify-between items-center sticky top-2 z-30">
-                                {/* Left: City Tabs (Pill Design) */}
-                                <div className="flex bg-slate-100/80 p-1 rounded-full gap-1 overflow-x-auto scrollbar-hide">
+                            {/* Single compact action row — the top city filter bar (above this
+                                tab block) already lets the user pick a city. We only need a
+                                refresh button here when we have results; empty state shows
+                                its own large CTA below. */}
+                            {aiCategories.length > 0 && (
+                                <div className="flex items-center justify-end gap-2 mb-4">
                                     <button
-                                        onClick={researchAllCities}
-                                        disabled={isResearchingAll}
-                                        className={`px-4 py-1.5 rounded-full text-xs font-black transition-all whitespace-nowrap flex items-center gap-1.5 ${isResearchingAll
-                                            ? 'bg-orange-100 text-orange-600'
-                                            : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md shadow-orange-200 hover:scale-105'
-                                            }`}
+                                        onClick={() => selectedCity !== 'all' ? initiateResearch(selectedCity) : researchAllCities()}
+                                        disabled={loadingRecs || isResearchingAll}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
                                     >
-                                        <BrainCircuit className={`w-3 h-3 ${isResearchingAll ? 'animate-pulse' : ''}`} />
-                                        {isResearchingAll ? `סורק הכל (${researchProgress.current}/${researchProgress.total})` : 'מחקר מקיף (AI) לכל הטיול'}
+                                        <RotateCw className={`w-3 h-3 ${(loadingRecs || isResearchingAll) ? 'animate-spin' : ''}`} />
+                                        {isResearchingAll
+                                            ? `סורק (${researchProgress.current}/${researchProgress.total})`
+                                            : loadingRecs
+                                                ? 'טוען...'
+                                                : (selectedCity !== 'all' ? 'רענן עיר' : 'רענן הכל')}
                                     </button>
-                                    <div className="w-px bg-slate-300 mx-1 h-4 self-center" />
-
-                                    <button
-                                        onClick={() => initiateResearch(undefined)}
-                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${(!selectedCity || selectedCity === 'all')
-                                            ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5'
-                                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                                    >
-                                        <RotateCw className={`w-3 h-3 ${loadingRecs ? 'animate-spin' : ''}`} />
-                                        {loadingRecs ? 'טוען...' : 'רענן'}
-                                    </button>
-                                    <div className="w-px bg-slate-300 mx-1 h-4 self-center" />
-
-                                    {tripCities.map(city => (
-                                        <button
-                                            key={city}
-                                            onClick={() => initiateResearch(city)}
-                                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedCity === city
-                                                ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
-                                                : 'text-slate-600 hover:bg-white hover:text-orange-500'}`
-                                            }
-                                        >
-                                            {city}
-                                        </button>
-                                    ))}
                                 </div>
-
-                                {/* Right: Premium AI Badge */}
-                                <div className="flex items-center gap-2 pl-2">
-                                    <div className="flex flex-col items-end mr-2 d-none md:flex">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Food Scout</span>
-                                        <span className="text-xs font-black text-slate-800">המלצות חכמות</span>
-                                    </div>
-                                    <div className="p-2 bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 rounded-xl shadow-lg shadow-orange-200 text-white animate-pulse-slow">
-                                        <BrainCircuit className="w-4 h-4" />
-                                    </div>
-                                </div>
-                            </div>
+                            )}
 
                             {loadingRecs ? <ThinkingLoader texts={["בודק את הסצנה הקולינרית...", "מחפש מנות מומלצות...", "סורק ביקורות מקומיים...", "מצליב נתוני מישלן..."]} /> : (
                                 <>
@@ -987,14 +955,49 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                         </div>
                                     ) : (
                                         <>
-                                            <div className="mb-2 overflow-x-auto pb-2 scrollbar-hide"><div className="flex gap-2">
-                                                <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === 'all' ? 'bg-orange-600 text-white' : 'bg-white text-slate-600'}`}>הכל</button>
-                                                {aiCategories.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedCategory === c.id ? 'bg-orange-600 text-white' : 'bg-white text-slate-600'}`}>{displayTitle(c.title)}</button>)}
-                                            </div></div>
-                                            <div className="mb-4 overflow-x-auto pb-2 flex gap-2 items-center"><span className="text-[10px] font-bold text-slate-400">הומלץ ע"י:</span>
-                                                <button onClick={() => setSelectedRater('all')} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === 'all' ? 'bg-orange-600 text-white' : 'bg-white text-slate-600'}`}>הכל</button>
-                                                {availableRaters.map(r => <button key={r} onClick={() => setSelectedRater(r)} className={`px-4 py-2 rounded-full text-xs font-bold border ${selectedRater === r ? 'bg-orange-600 text-white' : 'bg-white text-slate-600'}`}>{r}</button>)}
-                                            </div>
+                                            {/* Dedupe categories at render — protects against legacy
+                                                data from before the single-city merge fix that may
+                                                still have duplicate titles like 'תאילנדי' twice. */}
+                                            {(() => {
+                                                const seen = new Set<string>();
+                                                const uniqueCats = aiCategories.filter(c => {
+                                                    const key = displayTitle(c.title);
+                                                    if (seen.has(key)) return false;
+                                                    seen.add(key);
+                                                    return true;
+                                                });
+                                                return (
+                                                    <div className="mb-3 overflow-x-auto pb-2 scrollbar-hide">
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === 'all' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
+                                                            {uniqueCats.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === c.id ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200'}`}>{displayTitle(c.title)}</button>)}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            {/* Advanced filters collapsed by default to reduce visual noise */}
+                                            {availableRaters.length > 1 && (
+                                                <div className="mb-3">
+                                                    <button
+                                                        onClick={() => setShowAdvancedFilters(s => !s)}
+                                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all ${showAdvancedFilters || selectedRater !== 'all' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'text-slate-500 hover:text-slate-700'}`}
+                                                    >
+                                                        סנן לפי מקור המלצה
+                                                        {selectedRater !== 'all' && (
+                                                            <span className="bg-orange-600 text-white px-1.5 py-0.5 rounded-full text-[9px]">1</span>
+                                                        )}
+                                                        <span className={`transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`}>▾</span>
+                                                    </button>
+                                                    {showAdvancedFilters && (
+                                                        <div className="mt-2 overflow-x-auto pb-2 flex gap-2 items-center animate-fade-in">
+                                                            <button onClick={() => setSelectedRater('all')} className={`px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap ${selectedRater === 'all' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
+                                                            {availableRaters.map(r => <button key={r} onClick={() => setSelectedRater(r)} className={`px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap ${selectedRater === r ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200'}`}>{r}</button>)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
                                             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                                                 {filteredRestaurants.map(rec => (
                                                     <RestaurantCard

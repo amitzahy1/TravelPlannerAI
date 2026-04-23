@@ -269,7 +269,7 @@ const HEBREW_TO_ENGLISH_KEY: Record<string, string> = Object.entries(CITY_HEBREW
  * else to its cleaned form. Use this to detect that 'Bangkok' and 'בנגקוק' are
  * the same city, without deciding on a display language.
  */
-const cityKey = (name: string): string => {
+export const cityKey = (name: string): string => {
         if (!name) return '';
         const cleaned = cleanCityName(name).trim();
         if (!cleaned) return '';
@@ -280,6 +280,34 @@ const cityKey = (name: string): string => {
         if (HEBREW_TO_ENGLISH_KEY[cleaned]) return HEBREW_TO_ENGLISH_KEY[cleaned];
         // Unknown — use lowercase cleaned as the key
         return lower;
+};
+
+/**
+ * Does a free-form location string (e.g. 'Bangkok, Thailand' or 'רחוב סילום,
+ * בנגקוק') refer to the given city (which might be in either language)?
+ *
+ * Language-agnostic — returns true if:
+ *   1. The location string contains the city's canonical key
+ *      (e.g. 'bangkok' → matches 'Bangkok, Thailand' AND 'בנגקוק, תאילנד'
+ *       because both resolve to the 'bangkok' key via the hebrew table).
+ *   2. OR the location string contains any known alias (Hebrew, English, or
+ *      variant) for the city's key.
+ */
+export const locationMatchesCity = (location: string, cityDisplayName: string): boolean => {
+        if (!location || !cityDisplayName) return false;
+        const targetKey = cityKey(cityDisplayName);
+        if (!targetKey) return false;
+
+        const locLower = location.toLowerCase().trim();
+
+        // Quick path: the English key is directly in the location string
+        if (locLower.includes(targetKey)) return true;
+
+        // Check all known aliases of this city — Hebrew, capitalized, etc.
+        const hebrewForm = CITY_HEBREW_NAMES[targetKey];
+        if (hebrewForm && location.includes(hebrewForm)) return true;
+
+        return false;
 };
 
 /**

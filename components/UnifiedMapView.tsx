@@ -6,7 +6,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
 import { Loader2, Map as MapIcon } from 'lucide-react';
-import { extractRobustCity, cleanCityName } from '../utils/geoData';
+import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
 
 // --- Interfaces ---
 interface MapItem {
@@ -440,8 +440,18 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             // then merge chronologically + dedupe by city. Previous version dropped
             // hotel cities entirely when flights existed — so Koh Chang / Pattaya
             // never showed as stops on the trip's route line.
-            type Candidate = RouteStop & { sortTs: number };
+            type Candidate = RouteStop & { sortTs: number; isFlightOnly?: boolean };
             const candidates: Candidate[] = [];
+
+            // Precompute canonical keys of all hotel cities. Flight-only stops that
+            // don't match any hotel city (layovers like AUH) get dropped — unless
+            // they're the origin or return home anchor.
+            const hotelCityKeys = new Set<string>();
+            (trip.hotels || []).forEach(h => {
+                const extracted = extractRobustCity(h.address || '', h.name || '', trip);
+                if (extracted) hotelCityKeys.add(cityKey(extracted));
+                if (h.city) hotelCityKeys.add(cityKey(h.city));
+            });
 
             // Flights → origin on first segment + arrival on every segment
             const segs = [...(trip.flights?.segments || [])].sort((a, b) =>
@@ -460,11 +470,13 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                         date: firstSeg.date,
                         emoji: '🛫',
                         sortTs: firstTs - 1, // origin sits just before the first flight
+                        isFlightOnly: false,  // origin always kept as an anchor
                     });
                 }
                 segs.forEach(seg => {
                     if (!seg.toCity) return;
                     const ts = parseTripDate(seg.date)?.getTime() || 0;
+                    const k = cityKey(seg.toCity);
                     candidates.push({
                         name: seg.toCity,
                         displayName: seg.toCity,
@@ -473,6 +485,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                         date: seg.date,
                         emoji: '🛬',
                         sortTs: ts,
+                        // True layover: flight destination but no hotel booked there
+                        isFlightOnly: !hotelCityKeys.has(k),
                     });
                 });
             }
@@ -490,37 +504,47 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                     emoji: '🏨',
                     coords: isValidCoordinate(h.lat, h.lng) ? { lat: h.lat!, lng: h.lng! } : undefined,
                     sortTs: ts,
+                    isFlightOnly: false,
                 });
             });
 
-            // Sort chronologically, then dedupe consecutive same-city entries.
-            // Hotels take priority over a flight stop in the same city (better
-            // pin position — flights show the airport, hotel shows where you stay).
             candidates.sort((a, b) => (a.sortTs || 0) - (b.sortTs || 0));
 
+            // Identify the LAST flight's destination as the return-home anchor —
+            // we keep it visible even if it's a layover, because it bookends the
+            // journey (e.g. user wants to see TLV at the end of the route).
+            const returnHomeKey = segs.length > 0 && segs[segs.length - 1].toCity
+                ? cityKey(segs[segs.length - 1].toCity!)
+                : '';
+
+            // Build final stops list: drop flight-only layovers, dedupe globally
+            // (including non-consecutive — so Abu Dhabi doesn't appear twice when
+            // flying out and back), prefer hotels over flights in the same city.
             const stops: RouteStop[] = [];
+            const seenKeys = new Set<string>();
             candidates.forEach(c => {
-                const existing = stops[stops.length - 1];
-                if (existing && existing.name.toLowerCase() === c.name.toLowerCase()) {
-                    // same city as previous stop — prefer hotel over flight
-                    if (c.type === 'hotel' && existing.type !== 'hotel') {
-                        stops[stops.length - 1] = {
-                            name: c.name,
+                const k = cityKey(c.name);
+                // Drop layovers unless they're the origin (first kept-anchor) or
+                // return-home (last segment's destination).
+                if (c.isFlightOnly && k !== returnHomeKey) return;
+
+                const existingIdx = stops.findIndex(s => cityKey(s.name) === k);
+                if (existingIdx === -1) {
+                    seenKeys.add(k);
+                    const { sortTs, isFlightOnly, ...stop } = c;
+                    stops.push(stop);
+                } else {
+                    // Same city already in list — prefer hotel over flight pin
+                    if (c.type === 'hotel' && stops[existingIdx].type !== 'hotel') {
+                        stops[existingIdx] = {
+                            ...stops[existingIdx],
                             displayName: c.displayName,
                             type: c.type,
-                            code: existing.code || c.code,
-                            date: existing.date || c.date,
                             emoji: c.emoji,
-                            coords: c.coords || existing.coords,
+                            coords: c.coords || stops[existingIdx].coords,
                         };
                     }
-                    return;
                 }
-                // Also skip if the city already appears earlier in the route —
-                // prevents duplicates when the trip loops back (e.g. TLV → BKK → TLV).
-                // Exception: allow if it's the final stop (round trip back home).
-                const { sortTs, ...stop } = c;
-                stops.push(stop);
             });
 
             // Fallback: destination string
