@@ -15,6 +15,23 @@ export default {
                                 'outfit': ['Outfit', 'sans-serif'],
                                 'heebo': ['Heebo', 'sans-serif'],
                         },
+                        // ─ Design tokens (see utils/designTokens.ts) ─
+                        // Additive only: extends Tailwind defaults without
+                        // overriding existing class semantics. Canonical ramp
+                        // for new code: text-2xs, text-xs, text-sm, text-base,
+                        // text-md, text-lg, text-xl, text-2xl, text-3xl.
+                        fontSize: {
+                                '2xs': ['11px', { lineHeight: '1.3' }],
+                                'md':  ['16px', { lineHeight: '1.5' }],
+                        },
+                        borderRadius: {
+                                'pill': '9999px',
+                        },
+                        boxShadow: {
+                                'card':       '0 1px 2px rgba(15,23,42,0.05)',
+                                'card-hover': '0 4px 12px rgba(15,23,42,0.08)',
+                                'popover':    '0 16px 48px rgba(15,23,42,0.18)',
+                        },
                         colors: {
                                 // "Material You" Brand Colors
                                 brand: {
