@@ -5,3 +5,4 @@ export { EmptyState } from './EmptyState';
 export { Modal } from './Modal';
 export { ProgressDots } from './ProgressDots';
 export type { ProgressDot } from './ProgressDots';
+export { TripProgress } from './TripProgress';

@@ -4,6 +4,7 @@ import { Trip } from '../types';
 import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home } from 'lucide-react';
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
+import { TripProgress } from './shared';
 
 // Helper to extract city from hotel address
 const extractCityFromAddress = (address?: string): string | null => {
@@ -90,16 +91,19 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         </div>
                                                 </div>
 
-                                                {/* Active trip pill (mobile only — on desktop Row 2 has the full selector) */}
+                                                {/* Active trip pill + progress (mobile only — on desktop Row 2 has the full selector) */}
                                                 {activeTrip && (
-                                                        <button
-                                                                onClick={() => setIsTripMenuOpen(true)}
-                                                                title="החלף טיול"
-                                                                className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-full text-[11px] font-bold border border-blue-100 max-w-[140px] transition-colors"
-                                                        >
-                                                                <MapPin className="w-3 h-3 flex-shrink-0" />
-                                                                <span className="truncate">{activeTrip.destination || activeTrip.name}</span>
-                                                        </button>
+                                                        <div className="lg:hidden flex items-center gap-2 min-w-0 flex-1 mx-2">
+                                                                <button
+                                                                        onClick={() => setIsTripMenuOpen(true)}
+                                                                        title="החלף טיול"
+                                                                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-pill text-2xs font-bold border border-blue-100 transition-colors min-w-0 max-w-[160px]"
+                                                                >
+                                                                        <MapPin className="w-3 h-3 shrink-0" />
+                                                                        <span className="truncate">{activeTrip.destination || activeTrip.name}</span>
+                                                                </button>
+                                                                <TripProgress trip={activeTrip} compact onNavigate={onSwitchTab} />
+                                                        </div>
                                                 )}
 
                                                 {/* Center: Desktop Content Nav Tabs (without trip management) */}
@@ -174,6 +178,17 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                         </div>
                                                                 )}
                                                         </div>
+
+                                                        {/* Separator */}
+                                                        <div className="w-px h-6 bg-slate-200 mx-1"></div>
+
+                                                        {/* Trip completeness at a glance */}
+                                                        {activeTrip && (
+                                                                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
+                                                                        <span className="text-2xs font-bold text-slate-400 uppercase tracking-wider">התקדמות</span>
+                                                                        <TripProgress trip={activeTrip} compact={false} onNavigate={onSwitchTab} />
+                                                                </div>
+                                                        )}
 
                                                         {/* Separator */}
                                                         <div className="w-px h-6 bg-slate-200 mx-1"></div>
