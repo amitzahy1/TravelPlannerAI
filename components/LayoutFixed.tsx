@@ -37,9 +37,12 @@ const contentNavItems = [
         { id: 'hotels', label: 'מלונות', icon: Hotel },
         { id: 'restaurants', label: 'אוכל', icon: Utensils },
         { id: 'attractions', label: 'אטרקציות', icon: Ticket },
-        { id: 'budget', label: 'תקציב', icon: Wallet },
         { id: 'map_full', label: 'מפה', icon: MapPin },
-        { id: 'shopping', label: 'קניות', icon: ShoppingBag },
+        // Budget + Shopping hidden from the nav for now — routes still exist
+        // in App.tsx so they can be re-enabled instantly by restoring these
+        // entries. Temporarily removed per user request to reduce menu noise.
+        // { id: 'budget', label: 'תקציב', icon: Wallet },
+        // { id: 'shopping', label: 'קניות', icon: ShoppingBag },
 ];
 
 export const LayoutFixed: React.FC<LayoutProps> = ({
