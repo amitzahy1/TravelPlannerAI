@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip } from '../types';
-import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home } from 'lucide-react';
+import { Map, Plane, Utensils, Hotel, Globe, Ticket, Compass, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home } from 'lucide-react';
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
 import { TripProgress } from './shared';
@@ -36,8 +36,7 @@ const contentNavItems = [
         { id: 'itinerary', label: 'ראשי', icon: Home },
         { id: 'flights', label: 'טיסות', icon: Plane },
         { id: 'hotels', label: 'מלונות', icon: Hotel },
-        { id: 'restaurants', label: 'אוכל', icon: Utensils },
-        { id: 'attractions', label: 'אטרקציות', icon: Ticket },
+        { id: 'discover', label: 'גילויים', icon: Compass },
         { id: 'map_full', label: 'מפה', icon: MapPin },
 ];
 

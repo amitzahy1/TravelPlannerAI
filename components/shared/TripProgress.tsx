@@ -66,7 +66,7 @@ export const TripProgress: React.FC<TripProgressProps> = ({ trip, compact = true
                                 label: `מחקר (אוכל ${foodCatCount > 0 ? '✓' : '–'} · אטרקציות ${attrCatCount > 0 ? '✓' : '–'})`,
                                 state: discoverState,
                                 icon: <Compass className={sz} />,
-                                onClick: onNavigate ? () => onNavigate('restaurants') : undefined,
+                                onClick: onNavigate ? () => onNavigate('discover') : undefined,
                         },
                 ];
         }, [trip, compact, onNavigate]);

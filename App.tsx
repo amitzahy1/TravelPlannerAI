@@ -19,6 +19,7 @@ const AttractionsView = React.lazy(() => import('./components/AttractionsView').
 const ItineraryView = React.lazy(() => import('./components/ItineraryView').then(module => ({ default: module.ItineraryView })));
 const HotelsView = React.lazy(() => import('./components/HotelsView').then(module => ({ default: module.HotelsView })));
 const AdminView = React.lazy(() => import('./components/AdminView').then(module => ({ default: module.AdminView })));
+const DiscoverView = React.lazy(() => import('./components/DiscoverView').then(module => ({ default: module.DiscoverView })));
 
 import { JoinTripModal } from './components/JoinTripModal';
 import { AIChatOverlay } from './components/AIChatOverlay';
@@ -312,6 +313,7 @@ const AppContent: React.FC = () => {
             case 'flights': return <FlightsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'restaurants': return <RestaurantsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'attractions': return <AttractionsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
+            case 'discover': return <DiscoverView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdate} onSwitchTab={setCurrentTab} onRefresh={() => { }} />;
             case 'hotels': return <HotelsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'map_full': return <UnifiedMapView trip={activeTrip} title="מפת הטיול המלאה" />;
