@@ -974,74 +974,105 @@ export const ItineraryView: React.FC<{
                                 </p>
                             </div>
                         ) : (
-                            <div className={`grid gap-3 ${viewMode === 'compact' ? 'grid-cols-2 md:grid-cols-4 xl:grid-cols-6' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4'}`}>
+                            <div className={viewMode === 'compact' ? 'flex flex-col gap-2 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-3' : 'grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4'}>
                                 {timeline.map((day, index) => {
                                     const [y, m, d] = day.dateIso.split('-');
                                     const dayNumber = index + 1;
                                     const isLastDay = index === timeline.length - 1;
+                                    const isFirstDay = index === 0;
 
                                     // Use dynamic theme engine — trip-aware so distinct cities always
                                     // get distinct colours (see buildCityColorMap above).
                                     const theme = lookupCityTheme(cityColorMap, cleanCityName(day.locationContext));
                                     const headerColorClass = theme.bg;
 
-                                    // COMPACT VIEW - Slim horizontal cards
+                                    // COMPACT VIEW — IPO-grade strip-list card (R3)
                                     if (viewMode === 'compact') {
+                                        const dayTitle = generateDayTitle(day, trip, index, timeline.length);
+                                        const activeHotel = day.events.find(e => e.type === 'hotel_stay' || e.type === 'hotel_checkin');
+                                        const hotelName = activeHotel?.title || activeHotel?.subtitle || '';
+                                        const hasFlight = day.events.some(e => e.type === 'flight');
+                                        const hasHotelChange = day.events.some(e => e.type === 'hotel_checkin' || e.type === 'hotel_checkout');
+                                        const monthShort = ['ינו׳', 'פבר׳', 'מרץ', 'אפר׳', 'מאי', 'יוני', 'יולי', 'אוג׳', 'ספט׳', 'אוק׳', 'נוב׳', 'דצמ׳'][Number(m) - 1];
+                                        const dowShort = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'][new Date(`${y}-${m}-${d}T12:00:00`).getDay()];
+                                        const accentStrip = isFirstDay
+                                            ? 'bg-gradient-to-b from-blue-500 to-sky-400'
+                                            : isLastDay
+                                                ? 'bg-gradient-to-b from-amber-500 to-rose-400'
+                                                : hasFlight
+                                                    ? 'bg-blue-400'
+                                                    : headerColorClass;
+                                        const topChip = hasFlight
+                                            ? { tone: 'primary' as const, icon: <Plane className="w-2.5 h-2.5" />, label: 'יום טיסה' }
+                                            : isFirstDay
+                                                ? { tone: 'success' as const, icon: null, label: 'התחלה' }
+                                                : isLastDay
+                                                    ? { tone: 'warning' as const, icon: null, label: 'סיום' }
+                                                    : hasHotelChange
+                                                        ? { tone: 'neutral' as const, icon: <Hotel className="w-2.5 h-2.5" />, label: 'מעבר מלון' }
+                                                        : null;
                                         return (
-                                            <div
+                                            <article
                                                 key={day.dateIso}
                                                 onClick={() => setSelectedDayIso(day.dateIso)}
-                                                className="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer flex items-stretch h-[80px] relative group overflow-visible"
+                                                className="relative group cursor-pointer bg-white border border-slate-200 rounded-xl shadow-card hover:shadow-card-hover hover:border-blue-300 active:scale-[0.99] transition-all flex items-center gap-3 pr-2.5 pl-3 py-2.5 overflow-hidden"
                                             >
-                                                {/* Mobile Flow Arrows (RTL 2-Column Logic) */}
-                                                {!isLastDay && (
-                                                    <>
-                                                        {/* Even Item (Right Column) -> Points Left to Odd Item */}
-                                                        {index % 2 === 0 && (
-                                                            <div className="md:hidden absolute -left-3 top-1/2 -translate-y-1/2 z-20 text-slate-400 drop-shadow-md bg-white rounded-full p-0.5 border border-slate-100">
-                                                                <ArrowLeft className="w-3 h-3 stroke-[3]" />
-                                                            </div>
-                                                        )}
-                                                        {/* Odd Item (Left Column) -> Points Down to Next Row */}
-                                                        {index % 2 !== 0 && (
-                                                            <div className="md:hidden absolute left-1/2 -bottom-3 -translate-x-1/2 z-20 text-slate-400 drop-shadow-md bg-white rounded-full p-0.5 border border-slate-100">
-                                                                <ChevronDown className="w-3 h-3 stroke-[3]" />
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                )}
+                                                <span aria-hidden className={`absolute top-0 bottom-0 right-0 w-1 ${accentStrip}`} />
 
-                                                {/* Desktop Flow Arrow (Simple Left Chevron for Web) */}
-                                                {!isLastDay && (
-                                                    <div className="hidden md:block absolute -left-3 top-1/2 -translate-y-1/2 z-10 text-slate-200 drop-shadow-sm bg-white rounded-full p-0.5 border border-slate-50">
-                                                        <ChevronLeft className="w-4 h-4" />
-                                                    </div>
-                                                )}
+                                                {/* Date badge */}
+                                                <div className="shrink-0 min-w-[46px] text-center">
+                                                    <div className="text-xl font-black leading-none text-slate-900">{d.replace(/^0/, '')}</div>
+                                                    <div className="text-2xs font-bold text-slate-500 mt-0.5">{monthShort}</div>
+                                                    <div className="text-2xs text-slate-400 mt-0.5">{dowShort}</div>
+                                                </div>
 
-                                                {/* Color Accent Strip */}
-                                                <div className={`w-1.5 ${headerColorClass} flex-shrink-0`}></div>
+                                                <div className="h-11 w-px bg-slate-100 shrink-0" />
 
                                                 {/* Content */}
-                                                <div className="flex-1 p-2 flex flex-col justify-between min-w-0">
-                                                    {/* Top: Day & Date */}
-                                                    <div className="flex items-center justify-between gap-1">
-                                                        <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">יום {dayNumber}</span>
-                                                        <span className="text-xs font-bold text-slate-700">{day.displayDate}</span>
+                                                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <h3 className="text-sm font-bold text-slate-900 truncate">
+                                                            {dayTitle || day.locationContext || 'יום בטיול'}
+                                                        </h3>
+                                                        {topChip && (
+                                                            <span className={`inline-flex items-center gap-0.5 rounded-pill px-1.5 py-0.5 text-2xs font-bold ring-1 shrink-0 ${
+                                                                topChip.tone === 'primary' ? 'bg-blue-50 text-blue-700 ring-blue-100' :
+                                                                topChip.tone === 'success' ? 'bg-emerald-50 text-emerald-700 ring-emerald-100' :
+                                                                topChip.tone === 'warning' ? 'bg-amber-50 text-amber-800 ring-amber-100' :
+                                                                'bg-slate-100 text-slate-700 ring-slate-200'
+                                                            }`}>
+                                                                {topChip.icon}
+                                                                {topChip.label}
+                                                            </span>
+                                                        )}
                                                     </div>
-
-                                                    {/* Middle: Location */}
-                                                    <h3 className="text-xs font-bold text-slate-800 leading-tight line-clamp-2">{day.locationContext || 'יום בטיול'}</h3>
-
-                                                    {/* Bottom: Event Badges */}
-                                                    <div className="flex items-center gap-1 flex-wrap">
-                                                        {day.stats.flight > 0 && <span className="flex items-center gap-0.5 text-[9px] font-bold bg-blue-50 text-blue-600 px-1 py-0.5 rounded"><Plane className="w-2.5 h-2.5" />{day.stats.flight}</span>}
-                                                        {day.stats.hotel > 0 && <span className="flex items-center gap-0.5 text-[9px] font-bold bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded"><Hotel className="w-2.5 h-2.5" />{day.stats.hotel}</span>}
-                                                        {day.stats.food > 0 && <span className="flex items-center gap-0.5 text-[9px] font-bold bg-orange-50 text-orange-600 px-1 py-0.5 rounded"><Utensils className="w-2.5 h-2.5" />{day.stats.food}</span>}
-                                                        {day.stats.attr > 0 && <span className="flex items-center gap-0.5 text-[9px] font-bold bg-purple-50 text-purple-600 px-1 py-0.5 rounded"><Ticket className="w-2.5 h-2.5" />{day.stats.attr}</span>}
-                                                        {day.events.length === 0 && <span className="text-[9px] text-slate-300 font-medium">יום חופשי</span>}
-                                                    </div>
+                                                    {hotelName ? (
+                                                        <div className="flex items-center gap-1.5 min-w-0">
+                                                            <Hotel className="w-3 h-3 text-indigo-400 shrink-0" />
+                                                            <span className="text-xs text-slate-600 truncate font-medium">{hotelName}</span>
+                                                        </div>
+                                                    ) : day.events.length === 0 ? (
+                                                        <div className="text-xs text-slate-400">יום חופשי</div>
+                                                    ) : (
+                                                        <div className="text-xs text-slate-500 truncate">{day.events.length} פעילויות</div>
+                                                    )}
                                                 </div>
-                                            </div>
+
+                                                {/* Event type icons */}
+                                                <div className="shrink-0 flex items-center gap-1 text-slate-400">
+                                                    {day.stats.flight > 0 && <Plane className="w-3.5 h-3.5 text-blue-500" />}
+                                                    {day.stats.hotel > 0 && <Hotel className="w-3.5 h-3.5 text-indigo-500" />}
+                                                    {day.stats.food > 0 && <Utensils className="w-3.5 h-3.5 text-orange-500" />}
+                                                    {day.stats.attr > 0 && <Ticket className="w-3.5 h-3.5 text-purple-500" />}
+                                                </div>
+
+                                                <ChevronLeft className="w-4 h-4 text-slate-300 group-hover:text-blue-400 shrink-0 transition-colors" />
+
+                                                {/* Day counter (subtle, top-left) */}
+                                                <span className="absolute top-1.5 left-2 text-2xs text-slate-300 font-bold pointer-events-none">
+                                                    {dayNumber}/{timeline.length}
+                                                </span>
+                                            </article>
                                         );
                                     }
 
