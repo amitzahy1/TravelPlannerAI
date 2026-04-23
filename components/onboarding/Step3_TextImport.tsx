@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
         ClipboardPaste,
@@ -12,9 +12,22 @@ import {
         CheckCircle2,
         Sparkles,
         Copy,
+        Pencil,
+        Trash2,
+        Plus,
+        X,
+        Save,
+        UploadCloud,
+        TextCursor,
 } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
-import { parseFreeTextTrip, FreeTextParseResult } from '../../services/freeTextImportService';
+import {
+        parseFreeTextTrip,
+        parseFilesToFreeText,
+        mergeFreeTextResults,
+        FreeTextParseResult,
+} from '../../services/freeTextImportService';
+import type { HotelBooking, FlightSegment } from '../../types';
 
 interface Step3TextImportProps {
         onComplete: (data: { freeTextResult: FreeTextParseResult; startDate?: string; endDate?: string; freeText: string }) => void;
@@ -30,6 +43,7 @@ interface Step3TextImportProps {
 }
 
 type Stage = 'idle' | 'analyzing' | 'error' | 'preview';
+type AddMoreTab = 'text' | 'files';
 
 const MAX_CHARS = 20000;
 
@@ -88,6 +102,273 @@ const ANALYZING_MESSAGES = [
         'בונה את המסלול...',
 ];
 
+// ============================================================================
+// Inline edit forms
+// ============================================================================
+
+const inputClass =
+        'w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-indigo-400 focus:outline-none text-sm text-brand-navy bg-white';
+
+const labelClass = 'block text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider';
+
+const emptyHotel = (): HotelBooking => ({
+        id: crypto.randomUUID(),
+        name: '',
+        city: '',
+        address: '',
+        checkInDate: '',
+        checkOutDate: '',
+        nights: 0,
+        bookingSource: 'Direct',
+        rooms: [{ id: crypto.randomUUID(), adults: 2, children: 0 }],
+});
+
+const emptyFlight = (): FlightSegment => ({
+        fromCode: '',
+        fromCity: '',
+        toCode: '',
+        toCity: '',
+        departureTime: '',
+        arrivalTime: '',
+        flightNumber: '',
+        airline: '',
+        duration: '',
+        date: '',
+});
+
+const HotelEditForm: React.FC<{
+        initial: HotelBooking;
+        onSave: (h: HotelBooking) => void;
+        onCancel: () => void;
+}> = ({ initial, onSave, onCancel }) => {
+        const [draft, setDraft] = useState<HotelBooking>(initial);
+        const firstRoom = draft.rooms?.[0] || { id: crypto.randomUUID(), adults: 2, children: 0 };
+
+        const update = (patch: Partial<HotelBooking>) => setDraft({ ...draft, ...patch });
+        const updateRoom = (patch: Partial<NonNullable<HotelBooking['rooms']>[number]>) =>
+                setDraft({ ...draft, rooms: [{ ...firstRoom, ...patch }] });
+
+        return (
+                <div className="bg-white rounded-xl border-2 border-indigo-300 p-4 space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                                <div className="col-span-2">
+                                        <label className={labelClass}>שם המלון</label>
+                                        <input
+                                                className={inputClass}
+                                                value={draft.name}
+                                                onChange={e => update({ name: e.target.value })}
+                                                placeholder="Shangri-La Bangkok"
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>עיר</label>
+                                        <input
+                                                className={inputClass}
+                                                value={draft.city || ''}
+                                                onChange={e => update({ city: e.target.value })}
+                                                placeholder="בנגקוק"
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>סוג חדר</label>
+                                        <input
+                                                className={inputClass}
+                                                value={firstRoom.roomType || ''}
+                                                onChange={e => updateRoom({ roomType: e.target.value })}
+                                                placeholder="Standard Room"
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>צ'ק-אין</label>
+                                        <input
+                                                type="date"
+                                                className={inputClass}
+                                                value={draft.checkInDate}
+                                                onChange={e => update({ checkInDate: e.target.value })}
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>צ'ק-אאוט</label>
+                                        <input
+                                                type="date"
+                                                className={inputClass}
+                                                value={draft.checkOutDate}
+                                                onChange={e => update({ checkOutDate: e.target.value })}
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>מבוגרים</label>
+                                        <input
+                                                type="number"
+                                                min={0}
+                                                className={inputClass}
+                                                value={firstRoom.adults}
+                                                onChange={e => updateRoom({ adults: parseInt(e.target.value) || 0 })}
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>ילדים</label>
+                                        <input
+                                                type="number"
+                                                min={0}
+                                                className={inputClass}
+                                                value={firstRoom.children}
+                                                onChange={e => updateRoom({ children: parseInt(e.target.value) || 0 })}
+                                        />
+                                </div>
+                                <div className="col-span-2">
+                                        <label className={labelClass}>הערות</label>
+                                        <input
+                                                className={inputClass}
+                                                value={draft.notes || ''}
+                                                onChange={e => update({ notes: e.target.value })}
+                                                placeholder="העברה משדה התעופה וכו'"
+                                        />
+                                </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                                <button
+                                        type="button"
+                                        onClick={onCancel}
+                                        className="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-slate-100 text-sm font-bold"
+                                >
+                                        ביטול
+                                </button>
+                                <button
+                                        type="button"
+                                        onClick={() => onSave(draft)}
+                                        disabled={!draft.name.trim()}
+                                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                        <Save className="w-3.5 h-3.5" />
+                                        שמור
+                                </button>
+                        </div>
+                </div>
+        );
+};
+
+const FlightEditForm: React.FC<{
+        initial: FlightSegment;
+        onSave: (f: FlightSegment) => void;
+        onCancel: () => void;
+}> = ({ initial, onSave, onCancel }) => {
+        const [draft, setDraft] = useState<FlightSegment>(initial);
+        const update = (patch: Partial<FlightSegment>) => setDraft({ ...draft, ...patch });
+
+        return (
+                <div className="bg-white rounded-xl border-2 border-indigo-300 p-4 space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                        <label className={labelClass}>חברת תעופה</label>
+                                        <input
+                                                className={inputClass}
+                                                value={draft.airline}
+                                                onChange={e => update({ airline: e.target.value })}
+                                                placeholder="אל על"
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>מספר טיסה</label>
+                                        <input
+                                                className={inputClass}
+                                                value={draft.flightNumber}
+                                                onChange={e => update({ flightNumber: e.target.value })}
+                                                placeholder="LY387"
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>מאיפה (עיר)</label>
+                                        <input
+                                                className={inputClass}
+                                                value={draft.fromCity}
+                                                onChange={e => update({ fromCity: e.target.value })}
+                                                placeholder="תל אביב"
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>לאן (עיר)</label>
+                                        <input
+                                                className={inputClass}
+                                                value={draft.toCity}
+                                                onChange={e => update({ toCity: e.target.value })}
+                                                placeholder="בנגקוק"
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>קוד IATA מוצא</label>
+                                        <input
+                                                className={inputClass}
+                                                value={draft.fromCode}
+                                                onChange={e => update({ fromCode: e.target.value.toUpperCase() })}
+                                                placeholder="TLV"
+                                                maxLength={3}
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>קוד IATA יעד</label>
+                                        <input
+                                                className={inputClass}
+                                                value={draft.toCode}
+                                                onChange={e => update({ toCode: e.target.value.toUpperCase() })}
+                                                placeholder="BKK"
+                                                maxLength={3}
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>תאריך</label>
+                                        <input
+                                                type="date"
+                                                className={inputClass}
+                                                value={draft.date}
+                                                onChange={e => update({ date: e.target.value })}
+                                        />
+                                </div>
+                                <div>
+                                        <label className={labelClass}>שעת המראה</label>
+                                        <input
+                                                type="time"
+                                                className={inputClass}
+                                                value={draft.departureTime}
+                                                onChange={e => update({ departureTime: e.target.value })}
+                                        />
+                                </div>
+                                <div className="col-span-2">
+                                        <label className={labelClass}>שעת נחיתה</label>
+                                        <input
+                                                type="time"
+                                                className={inputClass}
+                                                value={draft.arrivalTime}
+                                                onChange={e => update({ arrivalTime: e.target.value })}
+                                        />
+                                </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                                <button
+                                        type="button"
+                                        onClick={onCancel}
+                                        className="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-slate-100 text-sm font-bold"
+                                >
+                                        ביטול
+                                </button>
+                                <button
+                                        type="button"
+                                        onClick={() => onSave(draft)}
+                                        disabled={!draft.flightNumber.trim() && !draft.airline.trim()}
+                                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                        <Save className="w-3.5 h-3.5" />
+                                        שמור
+                                </button>
+                        </div>
+                </div>
+        );
+};
+
+// ============================================================================
+// Main component
+// ============================================================================
+
 export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, onBack, initialData }) => {
         const [stage, setStage] = useState<Stage>(
                 initialData?.freeTextResult ? 'preview' : 'idle'
@@ -99,6 +380,20 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
         const [copied, setCopied] = useState(false);
         const [analyzingIdx, setAnalyzingIdx] = useState(0);
         const [useParsedDates, setUseParsedDates] = useState(true);
+
+        // Preview CRUD state
+        const [editingHotelId, setEditingHotelId] = useState<string | null>(null);
+        const [editingFlightIdx, setEditingFlightIdx] = useState<number | null>(null);
+        const [showAddHotel, setShowAddHotel] = useState(false);
+        const [showAddFlight, setShowAddFlight] = useState(false);
+
+        // Add-more panel state
+        const [showAddMore, setShowAddMore] = useState(false);
+        const [addMoreTab, setAddMoreTab] = useState<AddMoreTab>('text');
+        const [addMoreText, setAddMoreText] = useState('');
+        const [isAppending, setIsAppending] = useState(false);
+        const [appendError, setAppendError] = useState<string>('');
+        const fileInputRef = useRef<HTMLInputElement>(null);
 
         // Rotate analyzing messages
         useEffect(() => {
@@ -173,6 +468,11 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
         const handleEditText = () => {
                 setStage('idle');
                 setResult(null);
+                setEditingHotelId(null);
+                setEditingFlightIdx(null);
+                setShowAddHotel(false);
+                setShowAddFlight(false);
+                setShowAddMore(false);
         };
 
         const handleConfirm = () => {
@@ -185,6 +485,83 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                         endDate: nextEndDate,
                         freeText: text,
                 });
+        };
+
+        // CRUD handlers
+        const updateResult = (patch: (r: FreeTextParseResult) => FreeTextParseResult) => {
+                setResult(r => (r ? patch(r) : r));
+        };
+
+        const handleSaveHotel = (h: HotelBooking) => {
+                updateResult(r => {
+                        const idx = r.hotels.findIndex(x => x.id === h.id);
+                        if (idx < 0) return { ...r, hotels: [...r.hotels, h] };
+                        const next = [...r.hotels];
+                        next[idx] = h;
+                        return { ...r, hotels: next };
+                });
+                setEditingHotelId(null);
+                setShowAddHotel(false);
+        };
+
+        const handleDeleteHotel = (id: string) => {
+                updateResult(r => ({ ...r, hotels: r.hotels.filter(h => h.id !== id) }));
+        };
+
+        const handleSaveFlight = (f: FlightSegment, idx: number | null) => {
+                updateResult(r => {
+                        if (idx === null) return { ...r, flights: [...r.flights, f] };
+                        const next = [...r.flights];
+                        next[idx] = f;
+                        return { ...r, flights: next };
+                });
+                setEditingFlightIdx(null);
+                setShowAddFlight(false);
+        };
+
+        const handleDeleteFlight = (idx: number) => {
+                updateResult(r => ({ ...r, flights: r.flights.filter((_, i) => i !== idx) }));
+        };
+
+        const handleAppendText = async () => {
+                if (!addMoreText.trim() || !result) return;
+                setAppendError('');
+                setIsAppending(true);
+                try {
+                        const more = await parseFreeTextTrip(addMoreText, {
+                                destination: initialData?.destination,
+                                startDate: initialData?.startDate,
+                                endDate: initialData?.endDate,
+                                travelers: initialData?.travelers,
+                        });
+                        const merged = mergeFreeTextResults(result, more);
+                        setResult(merged);
+                        setAddMoreText('');
+                        setShowAddMore(false);
+                } catch (e: any) {
+                        console.error('Append text failed:', e);
+                        setAppendError(e?.message || 'לא הצלחנו לעבד את הטקסט הנוסף');
+                } finally {
+                        setIsAppending(false);
+                }
+        };
+
+        const handleAppendFiles = async (files: File[]) => {
+                if (!files.length || !result) return;
+                setAppendError('');
+                setIsAppending(true);
+                try {
+                        const more = await parseFilesToFreeText(files);
+                        const merged = mergeFreeTextResults(result, more);
+                        setResult(merged);
+                        setShowAddMore(false);
+                } catch (e: any) {
+                        console.error('Append files failed:', e);
+                        setAppendError(e?.message || 'לא הצלחנו לעבד את הקבצים');
+                } finally {
+                        setIsAppending(false);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                }
         };
 
         return (
@@ -359,7 +736,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                                         {result?.summary || 'הניתוח הושלם'}
                                                                                 </div>
                                                                                 <div className="text-sm text-slate-600 font-medium">
-                                                                                        נמצאו {result?.hotels.length || 0} מלונות ו-{result?.flights.length || 0} טיסות.
+                                                                                        נמצאו {result?.hotels.length || 0} מלונות ו-{result?.flights.length || 0} טיסות. אפשר לערוך, למחוק או להוסיף לפני שממשיכים.
                                                                                 </div>
                                                                         </div>
                                                                 </div>
@@ -399,56 +776,256 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                         )}
 
                                                         {/* Hotels list */}
-                                                        {result && result.hotels.length > 0 && (
-                                                                <div>
-                                                                        <div className="flex items-center gap-2 mb-2 px-1">
+                                                        <div>
+                                                                <div className="flex items-center justify-between mb-2 px-1">
+                                                                        <div className="flex items-center gap-2">
                                                                                 <HotelIcon className="w-4 h-4 text-indigo-500" />
                                                                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">מלונות</span>
                                                                         </div>
-                                                                        <div className="space-y-2">
-                                                                                {result.hotels.map((h) => (
-                                                                                        <div key={h.id} className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between gap-3">
+                                                                        <button
+                                                                                type="button"
+                                                                                onClick={() => { setShowAddHotel(true); setEditingHotelId(null); }}
+                                                                                className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                                                                        >
+                                                                                <Plus className="w-3.5 h-3.5" />
+                                                                                הוסף ידנית
+                                                                        </button>
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                        {result?.hotels.map((h) =>
+                                                                                editingHotelId === h.id ? (
+                                                                                        <HotelEditForm
+                                                                                                key={h.id}
+                                                                                                initial={h}
+                                                                                                onSave={handleSaveHotel}
+                                                                                                onCancel={() => setEditingHotelId(null)}
+                                                                                        />
+                                                                                ) : (
+                                                                                        <div key={h.id} className="group bg-white rounded-xl border border-slate-200 hover:border-indigo-200 p-3 flex items-center justify-between gap-3 transition-colors">
                                                                                                 <div className="min-w-0 flex-1">
-                                                                                                        <div className="font-bold text-brand-navy truncate">{h.name}</div>
+                                                                                                        <div className="font-bold text-brand-navy truncate">{h.name || '(ללא שם)'}</div>
                                                                                                         <div className="text-xs text-slate-500 truncate">
                                                                                                                 {h.city || h.address || ''}
+                                                                                                                {h.rooms?.[0] && (
+                                                                                                                        <span className="text-slate-400">
+                                                                                                                                {' · '}{h.rooms[0].adults} מבוגרים, {h.rooms[0].children} ילדים
+                                                                                                                        </span>
+                                                                                                                )}
                                                                                                         </div>
                                                                                                 </div>
                                                                                                 <div className="text-xs text-slate-600 font-medium whitespace-nowrap">
                                                                                                         {formatHebrewDate(h.checkInDate)} → {formatHebrewDate(h.checkOutDate)}
                                                                                                 </div>
+                                                                                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                                                                                        <button
+                                                                                                                type="button"
+                                                                                                                onClick={() => { setEditingHotelId(h.id); setShowAddHotel(false); }}
+                                                                                                                className="w-8 h-8 rounded-lg hover:bg-indigo-50 text-indigo-600 flex items-center justify-center"
+                                                                                                                title="ערוך"
+                                                                                                        >
+                                                                                                                <Pencil className="w-4 h-4" />
+                                                                                                        </button>
+                                                                                                        <button
+                                                                                                                type="button"
+                                                                                                                onClick={() => handleDeleteHotel(h.id)}
+                                                                                                                className="w-8 h-8 rounded-lg hover:bg-red-50 text-red-500 flex items-center justify-center"
+                                                                                                                title="מחק"
+                                                                                                        >
+                                                                                                                <Trash2 className="w-4 h-4" />
+                                                                                                        </button>
+                                                                                                </div>
                                                                                         </div>
-                                                                                ))}
-                                                                        </div>
+                                                                                )
+                                                                        )}
+                                                                        {showAddHotel && (
+                                                                                <HotelEditForm
+                                                                                        initial={emptyHotel()}
+                                                                                        onSave={handleSaveHotel}
+                                                                                        onCancel={() => setShowAddHotel(false)}
+                                                                                />
+                                                                        )}
+                                                                        {result?.hotels.length === 0 && !showAddHotel && (
+                                                                                <div className="text-center text-sm text-slate-400 py-4">
+                                                                                        לא נמצאו מלונות. אפשר להוסיף ידנית.
+                                                                                </div>
+                                                                        )}
                                                                 </div>
-                                                        )}
+                                                        </div>
 
                                                         {/* Flights list */}
-                                                        {result && result.flights.length > 0 && (
-                                                                <div>
-                                                                        <div className="flex items-center gap-2 mb-2 px-1">
+                                                        <div>
+                                                                <div className="flex items-center justify-between mb-2 px-1">
+                                                                        <div className="flex items-center gap-2">
                                                                                 <Plane className="w-4 h-4 text-indigo-500" />
                                                                                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">טיסות</span>
                                                                         </div>
-                                                                        <div className="space-y-2">
-                                                                                {result.flights.map((f, idx) => (
-                                                                                        <div key={`${f.flightNumber}-${f.date}-${idx}`} className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between gap-3">
+                                                                        <button
+                                                                                type="button"
+                                                                                onClick={() => { setShowAddFlight(true); setEditingFlightIdx(null); }}
+                                                                                className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                                                                        >
+                                                                                <Plus className="w-3.5 h-3.5" />
+                                                                                הוסף ידנית
+                                                                        </button>
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                        {result?.flights.map((f, idx) =>
+                                                                                editingFlightIdx === idx ? (
+                                                                                        <FlightEditForm
+                                                                                                key={`edit-${idx}`}
+                                                                                                initial={f}
+                                                                                                onSave={(next) => handleSaveFlight(next, idx)}
+                                                                                                onCancel={() => setEditingFlightIdx(null)}
+                                                                                        />
+                                                                                ) : (
+                                                                                        <div key={`${f.flightNumber}-${f.date}-${idx}`} className="group bg-white rounded-xl border border-slate-200 hover:border-indigo-200 p-3 flex items-center justify-between gap-3 transition-colors">
                                                                                                 <div className="min-w-0 flex-1">
                                                                                                         <div className="font-bold text-brand-navy truncate">
-                                                                                                                {f.airline} {f.flightNumber}
+                                                                                                                {f.airline || '(ללא חברה)'} {f.flightNumber}
                                                                                                         </div>
                                                                                                         <div className="text-xs text-slate-500 truncate">
-                                                                                                                {f.fromCity || f.fromCode} → {f.toCity || f.toCode}
+                                                                                                                {f.fromCity || f.fromCode || '?'} → {f.toCity || f.toCode || '?'}
                                                                                                         </div>
                                                                                                 </div>
                                                                                                 <div className="text-xs text-slate-600 font-medium whitespace-nowrap">
-                                                                                                        {formatHebrewDate(f.date)} · {f.departureTime}
+                                                                                                        {formatHebrewDate(f.date)} {f.departureTime && `· ${f.departureTime}`}
+                                                                                                </div>
+                                                                                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                                                                                        <button
+                                                                                                                type="button"
+                                                                                                                onClick={() => { setEditingFlightIdx(idx); setShowAddFlight(false); }}
+                                                                                                                className="w-8 h-8 rounded-lg hover:bg-indigo-50 text-indigo-600 flex items-center justify-center"
+                                                                                                                title="ערוך"
+                                                                                                        >
+                                                                                                                <Pencil className="w-4 h-4" />
+                                                                                                        </button>
+                                                                                                        <button
+                                                                                                                type="button"
+                                                                                                                onClick={() => handleDeleteFlight(idx)}
+                                                                                                                className="w-8 h-8 rounded-lg hover:bg-red-50 text-red-500 flex items-center justify-center"
+                                                                                                                title="מחק"
+                                                                                                        >
+                                                                                                                <Trash2 className="w-4 h-4" />
+                                                                                                        </button>
                                                                                                 </div>
                                                                                         </div>
-                                                                                ))}
-                                                                        </div>
+                                                                                )
+                                                                        )}
+                                                                        {showAddFlight && (
+                                                                                <FlightEditForm
+                                                                                        initial={emptyFlight()}
+                                                                                        onSave={(next) => handleSaveFlight(next, null)}
+                                                                                        onCancel={() => setShowAddFlight(false)}
+                                                                                />
+                                                                        )}
+                                                                        {result?.flights.length === 0 && !showAddFlight && (
+                                                                                <div className="text-center text-sm text-slate-400 py-4">
+                                                                                        לא נמצאו טיסות. אפשר להוסיף ידנית.
+                                                                                </div>
+                                                                        )}
                                                                 </div>
-                                                        )}
+                                                        </div>
+
+                                                        {/* Add more from text / files */}
+                                                        <div>
+                                                                {!showAddMore ? (
+                                                                        <button
+                                                                                type="button"
+                                                                                onClick={() => { setShowAddMore(true); setAppendError(''); }}
+                                                                                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-300 hover:bg-indigo-50/30 text-slate-600 hover:text-indigo-700 font-bold text-sm transition-colors"
+                                                                        >
+                                                                                <Plus className="w-4 h-4" />
+                                                                                הוסף עוד מידע (טקסט נוסף או קבצים)
+                                                                        </button>
+                                                                ) : (
+                                                                        <div className="bg-white rounded-2xl border-2 border-indigo-200 p-4 space-y-3">
+                                                                                <div className="flex items-center justify-between">
+                                                                                        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                                                                                                <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => setAddMoreTab('text')}
+                                                                                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${addMoreTab === 'text' ? 'bg-white shadow-sm text-brand-navy' : 'text-slate-500 hover:text-brand-navy'}`}
+                                                                                                >
+                                                                                                        <TextCursor className="w-3.5 h-3.5" />
+                                                                                                        הדבק טקסט
+                                                                                                </button>
+                                                                                                <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => setAddMoreTab('files')}
+                                                                                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${addMoreTab === 'files' ? 'bg-white shadow-sm text-brand-navy' : 'text-slate-500 hover:text-brand-navy'}`}
+                                                                                                >
+                                                                                                        <UploadCloud className="w-3.5 h-3.5" />
+                                                                                                        העלה קבצים
+                                                                                                </button>
+                                                                                        </div>
+                                                                                        <button
+                                                                                                type="button"
+                                                                                                onClick={() => { setShowAddMore(false); setAddMoreText(''); setAppendError(''); }}
+                                                                                                className="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-400 flex items-center justify-center"
+                                                                                        >
+                                                                                                <X className="w-4 h-4" />
+                                                                                        </button>
+                                                                                </div>
+
+                                                                                {addMoreTab === 'text' ? (
+                                                                                        <>
+                                                                                                <textarea
+                                                                                                        value={addMoreText}
+                                                                                                        onChange={e => setAddMoreText(e.target.value)}
+                                                                                                        placeholder="הדביקו כאן עוד טקסט – למשל מלון שלא זוהה, טיסת המשך, או תיקון לפרטים קיימים."
+                                                                                                        maxLength={MAX_CHARS}
+                                                                                                        dir="rtl"
+                                                                                                        disabled={isAppending}
+                                                                                                        className="w-full min-h-[140px] p-3 rounded-lg border border-slate-200 focus:border-indigo-400 focus:outline-none resize-y bg-white text-sm text-brand-navy placeholder:text-slate-400 disabled:opacity-60"
+                                                                                                />
+                                                                                                <div className="flex justify-end">
+                                                                                                        <button
+                                                                                                                type="button"
+                                                                                                                onClick={handleAppendText}
+                                                                                                                disabled={isAppending || !addMoreText.trim()}
+                                                                                                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                                                                        >
+                                                                                                                {isAppending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                                                                                                                נתח והוסף
+                                                                                                        </button>
+                                                                                                </div>
+                                                                                        </>
+                                                                                ) : (
+                                                                                        <div className="flex flex-col items-center justify-center gap-3 py-6 px-4 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                                                                                                <UploadCloud className="w-8 h-8 text-indigo-500" />
+                                                                                                <p className="text-sm text-slate-600 text-center">
+                                                                                                        העלו PDF של הזמנה / אישור נוסף. ה-AI יחלץ ממנו את הנתונים וישלב עם מה שכבר זוהה.
+                                                                                                </p>
+                                                                                                <input
+                                                                                                        ref={fileInputRef}
+                                                                                                        type="file"
+                                                                                                        accept=".pdf,image/*"
+                                                                                                        multiple
+                                                                                                        onChange={(e) => e.target.files && handleAppendFiles(Array.from(e.target.files))}
+                                                                                                        className="sr-only"
+                                                                                                        disabled={isAppending}
+                                                                                                />
+                                                                                                <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => fileInputRef.current?.click()}
+                                                                                                        disabled={isAppending}
+                                                                                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-40"
+                                                                                                >
+                                                                                                        {isAppending ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                                                                                                        {isAppending ? 'מעבד קבצים...' : 'בחר קבצים'}
+                                                                                                </button>
+                                                                                        </div>
+                                                                                )}
+
+                                                                                {appendError && (
+                                                                                        <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-800 rounded-lg p-3 text-sm">
+                                                                                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                                                                                <span>{appendError}</span>
+                                                                                        </div>
+                                                                                )}
+                                                                        </div>
+                                                                )}
+                                                        </div>
 
                                                         {/* Action buttons */}
                                                         <div className="flex items-center justify-between gap-3 pt-2">
@@ -457,7 +1034,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                         onClick={handleEditText}
                                                                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-slate-500 hover:text-brand-navy hover:bg-slate-100 font-bold text-sm transition-colors"
                                                                 >
-                                                                        ערוך טקסט
+                                                                        ערוך טקסט מקור
                                                                 </button>
                                                                 <button
                                                                         type="button"

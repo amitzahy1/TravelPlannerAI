@@ -1,5 +1,5 @@
 import type { HotelBooking, FlightSegment } from '../types';
-import { generateWithFallback } from './aiService';
+import { generateWithFallback, analyzeTripFiles } from './aiService';
 
 export interface FreeTextParseHints {
   destination?: string;
@@ -139,4 +139,95 @@ export async function parseFreeTextTrip(
     || `נמצאו ${hotels.length} מלונות ו-${flights.length} טיסות`;
 
   return { hotels, flights, summary };
+}
+
+/**
+ * Parse uploaded PDF / image files and return the same shape as parseFreeTextTrip.
+ * Lets callers reuse the free-text merge pipeline for mixed text + file inputs.
+ */
+export async function parseFilesToFreeText(files: File[]): Promise<FreeTextParseResult> {
+  const analysis = await analyzeTripFiles(files);
+  const raw = analysis.rawStagedData;
+
+  const hotels: HotelBooking[] = (raw?.categories?.accommodation || []).map((h: any) => ({
+    id: crypto.randomUUID(),
+    name: h.data.hotelName || 'Hotel',
+    city: h.data.city || '',
+    address: h.data.address || '',
+    checkInDate: h.data.checkIn?.isoDate || '',
+    checkOutDate: h.data.checkOut?.isoDate || '',
+    nights: h.data.nights || 0,
+    bookingSource: 'Direct',
+    confirmationCode: h.data.bookingId || undefined,
+    price: h.data.price?.amount ? `${h.data.price.amount} ${h.data.price.currency || ''}`.trim() : undefined,
+    rooms: [],
+  }));
+
+  const flights: FlightSegment[] = (raw?.categories?.transport || []).map((t: any) => ({
+    fromCode: t.data.departure?.iata || '',
+    fromCity: t.data.departure?.city || '',
+    toCode: t.data.arrival?.iata || '',
+    toCity: t.data.arrival?.city || '',
+    departureTime: t.data.departure?.displayTime || '',
+    arrivalTime: t.data.arrival?.displayTime || '',
+    flightNumber: t.data.flightNumber || '',
+    airline: t.data.airline || '',
+    duration: '',
+    date: t.data.departure?.isoDate || '',
+  }));
+
+  return {
+    hotels,
+    flights,
+    summary: `מקבצים: ${hotels.length} מלונות ו-${flights.length} טיסות`,
+  };
+}
+
+/**
+ * Merge two parse results by deduplicating:
+ * - Hotels: same name (case-insensitive) + same checkInDate
+ * - Flights: same flightNumber + same date
+ * When a hotel duplicate is detected, the incoming one enriches the existing one
+ * only in fields that were empty.
+ */
+export function mergeFreeTextResults(
+  existing: FreeTextParseResult,
+  incoming: FreeTextParseResult
+): FreeTextParseResult {
+  const hotels = [...existing.hotels];
+  for (const inc of incoming.hotels) {
+    const idx = hotels.findIndex(h =>
+      h.name.trim().toLowerCase() === inc.name.trim().toLowerCase() &&
+      (!h.checkInDate || !inc.checkInDate || h.checkInDate === inc.checkInDate)
+    );
+    if (idx < 0) {
+      hotels.push(inc);
+    } else {
+      const cur = hotels[idx];
+      hotels[idx] = {
+        ...cur,
+        city: cur.city || inc.city,
+        address: cur.address || inc.address,
+        checkInDate: cur.checkInDate || inc.checkInDate,
+        checkOutDate: cur.checkOutDate || inc.checkOutDate,
+        nights: cur.nights || inc.nights,
+        confirmationCode: cur.confirmationCode || inc.confirmationCode,
+        price: cur.price || inc.price,
+        rooms: cur.rooms?.length ? cur.rooms : inc.rooms,
+        notes: cur.notes || inc.notes,
+      };
+    }
+  }
+
+  const flights = [...existing.flights];
+  for (const inc of incoming.flights) {
+    const dup = flights.find(f => f.flightNumber === inc.flightNumber && f.date === inc.date);
+    if (!dup) flights.push(inc);
+  }
+
+  return {
+    hotels,
+    flights,
+    summary: `סה"כ ${hotels.length} מלונות ו-${flights.length} טיסות`,
+  };
 }

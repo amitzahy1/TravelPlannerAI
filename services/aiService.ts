@@ -6,18 +6,19 @@ import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 // ============================================================================
 
 const GOOGLE_MODELS = {
-  // Tier 1: Heavy Reasoning (Files, Complex Analysis, Vision)
+  // Tier 1: Used for SMART/ANALYZE intent (trip extraction, PDF parsing, structured JSON).
+  // Ordered fastest-first — 2.5-flash-lite handles realistic trip-extraction with 100% accuracy
+  // at ~2s, while pro takes 15+s for no quality gain on this task. Pro stays as last-resort
+  // fallback for genuinely heavy inputs (massive PDFs, very ambiguous text).
   SMART_CANDIDATES: [
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
     "gemini-2.5-pro",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-1.5-flash-latest",
   ],
-  // Tier 2: Speed & Chat (Fast Conversations)
+  // Tier 2: Used for FAST intent (chat, quick suggestions)
   FAST_CANDIDATES: [
-    "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
-    "gemini-1.5-flash-latest",
+    "gemini-2.5-flash",
   ]
 };
 
