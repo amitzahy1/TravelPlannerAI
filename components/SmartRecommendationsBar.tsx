@@ -9,7 +9,8 @@ import { getPlaceImage } from '../services/imageMapper';
 // Grouped recommendation type
 interface GroupedRecommendation {
         id: string;
-        type: 'restaurants' | 'attractions' | 'hotel_missing' | 'transfer' | 'data_warning';
+        type: 'restaurants' | 'attractions' | 'hotel_missing' | 'transfer' | 'data_warning'
+                | 'food_research_missing' | 'attractions_research_missing';
         title: string;
         subtitle: string;
         icon: any;
@@ -18,6 +19,8 @@ interface GroupedRecommendation {
         items?: (Restaurant | Attraction)[];
         suggestedDates?: string[];
         warningDetails?: string[];
+        // For recommendations that just navigate (no popup)
+        navigateTo?: 'restaurants' | 'attractions' | 'flights' | 'hotels';
 }
 
 interface Props {
@@ -172,6 +175,33 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                         }
                 }
 
+                // 4b. AI market research not yet done — suggest it
+                if (!trip.aiRestaurants || trip.aiRestaurants.length === 0) {
+                        recs.push({
+                                id: 'rec-food-research',
+                                type: 'food_research_missing',
+                                title: 'מחקר אוכל (AI)',
+                                subtitle: `🍽️ עדיין לא עשית מחקר שוק למסעדות — תן ל-AI להציע`,
+                                icon: Utensils,
+                                color: 'text-orange-700',
+                                bgColor: 'bg-orange-50 border-orange-200',
+                                navigateTo: 'restaurants',
+                        });
+                }
+
+                if (!trip.aiAttractions || trip.aiAttractions.length === 0) {
+                        recs.push({
+                                id: 'rec-attractions-research',
+                                type: 'attractions_research_missing',
+                                title: 'מחקר אטרקציות (AI)',
+                                subtitle: `📍 עדיין לא עשית מחקר שוק לאטרקציות — תן ל-AI להציע`,
+                                icon: MapPin,
+                                color: 'text-emerald-700',
+                                bgColor: 'bg-emerald-50 border-emerald-200',
+                                navigateTo: 'attractions',
+                        });
+                }
+
                 // 5. DATA WARNINGS - Check for incomplete flight/hotel data
                 const dataWarnings: string[] = [];
 
@@ -272,12 +302,18 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                                 {recommendations.map((rec, i) => ( // Show ALL on mobile scroll, pagination on desktop
                                                         <button
                                                                 key={rec.id}
-                                                                onClick={() => setSelectedRec(rec)}
+                                                                onClick={() => {
+                                                                        if (rec.navigateTo && onSwitchTab) {
+                                                                                onSwitchTab(rec.navigateTo);
+                                                                        } else {
+                                                                                setSelectedRec(rec);
+                                                                        }
+                                                                }}
                                                                 className={`flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-xl md:rounded-full border text-xs font-medium transition-all hover:scale-105 hover:shadow-md whitespace-nowrap flex-shrink-0 ${rec.bgColor} ${rec.color} ${i >= scrollIndex && i < scrollIndex + 4 ? 'block' : 'md:hidden' // Only pagination logic on desktop
                                                                         } ${/* Always show all in mobile scroll view */ 'block'}`}
                                                         >
                                                                 <rec.icon className="w-3.5 h-3.5" />
-                                                                <span className="max-w-[120px] truncate">{rec.title}</span>
+                                                                <span className="max-w-[160px] truncate">{rec.title}</span>
                                                                 {rec.items && rec.items.length > 0 && (
                                                                         <span className="bg-white/60 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
                                                                                 {rec.items.length}

@@ -96,7 +96,9 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         if (trip.aiAttractions && trip.aiAttractions.length > 0) setAiCategories(trip.aiAttractions);
     }, [trip.aiAttractions]);
 
-    const tripCities = useMemo(() => getTripCities(trip), [trip]);
+    // Exclude flight-only cities (layovers like AUH) — they're not travel destinations
+    // the user actually visits, so they shouldn't pollute the attraction-research scope.
+    const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true }), [trip]);
 
     // --- AI Logic ---
     const handleTextSearch = async () => {

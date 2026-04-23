@@ -147,7 +147,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         }
     }, [trip.aiRestaurants]);
 
-    const tripCities = useMemo(() => getTripCities(trip), [trip]);
+    // Exclude flight-only cities (layovers like AUH) — they're not travel destinations
+    // the user actually stays in, so they shouldn't pollute the food-research scope.
+    const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true }), [trip]);
 
     // --- Search Logic ---
     const handleTextSearch = async () => {

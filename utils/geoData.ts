@@ -264,37 +264,54 @@ export const extractRobustCity = (address: string, hotelName: string, trip: Trip
 /**
  * Centralized Logic to get the unique list of cities for a trip.
  * Aggregates from: Destination String, Flights, Hotels
+ *
+ * @param opts.excludeFlightOnly
+ *   When true, skips flight arrival cities that don't also have a hotel
+ *   booked in them. Intended for AI market research (food / attractions)
+ *   which should only search places the user is actually staying in,
+ *   not layover / transit airports like AUH.
  */
-export const getTripCities = (trip: Trip): string[] => {
+export const getTripCities = (
+        trip: Trip,
+        opts?: { excludeFlightOnly?: boolean }
+): string[] => {
         const unique = new Set<string>();
+
+        // Pre-compute the set of hotel cities so we can filter flight-only
+        // destinations out when requested.
+        const hotelCitiesLower = new Set<string>();
+        trip.hotels?.forEach(h => {
+                const extracted = extractRobustCity(h.address || '', h.name || '', trip);
+                if (extracted) hotelCitiesLower.add(cleanCityName(extracted).toLowerCase());
+                if (h.city) hotelCitiesLower.add(cleanCityName(h.city).toLowerCase());
+        });
 
         // 1. Wizard Destination
         if (trip.destination) {
                 trip.destination.split(/ - | & |, /).forEach(s => unique.add(cleanCityName(s.trim())));
         }
 
-        // 2. Flight Destinations (Arrivals)
+        // 2. Flight Destinations (Arrivals) — skipped for non-hotel cities when
+        // excludeFlightOnly is on, so layover / transit cities don't pollute
+        // AI research for food + attractions.
         const originCity = trip.flights?.segments?.[0]?.fromCity?.toLowerCase();
         trip.flights?.segments?.forEach(s => {
-                if (s.toCity && s.toCity.toLowerCase() !== originCity) {
-                        unique.add(cleanCityName(s.toCity));
+                if (!s.toCity) return;
+                const toLower = s.toCity.toLowerCase();
+                if (toLower === originCity) return;
+                const cleaned = cleanCityName(s.toCity);
+                if (opts?.excludeFlightOnly && !hotelCitiesLower.has(cleaned.toLowerCase())) {
+                        return;
                 }
+                unique.add(cleaned);
         });
 
         // 3. Hotel Cities (Using Robust Extraction)
         trip.hotels?.forEach(h => {
-                // Use the strong extraction logic to find "Napareuli" hidden in address/name
                 const extracted = extractRobustCity(h.address || '', h.name || '', trip);
                 if (extracted) unique.add(cleanCityName(extracted));
-
-                // Also trust the direct 'city' field if present
                 if (h.city) unique.add(cleanCityName(h.city));
         });
-
-        // 4. Itinerary Cities (Manual Events or AI Titles)
-        // If the trip already has an itinerary, check the locationContext or titles
-        // NOTE: ItineraryView usually generates this on the fly, but if we save it back, we can read it.
-        // For now, Hotels + Destination + Flights covers 99% of cases.
 
         return Array.from(unique).filter(Boolean);
 };
