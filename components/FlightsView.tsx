@@ -4,6 +4,17 @@ import { Trip, FlightSegment } from '../types';
 import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check, Lock, ShieldCheck, ChevronDown, Trash2, AlertTriangle } from 'lucide-react';
 import { formatDateTime, formatDateOnly, parseFlightTime, calculateFlightDuration, parseDateToIso, formatFlightTime } from '../utils/dateUtils';
 import { ConfirmModal } from './ConfirmModal';
+import { localTimeAtAirportToUTC, AIRPORT_TIMEZONES } from '../utils/airportTimezones';
+
+const formatDurationMs = (ms: number): string => {
+  if (!isFinite(ms) || ms <= 0) return '';
+  const totalMinutes = Math.round(ms / 60000);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
 
 // Strip placeholder/unknown values the AI sometimes sets. Returns undefined for
 // empty / "unknown" / "N/A" / "—" / "0h" so display code can simply skip them.

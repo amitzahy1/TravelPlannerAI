@@ -13,6 +13,12 @@ import type { Trip, RestaurantCategory, AttractionCategory } from '../types';
 import { generateWithFallback } from './aiService';
 import { saveSingleTrip } from './storageService';
 import { getTripCities } from '../utils/geoData';
+import { toast } from '../stores/useToastStore';
+
+// Per-trip lock — prevents firing a second background research run for a
+// trip that's already being researched (e.g. when the user hits the reset
+// button twice, or when the module re-mounts).
+const inFlightTrips = new Set<string>();
 
 // Build the same prompt the RestaurantsView uses, inlined so this service
 // is self-contained.
@@ -238,22 +244,41 @@ export const runBackgroundResearch = (
         trip: Trip,
         userId: string | undefined
 ): Promise<void> => {
+        if (inFlightTrips.has(trip.id)) {
+                console.log('[bgResearch] already running for', trip.id);
+                return Promise.resolve();
+        }
+
+        const needsFood = !trip.aiRestaurants || trip.aiRestaurants.length === 0;
+        const needsAttractions = !trip.aiAttractions || trip.aiAttractions.length === 0;
+        if (!needsFood && !needsAttractions) {
+                console.log('[bgResearch] nothing to do for', trip.id);
+                return Promise.resolve();
+        }
+
+        inFlightTrips.add(trip.id);
         console.log('[bgResearch] starting for trip', trip.id);
+        toast.info('🔍 מחקר אוכל ואטרקציות רץ ברקע…', 4000);
+
         const opts: ResearchOptions = {
                 onProgress: (phase, c, t) => console.log(`[bgResearch] ${phase} ${c}/${t}`),
                 onComplete: (phase) => console.log(`[bgResearch] ${phase} done`),
         };
 
         const tasks: Promise<any>[] = [];
-
-        if (!trip.aiRestaurants || trip.aiRestaurants.length === 0) {
+        if (needsFood) {
                 tasks.push(researchRestaurantsForTrip(trip, userId, opts).catch(e => console.error('[bgResearch] food failed', e)));
         }
-        if (!trip.aiAttractions || trip.aiAttractions.length === 0) {
+        if (needsAttractions) {
                 tasks.push(researchAttractionsForTrip(trip, userId, opts).catch(e => console.error('[bgResearch] attractions failed', e)));
         }
 
-        return Promise.all(tasks).then(() => {
-                console.log('[bgResearch] all phases complete for trip', trip.id);
-        });
+        return Promise.all(tasks)
+                .then(() => {
+                        console.log('[bgResearch] all phases complete for trip', trip.id);
+                        toast.success('✅ המחקר הושלם — אוכל ואטרקציות מוכנים');
+                })
+                .finally(() => {
+                        inFlightTrips.delete(trip.id);
+                });
 };

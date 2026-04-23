@@ -1,30 +1,22 @@
-import { Trip, FlightSegment, HotelBooking, ItineraryItem } from '../types';
+import { Trip, FlightSegment, HotelBooking } from '../types';
 
 /**
- * Generates a Premium Travel Timeline (v5 — Perfected)
- * ─────────────────────────────────────────────────────
- * - Boarding-pass style flight cards
- * - Rich hotel cards with nights count
- * - "Vacation Mode" for hotel stay days
- * - Smart entity handling (no double-escape)
- * - Polished visual design with gradients
+ * Trip Summary Export — v6 (Full-Width Dashboard)
+ * ─────────────────────────────────────────────────
+ * Dense, responsive dashboard layout that uses the entire viewport width.
+ * Goal: cram the whole trip onto one screen on desktop, beautiful single
+ * column on mobile. No more 640px centered narrow column.
  */
-
-// ── Types ────────────────────────────────────────────────────────
 
 interface TimelineEvent {
   id: string;
-  type: 'flight_dep' | 'flight_arr' | 'hotel_in' | 'hotel_out' | 'hotel_stay' | 'transfer' | 'activity' | 'food' | 'divider';
+  type: 'flight_dep' | 'flight_arr' | 'hotel_in' | 'hotel_out' | 'hotel_stay' | 'transfer' | 'activity' | 'food';
   time: string;
   title: string;
   subtitle?: string;
   icon: string;
   details?: string;
-  isMajor?: boolean;
-  isNight?: boolean;
-  // Flight-specific rich data
   flightData?: FlightSegment;
-  // Hotel-specific
   hotelData?: HotelBooking;
   nightsCount?: number;
 }
@@ -39,27 +31,19 @@ interface TimelineDay {
   title?: string;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
-
-/** Smart escape: first decode any existing entities, then re-encode once */
 const esc = (s: string): string => {
   if (!s) return '';
-  // Decode common HTML entities first to prevent double-encoding
   const decoded = s
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"');
-  // Then encode cleanly
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&quot;/g, '"');
   return decoded
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 };
 
 const DOW_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 const MONTHS_HE = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+const MONTHS_HE_SHORT = ['ינו׳', 'פבר׳', 'מרץ', 'אפר׳', 'מאי', 'יוני', 'יולי', 'אוג׳', 'ספט׳', 'אוק׳', 'נוב׳', 'דצמ׳'];
 
 const fmtTime = (t: string): string => {
   if (!t) return '';
@@ -72,28 +56,25 @@ const fmtTime = (t: string): string => {
 };
 
 const isoDate = (d: string | Date): string => {
-  try {
-    return (typeof d === 'string' ? new Date(d) : d).toISOString().split('T')[0];
-  } catch { return ''; }
+  try { return (typeof d === 'string' ? new Date(d) : d).toISOString().split('T')[0]; }
+  catch { return ''; }
 };
 
 const addDays = (d: Date, n: number): Date => {
-  const newD = new Date(d);
-  newD.setDate(newD.getDate() + n);
-  return newD;
+  const newD = new Date(d); newD.setDate(newD.getDate() + n); return newD;
 };
 
-const nightsBetween = (checkIn: string, checkOut: string): number => {
+const nightsBetween = (a: string, b: string): number => {
   try {
-    const a = new Date(checkIn), b = new Date(checkOut);
-    return Math.max(0, Math.ceil((b.getTime() - a.getTime()) / 86400000));
+    return Math.max(0, Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
   } catch { return 0; }
 };
 
-// ── Timeline Builder ─────────────────────────────────────────────
+const fmtShort = (d: Date): string => `${d.getDate()} ${MONTHS_HE_SHORT[d.getMonth()]}`;
+
+// ── Timeline builder (same logic as v5) ─────────────────────────
 
 const buildTimeline = (trip: Trip): TimelineDay[] => {
-  // 1. Determine Range
   const allDates: number[] = [];
   const addDate = (s?: string) => s && !isNaN(new Date(s).getTime()) && allDates.push(new Date(s).getTime());
 
@@ -104,1027 +85,618 @@ const buildTimeline = (trip: Trip): TimelineDay[] => {
   if (trip.dates && allDates.length === 0) {
     trip.dates.split(/[-–]/).forEach(p => addDate(p.trim()));
   }
-
   if (allDates.length === 0) return [];
 
-  const minDate = new Date(Math.min(...allDates));
-  const maxDate = new Date(Math.max(...allDates));
-
-  const startDate = new Date(minDate); startDate.setHours(12, 0, 0, 0);
-  const endDate = new Date(maxDate); endDate.setHours(12, 0, 0, 0);
+  const startDate = new Date(Math.min(...allDates)); startDate.setHours(12, 0, 0, 0);
+  const endDate = new Date(Math.max(...allDates)); endDate.setHours(12, 0, 0, 0);
 
   const days: Record<string, TimelineDay> = {};
   const totalDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1;
 
   for (let i = 0; i < totalDays; i++) {
-    const current = addDays(startDate, i);
-    const iso = isoDate(current);
-    days[iso] = {
-      date: current,
-      iso,
-      dayNum: current.getDate(),
-      month: MONTHS_HE[current.getMonth()],
-      dow: DOW_HE[current.getDay()],
-      events: []
-    };
+    const cur = addDays(startDate, i);
+    const iso = isoDate(cur);
+    days[iso] = { date: cur, iso, dayNum: cur.getDate(), month: MONTHS_HE[cur.getMonth()], dow: DOW_HE[cur.getDay()], events: [] };
   }
 
-  // 2. Inject Events
-  const addToDay = (iso: string, evt: TimelineEvent) => {
-    if (days[iso]) days[iso].events.push(evt);
-  };
+  const addToDay = (iso: string, evt: TimelineEvent) => { if (days[iso]) days[iso].events.push(evt); };
 
-  // → Flights — with FULL data pass-through
   trip.flights?.segments?.forEach((seg, idx) => {
     const depIso = isoDate(seg.date);
-
     addToDay(depIso, {
-      id: `flight-${idx}-dep`,
-      type: 'flight_dep',
-      time: fmtTime(seg.departureTime) || '—',
+      id: `f-${idx}-d`, type: 'flight_dep', time: fmtTime(seg.departureTime) || '—',
       title: `טיסה ל-${seg.toCity || seg.toCode}`,
-      subtitle: `${seg.airline || ''} • ${seg.flightNumber || ''}`.trim(),
-      icon: '✈️',
-      isMajor: true,
-      flightData: seg
+      subtitle: `${seg.airline || ''} ${seg.flightNumber || ''}`.trim(),
+      icon: '✈️', flightData: seg
     });
-
-    // Arrival day calculation
     let arrIso = depIso;
-    const depT = fmtTime(seg.departureTime);
-    const arrT = fmtTime(seg.arrivalTime);
-
-    if (seg.arrivalTime?.includes('T')) {
-      arrIso = isoDate(seg.arrivalTime);
-    } else if (depT && arrT && arrT < depT) {
-      const d = new Date(seg.date);
-      d.setDate(d.getDate() + 1);
-      arrIso = isoDate(d);
+    const depT = fmtTime(seg.departureTime), arrT = fmtTime(seg.arrivalTime);
+    if (seg.arrivalTime?.includes('T')) arrIso = isoDate(seg.arrivalTime);
+    else if (depT && arrT && arrT < depT) {
+      const d = new Date(seg.date); d.setDate(d.getDate() + 1); arrIso = isoDate(d);
     }
-
     addToDay(arrIso, {
-      id: `flight-${idx}-arr`,
-      type: 'flight_arr',
-      time: arrT || '—',
+      id: `f-${idx}-a`, type: 'flight_arr', time: arrT || '—',
       title: `נחיתה ב-${seg.toCity || seg.toCode}`,
-      subtitle: seg.duration ? `משך טיסה: ${seg.duration}` : '',
-      icon: '🛬',
-      isMajor: true,
-      flightData: seg
+      subtitle: seg.duration ? `${seg.duration}` : '',
+      icon: '🛬', flightData: seg
     });
   });
 
-  // → Hotels (with smart check-in time based on flight arrivals)
   trip.hotels?.forEach((h, idx) => {
     const inIso = isoDate(h.checkInDate);
     const outIso = isoDate(h.checkOutDate);
     const nights = nightsBetween(h.checkInDate, h.checkOutDate);
-
-    // Smart check-in time: if a flight arrives on the same day, place check-in AFTER arrival
-    let checkInTime = '15:00';
-    const arrivalOnSameDay = days[inIso]?.events.find(e => e.type === 'flight_arr');
-    if (arrivalOnSameDay && arrivalOnSameDay.time) {
-      // Set check-in 30 min after arrival
-      const [hh, mm] = arrivalOnSameDay.time.split(':').map(Number);
-      const totalMin = hh * 60 + mm + 30;
-      const newH = Math.min(23, Math.floor(totalMin / 60));
-      const newM = totalMin % 60;
-      checkInTime = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
-    }
-
     addToDay(inIso, {
-      id: `hotel-${idx}-in`,
-      type: 'hotel_in',
-      time: checkInTime,
-      title: `צ'ק-אין`,
-      subtitle: h.name,
-      icon: '🏨',
-      isMajor: true,
-      hotelData: h,
-      nightsCount: nights
+      id: `h-${idx}-i`, type: 'hotel_in', time: '15:00',
+      title: 'צ׳ק-אין', subtitle: h.name, icon: '🏨', hotelData: h, nightsCount: nights
     });
-
-    // Smart check-out time: if a flight departs same day, put checkout BEFORE departure
-    let checkOutTime = '11:00';
-    const depOnSameDay = days[outIso]?.events.find(e => e.type === 'flight_dep');
-    if (depOnSameDay && depOnSameDay.time) {
-      const [hh, mm] = depOnSameDay.time.split(':').map(Number);
-      const totalMin = Math.max(0, hh * 60 + mm - 120); // 2 hours before flight
-      const newH = Math.floor(totalMin / 60);
-      const newM = totalMin % 60;
-      checkOutTime = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
-    }
-
     addToDay(outIso, {
-      id: `hotel-${idx}-out`,
-      type: 'hotel_out',
-      time: checkOutTime,
-      title: `צ'ק-אאוט`,
-      subtitle: h.name,
-      icon: '👋',
-      hotelData: h
+      id: `h-${idx}-o`, type: 'hotel_out', time: '11:00',
+      title: 'צ׳ק-אאוט', subtitle: h.name, icon: '👋', hotelData: h
     });
   });
 
-  // → Itinerary Activities
   trip.itinerary?.forEach((day, idx) => {
     const iso = isoDate(day.date);
     if (!days[iso]) return;
-
-    if (day.title && day.title !== 'טיול חופשי' && day.title !== 'יום טיסה') {
-      days[iso].title = day.title;
-    }
-
+    if (day.title && day.title !== 'טיול חופשי' && day.title !== 'יום טיסה') days[iso].title = day.title;
     day.activities?.forEach((act, aIdx) => {
-      const timeMatch = act.match(/^(\d{1,2}:\d{2})(?:-\d{1,2}:\d{2})?\s*(.*)/);
-      const time = timeMatch ? timeMatch[1] : '';
-      const text = timeMatch ? timeMatch[2] : act;
-
-      // Detect transfer activities
+      const m = act.match(/^(\d{1,2}:\d{2})(?:-\d{1,2}:\d{2})?\s*(.*)/);
+      const time = m ? m[1] : '';
+      const text = m ? m[2] : act;
       const isTransfer = /הסעה|נסיעה|טרנספר|transfer|מונית|taxi/i.test(text);
-      let driverDetails = '';
-      let cleanTitle = text;
-
-      // Extract details in parenthesis like (Driver: Yossi, Phone: 050...)
-      const detailsMatch = text.match(/\((.*?)\)$/);
-      if (detailsMatch) {
-        cleanTitle = text.replace(/\s*\(.*?\)$/, '').trim();
-        driverDetails = detailsMatch[1];
-      }
-
+      const dm = text.match(/\((.*?)\)$/);
+      const cleanTitle = dm ? text.replace(/\s*\(.*?\)$/, '').trim() : text;
+      const subtitle = dm ? dm[1] : '';
       addToDay(iso, {
-        id: `act-${idx}-${aIdx}`,
-        type: isTransfer ? 'transfer' : 'activity', // New dedicated type
-        time,
-        title: cleanTitle,
-        subtitle: driverDetails,
-        icon: isTransfer ? '🚕' : '📍',
+        id: `a-${idx}-${aIdx}`, type: isTransfer ? 'transfer' : 'activity',
+        time, title: cleanTitle, subtitle, icon: isTransfer ? '🚕' : '📍'
       });
     });
-
     if (day.notes) {
-      addToDay(iso, {
-        id: `note-${idx}`,
-        type: 'activity',
-        time: '',
-        title: 'הערות',
-        details: day.notes,
-        icon: '📝'
-      });
+      addToDay(iso, { id: `n-${idx}`, type: 'activity', time: '', title: 'הערה', details: day.notes, icon: '📝' });
     }
   });
 
-  // → Detect ongoing hotel stays for empty days
   Object.values(days).forEach(day => {
     const d = isoDate(day.date);
-    const activeHotel = trip.hotels?.find(h => {
-      const inD = isoDate(h.checkInDate);
-      const outD = isoDate(h.checkOutDate);
-      return d > inD && d < outD;
-    });
-
-    if (activeHotel && day.events.length === 0) {
-      day.title = `נופש ב-${activeHotel.name}`;
+    const active = trip.hotels?.find(h => d > isoDate(h.checkInDate) && d < isoDate(h.checkOutDate));
+    if (active && day.events.length === 0) {
+      day.title = `נופש ב-${active.name}`;
       day.events.push({
-        id: `stay-${d}`,
-        type: 'hotel_stay',
-        time: '',
-        title: activeHotel.name,
-        subtitle: 'יום חופשי במלון',
-        icon: '🛏️',
-        isMajor: false,
-        hotelData: activeHotel
+        id: `s-${d}`, type: 'hotel_stay', time: '', title: active.name,
+        subtitle: 'יום חופשי במלון', icon: '🛏️', hotelData: active
       });
     }
   });
 
-  // 3. Sort & Assign Titles
-  return Object.values(days).sort((a, b) => a.date.getTime() - b.date.getTime()).map((day, i) => {
+  return Object.values(days).sort((a, b) => a.date.getTime() - b.date.getTime()).map((day, i, arr) => {
     day.events.sort((a, b) => {
       if (!a.time && !b.time) return 0;
       if (!a.time) return 1;
       if (!b.time) return -1;
       return a.time.localeCompare(b.time);
     });
-
     if (!day.title) {
-      const hasFlight = day.events.some(e => e.type === 'flight_dep' || e.type === 'flight_arr');
-      if (hasFlight) {
-        const dep = day.events.find(e => e.type === 'flight_dep');
-        day.title = dep ? `טיסה ל-${dep.flightData?.toCity || dep.flightData?.toCode || ''}` : 'נחיתה';
-      } else if (day.events.length === 0) {
-        day.title = 'יום חופשי';
-      } else {
-        day.title = 'יום פעילות';
-      }
+      const dep = day.events.find(e => e.type === 'flight_dep');
+      if (dep) day.title = `טיסה ל-${dep.flightData?.toCity || dep.flightData?.toCode || ''}`;
+      else if (day.events.length === 0) day.title = 'יום חופשי';
+      else day.title = i === 0 ? 'יום ראשון' : i === arr.length - 1 ? 'יום אחרון' : 'יום פעילות';
     }
-
     return day;
   });
 };
 
+// ── Compact event renderers ─────────────────────────────────────
 
-// ── Renderers ────────────────────────────────────────────────────
+const evRow = (e: TimelineEvent): string => {
+  const time = e.time ? `<span class="evt-t">${e.time}</span>` : '<span class="evt-t evt-t-empty"></span>';
+  let cls = `evt evt-${e.type}`;
+  let body = `<span class="evt-i">${e.icon}</span><span class="evt-x"><span class="evt-title">${esc(e.title)}</span>`;
+  if (e.subtitle) body += `<span class="evt-sub">${esc(e.subtitle)}</span>`;
+  if (e.details) body += `<span class="evt-sub">${esc(e.details)}</span>`;
+  body += '</span>';
+  return `<div class="${cls}">${time}${body}</div>`;
+};
 
-/** Renders a specialized Transfer Card with driver details */
-const renderTransferCard = (e: TimelineEvent): string => {
+const renderDayCard = (day: TimelineDay, idx: number, total: number): string => {
+  const isFirst = idx === 0, isLast = idx === total - 1;
+  const headerCls = isFirst ? 'first' : isLast ? 'last' : '';
+  const events = day.events.length === 0
+    ? '<div class="empty">☀️ יום פנוי</div>'
+    : day.events.map(evRow).join('');
   return `
-    <div class="transfer-card">
-      <div class="tc-time">${e.time || ''}</div>
-      <div class="tc-icon">🚕</div>
-      <div class="tc-content">
-        <div class="tc-title">${esc(e.title)}</div>
-        ${e.subtitle ? `<div class="tc-details">${esc(e.subtitle)}</div>` : ''}
-      </div>
-    </div>
+    <article class="day-card ${headerCls}">
+      <header class="day-head">
+        <div class="day-num">
+          <span class="dn">${day.dayNum}</span>
+          <span class="dm">${MONTHS_HE_SHORT[day.date.getMonth()]}</span>
+        </div>
+        <div class="day-info">
+          <span class="day-dow">יום ${day.dow}</span>
+          <span class="day-title">${esc(day.title || '')}</span>
+        </div>
+        <span class="day-idx">${idx + 1}/${total}</span>
+      </header>
+      <div class="day-events">${events}</div>
+    </article>
   `;
 };
 
-/** Renders a prominent boarding-pass style flight card */
-const renderFlightCard = (e: TimelineEvent): string => {
-  const seg = e.flightData;
-  if (!seg) return renderGenericEvent(e);
+// ── Overview sections ───────────────────────────────────────────
 
-  const isDep = e.type === 'flight_dep';
-  const depTime = fmtTime(seg.departureTime);
-  const arrTime = fmtTime(seg.arrivalTime);
-
-  // Extras row
-  const extras: string[] = [];
-  if (seg.terminal) extras.push(`טרמינל ${esc(seg.terminal)}`);
-  if (seg.gate) extras.push(`שער ${esc(seg.gate)}`);
-  if (seg.baggage) extras.push(`כבודה: ${esc(seg.baggage)}`);
-  if (seg.class) extras.push(esc(seg.class));
-  if (seg.seat) extras.push(`מושב ${esc(seg.seat)}`);
-
-  return `
-    <div class="flight-card ${isDep ? 'departure' : 'arrival'}">
-      <div class="fc-header">
-        <span class="fc-badge">${isDep ? '🛫 המראה' : '🛬 נחיתה'}</span>
-        <span class="fc-flight-num">${esc(seg.flightNumber || '')}</span>
-      </div>
-      <div class="fc-route">
-        <div class="fc-airport">
-          <div class="fc-code">${esc(seg.fromCode || '')}</div>
-          <div class="fc-city">${esc(seg.fromCity || '')}</div>
-          <div class="fc-time">${depTime}</div>
+const renderFlightsOverview = (trip: Trip): string => {
+  const segs = trip.flights?.segments || [];
+  if (segs.length === 0) return '';
+  const cards = segs.map(seg => {
+    const depT = fmtTime(seg.departureTime), arrT = fmtTime(seg.arrivalTime);
+    const dateStr = seg.date ? fmtShort(new Date(seg.date)) : '';
+    return `
+      <div class="ov-flight">
+        <div class="ovf-top">
+          <span class="ovf-date">${dateStr}</span>
+          <span class="ovf-num">${esc(seg.flightNumber || '')}</span>
         </div>
-        <div class="fc-arrow">
-          <div class="fc-airline">${esc(seg.airline || '')}</div>
-          <div class="fc-arrow-line"><span>✈</span></div>
-          ${seg.duration ? `<div class="fc-duration">${esc(seg.duration)}</div>` : ''}
-        </div>
-        <div class="fc-airport">
-          <div class="fc-code">${esc(seg.toCode || '')}</div>
-          <div class="fc-city">${esc(seg.toCity || '')}</div>
-          <div class="fc-time">${arrTime}</div>
-        </div>
-      </div>
-      ${extras.length > 0 ? `<div class="fc-extras">${extras.map(x => `<span>${x}</span>`).join('')}</div>` : ''}
-    </div>
-  `;
-};
-
-/** Renders a hotel check-in/out card with details */
-const renderHotelCard = (e: TimelineEvent): string => {
-  const h = e.hotelData;
-  if (!h) return renderGenericEvent(e);
-
-  const isIn = e.type === 'hotel_in';
-  const nightsLabel = e.nightsCount && e.nightsCount > 0 ? `${e.nightsCount} לילות` : '';
-
-  return `
-    <div class="hotel-card ${isIn ? 'check-in' : 'check-out'}">
-      <div class="hc-icon">${isIn ? '🏨' : '👋'}</div>
-      <div class="hc-content">
-        <div class="hc-label">${isIn ? `צ'ק-אין` : `צ'ק-אאוט`}</div>
-        <div class="hc-name">${esc(h.name)}</div>
-        ${h.address ? `<div class="hc-address">📍 ${esc(h.address)}</div>` : ''}
-        <div class="hc-meta">
-          ${nightsLabel ? `<span class="hc-nights">${nightsLabel}</span>` : ''}
-          ${h.confirmationCode ? `<span class="hc-conf">אישור: ${esc(h.confirmationCode)}</span>` : ''}
-        </div>
-        ${h.price ? `<div class="hc-price">💰 ${h.price}${h.currency ? ' ' + esc(h.currency) : ''}</div>` : ''}
-      </div>
-    </div>
-  `;
-};
-
-/** Renders a "Vacation at Hotel" stay card */
-const renderStayCard = (e: TimelineEvent): string => {
-  return `
-    <div class="stay-card">
-      <div class="stay-icon">🛏️</div>
-      <div class="stay-content">
-        <div class="stay-title">${esc(e.title)}</div>
-        <div class="stay-sub">יום חופשי במלון — מנוחות והנאה</div>
-      </div>
-    </div>
-  `;
-};
-
-
-/** Renders a standard event card */
-const renderGenericEvent = (e: TimelineEvent): string => `
-  <div class="event-card ${e.isMajor ? 'major' : ''} type-${e.type}">
-    <div class="ev-time">${e.time || ''}</div>
-    <div class="ev-marker">${e.icon}</div>
-    <div class="ev-content">
-      <div class="ev-title">${esc(e.title)}</div>
-      ${e.subtitle ? `<div class="ev-subtitle">${esc(e.subtitle)}</div>` : ''}
-      ${e.details ? `<div class="ev-details">${esc(e.details)}</div>` : ''}
-    </div>
-  </div>
-`;
-
-const renderEvent = (e: TimelineEvent): string => {
-  switch (e.type) {
-    case 'flight_dep':
-    case 'flight_arr':
-      return renderFlightCard(e);
-    case 'hotel_in':
-    case 'hotel_out':
-      return renderHotelCard(e);
-    case 'hotel_stay':
-      return renderStayCard(e);
-    case 'transfer':
-      return renderTransferCard(e);
-    default:
-      return renderGenericEvent(e);
-  }
-};
-
-
-/** Renders a grouped block for consecutive hotel-stay days */
-const renderStayGroup = (days: TimelineDay[]): string => {
-  if (days.length === 0) return '';
-  const first = days[0];
-  const last = days[days.length - 1];
-  const hotel = first.events[0];
-  const hotelName = hotel?.title || '';
-
-  const dateRange = days.length === 1
-    ? `${first.dayNum} ${first.month}`
-    : `${first.dayNum} ${first.month} — ${last.dayNum} ${last.month}`;
-
-  return `
-    <div class="timeline-day stay-group">
-      <div class="day-header" id="day-${first.iso}">
-        <div class="dh-badge stay-badge">
-          <div class="dh-daynum">${days.length}</div>
-          <div class="dh-month">ימים</div>
-        </div>
-        <div class="dh-info">
-          <div class="dh-label">${dateRange}</div>
-          <div class="dh-title">נופש ב-${esc(hotelName)}</div>
-        </div>
-      </div>
-      <div class="timeline-body">
-        <div class="timeline-line"></div>
-        <div class="stay-group-card">
-          <div class="sg-icon">🛏️</div>
-          <div class="sg-content">
-            <div class="sg-title">${esc(hotelName)}</div>
-            <div class="sg-sub">${days.length} ימי נופש ומנוחה • ${dateRange}</div>
+        <div class="ovf-route">
+          <div class="ovf-side">
+            <div class="ovf-code">${esc(seg.fromCode || '')}</div>
+            <div class="ovf-time">${depT}</div>
+          </div>
+          <div class="ovf-arrow">
+            <div class="ovf-airline">${esc(seg.airline || '')}</div>
+            <div class="ovf-line">✈</div>
+            ${seg.duration ? `<div class="ovf-dur">${esc(seg.duration)}</div>` : ''}
+          </div>
+          <div class="ovf-side">
+            <div class="ovf-code">${esc(seg.toCode || '')}</div>
+            <div class="ovf-time">${arrT}</div>
           </div>
         </div>
       </div>
-    </div>
-  `;
-};
-
-const renderDay = (day: TimelineDay, index: number, total: number): string => {
-  const isFirst = index === 0;
-  const isLast = index === total - 1;
-
-  const dayLabel = isFirst ? 'יום ראשון' : isLast ? 'יום אחרון' : `יום ${index + 1}`;
-
-  const header = `
-    <div class="day-header" id="day-${day.iso}">
-      <div class="dh-badge">
-        <div class="dh-daynum">${day.dayNum}</div>
-        <div class="dh-month">${day.month}</div>
-        <div class="dh-dow">${day.dow}</div>
-      </div>
-      <div class="dh-info">
-        <div class="dh-label">${dayLabel}</div>
-        <div class="dh-title">${esc(day.title || '')}</div>
-      </div>
-    </div>
-  `;
-
-  const events = day.events.length === 0
-    ? `<div class="timeline-empty">☀️ יום חופשי</div>`
-    : day.events.map(e => renderEvent(e)).join('');
-
+    `;
+  }).join('');
   return `
-    <div class="timeline-day${isFirst ? ' first' : ''}${isLast ? ' last' : ''}">
-      ${header}
-      <div class="timeline-body">
-        <div class="timeline-line"></div>
-        ${events}
-      </div>
-    </div>
+    <section class="overview">
+      <h2 class="ov-title">✈️ טיסות <span class="ov-count">${segs.length}</span></h2>
+      <div class="ov-flights-grid">${cards}</div>
+    </section>
   `;
 };
 
-/** Groups consecutive hotel-stay-only days, renders everything else normally */
-const renderTimeline = (timeline: TimelineDay[]): string => {
-  const output: string[] = [];
-  let stayBuffer: TimelineDay[] = [];
-  let dayCounter = 0;
-
-  const flushStays = () => {
-    if (stayBuffer.length > 0) {
-      output.push(renderStayGroup(stayBuffer));
-      stayBuffer = [];
-    }
-  };
-
-  for (const day of timeline) {
-    const isStayOnly = day.events.length > 0 && day.events.every(e => e.type === 'hotel_stay');
-
-    if (isStayOnly) {
-      stayBuffer.push(day);
-    } else {
-      flushStays();
-      output.push(renderDay(day, dayCounter, timeline.length));
-    }
-    dayCounter++;
-  }
-  flushStays();
-
-  return output.join('');
+const renderHotelsOverview = (trip: Trip): string => {
+  const hotels = trip.hotels || [];
+  if (hotels.length === 0) return '';
+  const cards = hotels.map(h => {
+    const nights = nightsBetween(h.checkInDate, h.checkOutDate);
+    const inDate = h.checkInDate ? fmtShort(new Date(h.checkInDate)) : '';
+    const outDate = h.checkOutDate ? fmtShort(new Date(h.checkOutDate)) : '';
+    const rooms = (h as any).rooms?.length || 0;
+    return `
+      <div class="ov-hotel">
+        <div class="ovh-name">${esc(h.name)}</div>
+        ${h.address ? `<div class="ovh-addr">📍 ${esc(h.address)}</div>` : ''}
+        <div class="ovh-meta">
+          <span class="ovh-dates">${inDate} → ${outDate}</span>
+          ${nights > 0 ? `<span class="ovh-nights">${nights} לילות</span>` : ''}
+          ${rooms > 0 ? `<span class="ovh-rooms">${rooms} חדרים</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+  return `
+    <section class="overview">
+      <h2 class="ov-title">🏨 מלונות <span class="ov-count">${hotels.length}</span></h2>
+      <div class="ov-hotels-grid">${cards}</div>
+    </section>
+  `;
 };
 
-
-// ── Styling ──────────────────────────────────────────────────────
+// ── Styling ─────────────────────────────────────────────────────
 
 const STYLES = `
-/* ═══ RESET & VARS ═══ */
 :root {
-  --font: 'Rubik', -apple-system, sans-serif;
-  --bg: #f0f4f8;
+  --font: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bg: #f7f9fc;
   --card: #ffffff;
-  --text: #1e293b;
+  --text: #0f172a;
   --muted: #64748b;
   --primary: #2563eb;
-  --primary-light: #dbeafe;
-  --accent: #0ea5e9;
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
   --green: #10b981;
-  --green-light: #d1fae5;
+  --green-50: #ecfdf5;
   --amber: #f59e0b;
-  --line: #cbd5e1;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
-  --radius: 16px;
+  --amber-50: #fffbeb;
+  --rose: #ef4444;
+  --line: #e2e8f0;
+  --line-2: #f1f5f9;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.05);
+  --shadow-md: 0 4px 12px rgba(15,23,42,0.08);
+  --radius: 14px;
   --radius-sm: 10px;
+  --radius-xs: 6px;
 }
 *, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
-  margin: 0;
-  padding-bottom: 80px;
   direction: rtl;
   -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.page {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 16px clamp(12px, 2vw, 28px) 40px;
 }
 
-/* ═══ HERO ═══ */
+/* ═══ HERO (compact) ═══ */
 .hero {
-  height: 280px;
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  min-height: 160px;
   background-size: cover;
   background-position: center;
-  position: relative;
   display: flex;
   align-items: flex-end;
   color: white;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-md);
 }
 .hero::after {
   content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.3) 50%, transparent 100%);
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.85) 100%);
 }
-.hero-content {
-  position: relative;
-  z-index: 2;
-  padding: 32px 24px;
+.hero-c {
+  position: relative; z-index: 2;
+  padding: 18px 22px;
   width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
-}
-h1 {
-  margin: 0;
-  font-size: 36px;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.5px;
-}
-.meta {
-  opacity: 0.85;
-  font-size: 14px;
-  font-weight: 500;
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.meta-chip {
-  background: rgba(255,255,255,0.15);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.2);
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-/* ═══ TIMELINE CONTAINER ═══ */
-.timeline-container {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 24px 16px;
-}
-
-/* ═══ DAY GROUP ═══ */
-.timeline-day {
-  margin-bottom: 48px;
-}
-.timeline-day.first .day-header .dh-badge {
-  background: linear-gradient(135deg, #2563eb, #0ea5e9);
-  color: white;
-}
-.timeline-day.first .day-header .dh-badge .dh-dow { color: rgba(255,255,255,0.8); }
-.timeline-day.last .day-header .dh-badge {
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
-  color: white;
-}
-.timeline-day.last .day-header .dh-badge .dh-dow { color: rgba(255,255,255,0.8); }
-
-.day-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--bg);
-  padding: 12px 0 12px;
-}
-.dh-badge {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 8px 14px;
-  text-align: center;
-  box-shadow: var(--shadow-sm);
-  min-width: 64px;
-}
-.dh-daynum { font-weight: 800; font-size: 22px; line-height: 1; }
-.dh-month { font-size: 11px; font-weight: 600; margin-top: 2px; }
-.dh-dow { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 500; }
-.dh-info { flex: 1; }
-.dh-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-.dh-title { font-size: 20px; font-weight: 700; color: var(--primary); margin-top: 2px; }
-
-/* ═══ TIMELINE BODY ═══ */
-.timeline-body { position: relative; padding-right: 28px; }
-.timeline-line {
-  position: absolute;
-  right: 10px;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(to bottom, var(--primary-light), var(--line), var(--green-light));
-  border-radius: 2px;
-}
-
-/* ═══ FLIGHT CARD (Boarding Pass) ═══ */
-.flight-card {
-  background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
-  color: white;
-  border-radius: var(--radius);
-  margin-bottom: 20px;
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  position: relative;
-}
-.flight-card.arrival {
-  background: linear-gradient(135deg, #065f46 0%, #047857 100%);
-}
-.fc-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 20px 8px;
-  border-bottom: 1px dashed rgba(255,255,255,0.2);
-}
-.fc-badge {
-  font-size: 13px;
-  font-weight: 700;
-  background: rgba(255,255,255,0.15);
-  padding: 4px 12px;
-  border-radius: 20px;
-}
-.fc-flight-num {
-  font-size: 14px;
-  font-weight: 800;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 1px;
-  direction: ltr;
-}
-.fc-route {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px 20px;
-  gap: 8px;
-}
-.fc-airport {
-  text-align: center;
-  min-width: 70px;
-}
-.fc-code {
-  font-size: 28px;
-  font-weight: 800;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 2px;
-  line-height: 1;
-  direction: ltr;
-}
-.fc-city {
-  font-size: 11px;
-  opacity: 0.7;
-  margin-top: 4px;
-  font-weight: 500;
-  direction: ltr;
-}
-.fc-time {
-  font-size: 18px;
-  font-weight: 700;
-  margin-top: 6px;
-  font-family: 'Courier New', monospace;
-  direction: ltr;
-}
-.fc-arrow {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.fc-airline {
-  font-size: 10px;
-  font-weight: 600;
-  opacity: 0.7;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  direction: ltr;
-}
-.fc-arrow-line {
-  width: 100%;
-  height: 2px;
-  background: rgba(255,255,255,0.3);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.fc-arrow-line span {
-  font-size: 16px;
-  background: inherit;
-  position: relative;
-}
-.fc-duration {
-  font-size: 10px;
-  opacity: 0.6;
-  font-weight: 500;
-  direction: ltr;
-}
-.fc-extras {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 20px 14px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
 }
-.fc-extras span {
-  font-size: 10px;
-  font-weight: 600;
-  background: rgba(255,255,255,0.12);
-  padding: 3px 10px;
-  border-radius: 12px;
+.hero h1 {
+  margin: 0;
+  font-size: clamp(22px, 2.6vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+.hero-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 13px; opacity: 0.95; }
+.hero-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.25);
+  backdrop-filter: blur(6px);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
 }
 
-/* ═══ HOTEL CARD ═══ */
-.hotel-card {
-  display: flex;
-  gap: 14px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  margin-bottom: 20px;
-  box-shadow: var(--shadow-sm);
-  border-right: 4px solid var(--green);
-  align-items: flex-start;
-}
-.hotel-card.check-out {
-  border-right-color: var(--amber);
-  opacity: 0.85;
-}
-.hc-icon {
-  font-size: 28px;
-  flex-shrink: 0;
-}
-.hc-content { flex: 1; min-width: 0; }
-.hc-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--green);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.hotel-card.check-out .hc-label { color: var(--amber); }
-.hc-name {
-  font-size: 17px;
-  font-weight: 800;
-  margin-top: 2px;
-  line-height: 1.2;
-}
-.hc-address {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 4px;
-}
-.hc-meta {
-  display: flex;
-  flex-wrap: wrap;
+/* ═══ STATS BAR ═══ */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
-  margin-top: 8px;
+  margin-bottom: 18px;
 }
-.hc-nights {
-  font-size: 11px;
-  font-weight: 700;
-  background: var(--green-light);
-  color: #065f46;
-  padding: 3px 10px;
-  border-radius: 12px;
-}
-.hc-conf {
-  font-size: 11px;
-  font-weight: 600;
-  background: #f1f5f9;
-  color: var(--muted);
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-family: 'Courier New', monospace;
-  direction: ltr;
-}
-.hc-price {
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 6px;
-  color: var(--muted);
-}
-
-/* ═══ HOTEL STAY CARD ═══ */
-.stay-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-  border: 1px solid #bbf7d0;
-  border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 20px;
-}
-.stay-icon { font-size: 32px; }
-.stay-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #14532d;
-}
-.stay-sub {
-  font-size: 12px;
-  color: #047857;
-  margin-top: 2px;
-}
-
-/* ═══ GENERIC EVENT CARDS ═══ */
-.event-card {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  position: relative;
-  align-items: flex-start;
-}
-.ev-time {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--muted);
-  width: 48px;
-  text-align: left;
-  flex-shrink: 0;
-  padding-top: 12px;
-  font-family: 'Courier New', monospace;
-  direction: ltr;
-}
-.ev-marker {
-  width: 34px;
-  height: 34px;
-  background: var(--card);
-  border: 2px solid var(--line);
-  box-shadow: var(--shadow-sm);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  right: -42px;
-  z-index: 2;
-  font-size: 14px;
-}
-.ev-content {
+.stat {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 12px 16px;
-  flex: 1;
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.2s;
-}
-.ev-content:hover { box-shadow: var(--shadow-md); }
-
-.ev-title { font-weight: 700; font-size: 15px; margin-bottom: 2px; }
-.ev-subtitle { font-size: 13px; color: var(--muted); }
-.ev-details {
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--muted);
-  background: #f8fafc;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #f1f5f9;
-}
-
-.timeline-empty {
+  padding: 10px 14px;
   text-align: center;
-  color: var(--muted);
+  box-shadow: var(--shadow-sm);
+}
+.stat-v { font-size: 22px; font-weight: 800; color: var(--primary); line-height: 1; }
+.stat-l { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* ═══ OVERVIEW SECTIONS ═══ */
+.overview { margin-bottom: 16px; }
+.ov-title {
+  margin: 0 0 8px;
   font-size: 14px;
-  font-weight: 500;
-  padding: 24px;
-  background: rgba(255,255,255,0.6);
+  font-weight: 700;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ov-count {
+  background: var(--primary-100);
+  color: var(--primary);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.ov-flights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+.ov-flight {
+  background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
+  color: white;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+}
+.ovf-top {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; opacity: 0.85; margin-bottom: 6px;
+  border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 6px;
+}
+.ovf-num { font-family: 'Courier New', monospace; font-weight: 700; direction: ltr; }
+.ovf-route { display: flex; align-items: center; gap: 6px; }
+.ovf-side { text-align: center; min-width: 50px; direction: ltr; }
+.ovf-code { font-size: 18px; font-weight: 800; font-family: 'Courier New', monospace; line-height: 1; }
+.ovf-time { font-size: 12px; font-weight: 600; margin-top: 4px; opacity: 0.9; font-family: 'Courier New', monospace; }
+.ovf-arrow { flex: 1; text-align: center; }
+.ovf-airline { font-size: 9px; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.5px; direction: ltr; }
+.ovf-line { font-size: 14px; opacity: 0.6; margin: 2px 0; }
+.ovf-dur { font-size: 9px; opacity: 0.6; direction: ltr; }
+
+.ov-hotels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.ov-hotel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-right: 3px solid var(--green);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+}
+.ovh-name { font-size: 14px; font-weight: 800; line-height: 1.25; }
+.ovh-addr { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+.ovh-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ovh-dates {
+  font-size: 11px; font-weight: 600; color: var(--text);
+  background: var(--line-2); padding: 3px 8px; border-radius: 6px; direction: ltr;
+}
+.ovh-nights {
+  font-size: 11px; font-weight: 700; color: #065f46;
+  background: var(--green-50); padding: 3px 8px; border-radius: 6px;
+}
+.ovh-rooms {
+  font-size: 11px; font-weight: 700; color: #6b21a8;
+  background: #faf5ff; padding: 3px 8px; border-radius: 6px;
+}
+
+/* ═══ DAYS GRID ═══ */
+.days-section { margin-top: 8px; }
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+.day-card {
+  background: var(--card);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  border: 1px dashed var(--line);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+.day-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, var(--primary-50), #ffffff);
+  border-bottom: 1px solid var(--line-2);
+}
+.day-card.first .day-head { background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; }
+.day-card.last .day-head { background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; }
+.day-card.first .day-dow,
+.day-card.last .day-dow { color: rgba(255,255,255,0.85); }
+.day-card.first .day-idx,
+.day-card.last .day-idx { background: rgba(255,255,255,0.25); color: white; }
+
+.day-num {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px 8px;
+  text-align: center;
+  min-width: 44px;
+  line-height: 1;
+}
+.day-num .dn { display: block; font-size: 18px; font-weight: 800; color: var(--primary); }
+.day-num .dm { display: block; font-size: 10px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+.day-card.first .day-num .dn,
+.day-card.last .day-num .dn { color: var(--primary); }
+.day-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.day-dow { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.day-title { font-size: 14px; font-weight: 700; line-height: 1.2; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.day-idx {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  background: var(--line-2); padding: 3px 7px; border-radius: 999px;
+}
+
+.day-events {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px 10px;
+  gap: 4px;
+}
+
+/* ═══ EVENT ROWS (compact) ═══ */
+.evt {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  font-size: 12.5px;
+  line-height: 1.3;
+  border: 1px solid transparent;
+}
+.evt:hover { background: var(--line-2); }
+.evt-t {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 38px;
+  text-align: left;
+  direction: ltr;
+  padding-top: 1px;
+  flex-shrink: 0;
+}
+.evt-t-empty { min-width: 38px; }
+.evt-i { font-size: 14px; flex-shrink: 0; line-height: 1; padding-top: 1px; }
+.evt-x { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.evt-title { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; }
+.evt-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* Type-specific accents */
+.evt-flight_dep, .evt-flight_arr {
+  background: #eff6ff; border-color: #bfdbfe;
+}
+.evt-flight_dep .evt-title, .evt-flight_arr .evt-title { color: #1e40af; font-weight: 700; }
+.evt-hotel_in {
+  background: var(--green-50); border-color: #a7f3d0;
+}
+.evt-hotel_in .evt-title { color: #065f46; font-weight: 700; }
+.evt-hotel_out {
+  background: var(--amber-50); border-color: #fde68a;
+}
+.evt-hotel_out .evt-title { color: #92400e; font-weight: 700; }
+.evt-hotel_stay {
+  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+  border-color: #bbf7d0;
+}
+.evt-hotel_stay .evt-title { color: #14532d; font-weight: 700; }
+.evt-transfer {
+  background: #fffbeb; border-color: #fde68a;
+}
+.evt-transfer .evt-title { color: #78350f; font-weight: 700; }
+
+.empty {
+  text-align: center; padding: 14px 8px;
+  color: var(--muted); font-size: 12px; font-weight: 600;
+  background: var(--line-2); border-radius: var(--radius-xs);
 }
 
 /* ═══ FOOTER ═══ */
 .footer {
   text-align: center;
-  padding: 48px 24px;
+  padding: 24px 16px 8px;
   color: #94a3b8;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
 }
-.footer-logo {
-  font-size: 14px;
-  font-weight: 700;
-  color: #64748b;
-  margin-bottom: 4px;
-}
-
-/* ═══ RESPONSIVE ═══ */
-@media (max-width: 480px) {
-  h1 { font-size: 28px; }
-  .fc-code { font-size: 22px; }
-  .fc-time { font-size: 16px; }
-  .fc-route { padding: 12px 14px 16px; }
-  .hc-name { font-size: 15px; }
-}
-
-/* ═══ TRANSFER CARD ═══ */
-.transfer-card {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  margin-bottom: 20px;
-  background: #fdfbf7; /* Warm off-white */
-  border: 1px solid #fcd34d; /* Amber border */
-  border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: var(--shadow-sm);
-  position: relative;
-}
-.transfer-card::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 6px;
-  background: #f59e0b; /* Amber strip */
-  border-radius: 0 var(--radius) var(--radius) 0; /* RTL strip on right actually? No left is fine */
-}
-.tc-time {
-  font-family: 'Courier New', monospace;
-  font-weight: 700;
-  font-size: 14px;
-  color: #b45309;
-  min-width: 50px;
-}
-.tc-icon {
-  font-size: 24px;
-  background: #fffbeb;
-  width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;
-  border: 1px solid #fcd34d;
-}
-.tc-content { flex: 1; }
-.tc-title { font-weight: 700; font-size: 15px; color: #78350f; }
-.tc-details { font-size: 13px; color: #92400e; margin-top: 4px; }
-
+.footer-logo { font-weight: 700; color: #64748b; margin-bottom: 2px; }
 
 /* ═══ PRINT ═══ */
 @media print {
-  .hero { height: 160px; }
-  .event-card, .flight-card, .hotel-card, .stay-card, .stay-group-card { break-inside: avoid; }
-  .day-header { position: static; }
-  body { background: white; }
+  body { background: white; font-size: 11px; }
+  .page { padding: 8px 12px; max-width: none; }
+  .hero { min-height: 100px; box-shadow: none; }
+  .day-card, .ov-flight, .ov-hotel, .stat { break-inside: avoid; box-shadow: none; }
+  .days-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
 }
 
-/* ═══ STAY GROUP ═══ */
-.stay-group .day-header .dh-title { color: #047857; }
-.stay-badge {
-  background: linear-gradient(135deg, #10b981, #059669) !important;
-  color: white !important;
-  border-color: #047857 !important;
+/* ═══ MOBILE ═══ */
+@media (max-width: 640px) {
+  body { font-size: 13px; }
+  .page { padding: 10px 10px 30px; }
+  .hero { min-height: 130px; border-radius: 14px; }
+  .hero-c { padding: 14px 14px; }
+  .stats { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stat { padding: 8px 6px; }
+  .stat-v { font-size: 18px; }
+  .stat-l { font-size: 10px; }
+  .days-grid { grid-template-columns: 1fr; gap: 8px; }
+  .ov-flights-grid, .ov-hotels-grid { grid-template-columns: 1fr; }
 }
-.stay-badge .dh-dow, .stay-badge .dh-month { color: rgba(255,255,255,0.85) !important; }
-.stay-group-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-  border: 1px solid #a7f3d0;
-  border-radius: var(--radius);
-  padding: 24px;
-  margin-bottom: 20px;
-  box-shadow: var(--shadow-sm);
+@media (min-width: 1100px) {
+  .days-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 }
-.sg-icon { font-size: 36px; }
-.sg-title { font-size: 18px; font-weight: 800; color: #065f46; }
-.sg-sub { font-size: 13px; color: #047857; margin-top: 4px; font-weight: 500; }
+@media (min-width: 1400px) {
+  .days-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+}
 `;
 
-// ── Main Generator ───────────────────────────────────────────────
+// ── Main generator ──────────────────────────────────────────────
 
 export const generateTripHTML = (trip: Trip): string => {
   const timeline = buildTimeline(trip);
-  const cover = trip.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80';
+  const cover = trip.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1600&q=80';
   const genDate = new Date().toLocaleDateString('he-IL');
 
-  // Trip stats
   const flightCount = trip.flights?.segments?.length || 0;
   const hotelCount = trip.hotels?.length || 0;
+  const itineraryActivityCount = trip.itinerary?.reduce((s, d) => s + (d.activities?.length || 0), 0) || 0;
+  const dayCount = timeline.length;
 
-  const dayHtml = renderTimeline(timeline);
+  const dayCards = timeline.map((d, i) => renderDayCard(d, i, timeline.length)).join('');
 
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(trip.name)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<title>${esc(trip.name)} — סיכום מסע</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>${STYLES}</style>
 </head>
 <body>
+<div class="page">
 
-<header class="hero" style="background-image:url('${cover}')">
-  <div class="hero-content">
-    <h1>${esc(trip.name)}</h1>
-    <div class="meta">
-      📍 ${esc(trip.destination)} 
-      <span class="meta-chip">📅 ${timeline.length} ימים</span>
-      ${flightCount > 0 ? `<span class="meta-chip">✈️ ${flightCount} טיסות</span>` : ''}
-      ${hotelCount > 0 ? `<span class="meta-chip">🏨 ${hotelCount} מלונות</span>` : ''}
+  <header class="hero" style="background-image:url('${cover}')">
+    <div class="hero-c">
+      <div>
+        <h1>${esc(trip.name)}</h1>
+        <div class="hero-meta">📍 ${esc(trip.destination || '')}</div>
+      </div>
+      <div class="hero-chips">
+        ${dayCount > 0 ? `<span class="chip">📅 ${dayCount} ימים</span>` : ''}
+        ${flightCount > 0 ? `<span class="chip">✈️ ${flightCount} טיסות</span>` : ''}
+        ${hotelCount > 0 ? `<span class="chip">🏨 ${hotelCount} מלונות</span>` : ''}
+      </div>
     </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-v">${dayCount}</div><div class="stat-l">ימים</div></div>
+    <div class="stat"><div class="stat-v">${flightCount}</div><div class="stat-l">טיסות</div></div>
+    <div class="stat"><div class="stat-v">${hotelCount}</div><div class="stat-l">מלונות</div></div>
+    <div class="stat"><div class="stat-v">${itineraryActivityCount}</div><div class="stat-l">פעילויות</div></div>
   </div>
-</header>
 
-<div class="timeline-container">
-  ${dayHtml}
+  ${renderFlightsOverview(trip)}
+  ${renderHotelsOverview(trip)}
+
+  <section class="days-section">
+    <h2 class="ov-title">📆 יום-יום <span class="ov-count">${dayCount}</span></h2>
+    <div class="days-grid">${dayCards}</div>
+  </section>
+
+  <div class="footer">
+    <div class="footer-logo">✈ Travel Planner Pro</div>
+    נוצר ב-${genDate}
+  </div>
+
 </div>
-
-<div class="footer">
-  <div class="footer-logo">✈ Travel Planner Pro</div>
-  נוצר ב-${genDate}
-</div>
-
 </body>
 </html>`;
 };
@@ -1135,7 +707,7 @@ export const downloadTripHTML = (trip: Trip): void => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${trip.name.replace(/[^a-zA-Z0-9\u0590-\u05FF ]/g, '').trim() || 'trip'} — יומן מסע.html`;
+  a.download = `${trip.name.replace(/[^a-zA-Z0-9֐-׿ ]/g, '').trim() || 'trip'} — סיכום מסע.html`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
