@@ -669,8 +669,8 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                 </motion.div>
                                                         )}
 
-                                                        {/* Action buttons */}
-                                                        <div className="flex items-center justify-between gap-3 pt-2">
+                                                        {/* Action buttons — sticky */}
+                                                        <div className="sticky bottom-0 -mx-4 md:-mx-8 px-4 md:px-8 py-3 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-between gap-3 z-20 shadow-[0_-8px_24px_rgba(0,0,0,0.04)]">
                                                                 <button
                                                                         type="button"
                                                                         onClick={onBack}
@@ -683,9 +683,9 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                         type="button"
                                                                         onClick={handleAnalyze}
                                                                         disabled={!text.trim()}
-                                                                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all transform active:scale-95"
+                                                                        className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-black text-base shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all transform active:scale-95"
                                                                 >
-                                                                        <ClipboardPaste className="w-4 h-4" />
+                                                                        <ClipboardPaste className="w-5 h-5" />
                                                                         {stage === 'error' ? 'נסה שוב' : 'נתח את הטקסט'}
                                                                 </button>
                                                         </div>
@@ -816,7 +816,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                                                 <div className="text-xs text-slate-600 font-medium whitespace-nowrap">
                                                                                                         {formatHebrewDate(h.checkInDate)} → {formatHebrewDate(h.checkOutDate)}
                                                                                                 </div>
-                                                                                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                                                                                <div className="flex items-center gap-1">
                                                                                                         <button
                                                                                                                 type="button"
                                                                                                                 onClick={() => { setEditingHotelId(h.id); setShowAddHotel(false); }}
@@ -890,7 +890,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                                                 <div className="text-xs text-slate-600 font-medium whitespace-nowrap">
                                                                                                         {formatHebrewDate(f.date)} {f.departureTime && `· ${f.departureTime}`}
                                                                                                 </div>
-                                                                                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                                                                                <div className="flex items-center gap-1">
                                                                                                         <button
                                                                                                                 type="button"
                                                                                                                 onClick={() => { setEditingFlightIdx(idx); setShowAddFlight(false); }}
@@ -1027,8 +1027,8 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                 )}
                                                         </div>
 
-                                                        {/* Action buttons */}
-                                                        <div className="flex items-center justify-between gap-3 pt-2">
+                                                        {/* Action buttons — sticky at the bottom so they're always reachable */}
+                                                        <div className="sticky bottom-0 -mx-4 md:-mx-8 px-4 md:px-8 py-3 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-between gap-3 z-20 shadow-[0_-8px_24px_rgba(0,0,0,0.04)]">
                                                                 <button
                                                                         type="button"
                                                                         onClick={handleEditText}
@@ -1039,9 +1039,9 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                 <button
                                                                         type="button"
                                                                         onClick={handleConfirm}
-                                                                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all transform active:scale-95"
+                                                                        className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-black text-base shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all transform active:scale-95"
                                                                 >
-                                                                        <Sparkles className="w-4 h-4" />
+                                                                        <Sparkles className="w-5 h-5" />
                                                                         בנה את הטיול
                                                                 </button>
                                                         </div>
