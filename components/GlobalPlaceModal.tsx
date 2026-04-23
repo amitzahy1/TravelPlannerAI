@@ -85,6 +85,14 @@ const getSmartSubtitle = (item: any) => {
 export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, onClose, onAddToPlan, isAdded }) => {
         if (!item) return null;
 
+        // Prefer the English name for display + for any lookup. AI returns `name`
+        // in the local script (e.g. 'ร้านเจ๊ไฝ') plus `nameEnglish` (e.g. 'Jay
+        // Fai'). The card uses nameEnglish — the modal must match, otherwise
+        // users see Thai in the popup and an unrelated stock photo because the
+        // Thai name doesn't match any Wikipedia title.
+        const displayName: string = item.nameEnglish || item.name || '';
+        const searchName: string = item.nameEnglish || item.name || '';
+
         // Smart Tag Logic
         const originalTag = item.cuisine || item.type || item.tags?.[0] || '';
         const hebrewTag = HEBREW_TAGS[originalTag] || originalTag;
@@ -96,33 +104,29 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
         // to a different image. Stock photo shows immediately; real photo from
         // Wikipedia upgrades in when available + validated against the type.
         const { url: stockUrl, label: visualLabel } = (type === 'food' || type === 'restaurant')
-                ? getFoodImage(item.name, item.description || '', [originalTag])
-                : getAttractionImage(item.name, item.description || '', [originalTag]);
+                ? getFoodImage(searchName, item.description || '', [originalTag])
+                : getAttractionImage(searchName, item.description || '', [originalTag]);
 
         const placeType = (type === 'food' || type === 'restaurant') ? 'restaurant' : 'attraction';
         const [imageUrl, setImageUrl] = useState<string>(stockUrl);
         useEffect(() => {
                 setImageUrl(stockUrl);
                 let cancelled = false;
-                resolveRealPlaceImage(item.name, item.location || '', placeType).then(real => {
+                resolveRealPlaceImage(searchName, item.location || '', placeType).then(real => {
                         if (!cancelled && real) setImageUrl(real);
                 });
                 return () => { cancelled = true; };
-        }, [item.name, item.location, placeType, stockUrl]);
+        }, [searchName, item.location, placeType, stockUrl]);
 
         // Fix Navigation: Smart Query Construction
         const cleanLocation = (item.location || '').replace(/\(.*\)/g, '').replace(/near/i, '').trim();
-        const cleanName = item.name.replace(/\(.*\)/g, '').trim();
+        const cleanName = displayName.replace(/\(.*\)/g, '').trim();
 
         let query = `${cleanName} ${cleanLocation}`;
-        if (item.isHotelRestaurant || type === 'hotel' || item.name.toLowerCase().includes('hotel')) {
-                // For hotels, just searching the name + city is usually best.
-                // If name includes "Bar" or "Restaurant", Google handles "Bar at Hotel" well usually.
+        if (item.isHotelRestaurant || type === 'hotel' || displayName.toLowerCase().includes('hotel')) {
                 query = `${cleanName}, ${cleanLocation}`;
         } else {
-                // For standalone, add category suffix to help context
                 const categorySuffix = type === 'food' || type === 'restaurant' ? 'Restaurant' : 'Tourist Attraction';
-                // If the name is very generic (e.g. "The Bar"), the suffix helps.
                 query = `${cleanName} ${cleanLocation} ${categorySuffix}`;
         }
 
@@ -159,7 +163,10 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                 <div className="p-6">
                                         <div className="flex justify-between items-start mb-3">
                                                 <div className="flex-1">
-                                                        <h2 className="text-2xl font-black text-slate-800 leading-tight mb-1">{item.name}</h2>
+                                                        <h2 className="text-2xl font-black text-slate-800 leading-tight mb-1">{displayName}</h2>
+                                                        {item.nameEnglish && item.name && item.name !== item.nameEnglish && (
+                                                                <div className="text-xs font-medium text-slate-400 mb-1" dir="auto">{item.name}</div>
+                                                        )}
                                                         <div className="flex items-center gap-1.5 text-sm text-slate-500 font-medium">
                                                                 <MapPin className="w-3.5 h-3.5 text-slate-400" />
                                                                 <span className="truncate max-w-[200px]">{item.location}</span>
