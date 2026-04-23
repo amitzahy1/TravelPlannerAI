@@ -9,6 +9,22 @@ interface StepDatesProps {
         initialData?: { startDate: string; endDate: string };
 }
 
+const POPULAR_MONTHS: { label: string; month: number }[] = [
+        { label: 'אוגוסט', month: 8 },
+        { label: 'ספטמבר', month: 9 },
+        { label: 'דצמבר', month: 12 },
+        { label: 'מרץ', month: 3 },
+        { label: 'אפריל', month: 4 },
+];
+
+const toISODate = (d: Date) => {
+        // Local-date safe (avoid UTC shift that toISOString().split('T')[0] can cause near midnight)
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+};
+
 export const Step1_5_Dates: React.FC<StepDatesProps> = ({ onNext, onBack, initialData }) => {
         const [dates, setDates] = useState({
                 start: initialData?.startDate || '',
@@ -16,6 +32,17 @@ export const Step1_5_Dates: React.FC<StepDatesProps> = ({ onNext, onBack, initia
         });
 
         const isValid = dates.start && dates.end;
+
+        const pickMonth = (monthNum: number) => {
+                const now = new Date();
+                const firstOfThisYear = new Date(now.getFullYear(), monthNum - 1, 1);
+                const year = now > firstOfThisYear ? now.getFullYear() + 1 : now.getFullYear();
+                const start = new Date(year, monthNum - 1, 1);
+                const end = new Date(year, monthNum - 1, 11); // +10 days
+                setDates({ start: toISODate(start), end: toISODate(end) });
+        };
+
+        const activeMonth = dates.start ? Number(dates.start.slice(5, 7)) : null;
 
         return (
                 <div className="w-full max-w-2xl mx-auto text-center" dir="rtl">
@@ -40,6 +67,31 @@ export const Step1_5_Dates: React.FC<StepDatesProps> = ({ onNext, onBack, initia
 
                         {/* Content */}
                         <div className="max-w-xl mx-auto space-y-8">
+                                {/* Popular months quick-pick */}
+                                <div>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">
+                                                חודשים פופולריים
+                                        </p>
+                                        <div className="flex flex-wrap gap-2 justify-center">
+                                                {POPULAR_MONTHS.map(m => {
+                                                        const isActive = activeMonth === m.month;
+                                                        return (
+                                                                <button
+                                                                        key={m.month}
+                                                                        type="button"
+                                                                        onClick={() => pickMonth(m.month)}
+                                                                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${isActive
+                                                                                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30 scale-105'
+                                                                                : 'bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600 hover:bg-orange-50/50'
+                                                                                }`}
+                                                                >
+                                                                        {m.label}
+                                                                </button>
+                                                        );
+                                                })}
+                                        </div>
+                                </div>
+
                                 <div className="flex gap-4">
                                         <div className="flex-1 space-y-2">
                                                 <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider text-right px-1">תאריך התחלה</label>
