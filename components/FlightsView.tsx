@@ -343,12 +343,12 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
               {airline && <span className="text-xs font-bold text-slate-500">{airline}</span>}
               {flightNumber && <span className="text-xs font-mono font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{flightNumber}</span>}
               {segment.status && segment.status !== 'SCHEDULED' && (
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${statusConfig[segment.status]?.cls || 'bg-slate-100 text-slate-600'}`}>
+                <span className={`text-2xs font-black px-2 py-0.5 rounded-md ${statusConfig[segment.status]?.cls || 'bg-slate-100 text-slate-600'}`}>
                   {statusConfig[segment.status]?.label}
                 </span>
               )}
               {isStale && (
-                <span className="inline-flex items-center gap-1 bg-amber-200 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                <span className="inline-flex items-center gap-1 bg-amber-200 text-amber-800 text-2xs font-bold px-2 py-0.5 rounded-md">
                   <AlertTriangle className="w-3 h-3" /> Old
                 </span>
               )}
@@ -389,13 +389,13 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
           <div className="flex-shrink-0 text-left min-w-0" style={{ minWidth: '70px' }}>
             <div className="text-lg sm:text-xl font-black text-slate-900 leading-none tracking-tight font-mono tabular-nums">{depTime || '—'}</div>
             <div className="text-xs font-black text-slate-500 leading-none mt-1 tracking-wide">{segment.fromCode || '—'}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5 truncate">{fromLabel}</div>
+            <div className="text-2xs text-slate-400 mt-0.5 truncate">{fromLabel}</div>
           </div>
 
           {/* Timeline */}
           <div className="flex-grow flex flex-col items-center min-w-[40px]">
             {duration && (
-              <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 mb-1 whitespace-nowrap bg-white px-1.5 py-0.5 rounded">{duration}</span>
+              <span className="text-[9px] sm:text-2xs font-bold text-slate-500 mb-1 whitespace-nowrap bg-white px-1.5 py-0.5 rounded">{duration}</span>
             )}
             <div className="w-full flex items-center gap-0.5">
               <div className="flex-1 border-t-2 border-dashed border-slate-300" />
@@ -408,10 +408,10 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
           <div className="flex-shrink-0 text-right min-w-0" style={{ minWidth: '70px' }}>
             <div className="text-lg sm:text-xl font-black text-slate-900 leading-none tracking-tight font-mono tabular-nums inline-flex items-start gap-0.5 justify-end">
               {arrTime || '—'}
-              {dayDiff > 0 && <span className="text-[10px] sm:text-xs font-black text-orange-500 mt-0.5">+{dayDiff}</span>}
+              {dayDiff > 0 && <span className="text-2xs sm:text-xs font-black text-orange-500 mt-0.5">+{dayDiff}</span>}
             </div>
             <div className="text-xs font-black text-slate-500 leading-none mt-1 tracking-wide">{segment.toCode || '—'}</div>
-            <div className="text-[10px] text-slate-400 mt-0.5 truncate">{toLabel}</div>
+            <div className="text-2xs text-slate-400 mt-0.5 truncate">{toLabel}</div>
           </div>
         </div>
 
@@ -419,26 +419,26 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
         {(segment.class || segment.seat || segment.baggage || segment.terminal || segment.mealPlan || segment.price) && (
           <div dir="rtl" className="flex flex-wrap gap-1.5 mt-3">
             {clean(segment.class) && (
-              <span className="text-[11px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-100 inline-flex items-center gap-1">
+              <span className="text-2xs font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-100 inline-flex items-center gap-1">
                 <Lock className="w-3 h-3" /> {segment.class}
               </span>
             )}
             {clean(segment.seat) && (
-              <span className="text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono">💺 {segment.seat}</span>
+              <span className="text-2xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono">💺 {segment.seat}</span>
             )}
             {clean(segment.baggage) && (
-              <span className="text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+              <span className="text-2xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
                 <Briefcase className="w-3 h-3" /> {segment.baggage}
               </span>
             )}
             {clean(segment.terminal) && (
-              <span className="text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">טרמינל {segment.terminal}</span>
+              <span className="text-2xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">טרמינל {segment.terminal}</span>
             )}
             {clean(segment.mealPlan) && (
-              <span className="text-[11px] font-bold bg-orange-50 text-orange-700 px-2 py-0.5 rounded-md border border-orange-100">🍽 {segment.mealPlan}</span>
+              <span className="text-2xs font-bold bg-orange-50 text-orange-700 px-2 py-0.5 rounded-md border border-orange-100">🍽 {segment.mealPlan}</span>
             )}
             {segment.price != null && segment.price > 0 && (
-              <span className="text-[11px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-100">
+              <span className="text-2xs font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-100">
                 ${Number(segment.price).toLocaleString()}
               </span>
             )}
@@ -459,19 +459,19 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
             <div className="px-5 pb-4 pt-3 bg-slate-50/60 border-t border-slate-100 space-y-3">
               <div className="grid grid-cols-2 gap-3" dir="ltr">
                 <div className="bg-white rounded-xl p-3 border border-slate-100">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">מוצא</div>
+                  <div className="text-2xs font-bold text-slate-400 uppercase mb-1">מוצא</div>
                   <div className="text-sm font-black text-slate-800">{fromLabel}</div>
                   {segment.fromCode && <div className="text-xs font-mono text-slate-400">{segment.fromCode}</div>}
                   {arrDateShort && depDateObj && (
-                    <div className="text-[10px] text-slate-400 mt-1">{depDateObj.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                    <div className="text-2xs text-slate-400 mt-1">{depDateObj.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
                   )}
                 </div>
                 <div className="bg-white rounded-xl p-3 border border-slate-100">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">יעד</div>
+                  <div className="text-2xs font-bold text-slate-400 uppercase mb-1">יעד</div>
                   <div className="text-sm font-black text-slate-800">{toLabel}</div>
                   {segment.toCode && <div className="text-xs font-mono text-slate-400">{segment.toCode}</div>}
                   {arrDateShort && arrDateObj && (
-                    <div className="text-[10px] text-slate-400 mt-1">{arrDateObj.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' })}{dayDiff > 0 && ` (+${dayDiff})`}</div>
+                    <div className="text-2xs text-slate-400 mt-1">{arrDateObj.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' })}{dayDiff > 0 && ` (+${dayDiff})`}</div>
                   )}
                 </div>
               </div>
@@ -679,7 +679,7 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
 
                   <div className="relative z-10 w-full px-2">
                     <div className={`text-xs font-bold truncate w-full ${isImage ? 'text-white drop-shadow-md' : 'text-slate-700'}`}>{doc}</div>
-                    <div className={`text-[10px] font-medium uppercase mt-1 ${isImage ? 'text-white/80' : 'text-slate-400'}`}>{isPdf ? 'PDF DOC' : 'IMAGE'}</div>
+                    <div className={`text-2xs font-medium uppercase mt-1 ${isImage ? 'text-white/80' : 'text-slate-400'}`}>{isPdf ? 'PDF DOC' : 'IMAGE'}</div>
                   </div>
 
                   {/* Actions - Locked */}

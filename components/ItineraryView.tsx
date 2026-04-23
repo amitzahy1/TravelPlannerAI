@@ -1076,89 +1076,75 @@ export const ItineraryView: React.FC<{
                                         );
                                     }
 
-                                    // EXPANDED VIEW - Original full cards
+                                    // EXPANDED VIEW — content-sized cards (fixed: was min-h-[260px] with
+                                    // huge empty whitespace when days had 1-2 events).
                                     return (
                                         <div
                                             key={day.dateIso}
                                             onClick={() => setSelectedDayIso(day.dateIso)}
-                                            className="bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col min-h-[260px] relative"
+                                            className="bg-white border border-slate-200 rounded-xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden group flex flex-col relative"
                                         >
-                                            {/* Header Background */}
-                                            <div className={`h-16 ${headerColorClass} relative overflow-hidden flex items-center px-4`}>
-                                                {/* Decorative Circles */}
-                                                <div className="absolute -right-4 -top-4 w-20 h-20 bg-white opacity-10 rounded-full"></div>
-                                                <div className="absolute right-10 bottom-0 w-12 h-12 bg-white opacity-5 rounded-full"></div>
-
-                                                {/* Day Info */}
-                                                <div className="text-white relative z-10 w-full flex justify-between items-center pl-10">
-                                                    <div>
-                                                        <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-0.5">{day.displayDayOfWeek}</div>
-                                                        <div className="text-xl font-black leading-none flex items-center gap-1.5">
-                                                            <span>{day.displayDate.split(' ')[1]}</span>
-                                                            <span className="opacity-90 uppercase">{day.displayDate.split(' ')[0]}</span>
-                                                        </div>
-                                                    </div>
-                                                    {/* Location Context */}
-                                                    <div className="text-right max-w-[55%]">
-                                                        <h3 className="text-sm font-bold text-white leading-tight opacity-95 line-clamp-2">{day.locationContext || 'יום בטיול'}</h3>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Dynamic Context Widget (Top Left Corner) */}
-                                            <div className="absolute top-3 left-3 z-20">
-                                                <div className="bg-white/20 backdrop-blur-md border border-white/30 p-2 rounded-full shadow-lg transform group-hover:rotate-12 transition-transform duration-500">
+                                            {/* Header — slim band: day-of-week + date + location */}
+                                            <div className={`${headerColorClass} relative flex items-center justify-between gap-2 px-3 py-2`}>
+                                                <div className="text-white flex items-baseline gap-1.5 min-w-0">
                                                     {(() => {
-                                                        const t = (day.locationContext || '').toLowerCase();
-                                                        if (t.includes('טיסה') || t.includes('flight') || day.events.some(e => e.type === 'flight')) return <Plane className="w-5 h-5 text-white" />;
-                                                        if (day.hasHotel || t.includes('מלון') || t.includes('hotel')) return <Hotel className="w-5 h-5 text-white" />;
-                                                        return <MapPin className="w-5 h-5 text-white" />;
+                                                        const parts = (day.displayDate || '').split(' ');
+                                                        const dayNum = parts[1] || parts[0] || '';
+                                                        const monthLabel = parts[0] && parts.length > 1 ? parts[0] : '';
+                                                        return (
+                                                            <>
+                                                                <span className="text-lg font-black leading-none">{dayNum}</span>
+                                                                {monthLabel && <span className="text-xs font-bold opacity-90 uppercase">{monthLabel}</span>}
+                                                                <span className="text-2xs font-semibold opacity-70 mr-1">· {day.displayDayOfWeek}</span>
+                                                            </>
+                                                        );
                                                     })()}
                                                 </div>
+                                                <h3 className="text-xs font-bold text-white leading-tight truncate max-w-[55%]" title={day.locationContext}>
+                                                    {day.locationContext || 'יום בטיול'}
+                                                </h3>
                                             </div>
 
-                                            {/* Day Number Badge (Floating below header) */}
-                                            <div className="absolute top-12 right-4 bg-white text-slate-800 text-[10px] font-black px-2 py-1 rounded-lg shadow-md border border-slate-100 z-20">
-                                                יום {dayNumber}
+                                            {/* Body — content drives the height */}
+                                            <div className="px-3 py-2.5 bg-white">
+                                                {day.events.length > 0 ? (
+                                                    <div className="space-y-1.5">
+                                                        {day.events.slice(0, 4).map((event, idx) => (
+                                                            <div key={idx} className="flex items-start gap-2">
+                                                                <span className="text-2xs font-mono font-bold text-slate-400 min-w-[34px] pt-0.5 tabular-nums" dir="ltr">{event.time || '—'}</span>
+                                                                <div className={`p-1 rounded-pill ${event.bgClass} shrink-0 mt-0.5`}>
+                                                                    <event.icon className={`w-3 h-3 ${event.colorClass}`} />
+                                                                </div>
+                                                                <span className="text-xs font-semibold text-slate-700 leading-snug flex-1 line-clamp-2 break-words">
+                                                                    {event.title}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                        {day.events.length > 4 && (
+                                                            <div className="text-2xs font-bold text-slate-400 pt-1 pr-10">
+                                                                + עוד {day.events.length - 4} פריטים
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center justify-center gap-1.5 py-2 text-slate-400">
+                                                        <Moon className="w-3.5 h-3.5" />
+                                                        <span className="text-2xs font-bold">יום חופשי</span>
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            {/* Hotel Indicator REMOVED per user request */}
+                                            {/* Day counter (very subtle, top-left) */}
+                                            <span className="absolute top-1.5 left-2 text-2xs text-white/60 font-bold pointer-events-none select-none">
+                                                {dayNumber}/{timeline.length}
+                                            </span>
 
-                                            {/* Flow Arrow (Desktop Only - Outside) */}
+                                            {/* Flow Arrow (Desktop only, outside the card) */}
                                             {!isLastDay && (
                                                 <div className="hidden xl:block absolute -left-5 top-1/2 -translate-y-1/2 z-0 text-slate-200 pointer-events-none">
                                                     <ChevronLeft className="w-6 h-6 stroke-[3]" />
                                                 </div>
                                             )}
-
-                                            {/* Content Preview */}
-                                            <div className="p-3 flex-grow overflow-hidden relative bg-white">
-                                                {day.events.length > 0 ? (
-                                                    <div className="space-y-1.5 relative z-10">
-                                                        {day.events.slice(0, 3).map((event, idx) => (
-                                                            <div key={idx} className="flex items-start gap-2 w-full">
-                                                                <span className="text-[10px] font-mono font-bold opacity-50 min-w-[32px] pt-0.5">{event.time || ''}</span>
-                                                                <div className={`p-1 rounded-full ${event.bgClass} flex-shrink-0 mt-0.5`}><event.icon className={`w-3 h-3 ${event.colorClass}`} /></div>
-                                                                <span className="text-xs font-bold text-slate-700 leading-snug flex-1 opacity-90 line-clamp-2 break-words">{event.title}</span>
-                                                            </div>
-                                                        ))}
-                                                        {day.events.length > 3 && (
-                                                            <div className="text-[10px] font-bold text-slate-400 pt-1 px-8">
-                                                                + עוד {day.events.length - 3} פריטים
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="h-full">
-                                                        {/* CONTEXTUAL INTELLIGENCE: SMART PLANNER REMOVED AS PER USER REQUEST */}
-                                                        <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-40 pb-2">
-                                                            <Moon className="w-5 h-5 mb-1" />
-                                                            <span className="text-[10px] font-bold">יום חופשי</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-                                            </div>
                                         </div>
                                     );
                                 })}
