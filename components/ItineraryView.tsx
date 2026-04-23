@@ -1106,7 +1106,7 @@ export const ItineraryView: React.FC<{
                                                     <div className="space-y-1.5 relative z-10">
                                                         {day.events.slice(0, 3).map((event, idx) => (
                                                             <div key={idx} className="flex items-start gap-2 w-full">
-                                                                <span className="text-[10px] font-mono font-bold opacity-50 min-w-[32px] pt-0.5">{event.time || "--:--"}</span>
+                                                                <span className="text-[10px] font-mono font-bold opacity-50 min-w-[32px] pt-0.5">{event.time || ''}</span>
                                                                 <div className={`p-1 rounded-full ${event.bgClass} flex-shrink-0 mt-0.5`}><event.icon className={`w-3 h-3 ${event.colorClass}`} /></div>
                                                                 <span className="text-xs font-bold text-slate-700 leading-snug flex-1 opacity-90 line-clamp-2 break-words">{event.title}</span>
                                                             </div>
@@ -1176,7 +1176,7 @@ export const ItineraryView: React.FC<{
                                     activeDay.events.map((event, i) => (
                                         <div key={`${event.id}-${i}`} className="group flex gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all relative">
                                             <div className="w-12 flex-shrink-0 pt-1 text-center">
-                                                <span className="text-xs font-bold text-slate-400 font-mono tracking-tight block">{event.time || '--:--'}</span>
+                                                <span className="text-xs font-bold text-slate-400 font-mono tracking-tight block">{event.time || ''}</span>
                                             </div>
                                             <div className={`mt-0.5 w-1 h-full absolute right-12 top-0 rounded-full opacity-20 ${event.bgClass.replace('bg-', 'bg-')}`}></div>
 

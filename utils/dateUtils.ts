@@ -126,7 +126,7 @@ export const calculateFlightDuration = (departureIso?: string, arrivalIso?: stri
                 const arrDate = new Date(arrivalIso);
 
                 if (isNaN(depDate.getTime()) || isNaN(arrDate.getTime())) {
-                        return 'משך לא ידוע';
+                        return '';
                 }
 
                 // Calculate difference (automatically handles timezones if ISO has offset)
@@ -139,7 +139,7 @@ export const calculateFlightDuration = (departureIso?: string, arrivalIso?: stri
 
                 // Sanity: flights max 24h
                 if (diffMs > 24 * 60 * 60 * 1000) {
-                        return 'משך לא ידוע';
+                        return '';
                 }
 
                 const totalMinutes = Math.round(diffMs / (1000 * 60));
@@ -150,7 +150,7 @@ export const calculateFlightDuration = (departureIso?: string, arrivalIso?: stri
                 return `${hours}h${minutes > 0 ? ` ${minutes}m` : ''}`;
 
         } catch (e) {
-                return 'משך לא ידוע';
+                return '';
         }
 };
 

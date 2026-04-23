@@ -241,10 +241,41 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
   const airline = clean(segment.airline);
   const flightNumber = clean(segment.flightNumber);
   const durationRaw = clean(segment.duration);
-  const duration = durationRaw || calculateFlightDuration(segment.departureTime || '', segment.arrivalTime || '') || undefined;
 
   const depTime = formatFlightTime(segment.departureTime);
   const arrTime = formatFlightTime(segment.arrivalTime);
+
+  // Build full ISO strings so calculateFlightDuration works even when the
+  // AI only gave us HH:MM times. Handles cross-midnight arrivals by
+  // advancing the arrival date when arrTime < depTime.
+  const buildIsoFromTime = (date?: string, hhmm?: string): string => {
+    if (!date || !hhmm) return '';
+    if (hhmm.includes('T')) return hhmm; // already ISO
+    if (!/^\d{1,2}:\d{2}/.test(hhmm)) return '';
+    const [h, m] = hhmm.split(':');
+    return `${date}T${h.padStart(2, '0')}:${m.padStart(2, '0')}:00`;
+  };
+
+  const depIsoForDuration = segment.departureTime?.includes('T')
+    ? segment.departureTime
+    : buildIsoFromTime(segment.date, depTime);
+
+  const arrIsoForDuration = (() => {
+    if (segment.arrivalTime?.includes('T')) return segment.arrivalTime;
+    const baseIso = buildIsoFromTime(segment.date, arrTime);
+    if (!baseIso || !depIsoForDuration) return baseIso;
+    if (new Date(baseIso).getTime() < new Date(depIsoForDuration).getTime()) {
+      // Arrival is the next day (e.g. dep 20:10, arr 00:25)
+      const d = new Date(baseIso);
+      d.setDate(d.getDate() + 1);
+      return d.toISOString().replace('Z', '');
+    }
+    return baseIso;
+  })();
+
+  const duration = durationRaw
+    || calculateFlightDuration(depIsoForDuration, arrIsoForDuration)
+    || undefined;
 
   const depDateObj = (() => {
     try {
