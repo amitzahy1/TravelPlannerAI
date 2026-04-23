@@ -117,7 +117,12 @@ const RestaurantCard: React.FC<{
 };
 
 export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
-    const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>('my_list');
+    // Smart default: if the user has no saved restaurants, land them directly on
+    // the research tab so they see the CTA without an extra click. Power users
+    // with their own saved list still land on 'my_list'.
+    const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>(
+        (trip.restaurants?.length || 0) === 0 ? 'recommended' : 'my_list'
+    );
     console.log("RestaurantView Loaded - v2 Clean Design - Smart Intent Active");
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
@@ -809,13 +814,21 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                         </p>
                                     </div>
                                     <button
-                                        onClick={() => setActiveTab('recommended')}
-                                        className="group relative overflow-hidden bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all flex items-center gap-3"
+                                        onClick={() => {
+                                            setActiveTab('recommended');
+                                            // Kick off research immediately so the user doesn't have to
+                                            // click a second button on the recommended tab.
+                                            if (!isResearchingAll && aiCategories.length === 0) {
+                                                researchAllCities();
+                                            }
+                                        }}
+                                        disabled={isResearchingAll}
+                                        className="group relative overflow-hidden bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all flex items-center gap-3 disabled:opacity-60 disabled:cursor-wait"
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                         <span className="relative flex items-center gap-2">
-                                            <BrainCircuit className="w-5 h-5" />
-                                            התחל מחקר שוק (AI)
+                                            {isResearchingAll ? <Loader2 className="w-5 h-5 animate-spin" /> : <BrainCircuit className="w-5 h-5" />}
+                                            {isResearchingAll ? 'מחפש מסעדות…' : 'התחל מחקר שוק (AI)'}
                                         </span>
                                     </button>
                                 </div>

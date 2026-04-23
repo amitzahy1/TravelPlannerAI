@@ -70,7 +70,14 @@ const AttractionRecommendationCard: React.FC<{
 };
 
 export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
-    const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>('my_list');
+    // Smart default: land fresh users on the research tab so the CTA is one
+    // click away; power users with saved attractions stay on their list.
+    const savedAttractionsCount = (trip.attractions || []).reduce(
+        (acc, c) => acc + (c.attractions?.length || 0), 0
+    );
+    const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>(
+        savedAttractionsCount === 0 ? 'recommended' : 'my_list'
+    );
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
     // AI State
@@ -481,13 +488,21 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                         </p>
                                     </div>
                                     <button
-                                        onClick={() => setActiveTab('recommended')}
-                                        className="group relative overflow-hidden bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all flex items-center gap-3"
+                                        onClick={() => {
+                                            setActiveTab('recommended');
+                                            // Kick off research immediately so the user doesn't have to
+                                            // click a second button on the recommended tab.
+                                            if (!isResearchingAll && aiCategories.length === 0) {
+                                                researchAllCities();
+                                            }
+                                        }}
+                                        disabled={isResearchingAll}
+                                        className="group relative overflow-hidden bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all flex items-center gap-3 disabled:opacity-60 disabled:cursor-wait"
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-fuchsia-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                         <span className="relative flex items-center gap-2">
-                                            <BrainCircuit className="w-5 h-5" />
-                                            מצא לי אטרקציות (AI)
+                                            {isResearchingAll ? <Loader2 className="w-5 h-5 animate-spin" /> : <BrainCircuit className="w-5 h-5" />}
+                                            {isResearchingAll ? 'מחפש אטרקציות…' : 'מצא לי אטרקציות (AI)'}
                                         </span>
                                     </button>
                                 </div>
