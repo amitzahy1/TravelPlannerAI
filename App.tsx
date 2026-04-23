@@ -26,6 +26,7 @@ import { JoinTripModal } from './components/JoinTripModal';
 import { AIChatOverlay } from './components/AIChatOverlay';
 import { Toaster } from './components/ui/Toaster';
 import { toast } from './stores/useToastStore';
+import { runBackgroundResearch } from './services/backgroundResearch';
 import { MagicalWizard } from './components/onboarding/MagicalWizard';
 
 // ...
@@ -239,6 +240,14 @@ const AppContent: React.FC = () => {
       setShowOnboarding(false);
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       toast.success(`הטיול "${newTrip.name || newTrip.destination}" נוצר בהצלחה!`);
+
+      // Fire-and-forget: start AI research for food + attractions in the
+      // background so results are ready when the user navigates to those
+      // tabs. Saves partial results to Firestore after each city — React
+      // Query will pick them up on the next invalidation.
+      runBackgroundResearch(newTrip, user?.uid)
+        .then(() => queryClient.invalidateQueries({ queryKey: ['trips'] }))
+        .catch(err => console.warn('Background research error (non-fatal):', err));
     } catch (error) {
       console.error("Failed to save trip:", error);
       toast.error("שגיאה בשמירת הטיול. נסה שוב.");
