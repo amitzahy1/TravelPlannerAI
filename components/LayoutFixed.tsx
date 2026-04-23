@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip } from '../types';
-import { Map, Plane, Utensils, Hotel, Globe, Ticket, ChevronDown, MapPin, Wallet, X, Sparkles, ShoppingBag, Check, List, Calendar, Plus, Settings, ArrowRight, Home } from 'lucide-react';
+import { Map, Plane, Utensils, Hotel, Globe, Ticket, Compass, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home } from 'lucide-react';
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
+import { TripProgress } from './shared';
 
 // Helper to extract city from hotel address
 const extractCityFromAddress = (address?: string): string | null => {
@@ -35,14 +36,8 @@ const contentNavItems = [
         { id: 'itinerary', label: 'ראשי', icon: Home },
         { id: 'flights', label: 'טיסות', icon: Plane },
         { id: 'hotels', label: 'מלונות', icon: Hotel },
-        { id: 'restaurants', label: 'אוכל', icon: Utensils },
-        { id: 'attractions', label: 'אטרקציות', icon: Ticket },
+        { id: 'discover', label: 'גילויים', icon: Compass },
         { id: 'map_full', label: 'מפה', icon: MapPin },
-        // Budget + Shopping hidden from the nav for now — routes still exist
-        // in App.tsx so they can be re-enabled instantly by restoring these
-        // entries. Temporarily removed per user request to reduce menu noise.
-        // { id: 'budget', label: 'תקציב', icon: Wallet },
-        // { id: 'shopping', label: 'קניות', icon: ShoppingBag },
 ];
 
 export const LayoutFixed: React.FC<LayoutProps> = ({
@@ -95,16 +90,19 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         </div>
                                                 </div>
 
-                                                {/* Active trip pill (mobile only — on desktop Row 2 has the full selector) */}
+                                                {/* Active trip pill + progress (mobile only — on desktop Row 2 has the full selector) */}
                                                 {activeTrip && (
-                                                        <button
-                                                                onClick={() => setIsTripMenuOpen(true)}
-                                                                title="החלף טיול"
-                                                                className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-full text-[11px] font-bold border border-blue-100 max-w-[140px] transition-colors"
-                                                        >
-                                                                <MapPin className="w-3 h-3 flex-shrink-0" />
-                                                                <span className="truncate">{activeTrip.destination || activeTrip.name}</span>
-                                                        </button>
+                                                        <div className="lg:hidden flex items-center gap-2 min-w-0 flex-1 mx-2">
+                                                                <button
+                                                                        onClick={() => setIsTripMenuOpen(true)}
+                                                                        title="החלף טיול"
+                                                                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-pill text-2xs font-bold border border-blue-100 transition-colors min-w-0 max-w-[160px]"
+                                                                >
+                                                                        <MapPin className="w-3 h-3 shrink-0" />
+                                                                        <span className="truncate">{activeTrip.destination || activeTrip.name}</span>
+                                                                </button>
+                                                                <TripProgress trip={activeTrip} compact onNavigate={onSwitchTab} />
+                                                        </div>
                                                 )}
 
                                                 {/* Center: Desktop Content Nav Tabs (without trip management) */}
@@ -136,9 +134,10 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         {/* Mobile Menu Trigger */}
                                                         <button
                                                                 onClick={() => setIsTripMenuOpen(true)}
-                                                                className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-700 hover:bg-slate-200"
+                                                                className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-700 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                                                aria-label="פתח תפריט"
                                                         >
-                                                                <List className="w-5 h-5" />
+                                                                <List className="w-5 h-5" aria-hidden="true" />
                                                         </button>
                                                 </div>
                                         </div>
@@ -179,6 +178,17 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                         </div>
                                                                 )}
                                                         </div>
+
+                                                        {/* Separator */}
+                                                        <div className="w-px h-6 bg-slate-200 mx-1"></div>
+
+                                                        {/* Trip completeness at a glance */}
+                                                        {activeTrip && (
+                                                                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
+                                                                        <span className="text-2xs font-bold text-slate-400 uppercase tracking-wider">התקדמות</span>
+                                                                        <TripProgress trip={activeTrip} compact={false} onNavigate={onSwitchTab} />
+                                                                </div>
+                                                        )}
 
                                                         {/* Separator */}
                                                         <div className="w-px h-6 bg-slate-200 mx-1"></div>
@@ -226,8 +236,12 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                 <div className="lg:hidden fixed inset-0 z-[100] bg-white animate-fade-in flex flex-col">
                                         <div className="p-4 flex justify-between items-center border-b border-slate-100 bg-white sticky top-0 z-10">
                                                 <span className="font-black text-xl text-slate-800">תפריט</span>
-                                                <button onClick={() => setIsTripMenuOpen(false)} className="p-2 bg-slate-100 rounded-full">
-                                                        <X className="w-6 h-6 text-slate-600" />
+                                                <button
+                                                        onClick={() => setIsTripMenuOpen(false)}
+                                                        className="p-2 bg-slate-100 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                                        aria-label="סגור תפריט"
+                                                >
+                                                        <X className="w-6 h-6 text-slate-600" aria-hidden="true" />
                                                 </button>
                                         </div>
 
@@ -324,10 +338,12 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                 whileHover={{ scale: 1.15, y: -6 }}
                                                 whileTap={{ scale: 0.95 }}
                                                 onClick={() => onSwitchTab(item.id)}
-                                                className={`dock-item ${currentTab === item.id ? 'active' : ''}`}
+                                                className={`dock-item ${currentTab === item.id ? 'active' : ''} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
                                                 title={item.label}
+                                                aria-label={item.label}
+                                                aria-current={currentTab === item.id ? 'page' : undefined}
                                         >
-                                                <item.icon className="w-5 h-5" />
+                                                <item.icon className="w-5 h-5" aria-hidden="true" />
 
                                                 {/* Active Glow */}
                                                 <AnimatePresence>
@@ -356,8 +372,9 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                         whileHover={{ scale: 1.1 }}
                                         whileTap={{ scale: 0.9 }}
                                         onClick={() => setIsTripMenuOpen(true)}
-                                        className={`dock-item ${isTripMenuOpen || currentTab === 'trips' ? 'active bg-gradient-to-br from-indigo-500 to-purple-600 text-white' : ''}`}
+                                        className={`dock-item ${isTripMenuOpen || currentTab === 'trips' ? 'active bg-gradient-to-br from-indigo-500 to-purple-600 text-white' : ''} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
                                         title="תפריט"
+                                        aria-label="פתח תפריט טיולים"
                                 >
                                         <List className="w-5 h-5" />
                                 </motion.button>

@@ -61,10 +61,14 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // 5. Trip Invites (ללא שינוי - זה מעולה)
+    // 5. Trip Invites — readable only if the caller knows the exact invite ID
+    // (the ID is an unguessable UUID shared via the invite link). We explicitly
+    // deny `list` to prevent enumeration of all invites.
     match /trip_invites/{inviteId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if false;
       allow create, update: if request.auth != null;
+      allow delete: if false;
     }
 
     // חסימת ברירת מחדל

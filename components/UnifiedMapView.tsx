@@ -182,30 +182,33 @@ const makePinIcon = (config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG], label
 
 // --- ROUTE STOP PILL ---
 const makeStopPill = (num: number, name: string, emoji: string, color: string) => {
+    // Trim names so stacked pins don't all grow long and collide.
+    const display = name.length > 26 ? name.slice(0, 23) + '…' : name;
     const html = `
         <div style="
-            display:inline-flex; align-items:center; gap:7px;
+            display:inline-flex; align-items:center; gap:5px;
             background:white;
-            border-radius:24px;
-            padding:5px 12px 5px 5px;
-            box-shadow:0 4px 16px rgba(0,0,0,0.18),0 1px 4px rgba(0,0,0,0.1);
-            border:1.5px solid rgba(255,255,255,0.9);
+            border-radius:999px;
+            padding:3px 10px 3px 3px;
+            box-shadow:0 3px 10px rgba(15,23,42,0.18),0 1px 3px rgba(15,23,42,0.08);
+            border:1px solid rgba(255,255,255,0.9);
             white-space:nowrap;
             font-family:'Rubik','Inter',sans-serif;
             position:relative;
+            max-width:220px;
         ">
             <div style="
-                width:28px; height:28px; border-radius:50%;
+                width:22px; height:22px; border-radius:50%;
                 background:linear-gradient(135deg,${color},${color}cc);
-                color:white; font-weight:900; font-size:13px;
+                color:white; font-weight:900; font-size:11px;
                 display:flex; align-items:center; justify-content:center;
-                box-shadow:0 2px 8px ${color}50;
+                box-shadow:0 2px 6px ${color}50;
                 flex-shrink:0;
             ">${num}</div>
-            <span style="font-size:13px; font-weight:700; color:#1e293b; letter-spacing:0.1px;">${emoji} ${name}</span>
+            <span style="font-size:11px; font-weight:700; color:#1e293b; letter-spacing:0.1px;">${emoji} ${display}</span>
         </div>
     `;
-    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 15] });
+    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [-8, 11] });
 };
 
 // --- ROUTE INFO BADGE (travel time/distance/mode between stops) ---
@@ -217,48 +220,80 @@ interface SegmentTransportInfo {
     hasTransportData: boolean;
 }
 
+/** Distance (km) between a flight's endpoint and a route stop. Returns
+ *  Infinity when any coord is missing so the caller can treat it as
+ *  "no match". */
+const endpointDistanceKm = (
+    endpointLat: number | undefined, endpointLng: number | undefined,
+    stop: RouteStop,
+): number => {
+    if (!isValidCoordinate(endpointLat, endpointLng) || !stop.coords) return Infinity;
+    return getDistanceKm(endpointLat!, endpointLng!, stop.coords.lat, stop.coords.lng);
+};
+
+const AIRPORT_PROXIMITY_KM = 120;
+
 const getSegmentTransport = (
-    fromStop: RouteStop, toStop: RouteStop, trip: Trip, distKm: number
+    fromStop: RouteStop, toStop: RouteStop, trip: Trip, distKm: number,
+    airportCoords: Record<string, { lat: number; lng: number }>,
 ): SegmentTransportInfo => {
-    // Match flight
+    // 1. Flight match — distance-based. Tries each flight segment: if its
+    //    departure airport is within 120 km of fromStop AND its arrival
+    //    airport is within 120 km of toStop, it's the same leg.
+    //    This catches cases like Trat airport ↔ Koh Chang hotel.
     const segs = trip.flights?.segments || [];
     const matchedFlight = segs.find(s => {
-        const fromMatch = s.fromCity?.toLowerCase() === fromStop.name.toLowerCase() ||
+        // Prefer coords lookup by IATA code (airportCoords is populated
+        // from the geocode cache keyed on "XXX Airport" or the city name).
+        const fromKey = (s.fromCode || s.fromCity || '').toLowerCase();
+        const toKey = (s.toCode || s.toCity || '').toLowerCase();
+        const fromC = airportCoords[fromKey] || airportCoords[(s.fromCity || '').toLowerCase()];
+        const toC = airportCoords[toKey] || airportCoords[(s.toCity || '').toLowerCase()];
+
+        const fromDist = endpointDistanceKm(fromC?.lat, fromC?.lng, fromStop);
+        const toDist = endpointDistanceKm(toC?.lat, toC?.lng, toStop);
+
+        // Primary: both endpoints geographically near the stops.
+        if (fromDist <= AIRPORT_PROXIMITY_KM && toDist <= AIRPORT_PROXIMITY_KM) return true;
+
+        // Fallback: exact city/code string match (kept so flights without
+        // geocoded airports still match).
+        const fromStr = s.fromCity?.toLowerCase() === fromStop.name.toLowerCase() ||
             s.fromCode?.toLowerCase() === (fromStop.code?.toLowerCase() || '');
-        const toMatch = s.toCity?.toLowerCase() === toStop.name.toLowerCase() ||
+        const toStr = s.toCity?.toLowerCase() === toStop.name.toLowerCase() ||
             s.toCode?.toLowerCase() === (toStop.code?.toLowerCase() || '');
-        return fromMatch && toMatch;
+        return fromStr && toStr;
     });
     if (matchedFlight) return {
         mode: 'flight', emoji: '✈️',
         label: `${matchedFlight.airline || ''} ${matchedFlight.flightNumber || ''}`.trim() || 'טיסה',
-        duration: matchedFlight.duration, hasTransportData: true
+        duration: matchedFlight.duration, hasTransportData: true,
     };
 
-    // Match train
+    // 2. Train / ferry / bus — same logic as before, cheap string contains.
     const matchedTrain = trip.trains?.find(t =>
         (t.fromStation?.toLowerCase() || '').includes(fromStop.name.toLowerCase()) ||
         (t.toStation?.toLowerCase() || '').includes(toStop.name.toLowerCase())
     );
     if (matchedTrain) return { mode: 'train', emoji: '🚆', label: matchedTrain.provider || 'רכבת', duration: matchedTrain.duration, hasTransportData: true };
 
-    // Match ferry
     const matchedFerry = trip.ferries?.find(f =>
         (f.fromPort?.toLowerCase() || '').includes(fromStop.name.toLowerCase()) ||
         (f.toPort?.toLowerCase() || '').includes(toStop.name.toLowerCase())
     );
     if (matchedFerry) return { mode: 'ferry', emoji: '⛴️', label: matchedFerry.provider || 'מעבורת', hasTransportData: true };
 
-    // Match bus
     const matchedBus = trip.buses?.find(b =>
         (b.fromCity?.toLowerCase() || '').includes(fromStop.name.toLowerCase()) ||
         (b.toCity?.toLowerCase() || '').includes(toStop.name.toLowerCase())
     );
     if (matchedBus) return { mode: 'bus', emoji: '🚌', label: matchedBus.provider || 'אוטובוס', hasTransportData: true };
 
-    // Estimate by distance
-    if (distKm > 300) return { mode: 'flight', emoji: '✈️', label: 'טיסה?', hasTransportData: false };
-    return { mode: 'drive', emoji: '🚗', label: 'נסיעה', hasTransportData: false };
+    // 3. Default: drive. We explicitly do NOT guess "flight?" for long
+    //    distances anymore — the user's convention is "if no flight is
+    //    recorded, assume we're driving". This also removes the noisy
+    //    "חסר מידע" warning badge.
+    return { mode: 'drive', emoji: '🚗', label: 'נסיעה', hasTransportData: true };
 };
 
 const estimateTravelTime = (distKm: number, mode: string): string => {
@@ -279,30 +314,25 @@ const fmtDistKm = (km: number): string =>
 
 const makeRouteBadge = (distKm: number, transport: SegmentTransportInfo, color: string): L.DivIcon => {
     const displayTime = transport.duration || estimateTravelTime(distKm, transport.mode);
-    const warn = !transport.hasTransportData
-        ? `<div style="font-size:9px;color:#ef4444;font-weight:700;margin-top:2px">⚠️ חסר מידע הסעה</div>` : '';
-
+    // Compact: single row "emoji label · time · distance". No more warning
+    // chip — if no flight, we drive by default, which is not a failure.
     const html = `<div style="
-        display:flex;flex-direction:column;align-items:center;
-        background:white;border-radius:14px;
-        padding:6px 12px;
-        box-shadow:0 4px 16px rgba(0,0,0,.18),0 1px 4px rgba(0,0,0,.1);
-        border:2px solid ${color}40;
+        display:inline-flex;align-items:center;gap:5px;
+        background:white;border-radius:999px;
+        padding:3px 9px 3px 8px;
+        box-shadow:0 2px 8px rgba(15,23,42,.14),0 1px 2px rgba(15,23,42,.08);
+        border:1px solid ${color}33;
         font-family:'Rubik','Inter',sans-serif;
-        white-space:nowrap;direction:rtl;min-width:80px;text-align:center;
+        white-space:nowrap;direction:rtl;
     ">
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
-            <span style="font-size:14px">${transport.emoji}</span>
-            <span style="font-size:11px;font-weight:800;color:${color}">${transport.label}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#475569;font-weight:600">
-            <span>⏱ ${displayTime}</span>
-            <span style="color:#cbd5e1">|</span>
-            <span>${fmtDistKm(distKm)}</span>
-        </div>
-        ${warn}
+        <span style="font-size:12px;line-height:1">${transport.emoji}</span>
+        <span style="font-size:10px;font-weight:800;color:${color};letter-spacing:.01em">${transport.label}</span>
+        <span style="color:#cbd5e1;font-size:8px">•</span>
+        <span style="font-size:10px;color:#475569;font-weight:700">${displayTime}</span>
+        <span style="color:#cbd5e1;font-size:8px">•</span>
+        <span style="font-size:10px;color:#475569;font-weight:600">${fmtDistKm(distKm)}</span>
     </div>`;
-    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [40, 20] });
+    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 12] });
 };
 
 // --- POPUP HTML ---
@@ -517,34 +547,41 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 ? cityKey(segs[segs.length - 1].toCity!)
                 : '';
 
-            // Build final stops list: drop flight-only layovers, dedupe globally
-            // (including non-consecutive — so Abu Dhabi doesn't appear twice when
-            // flying out and back), prefer hotels over flights in the same city.
+            // Build final stops list with these rules:
+            //   - HOTELS are NEVER deduped against each other — two Bangkok
+            //     hotels get two stops (user requested). A tiny perpendicular
+            //     offset is added downstream so stacked pins stay visible.
+            //   - FLIGHT destinations are dropped if any hotel exists in the
+            //     same city (the hotel is the authoritative stop). This lets
+            //     the user see "Holiday Inn Bangkok" instead of a generic
+            //     "Bangkok" pin when they have a hotel there.
+            //   - FLIGHT-ONLY layovers (no hotel, not origin/return) are
+            //     dropped as before.
+            //   - The flight-origin city stays as its own stop (usually TLV).
             const stops: RouteStop[] = [];
-            const seenKeys = new Set<string>();
             candidates.forEach(c => {
                 const k = cityKey(c.name);
-                // Drop layovers unless they're the origin (first kept-anchor) or
-                // return-home (last segment's destination).
-                if (c.isFlightOnly && k !== returnHomeKey) return;
 
-                const existingIdx = stops.findIndex(s => cityKey(s.name) === k);
-                if (existingIdx === -1) {
-                    seenKeys.add(k);
+                if (c.type === 'hotel') {
+                    // Always add hotels as distinct stops
                     const { sortTs, isFlightOnly, ...stop } = c;
                     stops.push(stop);
-                } else {
-                    // Same city already in list — prefer hotel over flight pin
-                    if (c.type === 'hotel' && stops[existingIdx].type !== 'hotel') {
-                        stops[existingIdx] = {
-                            ...stops[existingIdx],
-                            displayName: c.displayName,
-                            type: c.type,
-                            emoji: c.emoji,
-                            coords: c.coords || stops[existingIdx].coords,
-                        };
-                    }
+                    return;
                 }
+
+                // City / flight-destination candidate
+                if (c.isFlightOnly && k !== returnHomeKey) return; // drop layovers
+
+                // Skip if any hotel already claims this city
+                const hotelOwnsCity = stops.some(s => s.type === 'hotel' && cityKey(s.name) === k);
+                if (hotelOwnsCity) return;
+
+                // Skip if another city/flight pin already represents this city
+                const duplicateCity = stops.some(s => s.type !== 'hotel' && cityKey(s.name) === k);
+                if (duplicateCity) return;
+
+                const { sortTs, isFlightOnly, ...stop } = c;
+                stops.push(stop);
             });
 
             // Fallback: destination string
@@ -571,11 +608,59 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 }
             }
 
+            // Offset pins that land on top of each other (same-city hotels).
+            // Pushes each duplicate 0.003° east + slight lat bump so the
+            // user can click each pin individually without zooming.
+            const coordKey = (c: { lat: number; lng: number }) =>
+                `${c.lat.toFixed(3)}_${c.lng.toFixed(3)}`;
+            const occupied = new Map<string, number>();
+            stops.forEach(s => {
+                if (!s.coords) return;
+                const k = coordKey(s.coords);
+                const count = occupied.get(k) || 0;
+                if (count > 0) {
+                    s.coords = {
+                        lat: s.coords.lat + count * 0.0008,
+                        lng: s.coords.lng + count * 0.0030,
+                    };
+                }
+                occupied.set(k, count + 1);
+            });
+
             setRouteStops(stops);
         };
 
         buildRoute();
     }, [trip, items]);
+
+    // 3b. Geocode flight airport codes — used by the distance-based transport
+    //     matcher so a flight from Trat matches a hotel in Koh Chang.
+    const [airportCoords, setAirportCoords] = useState<Record<string, { lat: number; lng: number }>>({});
+    useEffect(() => {
+        if (!trip?.flights?.segments?.length) return;
+        const run = async () => {
+            const codes = new Set<string>();
+            trip.flights!.segments.forEach(s => {
+                if (s.fromCode) codes.add(s.fromCode.toLowerCase());
+                if (s.toCode) codes.add(s.toCode.toLowerCase());
+                if (s.fromCity) codes.add(s.fromCity.toLowerCase());
+                if (s.toCity) codes.add(s.toCity.toLowerCase());
+            });
+            const next: Record<string, { lat: number; lng: number }> = {};
+            for (const raw of Array.from(codes)) {
+                if (!raw) continue;
+                // First try the existing geo cache; then geocode fresh.
+                const cached = geocodedCache[raw] || geocodedCache[raw.toUpperCase()] ||
+                    geocodedCache[`${raw} Airport`] || geocodedCache[`${raw.toUpperCase()} Airport`];
+                if (cached) { next[raw] = cached; continue; }
+                const q = /^[a-z]{3}$/.test(raw) ? `${raw.toUpperCase()} Airport` : raw;
+                const c = await geocodeAddress(q);
+                if (c) next[raw] = c;
+            }
+            setAirportCoords(next);
+        };
+        run();
+    }, [trip?.flights?.segments, geocodedCache]);
 
     // 4. Init map
     useEffect(() => {
@@ -735,10 +820,16 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                     icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [18, 18], iconAnchor: [9, 9] })
                 }).addTo(routeLayer);
 
-                // Transport info badge at 40% point
-                if (trip) {
-                    const transport = getSegmentTransport(start, end, trip, dist);
-                    const badgeIdx = Math.floor(pathPoints.length * 0.4);
+                // Transport badge — skip for very short legs (< 20 km) to
+                // avoid cluttering the map with tiny in-town hops that
+                // don't need a dedicated label.
+                if (trip && dist >= 20) {
+                    const transport = getSegmentTransport(start, end, trip, dist, airportCoords);
+                    // Stagger badge position per leg (45% / 50% / 55% ...) so
+                    // multiple badges along the same broad area don't stack
+                    // on top of each other.
+                    const stagger = 0.45 + (i % 3) * 0.05;
+                    const badgeIdx = Math.floor(pathPoints.length * stagger);
                     const badgeIcon = makeRouteBadge(dist, transport, lineColor);
                     L.marker([pathPoints[badgeIdx][0], pathPoints[badgeIdx][1]], {
                         icon: badgeIcon, zIndexOffset: 1500, interactive: false
@@ -824,7 +915,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         }
 
         [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
-    }, [mapItems, activeCity, trip, routeStops]);
+    }, [mapItems, activeCity, trip, routeStops, airportCoords]);
 
     // Popup CSS injection
     useEffect(() => {

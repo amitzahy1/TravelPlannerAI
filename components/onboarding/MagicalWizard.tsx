@@ -5,7 +5,6 @@ import { Step1_Destination } from './Step1_Destination';
 import { Step1_5_Dates } from './Step1_5_Dates';
 import { Step2_ChoosePath } from './Step2_ChoosePath';
 import { Step3_SmartImport } from './Step3_SmartImport';
-import { Step3_ManualBuild } from './Step3_ManualBuild';
 import { Step3_TextImport } from './Step3_TextImport';
 import { SuccessAnimation } from './SuccessAnimation';
 
@@ -93,40 +92,48 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                         >
                                 {/* Top Navigation / Progress (Hide on Success) */}
                                 {step < 4 && (
-                                        <div className="flex items-center justify-between p-8 z-20">
-                                                <div className="flex items-center gap-4">
-                                                        {/* Progress Dots */}
-                                                        <div className="flex items-center gap-2">
-                                                                {[0, 1, 2, 3].map((i) => (
-                                                                        <div
-                                                                                key={i}
-                                                                                className={`h-1.5 rounded-full transition-all duration-500 ${i === step ? 'w-8 bg-brand-action' :
-                                                                                        i < step ? 'w-2 bg-brand-action/40' : 'w-2 bg-slate-200'
+                                        <div className="flex items-center justify-between px-5 py-4 md:px-8 md:py-5 z-20">
+                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                        {/* Progress bar + step counter */}
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                                <div className="flex items-center gap-1.5">
+                                                                        {[0, 1, 2, 3].map((i) => (
+                                                                                <div
+                                                                                        key={i}
+                                                                                        className={`h-1.5 rounded-pill transition-all duration-500 ${
+                                                                                                i === step ? 'w-8 bg-brand-action' :
+                                                                                                i < step ? 'w-2.5 bg-brand-action/60' :
+                                                                                                'w-2 bg-slate-200'
                                                                                         }`}
-                                                                        />
-                                                                ))}
+                                                                                />
+                                                                        ))}
+                                                                </div>
+                                                                <span className="text-2xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                                                                        שלב {step + 1} מ-4
+                                                                </span>
                                                         </div>
 
-                                                        {/* Destination Context Pill (Visible on Step 2+) */}
+                                                        {/* Destination pill */}
                                                         <AnimatePresence>
                                                                 {step > 0 && tripData.destination && (
                                                                         <motion.div
                                                                                 initial={{ opacity: 0, x: 20, scale: 0.8 }}
                                                                                 animate={{ opacity: 1, x: 0, scale: 1 }}
                                                                                 exit={{ opacity: 0, scale: 0.8 }}
-                                                                                className="flex items-center gap-1.5 px-2.5 py-1 md:gap-2 md:px-3 md:py-1.5 bg-slate-100 rounded-full text-[10px] md:text-xs font-bold text-brand-navy whitespace-nowrap"
+                                                                                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 md:px-3 md:py-1.5 bg-slate-100 rounded-pill text-2xs md:text-xs font-bold text-brand-navy whitespace-nowrap min-w-0"
                                                                         >
                                                                                 <span>📍</span>
-                                                                                <span className="max-w-[100px] truncate md:max-w-none">{tripData.destination}</span>
+                                                                                <span className="truncate max-w-[200px]">{tripData.destination}</span>
                                                                         </motion.div>
                                                                 )}
                                                         </AnimatePresence>
                                                 </div>
                                                 <button
                                                         onClick={onClose}
-                                                        className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-brand-navy transition-colors"
+                                                        aria-label="סגור אשף"
+                                                        className="shrink-0 w-9 h-9 rounded-pill hover:bg-slate-100 text-slate-400 hover:text-brand-navy transition-colors flex items-center justify-center"
                                                 >
-                                                        <X className="w-6 h-6" />
+                                                        <X className="w-5 h-5" />
                                                 </button>
                                         </div>
                                 )}
@@ -215,22 +222,16 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                 }}
                                                                 className="absolute inset-0 w-full h-full flex"
                                                         >
-                                                                {tripData.method === 'smart' ? (
-                                                                        <Step3_SmartImport
-                                                                                onComplete={(data) => handleStep3Complete(data)}
-                                                                                onBack={handleStep3Back}
-                                                                        />
-                                                                ) : tripData.method === 'text' ? (
+                                                                {tripData.method === 'text' ? (
                                                                         <Step3_TextImport
                                                                                 onComplete={handleStep3Complete}
                                                                                 onBack={handleStep3Back}
                                                                                 initialData={tripData}
                                                                         />
                                                                 ) : (
-                                                                        <Step3_ManualBuild
-                                                                                onComplete={handleStep3Complete}
+                                                                        <Step3_SmartImport
+                                                                                onComplete={(data) => handleStep3Complete(data)}
                                                                                 onBack={handleStep3Back}
-                                                                                initialData={tripData}
                                                                         />
                                                                 )}
                                                         </motion.div>
