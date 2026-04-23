@@ -738,11 +738,63 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             });
         }
 
-        // Fit bounds
-        if (bounds.isValid()) {
+        // Fit bounds — but when a destination is set (e.g. "תאילנד") and we're
+        // on the ALL view, prefer a bounds that only includes stops *near* the
+        // destination so far-away layovers (Abu Dhabi, Frankfurt, etc.) don't
+        // zoom the map out to a hemisphere view. Layover pins stay drawn —
+        // they're just not the focal point.
+        const applyBounds = (b: L.LatLngBounds) => {
             const padding: [number, number] = activeCity !== 'ALL' ? [60, 60] : [80, 80];
             const maxZoom = activeCity !== 'ALL' ? 15 : 12;
-            map.fitBounds(bounds, { padding, maxZoom, duration: 1 });
+            map.fitBounds(b, { padding, maxZoom, duration: 1 });
+        };
+
+        if (bounds.isValid()) {
+            if (activeCity === 'ALL' && trip?.destination && !items) {
+                const destCacheKey = `dest:${trip.destination}`;
+                const destPromise = geocodedCache[destCacheKey]
+                    ? Promise.resolve(geocodedCache[destCacheKey])
+                    : geocodeAddress(trip.destination).then(c => {
+                            if (c) {
+                                setGeocodedCache(prev => {
+                                    const next = { ...prev, [destCacheKey]: c };
+                                    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                                    return next;
+                                });
+                            }
+                            return c;
+                      });
+
+                destPromise.then(destCoords => {
+                    if (!destCoords) {
+                        applyBounds(bounds);
+                        return;
+                    }
+
+                    // Build a "near destination" bounds — include stops within
+                    // 1500km of the destination centroid. Thailand → Bangkok/
+                    // Pattaya/Koh Chang all included; Abu Dhabi (~4000km) left
+                    // as a visible pin but excluded from the auto-fit.
+                    const DEST_RADIUS_KM = 1500;
+                    const nearBounds = L.latLngBounds([]);
+                    routeStops.forEach(s => {
+                        if (!s.coords) return;
+                        const dist = getDistanceKm(s.coords.lat, s.coords.lng, destCoords.lat, destCoords.lng);
+                        if (dist <= DEST_RADIUS_KM) nearBounds.extend([s.coords.lat, s.coords.lng]);
+                    });
+                    visibleItems.forEach(item => {
+                        if (item.type === 'airport' || !isValidCoordinate(item.lat, item.lng)) return;
+                        const dist = getDistanceKm(item.lat!, item.lng!, destCoords.lat, destCoords.lng);
+                        if (dist <= DEST_RADIUS_KM) nearBounds.extend([item.lat!, item.lng!]);
+                    });
+                    // Always include the destination itself as an anchor
+                    nearBounds.extend([destCoords.lat, destCoords.lng]);
+
+                    applyBounds(nearBounds.isValid() ? nearBounds : bounds);
+                });
+            } else {
+                applyBounds(bounds);
+            }
         } else if (trip?.destination) {
             geocodeAddress(trip.destination).then(c => c && map.setView([c.lat, c.lng], 8));
         }
