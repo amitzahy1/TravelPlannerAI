@@ -403,6 +403,23 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         };
     }, [tripCities]);
 
+    // Dedupe: an attraction may appear in multiple categories (e.g. a
+    // dolphinarium in 'חופים ומים' + 'למשפחות וילדים'). Show it once; keep
+    // highest-rated / most-detailed copy.
+    const dedupeByName = (list: any[]): any[] => {
+        const pick: Map<string, any> = new Map();
+        for (const a of list) {
+            const key = (a.name || '').trim().toLowerCase();
+            if (!key) continue;
+            const existing = pick.get(key);
+            if (!existing) { pick.set(key, a); continue; }
+            const existingScore = (existing.rating || 0) + (existing.recommendationSource ? 0.1 : 0);
+            const newScore = (a.rating || 0) + (a.recommendationSource ? 0.1 : 0);
+            if (newScore > existingScore) pick.set(key, a);
+        }
+        return Array.from(pick.values());
+    };
+
     const filteredRecommendations = useMemo(() => {
         let list: any[] = [];
         if (selectedCategory === 'all') aiCategories.forEach(c => list.push(...c.attractions.map(a => ({ ...a, categoryTitle: c.title }))));
@@ -419,7 +436,9 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             );
         }
         if (selectedRater !== 'all') list = list.filter(a => a.recommendationSource === selectedRater);
-        return list;
+
+        // Global dedupe — collapses same attraction across categories
+        return dedupeByName(list);
     }, [aiCategories, selectedCategory, selectedRater, selectedCity, tripCities, inTripScope]);
 
     // True when there's stored research data, but NONE of it belongs to this trip

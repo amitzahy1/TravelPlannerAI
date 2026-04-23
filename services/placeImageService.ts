@@ -44,6 +44,46 @@ const writeCache = (cache: Cache) => {
 const cacheKey = (name: string, city: string, type: PlaceType) =>
         `${type}|${name.trim().toLowerCase()}|${(city || '').trim().toLowerCase()}`;
 
+// ---------------------------------------------------------------------------
+// Request pipeline — in-flight dedup + global concurrency throttle.
+// Without this, mounting 30 restaurant cards at once fires 30 parallel
+// Wikipedia calls before any finishes caching — Wikipedia then returns
+// HTTP 429 and every subsequent card for ~5 minutes sees a broken image.
+// ---------------------------------------------------------------------------
+const inFlight: Map<string, Promise<string | null>> = new Map();
+
+const MAX_CONCURRENT = 3;
+let activeCount = 0;
+const waitQueue: Array<() => void> = [];
+
+const acquireSlot = (): Promise<void> => {
+        if (activeCount < MAX_CONCURRENT) {
+                activeCount++;
+                return Promise.resolve();
+        }
+        return new Promise(resolve => waitQueue.push(() => { activeCount++; resolve(); }));
+};
+
+const releaseSlot = () => {
+        activeCount = Math.max(0, activeCount - 1);
+        const next = waitQueue.shift();
+        if (next) next();
+};
+
+// Simple timed-fetch helper — drops a request that doesn't return in 8s so a
+// stuck Wikipedia call doesn't block the throttle slot forever.
+const timedFetch = async (url: string, timeoutMs = 8000): Promise<Response | null> => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+                return await fetch(url, { signal: controller.signal });
+        } catch {
+                return null;
+        } finally {
+                clearTimeout(id);
+        }
+};
+
 // -----------------------------------------------------------------------------
 // Validation — reject results that clearly aren't the right type of place
 // -----------------------------------------------------------------------------
@@ -130,8 +170,8 @@ const wikipediaSearch = async (query: string, limit = 5): Promise<WikiCandidate[
         if (!query) return [];
         try {
                 const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages|description|extracts&exintro=1&explaintext=1&exsentences=2&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=${limit}&piprop=original&origin=*`;
-                const resp = await fetch(url);
-                if (!resp.ok) return [];
+                const resp = await timedFetch(url);
+                if (!resp || !resp.ok) return [];
                 const data = await resp.json();
                 const pages = data?.query?.pages;
                 if (!pages) return [];
@@ -181,8 +221,8 @@ const commonsSearchImage = async (query: string, originalName: string): Promise<
         if (!query) return null;
         try {
                 const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=5&gsrnamespace=6&iiprop=url&iiurlwidth=800&origin=*`;
-                const resp = await fetch(url);
-                if (!resp.ok) return null;
+                const resp = await timedFetch(url);
+                if (!resp || !resp.ok) return null;
                 const data = await resp.json();
                 const pages = data?.query?.pages;
                 if (!pages) return null;
@@ -219,46 +259,61 @@ export const resolveRealPlaceImage = async (
         if (!name) return null;
         const key = cacheKey(name, city, type);
 
-        // Cache check
+        // Cache check (fast path, no fetch)
         const cache = readCache();
         const hit = cache[key];
         if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.url;
 
-        const nameClean = name.trim();
-        const cityClean = (city || '').trim();
-        const typeWord = type === 'restaurant' ? 'restaurant' : '';
+        // Dedupe: if an identical request is already in flight, return its
+        // promise instead of firing another Wikipedia call.
+        const existing = inFlight.get(key);
+        if (existing) return existing;
 
-        let url: string | null = null;
+        const promise = (async (): Promise<string | null> => {
+                await acquireSlot(); // throttle to MAX_CONCURRENT network calls
+                try {
+                        const nameClean = name.trim();
+                        const cityClean = (city || '').trim();
+                        const typeWord = type === 'restaurant' ? 'restaurant' : '';
 
-        // Strategy 1: Wikipedia search with type-biased query.
-        // Every candidate must: (a) have the place name in its Wikipedia title,
-        // (b) describe the right kind of place in its extract. No match → null,
-        // so we never show a singer's portrait on a restaurant card again.
-        if (cityClean && typeWord) {
-                url = await findValidWikiImage(`${nameClean} ${typeWord} ${cityClean}`, type, nameClean);
-        }
-        if (!url && cityClean) {
-                url = await findValidWikiImage(`${nameClean} ${cityClean}`, type, nameClean);
-        }
-        if (!url && typeWord) {
-                url = await findValidWikiImage(`${nameClean} ${typeWord}`, type, nameClean);
-        }
-        if (!url) {
-                url = await findValidWikiImage(nameClean, type, nameClean);
-        }
+                        let url: string | null = null;
 
-        // Strategy 2: Wikimedia Commons — same name-in-title gate, so we only
-        // get Commons images that are specifically FILED under this place name.
-        if (!url && cityClean) {
-                url = await commonsSearchImage(`${nameClean} ${cityClean} ${typeWord}`.trim(), nameClean);
-        }
-        if (!url) {
-                url = await commonsSearchImage(`${nameClean} ${typeWord}`.trim(), nameClean);
-        }
+                        // Strategy 1: Wikipedia type-biased search with strict title
+                        // + extract validation. Never returns a singer's portrait
+                        // for a restaurant card.
+                        if (cityClean && typeWord) {
+                                url = await findValidWikiImage(`${nameClean} ${typeWord} ${cityClean}`, type, nameClean);
+                        }
+                        if (!url && cityClean) {
+                                url = await findValidWikiImage(`${nameClean} ${cityClean}`, type, nameClean);
+                        }
+                        if (!url && typeWord) {
+                                url = await findValidWikiImage(`${nameClean} ${typeWord}`, type, nameClean);
+                        }
+                        if (!url) {
+                                url = await findValidWikiImage(nameClean, type, nameClean);
+                        }
 
-        cache[key] = { url, at: Date.now() };
-        writeCache(cache);
-        return url;
+                        // Strategy 2: Wikimedia Commons (name-in-title gate)
+                        if (!url && cityClean) {
+                                url = await commonsSearchImage(`${nameClean} ${cityClean} ${typeWord}`.trim(), nameClean);
+                        }
+                        if (!url) {
+                                url = await commonsSearchImage(`${nameClean} ${typeWord}`.trim(), nameClean);
+                        }
+
+                        const currentCache = readCache();
+                        currentCache[key] = { url, at: Date.now() };
+                        writeCache(currentCache);
+                        return url;
+                } finally {
+                        releaseSlot();
+                        inFlight.delete(key);
+                }
+        })();
+
+        inFlight.set(key, promise);
+        return promise;
 };
 
 export const clearPlaceImageCache = (name: string, city: string = '', type: PlaceType = 'restaurant') => {

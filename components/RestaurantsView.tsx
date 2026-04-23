@@ -244,7 +244,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                 try {
                     const prompt = createResearchPrompt(city);
-                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SMART');
+                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
                     const rawData = JSON.parse(response.text || '{}');
                     const categoriesList = rawData.categories || (Array.isArray(rawData) ? rawData : []);
 
@@ -657,6 +657,24 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         };
     }, [tripCities]);
 
+    // Dedupe helper: same place appearing in multiple categories (e.g. Sorn
+    // in 'Authentic Local Food' + 'Luxury & Michelin' + 'תאילנדי') should show
+    // once. Keeps the highest-rated / most-complete entry.
+    const dedupeByName = (list: any[]): any[] => {
+        const pick: Map<string, any> = new Map();
+        for (const r of list) {
+            const key = (r.nameEnglish || r.name || '').trim().toLowerCase();
+            if (!key) continue;
+            const existing = pick.get(key);
+            if (!existing) { pick.set(key, r); continue; }
+            // Keep the entry with the higher rating or more complete source
+            const existingScore = (existing.googleRating || 0) + (existing.recommendationSource ? 0.1 : 0);
+            const newScore = (r.googleRating || 0) + (r.recommendationSource ? 0.1 : 0);
+            if (newScore > existingScore) pick.set(key, r);
+        }
+        return Array.from(pick.values());
+    };
+
     // Filtered Recommended (with City Filter)
     const filteredRestaurants = useMemo(() => {
         let list = [];
@@ -685,7 +703,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 return sourceLower.includes(raterLower);
             });
         }
-        return list;
+
+        // Global dedupe by place name — collapses 4×Sorn into 1
+        return dedupeByName(list);
     }, [aiCategories, selectedCategory, selectedRater, selectedCity, allAiRestaurants, tripCities, inTripScope]);
 
     // Stale data: there are cached results but ALL of them are out of trip scope
