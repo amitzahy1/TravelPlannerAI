@@ -10,6 +10,7 @@ import { UnifiedMapView } from './UnifiedMapView';
 import { ThinkingLoader } from './ThinkingLoader';
 import { PlaceCard } from './PlaceCard';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
+import { ConfirmModal } from './ConfirmModal';
 
 import { cleanTextForMap } from '../utils/textUtils';
 
@@ -97,6 +98,18 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [selectedPlace, setSelectedPlace] = useState<Attraction | null>(null);
 
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+    const [confirmReset, setConfirmReset] = useState(false);
+
+    // Nuke the saved AI research for this trip and start a fresh multi-city run
+    const handleResetResearch = () => {
+        setAiCategories([]);
+        onUpdateTrip({ ...trip, aiAttractions: [] });
+        setSelectedCategory('all');
+        setSelectedRater('all');
+        setConfirmReset(false);
+        // Kick off a fresh research immediately so the user sees new results
+        setTimeout(() => researchAllCities(), 50);
+    };
 
     const attractionsData = trip.attractions || [];
 
@@ -223,30 +236,55 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     };
 
     const createResearchPrompt = (target: string) => `
-    Role: You are the Lead Product Architect and Senior AI Engineer at Google Travel.
-    Mission: Re-engineer the Attraction Discovery Engine to implement the "Curator Algorithm" - a strict, quota-based recommendation system.
+    You are a travel expert helping a family plan a trip to "${target}".
+    Your job: find the best, most-popular, and most-talked-about attractions
+    — INCLUDING famous tourist spots. Don't skip a place because it's touristy
+    — tourists actually want to visit famous places. Don't invent places.
 
-    **PART 1: THE LOGIC RULES**
-    1. **Scope Authority:** Search primarily in "${target}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 20km to find quality spots.
-    2. **Per-Category Quota:** For EACH of the 10 categories below, return **3 to 5 real attractions** (target 5 when the destination supports it). A major tourist city (Bangkok, Rome, Tokyo, Paris) should easily hit 5 per category; smaller places may yield 3. DO NOT cap total at 6 — full response typically contains 30-50 attractions across all categories.
-    3. **NO HALLUCINATIONS:** If a category has no real results (e.g. 'חיי לילה ואווירה' in a rural village), return an empty attractions array for that category. Better empty than fake.
-    4. **Scope Strictness:** Every attraction's "location" field MUST clearly be in or near "${target}". REJECT any attraction not in the requested destination — you will fail the task otherwise.
+    **PART 1: QUOTA & SCOPE**
+    - For EACH of the 10 categories below, return 3-5 real attractions (aim for 5).
+    - Return an empty array for a category ONLY if the city genuinely has no such
+      places (e.g. "חופים ומים" in a landlocked city). Better empty than fake.
+    - A full response for a major tourist city typically contains 30-50 attractions.
+    - Every attraction's "location" MUST clearly be in or near "${target}".
+      If the city is small/village, expand radius up to 20km.
 
-    **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
-    [אתרי חובה, טבע ונופים, מוזיאונים ותרבות, קניות ושווקים, אקסטרים ופעילויות, חופים ומים, למשפחות וילדים, היסטוריה ודת, חיי לילה ואווירה, פינות נסתרות]
+    **PART 2: CATEGORIES**
+    Use EXACTLY these 10 Hebrew titles as "title" — they're the UI keys.
+    The AI decides the best fit for each attraction — do not force mappings.
+    If a place genuinely fits two categories, include it in the better-fitting
+    one (duplicates allowed only when equally relevant).
 
-    **PART 3: THE CURATOR PHILOSOPHY**
-    When providing recommendations:
-    - Cite professional sources (UNESCO, Lonely Planet, Fodor's, Atlas Obscura, etc.)
-    - Filter out viral trends without substance or quality backing
-    - Prioritize authenticity, quality, and genuine local experiences over popularity
-    - Be critical of tourist traps and overhyped locations
-    - Provide context about why a place is recommended (historical significance, cultural value, etc.)
-    - Consider value for money and realistic expectations
-    - Warn about common tourist pitfalls
+    1. "אתרי חובה"
+    2. "טבע ונופים"
+    3. "מוזיאונים ותרבות"
+    4. "קניות ושווקים"
+    5. "אקסטרים ופעילויות"
+    6. "חופים ומים"
+    7. "למשפחות וילדים"
+    8. "היסטוריה ודת"
+    9. "חיי לילה ואווירה"
+    10. "פינות נסתרות"
+
+    **PART 3: QUALITY SIGNALS (not restrictions — just ranking)**
+    - Prefer places with high Google ratings (4.0+), awards, or strong press.
+    - Include iconic must-visit commercial attractions in tourist cities
+      (water parks, go-karting parks, cabaret shows, aquariums, night markets,
+      cultural villages) — they're highly rated for a reason.
+    - Local authority sources (rate higher than Google in many Asian markets):
+      * **Wongnai (วงใน)** — Thailand local app (covers attractions too)
+      * **Tabelog + Jalan** — Japan
+      * **Dianping (大众点评)** — China / Hong Kong locals
+      * **Naver Map** — Korea
+      * **Klook / KKday** — Asian tours & attractions marketplace
+    - Global sources welcome: Google Reviews, TripAdvisor, Lonely Planet,
+      Atlas Obscura, UNESCO, Condé Nast Traveler, BBC Travel, local tourism
+      boards, travel blogs, or your own knowledge.
+    - Use "Top-Rated" / "Local Favorite" when no specific source applies.
 
     OUTPUT JSON ONLY:
-    { "categories": [ { "id", "title", "attractions": [ { "name", "description", "location", "rating", "type", "price", "recommendationSource" } ] } ] }
+    { "categories": [ { "id", "title", "attractions": [ { "name", "description",
+    "location", "rating", "type", "price", "recommendationSource" } ] } ] }
     `;
 
     const fetchRecommendations = async (forceRefresh = false, specificCity?: string) => {
@@ -608,11 +646,20 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     {activeTab === 'recommended' && (
                         <div className="animate-fade-in">
                             {/* Single compact action row — the top city filter bar (above this
-                                tab block) is already enough for picking a city. Here we just
-                                offer 'refresh current city' and 'research all' when we already
-                                have results. Empty state has its own big CTA. */}
+                                tab block) is already enough for picking a city. Here we offer
+                                'refresh' and 'reset research' (nuke the cached data and start
+                                fresh) when we already have results. Empty state has its own big CTA. */}
                             {aiCategories.length > 0 && (
                                 <div className="flex items-center justify-end gap-2 mb-4">
+                                    <button
+                                        onClick={() => setConfirmReset(true)}
+                                        disabled={loadingRecs || isResearchingAll}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-500 hover:border-red-300 hover:text-red-600 disabled:opacity-50"
+                                        title="מחק את המחקר הקיים והרץ מחדש"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                        איפוס מחקר
+                                    </button>
                                     <button
                                         onClick={() => selectedCity !== 'all' ? initiateResearch(selectedCity) : researchAllCities()}
                                         disabled={loadingRecs || isResearchingAll}
@@ -737,6 +784,17 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     onAddToPlan={() => handleToggleRec(selectedPlace, selectedPlace?.categoryTitle || 'תכנון טיול')}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={confirmReset}
+                title="לאפס את המחקר?"
+                message="כל ההמלצות השמורות יימחקו. מיד אחרי האישור יתחיל מחקר חדש לכל הערים של הטיול. לא ניתן לבטל."
+                confirmText="אפס והרץ מחדש"
+                cancelText="ביטול"
+                isDangerous
+                onConfirm={handleResetResearch}
+                onClose={() => setConfirmReset(false)}
+            />
         </div>
     );
 

@@ -9,6 +9,7 @@ import { UnifiedMapView } from './UnifiedMapView';
 import { ThinkingLoader } from './ThinkingLoader';
 import { PlaceCard } from './PlaceCard';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
+import { ConfirmModal } from './ConfirmModal';
 
 // Extended interface for internal use
 interface ExtendedRestaurant extends Restaurant {
@@ -145,6 +146,17 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<Restaurant[] | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<ExtendedRestaurant | null>(null);
+    const [confirmReset, setConfirmReset] = useState(false);
+
+    // Wipe cached AI restaurants and start a fresh multi-city research
+    const handleResetResearch = () => {
+        setAiCategories([]);
+        onUpdateTrip({ ...trip, aiRestaurants: [] });
+        setSelectedCategory('all');
+        setSelectedRater('all');
+        setConfirmReset(false);
+        setTimeout(() => researchAllCities(), 50);
+    };
 
     // Sync state with trip prop
     useEffect(() => {
@@ -281,27 +293,64 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     };
 
     const createResearchPrompt = (specificCity: string) => `
-    Role: You are the Lead Product Architect and Senior AI Engineer at Google Travel.
-    Mission: Re-engineer the Restaurant Discovery Engine to implement the "Curator Algorithm" - a strict, quota-based recommendation system.
+    You are a food expert helping someone find the BEST restaurants in
+    "${specificCity}". Focus on top-rated places, award winners, and
+    spots with recent widespread press. Include iconic street food and
+    hole-in-the-wall legends locals actually eat at.
 
-    **PART 1: THE LOGIC RULES**
-    1. **Scope Authority:** Search primarily in "${specificCity}".
-    2. **Per-Category Quota:** For EACH of the 10 categories below, return **3 to 5 real recommendations** (aim for 5 when the city supports it). A city of Bangkok / Phuket size should hit 5 in most categories; a smaller place may only yield 3.
-    3. **No Hallucinations:** If a category has zero real options in this city, return it with an empty restaurants array — do NOT invent places. Better empty than fake.
-    4. **Total Target:** aim for 30-50 restaurants total per city (10 categories × 3-5 each). DO NOT cap at 6.
+    **PART 1: QUOTA & SCOPE**
+    - For EACH of the 10 categories below, return 3-5 real restaurants
+      (aim for 5 in a major food city). Return an empty array ONLY if
+      the category truly has no real results in this city. Better empty
+      than fake. Full response for a major city = 30-50 restaurants.
+    - Every "location" MUST clearly be in or near "${specificCity}".
 
-    **PART 2: THE "PERFECT DEFINITION MATRIX" (Standard 10 Categories)**
-    [Authentic Local Food, Luxury & Michelin, Cocktail Bars, Family Friendly, Ramen, Pizza, Burger, Cafe & Dessert, Thai, Japanese]
+    **PART 2: CATEGORIES**
+    Use EXACTLY these Hebrew titles as "title" (UI keys). Let the actual
+    cuisine + vibe decide the best-fitting category — don't force matches.
+    A restaurant may appear in two categories if equally relevant.
 
-    **PART 3: THE CURATOR PHILOSOPHY**
-    When providing recommendations:
-    - Cite professional sources (Michelin Guide, James Beard Foundation, Lonely Planet, Fodor's, etc.)
-    - Filter out viral trends without substance or quality backing
-    - Prioritize authenticity, quality, and genuine local experiences over popularity
-    - Be critical of tourist traps and overhyped locations
-    - Provide context about why a place is recommended (awards, chef credentials, historical significance, etc.)
-    - Consider value for money and realistic expectations
-    - Warn about common tourist pitfalls
+    1. "אוכל מקומי אותנטי"
+    2. "יוקרה ומישלן"
+    3. "ברי קוקטיילים"
+    4. "מסעדות משפחתיות"
+    5. "ראמן"
+    6. "פיצה"
+    7. "המבורגר"
+    8. "בתי קפה וקינוחים"
+    9. "תאילנדי"
+    10. "יפני"
+
+    **PART 3: RECENCY CHECK — CRITICAL**
+    Do NOT recommend places whose quality has dropped:
+    - Skip restaurants that USED to be great but have slid in recent
+      reviews (last 12 months). If a Michelin star was LOST, don't
+      recommend on the old star.
+    - Skip places permanently closed, changed hands with bad reviews
+      since, or that had a chef departure that hurt quality.
+    - When in doubt about current quality, leave it out.
+
+    **PART 4: LOCAL AUTHORITY SOURCES (prefer over Google / TripAdvisor)**
+    Locals rate on platforms in their own language, not only Google.
+    Cross-reference these where relevant before recommending:
+    - **Wongnai (วงใน)** — Thailand's #1 local food-review app.
+      For Thai cities, a high Wongnai rating means locals love it.
+    - **Tabelog (食べログ)** — Japan's authority (3.5+ is strong,
+      3.8+ is elite).
+    - **Dianping (大众点评)** — China / Hong Kong locals.
+    - **OpenRice** — Hong Kong, Singapore, Malaysia, Thailand.
+    - **Naver Map** — Korea (locals use this more than Google).
+    - **Zomato** — India, parts of SEA.
+    For Western cities: Michelin Guide, Eater, TimeOut, Asia's 50 Best,
+    World's 50 Best, NYT food section, local food critics.
+    AVOID TripAdvisor as primary — too tourist-trap oriented.
+    Use "Local Favorite" / "Top-Rated" as a fallback when no specific
+    citation applies.
+
+    **PART 5: EXCLUDE**
+    - Global fast-food chains (McDonald's, Starbucks, KFC, Subway,
+      Burger King, Pizza Hut, Domino's)
+    - Places currently closed or with quality decline in last year
 
     OUTPUT JSON ONLY:
     { "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl" } ] } ] }
@@ -314,102 +363,68 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             const currentYear = new Date().getFullYear();
             const prevYear = currentYear - 1;
 
-            // --- CURATOR ALGORITHM v2.0 (Strict Quota System) ---
+            // Single-city research — lean prompt, aligned with the multi-city
+            // createResearchPrompt. Focus: top-rated + award winners + recency
+            // check + local-authority sources.
             const prompt = `
-            Role: You are the Lead Product Architect and Senior AI Engineer at Google Travel.
-            Mission: Re-engineer the Restaurant Discovery Engine to implement the "Curator Algorithm" - a strict, quota-based recommendation system.
+            You are a food expert helping someone find the BEST restaurants in
+            "${specificCity}". Find top-rated places, award winners, spots
+            with strong recent press, and iconic hole-in-the-wall local legends.
 
-            **PART 1: THE LOGIC RULES**
-            1. **Scope Authority:** Search primarily in "${specificCity}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 30km to find quality spots.
-            2. **Per-Category Quota:** For EACH of the 10 categories below, return **3 to 5 real recommendations** (target 5 when the city is big enough). A major food city (Bangkok, Tokyo, NYC) should easily hit 5 in most categories; a smaller destination may yield 3. DO NOT cap total at 6 — a full response can contain 30-50 restaurants across categories.
-            3. **NO HALLUCINATIONS:** If a category (e.g. Ramen in Koh Chang) has no real results, return it with an empty list. Better empty than fake.
-            4. **Quality Firewall:** STRICTLY REJECT global fast-food chains (McDonald's, Starbucks, KFC). Prioritize "Chef-Driven" and "Local Legend" spots.
-            5. **Context Verification:** You are searching for "${specificCity}". Ensure this is a real location.
-            6. **NO TRANSPORT DATA:** Do NOT return flights, trains, or hotels. ONLY RESTAURANTS. If you return "transport" or "flight" data, you fail.
+            **PART 1: QUOTA & SCOPE**
+            - For EACH of the 10 categories below, return 3-5 real restaurants
+              (aim for 5 in a major food city). Empty array ONLY if the category
+              truly has nothing. Total response for a major city = 30-50.
+            - Every "location" MUST be in or near "${specificCity}".
+            - If the city is small/village, expand radius to 30km.
 
-            **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
-            
-            1. **"אוכל מקומי אותנטי"** (Authentic Local Food)
-               - Persona: The City's Pride. Iconic places serving the region's signature dish.
-               - Anti-Pattern: International food disguised as local.
-               
-            2. **"יוקרה ומישלן"** (Luxury & Michelin)
-               - Persona: The Experience. White tablecloths, tasting menus.
-               - Anti-Pattern: Casual or messy environments.
+            **PART 2: CATEGORIES (use EXACTLY these Hebrew titles as "title"):**
+            1. "אוכל מקומי אותנטי"
+            2. "יוקרה ומישלן"
+            3. "ברי קוקטיילים"
+            4. "מסעדות משפחתיות"
+            5. "ראמן"
+            6. "פיצה"
+            7. "המבורגר"
+            8. "בתי קפה וקינוחים"
+            9. "תאילנדי"
+            10. "יפני"
 
-            3. **"ברי קוקטיילים"** (Cocktail Bars)
-               - Persona: The Vibe. Mixology, speakeasies, high-end hotel bars.
-               - Anti-Pattern: Dance clubs, dive bars, student pubs.
-               
-            4. **"מסעדות משפחתיות"** (Family Friendly)
-               - Persona: The Balance. Great food with space for strollers/kids.
-               - Anti-Pattern: Cramped, silent, or dark places.
+            Let the actual cuisine + vibe decide the best-fitting category.
+            A restaurant may appear in two categories if equally relevant.
+            Descriptions MUST be in HEBREW. "location" format: "Street, City".
 
-            5. **"ראמן"** (Ramen)
-               - Persona: Slurp & Soul. Dedicated Tonkotsu/Shoyu bars.
-               - Anti-Pattern: Generic Asian places that "have soup".
+            **PART 3: RECENCY CHECK (CRITICAL)**
+            Do NOT recommend places whose quality dropped in the last 12 months:
+            - Skip former-glory places that have slid on recent reviews.
+            - If a Michelin star was LOST, don't recommend on the old star.
+            - Skip permanently closed, bad chef departure, new bad management.
+            - When in doubt about current quality, leave it out.
 
-            6. **"פיצה"** (Pizza)
-               - Title ID: pizza
-               - Hebrew Title: "פיצה"
-               - Persona: Dough & Fire. Wood-fired Neapolitan/Roman.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "פיצה".
+            **PART 4: LOCAL AUTHORITY SOURCES**
+            Locals rate on platforms in their own language. Use these as
+            signals in addition to / instead of Google:
+            - **Wongnai (วงใน)** — Thailand's #1 local app. Essential for Thai cities.
+            - **Tabelog (食べログ)** — Japan's authority. 3.5+ is strong, 3.8+ elite.
+            - **Dianping (大众点评)** — China / Hong Kong locals.
+            - **OpenRice** — Hong Kong, Singapore, Malaysia, Thailand.
+            - **Naver Map** — Korea (locals use this more than Google).
+            - **Zomato** — India, parts of SEA.
+            Plus global: Michelin Guide, Asia's 50 Best, World's 50 Best,
+            Eater, TimeOut, Condé Nast Traveler, NYT food, local press.
+            AVOID TripAdvisor as primary source.
+            Fallback: "Local Favorite" / "Top-Rated" when no specific source.
 
-            7. **"המבורגר"** (Burger)
-               - Title ID: burger
-               - Hebrew Title: "המבורגר"
-               - Persona: Meat & Bun. Gourmet/Smash burgers.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "המבורגר".
-
-            8. **"בתי קפה וקינוחים"** (Cafe & Dessert)
-               - Title ID: cafe_dessert
-               - Hebrew Title: "בתי קפה וקינוחים"
-               - Persona: Third Wave & Sugar. Specialty roasters, Patisseries.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "בתי קפה וקינוחים".
-
-            9. **"תאילנדי"** (Thai)
-               - Title ID: thai
-               - Hebrew Title: "תאילנדי"
-               - Persona: Spice & Wok. Authentic Pad Thai/Green Curry.
-               - Multi-Lingual Rule: The JSON 'title' field MUST be "תאילנדי".
-
-            10. **"יפני"** (Japanese - NO RAMEN)
-                - Title ID: japanese
-                - Hebrew Title: "יפני"
-                - Persona: Precision. Sushi, Izakaya, Katsu.
-                - Multi-Lingual Rule: The JSON 'title' field MUST be "יפני".
-
-            **PART 3: DATA INTEGRITY**
-            - **CRITICAL:** Return pure JSON.
-            - **Titles:** The 'title' field in the JSON categories MUST be the Hebrew string (e.g. "פיצה", not "Pizza").
-            - **Icons:** Map 'cuisine' field to internal IDs: [Local, Fine, Bar, Family, Ramen, Pizza, Burger, Cafe, Thai, Japanese].
-            - **Hotel:** If inside a hotel, set isHotelRestaurant = true.
-            
-            **PART 4: AUTHORITY SOURCES ONLY**
-            - The 'recommendationSource' field must be a REAL, recognized authority.
-            - **ALLOWED SOURCES:** [Michelin Guide, 50 Best, TimeOut, Eater, TripAdvisor, Google Review, Local Legend, Gault & Millau].
-            - **BANNED SOURCES:** Generic names like "Burger Blog", "Bar Awards", "Foodie Guy", "American Blog".
-            - If no specific source exists, use "Google Review" or "Local Legend".
-
-            **PART 5: CRITICAL QUALITY RULES (THE CURATOR PHILOSOPHY)**
-            When providing recommendations:
-            - **Cite professional sources** (Michelin Guide, James Beard Foundation, Lonely Planet, Fodor's, etc.)
-            - **Filter out viral trends** without substance or quality backing (avoid "TikTok hype" if food is mediocre).
-            - **Prioritize authenticity, quality, and genuine local experiences** over popularity.
-            - **Be critical of tourist traps** and overhyped locations.
-            - **Provide context** about why a place is recommended (awards, chef credentials, historical significance, etc.).
-            - **Consider value for money** and realistic expectations.
-            - **Warn about common tourist pitfalls**.
-            
-            Your goal is to provide trustworthy, well-researched recommendations that travelers can rely on.
-
-            **PART 6: REVIEW & FORMATTING RULES**
-            - **Review Check:** MUST have > 50 reviews (prefer >100). Do NOT invent places.
-            - **Anti-Tourist Trap Rule:** REJECT places with > 3000 reviews but rating < 4.4. (High volume + mediocre score = Trap).
-            - **Hotel Logic:** EXCLUDE hotels unless they have a SPECIFIC, NAMED restaurant (e.g. "Alain Ducasse at The Dorchester"). Do NOT recommend "The Hilton" as a restaurant.
-            - **Language Rule:** Descriptions MUST be in HEBREW Only.
-            - **Location Format:** "Street, City". Do NOT include text like "(30km radius)" or "(Approx)".
-            - **Hotel Logic (Naming):** If restaurant is inside a hotel, set 'isHotelRestaurant' = true and use "Name (at Hotel)" format.
+            **PART 5: FORMATTING**
+            - Return pure JSON. Title MUST be the Hebrew string exactly.
+            - Map 'cuisine' to one of: Local, Fine, Bar, Family, Ramen, Pizza,
+              Burger, Cafe, Thai, Japanese.
+            - EXCLUDE hotels unless they have a specific named restaurant
+              (e.g. "Gaggan Anand at SO/ Bangkok"). Don't recommend "The Hilton".
+              If restaurant is inside a hotel, set isHotelRestaurant = true and
+              use "Name (at Hotel Name)" format.
+            - EXCLUDE global fast-food chains (McDonald's, Starbucks, KFC,
+              Subway, Burger King, Pizza Hut, Domino's).
             `;
 
             // Replaced Schema with Prompt Instruction for standard SDK
@@ -935,6 +950,15 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             {aiCategories.length > 0 && (
                                 <div className="flex items-center justify-end gap-2 mb-4">
                                     <button
+                                        onClick={() => setConfirmReset(true)}
+                                        disabled={loadingRecs || isResearchingAll}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-500 hover:border-red-300 hover:text-red-600 disabled:opacity-50"
+                                        title="מחק את המחקר הקיים והרץ מחדש"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                        איפוס מחקר
+                                    </button>
+                                    <button
                                         onClick={() => selectedCity !== 'all' ? initiateResearch(selectedCity) : researchAllCities()}
                                         disabled={loadingRecs || isResearchingAll}
                                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
@@ -1069,6 +1093,17 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     onAddToPlan={() => handleToggleRec(selectedPlace, selectedPlace?.categoryTitle || 'תכנון טיול')}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={confirmReset}
+                title="לאפס את המחקר?"
+                message="כל ההמלצות השמורות יימחקו. מיד אחרי האישור יתחיל מחקר חדש לכל הערים של הטיול. לא ניתן לבטל."
+                confirmText="אפס והרץ מחדש"
+                cancelText="ביטול"
+                isDangerous
+                onConfirm={handleResetResearch}
+                onClose={() => setConfirmReset(false)}
+            />
         </div>
     );
 };
