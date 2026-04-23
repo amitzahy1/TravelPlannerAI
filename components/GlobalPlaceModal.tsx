@@ -142,7 +142,7 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                 </button>
 
                                 <div className="h-52 w-full relative">
-                                        <img src={imageUrl} alt={visualLabel} className="w-full h-full object-cover" />
+                                        <img src={imageUrl} alt={visualLabel} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                                         <div className="absolute bottom-4 left-4 flex gap-2">
                                                 {/* Primary Hebrew Tag */}

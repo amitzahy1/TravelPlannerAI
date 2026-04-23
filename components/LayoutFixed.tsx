@@ -134,9 +134,10 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         {/* Mobile Menu Trigger */}
                                                         <button
                                                                 onClick={() => setIsTripMenuOpen(true)}
-                                                                className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-700 hover:bg-slate-200"
+                                                                className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-700 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                                                aria-label="פתח תפריט"
                                                         >
-                                                                <List className="w-5 h-5" />
+                                                                <List className="w-5 h-5" aria-hidden="true" />
                                                         </button>
                                                 </div>
                                         </div>
@@ -235,8 +236,12 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                 <div className="lg:hidden fixed inset-0 z-[100] bg-white animate-fade-in flex flex-col">
                                         <div className="p-4 flex justify-between items-center border-b border-slate-100 bg-white sticky top-0 z-10">
                                                 <span className="font-black text-xl text-slate-800">תפריט</span>
-                                                <button onClick={() => setIsTripMenuOpen(false)} className="p-2 bg-slate-100 rounded-full">
-                                                        <X className="w-6 h-6 text-slate-600" />
+                                                <button
+                                                        onClick={() => setIsTripMenuOpen(false)}
+                                                        className="p-2 bg-slate-100 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                                        aria-label="סגור תפריט"
+                                                >
+                                                        <X className="w-6 h-6 text-slate-600" aria-hidden="true" />
                                                 </button>
                                         </div>
 
@@ -333,10 +338,12 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                 whileHover={{ scale: 1.15, y: -6 }}
                                                 whileTap={{ scale: 0.95 }}
                                                 onClick={() => onSwitchTab(item.id)}
-                                                className={`dock-item ${currentTab === item.id ? 'active' : ''}`}
+                                                className={`dock-item ${currentTab === item.id ? 'active' : ''} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
                                                 title={item.label}
+                                                aria-label={item.label}
+                                                aria-current={currentTab === item.id ? 'page' : undefined}
                                         >
-                                                <item.icon className="w-5 h-5" />
+                                                <item.icon className="w-5 h-5" aria-hidden="true" />
 
                                                 {/* Active Glow */}
                                                 <AnimatePresence>
@@ -365,8 +372,9 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                         whileHover={{ scale: 1.1 }}
                                         whileTap={{ scale: 0.9 }}
                                         onClick={() => setIsTripMenuOpen(true)}
-                                        className={`dock-item ${isTripMenuOpen || currentTab === 'trips' ? 'active bg-gradient-to-br from-indigo-500 to-purple-600 text-white' : ''}`}
+                                        className={`dock-item ${isTripMenuOpen || currentTab === 'trips' ? 'active bg-gradient-to-br from-indigo-500 to-purple-600 text-white' : ''} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
                                         title="תפריט"
+                                        aria-label="פתח תפריט טיולים"
                                 >
                                         <List className="w-5 h-5" />
                                 </motion.button>

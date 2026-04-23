@@ -37,6 +37,42 @@
   h6 {
     @apply font-outfit tracking-tight;
   }
+
+  /* Accessibility: keyboard-only focus ring. Shown for :focus-visible so
+   * mouse users don't see it, but tab-nav + screen-reader users do.
+   * Overrides Tailwind defaults (which strip outlines globally). */
+  :focus-visible {
+    outline: 2px solid rgb(59 130 246 / 0.9);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Respect user's reduced-motion preference across all animations. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Skip-to-content link: visible only when focused via keyboard. */
+.skip-to-content {
+  position: absolute;
+  top: -40px;
+  right: 1rem;
+  z-index: 200;
+  padding: 0.5rem 1rem;
+  background: #2563eb;
+  color: white;
+  font-weight: 700;
+  border-radius: 8px;
+  transition: top 0.2s;
+}
+.skip-to-content:focus-visible {
+  top: 1rem;
 }
 
 /* ============================================

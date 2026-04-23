@@ -331,6 +331,7 @@ const AppContent: React.FC = () => {
 
   return (
     <HashRouter>
+      <a href="#main-content" className="skip-to-content">דלג לתוכן</a>
       <Layout
         activeTrip={activeTrip}
         trips={trips}
@@ -341,7 +342,9 @@ const AppContent: React.FC = () => {
         onUpdateTrip={(t) => updateTripMutation.mutate(t)}
         onDeleteTrip={(id) => deleteTripMutation.mutate(id)}
       >
-        {renderContent()}
+        <main id="main-content" role="main" tabIndex={-1}>
+          {renderContent()}
+        </main>
       </Layout>
 
       {/* Magical Onboarding Wizard */}
