@@ -207,7 +207,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                         x: { type: "spring", stiffness: 300, damping: 30 },
                                                                         opacity: { duration: 0.2 }
                                                                 }}
-                                                                className="w-full absolute"
+                                                                className="absolute inset-0 w-full h-full flex"
                                                         >
                                                                 {tripData.method === 'smart' ? (
                                                                         <Step3_SmartImport
