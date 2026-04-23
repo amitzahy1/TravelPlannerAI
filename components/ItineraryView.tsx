@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import { resolveLocationName, extractRobustCity, cleanCityName } from '../utils/geoData'; // Imported from new DB
-import { getCityTheme } from '../utils/cityColors'; // Color Engine
+import { getCityTheme, buildCityColorMap, lookupCityTheme } from '../utils/cityColors'; // Color Engine
 import {
     MapPin, Calendar, Navigation, Info, ExternalLink,
     Share2, Download, CloudRain, Sun, Moon,
@@ -714,6 +714,13 @@ export const ItineraryView: React.FC<{
 
     const activeDay = useMemo(() => timeline.find(d => d.dateIso === selectedDayIso), [timeline, selectedDayIso]);
 
+    // Trip-aware colour map — guarantees distinct colours for every unique city
+    // across the whole itinerary, so Pattaya / Bangkok / Abu Dhabi never collide.
+    const cityColorMap = useMemo(() => {
+        const cities = timeline.map(d => cleanCityName(d.locationContext || '')).filter(Boolean);
+        return buildCityColorMap(cities);
+    }, [timeline]);
+
     return (
         <div className="space-y-8 animate-fade-in pb-24">
 
@@ -973,8 +980,9 @@ export const ItineraryView: React.FC<{
                                     const dayNumber = index + 1;
                                     const isLastDay = index === timeline.length - 1;
 
-                                    // Use dynamic theme engine
-                                    const theme = getCityTheme(cleanCityName(day.locationContext));
+                                    // Use dynamic theme engine — trip-aware so distinct cities always
+                                    // get distinct colours (see buildCityColorMap above).
+                                    const theme = lookupCityTheme(cityColorMap, cleanCityName(day.locationContext));
                                     const headerColorClass = theme.bg;
 
                                     // COMPACT VIEW - Slim horizontal cards
@@ -1022,7 +1030,7 @@ export const ItineraryView: React.FC<{
                                                     </div>
 
                                                     {/* Middle: Location */}
-                                                    <h3 className="text-xs font-bold text-slate-800 truncate leading-tight">{day.locationContext || 'יום בטיול'}</h3>
+                                                    <h3 className="text-xs font-bold text-slate-800 leading-tight line-clamp-2">{day.locationContext || 'יום בטיול'}</h3>
 
                                                     {/* Bottom: Event Badges */}
                                                     <div className="flex items-center gap-1 flex-wrap">
@@ -1042,7 +1050,7 @@ export const ItineraryView: React.FC<{
                                         <div
                                             key={day.dateIso}
                                             onClick={() => setSelectedDayIso(day.dateIso)}
-                                            className="bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-[260px] relative"
+                                            className="bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col min-h-[260px] relative"
                                         >
                                             {/* Header Background */}
                                             <div className={`h-16 ${headerColorClass} relative overflow-hidden flex items-center px-4`}>
@@ -1060,8 +1068,8 @@ export const ItineraryView: React.FC<{
                                                         </div>
                                                     </div>
                                                     {/* Location Context */}
-                                                    <div className="text-right max-w-[50%]">
-                                                        <h3 className="text-sm font-bold text-white truncate leading-tight opacity-95">{day.locationContext || 'יום בטיול'}</h3>
+                                                    <div className="text-right max-w-[55%]">
+                                                        <h3 className="text-sm font-bold text-white leading-tight opacity-95 line-clamp-2">{day.locationContext || 'יום בטיול'}</h3>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1097,10 +1105,10 @@ export const ItineraryView: React.FC<{
                                                 {day.events.length > 0 ? (
                                                     <div className="space-y-1.5 relative z-10">
                                                         {day.events.slice(0, 3).map((event, idx) => (
-                                                            <div key={idx} className="flex items-center gap-2 w-full">
-                                                                <span className="text-[10px] font-mono font-bold opacity-50 min-w-[32px]">{event.time || "--:--"}</span>
-                                                                <div className={`p-1 rounded-full ${event.bgClass} flex-shrink-0`}><event.icon className={`w-3 h-3 ${event.colorClass}`} /></div>
-                                                                <span className="text-xs font-bold text-slate-700 truncate leading-none flex-1 opacity-90">{event.title}</span>
+                                                            <div key={idx} className="flex items-start gap-2 w-full">
+                                                                <span className="text-[10px] font-mono font-bold opacity-50 min-w-[32px] pt-0.5">{event.time || "--:--"}</span>
+                                                                <div className={`p-1 rounded-full ${event.bgClass} flex-shrink-0 mt-0.5`}><event.icon className={`w-3 h-3 ${event.colorClass}`} /></div>
+                                                                <span className="text-xs font-bold text-slate-700 leading-snug flex-1 opacity-90 line-clamp-2 break-words">{event.title}</span>
                                                             </div>
                                                         ))}
                                                         {day.events.length > 3 && (
@@ -1142,7 +1150,7 @@ export const ItineraryView: React.FC<{
                         <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] animate-scale-in" onClick={e => e.stopPropagation()}>
                             {/* Modal Header */}
                             {(() => {
-                                const modalTheme = getCityTheme(cleanCityName(activeDay.locationContext));
+                                const modalTheme = lookupCityTheme(cityColorMap, cleanCityName(activeDay.locationContext));
                                 return (
                                     <div className={`${modalTheme.bg} border-b border-white/10 p-5 flex items-center justify-between flex-shrink-0`}>
                                         <div className="flex items-center gap-3">
