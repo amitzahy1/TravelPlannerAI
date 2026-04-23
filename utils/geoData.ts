@@ -178,6 +178,133 @@ export const cleanCityName = (name: string): string => {
         return cleaned;
 };
 
+// Hebrew display names for common tourist cities. Used to normalise a
+// city-name list so the same city doesn't appear twice in different
+// languages (e.g. 'Bangkok' and 'בנגקוק'). Keys are lowercase English; add
+// more pairs as the app expands into new regions.
+const CITY_HEBREW_NAMES: Record<string, string> = {
+        // Thailand
+        'bangkok': 'בנגקוק',
+        'koh chang': "קו צ'אנג",
+        'ko chang': "קו צ'אנג",
+        'pattaya': 'פטאיה',
+        'phuket': 'פוקט',
+        'ko samui': 'קו סאמוי',
+        'koh samui': 'קו סאמוי',
+        'samui': 'קו סאמוי',
+        'chiang mai': "צ'יאנג מאי",
+        'krabi': 'קראבי',
+        'hua hin': 'חואה הין',
+        'trat': 'טראט',
+        // UAE
+        'abu dhabi': 'אבו דאבי',
+        'dubai': 'דובאי',
+        // Israel
+        'tel aviv': 'תל אביב',
+        'tel-aviv': 'תל אביב',
+        'jerusalem': 'ירושלים',
+        'haifa': 'חיפה',
+        'eilat': 'אילת',
+        // Europe
+        'paris': 'פריז',
+        'london': 'לונדון',
+        'rome': 'רומא',
+        'milan': 'מילאנו',
+        'florence': 'פירנצה',
+        'venice': 'ונציה',
+        'barcelona': 'ברצלונה',
+        'madrid': 'מדריד',
+        'lisbon': 'ליסבון',
+        'porto': 'פורטו',
+        'amsterdam': 'אמסטרדם',
+        'berlin': 'ברלין',
+        'munich': 'מינכן',
+        'vienna': 'וינה',
+        'prague': 'פראג',
+        'budapest': 'בודפשט',
+        'athens': 'אתונה',
+        // North America
+        'new york': 'ניו יורק',
+        'los angeles': 'לוס אנג\'לס',
+        'miami': 'מיאמי',
+        'san francisco': 'סן פרנסיסקו',
+        'las vegas': 'לאס וגאס',
+        // Asia
+        'tokyo': 'טוקיו',
+        'kyoto': 'קיוטו',
+        'osaka': 'אוסקה',
+        'seoul': 'סיאול',
+        'hong kong': 'הונג קונג',
+        'singapore': 'סינגפור',
+        'bali': 'באלי',
+        'kuala lumpur': 'קואלה לומפור',
+        // Philippines
+        'manila': 'מנילה',
+        'cebu': 'סבו',
+        'boracay': 'בוראקאי',
+        'el nido': 'אל נידו',
+        'palawan': 'פלאוואן',
+        // Georgia
+        'tbilisi': 'טביליסי',
+        'batumi': 'באטומי',
+        'kazbegi': 'קזבגי',
+        'kutaisi': 'קוטאיסי',
+        // Countries (shown when only destination is set)
+        'thailand': 'תאילנד',
+        'israel': 'ישראל',
+        'italy': 'איטליה',
+        'france': 'צרפת',
+        'greece': 'יוון',
+        'japan': 'יפן',
+        'georgia': 'גאורגיה',
+        'philippines': 'הפיליפינים',
+};
+
+// Reverse map for fast Hebrew → English key lookup
+const HEBREW_TO_ENGLISH_KEY: Record<string, string> = Object.entries(CITY_HEBREW_NAMES)
+        .reduce((acc, [en, he]) => { acc[he] = en; return acc; }, {} as Record<string, string>);
+
+/**
+ * Normalise a city name to a canonical key (lowercase English) when we know it,
+ * else to its cleaned form. Use this to detect that 'Bangkok' and 'בנגקוק' are
+ * the same city, without deciding on a display language.
+ */
+const cityKey = (name: string): string => {
+        if (!name) return '';
+        const cleaned = cleanCityName(name).trim();
+        if (!cleaned) return '';
+        const lower = cleaned.toLowerCase();
+        // English match
+        if (CITY_HEBREW_NAMES[lower]) return lower;
+        // Hebrew match
+        if (HEBREW_TO_ENGLISH_KEY[cleaned]) return HEBREW_TO_ENGLISH_KEY[cleaned];
+        // Unknown — use lowercase cleaned as the key
+        return lower;
+};
+
+/**
+ * Pick the preferred display form for a city name. Defaults to Hebrew because
+ * the app UI is Hebrew-first; passes unknown cities through unchanged so we
+ * never drop user-provided names.
+ */
+export const displayCityName = (name: string, lang: 'he' | 'en' = 'he'): string => {
+        if (!name) return '';
+        const cleaned = cleanCityName(name).trim();
+        const lower = cleaned.toLowerCase();
+        if (lang === 'he') {
+                if (CITY_HEBREW_NAMES[lower]) return CITY_HEBREW_NAMES[lower];
+                if (HEBREW_TO_ENGLISH_KEY[cleaned]) return cleaned; // already Hebrew we recognise
+                return cleaned;
+        } else {
+                if (CITY_HEBREW_NAMES[lower]) return cleaned; // already English we recognise
+                const englishKey = HEBREW_TO_ENGLISH_KEY[cleaned];
+                if (englishKey) {
+                        return englishKey.replace(/\b\w/g, c => c.toUpperCase());
+                }
+                return cleaned;
+        }
+};
+
 /**
  * SMART City Extraction - finds actual city from hotel address or context
  * Refactored from ItineraryView to be shared across the app
@@ -273,45 +400,54 @@ export const extractRobustCity = (address: string, hotelName: string, trip: Trip
  */
 export const getTripCities = (
         trip: Trip,
-        opts?: { excludeFlightOnly?: boolean }
+        opts?: { excludeFlightOnly?: boolean; lang?: 'he' | 'en' }
 ): string[] => {
-        const unique = new Set<string>();
+        const lang: 'he' | 'en' = opts?.lang ?? 'he';
+        // Dedupe by canonical key (language-agnostic); display in chosen language.
+        const seenKeys = new Set<string>();
+        const output: string[] = [];
+        const add = (raw: string) => {
+                if (!raw) return;
+                const key = cityKey(raw);
+                if (!key || seenKeys.has(key)) return;
+                seenKeys.add(key);
+                output.push(displayCityName(raw, lang));
+        };
 
-        // Pre-compute the set of hotel cities so we can filter flight-only
-        // destinations out when requested.
-        const hotelCitiesLower = new Set<string>();
+        // Pre-compute the set of hotel city KEYS so we can filter flight-only
+        // destinations out when requested (language-agnostic comparison).
+        const hotelCityKeys = new Set<string>();
         trip.hotels?.forEach(h => {
                 const extracted = extractRobustCity(h.address || '', h.name || '', trip);
-                if (extracted) hotelCitiesLower.add(cleanCityName(extracted).toLowerCase());
-                if (h.city) hotelCitiesLower.add(cleanCityName(h.city).toLowerCase());
+                if (extracted) hotelCityKeys.add(cityKey(extracted));
+                if (h.city) hotelCityKeys.add(cityKey(h.city));
         });
 
         // 1. Wizard Destination
         if (trip.destination) {
-                trip.destination.split(/ - | & |, /).forEach(s => unique.add(cleanCityName(s.trim())));
+                trip.destination.split(/ - | & |, /).forEach(s => add(s.trim()));
         }
 
         // 2. Flight Destinations (Arrivals) — skipped for non-hotel cities when
         // excludeFlightOnly is on, so layover / transit cities don't pollute
         // AI research for food + attractions.
-        const originCity = trip.flights?.segments?.[0]?.fromCity?.toLowerCase();
+        const originKey = trip.flights?.segments?.[0]?.fromCity
+                ? cityKey(trip.flights.segments[0].fromCity)
+                : '';
         trip.flights?.segments?.forEach(s => {
                 if (!s.toCity) return;
-                const toLower = s.toCity.toLowerCase();
-                if (toLower === originCity) return;
-                const cleaned = cleanCityName(s.toCity);
-                if (opts?.excludeFlightOnly && !hotelCitiesLower.has(cleaned.toLowerCase())) {
-                        return;
-                }
-                unique.add(cleaned);
+                const k = cityKey(s.toCity);
+                if (!k || k === originKey) return;
+                if (opts?.excludeFlightOnly && !hotelCityKeys.has(k)) return;
+                add(s.toCity);
         });
 
         // 3. Hotel Cities (Using Robust Extraction)
         trip.hotels?.forEach(h => {
                 const extracted = extractRobustCity(h.address || '', h.name || '', trip);
-                if (extracted) unique.add(cleanCityName(extracted));
-                if (h.city) unique.add(cleanCityName(h.city));
+                if (extracted) add(extracted);
+                if (h.city) add(h.city);
         });
 
-        return Array.from(unique).filter(Boolean);
+        return output.filter(Boolean);
 };
