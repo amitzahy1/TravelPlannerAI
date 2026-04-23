@@ -16,16 +16,17 @@ const GOOGLE_MODELS = {
     "gemini-2.5-pro",
   ],
   // Tier 2: Used for SEARCH intent (restaurant/attraction market research).
-  // This is a knowledge-recall task where model depth + freshness matter far
-  // more than latency — flash-lite misses niche local spots that the pro
-  // tier surfaces reliably, and the newer training cutoff on 3.1 catches
-  // recently-opened places. Preview-model risk (Google deprecates these
-  // without notice — e.g. gemini-3-pro-preview was retired 2026-03-09) is
-  // absorbed by the 2.5-pro fallback, which is GA and will stay available.
+  // Knowledge-recall task — pro tier gives dramatically better coverage of
+  // niche local places than flash-lite.
+  //
+  // Observed in production (2026-04-23): gemini-3.1-pro-preview is timing
+  // out reliably on the 60-second worker budget for large prompts, so it
+  // costs us a 60-second wait before fallback kicks in. Moved it out of
+  // the primary slot — 2.5-pro is GA, fast enough, and gives comparable
+  // quality for restaurant / attraction discovery.
   RESEARCH_CANDIDATES: [
-    "gemini-3.1-pro-preview",  // PRIMARY — newest + deepest
-    "gemini-2.5-pro",          // FALLBACK — stable GA, strong reasoning
-    "gemini-2.5-flash",        // LAST RESORT — if both pros rate-limit
+    "gemini-2.5-pro",          // PRIMARY — stable GA, reliable latency
+    "gemini-2.5-flash",        // FALLBACK — if pro rate-limits
   ],
   // Tier 3: Used for FAST intent (chat, quick suggestions)
   FAST_CANDIDATES: [

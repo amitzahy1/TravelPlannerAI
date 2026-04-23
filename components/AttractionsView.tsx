@@ -228,9 +228,10 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     **PART 1: THE LOGIC RULES**
     1. **Scope Authority:** Search primarily in "${target}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 20km to find quality spots.
-    2. **Quality > Quantity:** Return **UP TO 6** recommendations.
-    3. **NO HALLUCINATIONS:** If a category has no real results, return empty.
-    
+    2. **Per-Category Quota:** For EACH of the 10 categories below, return **3 to 5 real attractions** (target 5 when the destination supports it). A major tourist city (Bangkok, Rome, Tokyo, Paris) should easily hit 5 per category; smaller places may yield 3. DO NOT cap total at 6 — full response typically contains 30-50 attractions across all categories.
+    3. **NO HALLUCINATIONS:** If a category has no real results (e.g. 'חיי לילה ואווירה' in a rural village), return an empty attractions array for that category. Better empty than fake.
+    4. **Scope Strictness:** Every attraction's "location" field MUST clearly be in or near "${target}". REJECT any attraction not in the requested destination — you will fail the task otherwise.
+
     **PART 2: THE "PERFECT DEFINITION MATRIX" (Output strictly these 10 categories):**
     [אתרי חובה, טבע ונופים, מוזיאונים ותרבות, קניות ושווקים, אקסטרים ופעילויות, חופים ומים, למשפחות וילדים, היסטוריה ודת, חיי לילה ואווירה, פינות נסתרות]
 

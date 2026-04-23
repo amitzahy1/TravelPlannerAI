@@ -286,8 +286,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     **PART 1: THE LOGIC RULES**
     1. **Scope Authority:** Search primarily in "${specificCity}".
-    2. **Quality > Quantity:** Return **UP TO 6** recommendations.
-    
+    2. **Per-Category Quota:** For EACH of the 10 categories below, return **3 to 5 real recommendations** (aim for 5 when the city supports it). A city of Bangkok / Phuket size should hit 5 in most categories; a smaller place may only yield 3.
+    3. **No Hallucinations:** If a category has zero real options in this city, return it with an empty restaurants array — do NOT invent places. Better empty than fake.
+    4. **Total Target:** aim for 30-50 restaurants total per city (10 categories × 3-5 each). DO NOT cap at 6.
+
     **PART 2: THE "PERFECT DEFINITION MATRIX" (Standard 10 Categories)**
     [Authentic Local Food, Luxury & Michelin, Cocktail Bars, Family Friendly, Ramen, Pizza, Burger, Cafe & Dessert, Thai, Japanese]
 
@@ -319,8 +321,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
             **PART 1: THE LOGIC RULES**
             1. **Scope Authority:** Search primarily in "${specificCity}". IF (and only if) the city is small/village, AUTOMATICALLY expand radius to 30km to find quality spots.
-            2. **Quality > Quantity:** Return **UP TO 6** recommendations. If only 3 amazing places exist, return 3. Do NOT fill with mediocrity.
-            3. **NO HALLUCINATIONS:** If a category (e.g. Ramen) has no real results in this city, return an empty list. Better empty than fake.
+            2. **Per-Category Quota:** For EACH of the 10 categories below, return **3 to 5 real recommendations** (target 5 when the city is big enough). A major food city (Bangkok, Tokyo, NYC) should easily hit 5 in most categories; a smaller destination may yield 3. DO NOT cap total at 6 — a full response can contain 30-50 restaurants across categories.
+            3. **NO HALLUCINATIONS:** If a category (e.g. Ramen in Koh Chang) has no real results, return it with an empty list. Better empty than fake.
             4. **Quality Firewall:** STRICTLY REJECT global fast-food chains (McDonald's, Starbucks, KFC). Prioritize "Chef-Driven" and "Local Legend" spots.
             5. **Context Verification:** You are searching for "${specificCity}". Ensure this is a real location.
             6. **NO TRANSPORT DATA:** Do NOT return flights, trains, or hotels. ONLY RESTAURANTS. If you return "transport" or "flight" data, you fail.
