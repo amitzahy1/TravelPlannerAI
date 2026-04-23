@@ -1,4 +1,5 @@
 import { Trip, FlightSegment, HotelBooking } from '../types';
+import { geocode, readGeoCache } from './geocode';
 
 /**
  * Trip Summary Export — v6 (Full-Width Dashboard)
@@ -279,21 +280,34 @@ interface MapStop {
   emoji: string;
 }
 
-const readGeoCache = (): Record<string, { lat: number; lng: number }> => {
-  try {
-    const raw = typeof localStorage !== 'undefined'
-      ? localStorage.getItem('travel_app_geo_cache_v5')
-      : null;
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
+/**
+ * Candidate lookup keys for a hotel, tried in order. Covers: the
+ * hotel's own name; each comma-separated piece of the address; and
+ * the `city` field if set. Matches keys the live map also writes.
+ */
+const hotelLookupKeys = (h: HotelBooking): string[] => {
+  const keys: string[] = [];
+  if (h.name) keys.push(h.name);
+  if ((h as any).city) keys.push((h as any).city);
+  (h.address || '').split(',').map(s => s.trim()).filter(Boolean).forEach(p => keys.push(p));
+  // Uniq-preserving order
+  return Array.from(new Set(keys));
+};
+
+const lookupFromCache = (
+  cache: Record<string, { lat: number; lng: number }>,
+  keys: string[],
+): { lat: number; lng: number } | undefined => {
+  for (const k of keys) {
+    if (cache[k]) return cache[k];
+    if (cache[k.toLowerCase()]) return cache[k.toLowerCase()];
+    if (cache[k.toUpperCase()]) return cache[k.toUpperCase()];
+  }
+  return undefined;
 };
 
 const buildMapStops = (trip: Trip): MapStop[] => {
   const cache = readGeoCache();
-  const lookup = (key?: string) => {
-    if (!key) return undefined;
-    return cache[key] || cache[key.toLowerCase()] || cache[key.toUpperCase()];
-  };
   const stops: MapStop[] = [];
   (trip.hotels || [])
     .slice()
@@ -305,8 +319,7 @@ const buildMapStops = (trip: Trip): MapStop[] => {
     .forEach(h => {
       let lat = h.lat, lng = h.lng;
       if (!(typeof lat === 'number' && typeof lng === 'number')) {
-        const cityGuess = (h.address || '').split(',').pop()?.trim() || h.name;
-        const c = lookup(cityGuess) || lookup(h.name);
+        const c = lookupFromCache(cache, hotelLookupKeys(h));
         if (c) { lat = c.lat; lng = c.lng; }
       }
       if (typeof lat === 'number' && typeof lng === 'number') {
@@ -870,7 +883,31 @@ export const generateTripHTML = (trip: Trip): string => {
 </html>`;
 };
 
-export const downloadTripHTML = (trip: Trip): void => {
+/**
+ * Resolve lat/lng for every hotel that doesn't already have one, via
+ * the shared geo-cache (populated by the in-app map) and on-demand
+ * Nominatim geocoding. Results are written back to the cache so
+ * future exports + the live map share them. Stops trying quickly if
+ * Nominatim is rate-limiting us.
+ */
+const ensureHotelCoords = async (trip: Trip): Promise<void> => {
+  const hotels = trip.hotels || [];
+  for (const h of hotels) {
+    if (typeof h.lat === 'number' && typeof h.lng === 'number') continue;
+    const keys = hotelLookupKeys(h);
+    // Try cache via the fuzzy lookup first (cheap).
+    const cached = lookupFromCache(readGeoCache(), keys);
+    if (cached) { h.lat = cached.lat; h.lng = cached.lng; continue; }
+    // Not in cache — geocode. Try keys in order; stop at first hit.
+    for (const key of keys) {
+      const c = await geocode(key);
+      if (c) { h.lat = c.lat; h.lng = c.lng; break; }
+    }
+  }
+};
+
+export const downloadTripHTML = async (trip: Trip): Promise<void> => {
+  await ensureHotelCoords(trip);
   const html = generateTripHTML(trip);
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
