@@ -286,16 +286,34 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     console.log(`✅[AI Success] Parsed ${categoriesList.length} attraction categories(Format: ${Array.isArray(rawData) ? 'Direct Array' : 'Wrapped Object'})`);
                     const processed = categoriesList.map((c: any, index: number) => ({
                         ...c,
-                        id: c.id || `ai - cat - ${index} -${Date.now()} `,
+                        id: c.id || `ai-cat-${index}-${Date.now()}`,
                         attractions: (c.attractions || []).map((a: any, i: number) => ({
                             ...a,
-                            id: `ai - attr - ${c.id || index} -${Math.random().toString(36).substr(2, 5)} -${i} `,
+                            id: `ai-attr-${c.id || index}-${Math.random().toString(36).substr(2, 5)}-${i}`,
                             categoryTitle: c.title
                         }))
                     }));
-                    setAiCategories(processed);
+
+                    // MERGE with existing categories instead of replacing —
+                    // single-city research shouldn't delete other cities' data.
+                    const merged: AttractionCategory[] = [...aiCategories];
+                    processed.forEach((newCat: any) => {
+                        const existingIdx = merged.findIndex(c => c.title === newCat.title);
+                        if (existingIdx !== -1) {
+                            const existing = merged[existingIdx].attractions;
+                            newCat.attractions.forEach((na: any) => {
+                                if (!existing.some(ea => ea.name === na.name)) {
+                                    existing.push(na);
+                                }
+                            });
+                        } else {
+                            merged.push(newCat);
+                        }
+                    });
+
+                    setAiCategories(merged);
                     setSelectedCategory('all');
-                    onUpdateTrip({ ...trip, aiAttractions: processed });
+                    onUpdateTrip({ ...trip, aiAttractions: merged });
                 } else {
                     console.warn("⚠️ [AI Warning] Response was valid JSON but contained no attraction results.", rawData);
                     setRecError('לא נמצאו אטרקציות עבור יעד זה.');

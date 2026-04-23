@@ -462,9 +462,27 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         }))
                     }));
 
-                    setAiCategories(processed);
+                    // MERGE with existing categories instead of replacing —
+                    // otherwise researching City B wipes the results we already
+                    // have for City A and the user has to re-run everything.
+                    const merged: RestaurantCategory[] = [...aiCategories];
+                    processed.forEach((newCat: any) => {
+                        const existingIdx = merged.findIndex(c => c.title === newCat.title);
+                        if (existingIdx !== -1) {
+                            const existing = merged[existingIdx].restaurants;
+                            newCat.restaurants.forEach((nr: any) => {
+                                if (!existing.some(er => er.name === nr.name)) {
+                                    existing.push(nr);
+                                }
+                            });
+                        } else {
+                            merged.push(newCat);
+                        }
+                    });
+
+                    setAiCategories(merged);
                     setSelectedCategory('all');
-                    onUpdateTrip({ ...trip, aiRestaurants: processed });
+                    onUpdateTrip({ ...trip, aiRestaurants: merged });
                 } else {
                     console.warn("⚠️ [AI Warning] Response was valid JSON but contained no results.", rawData);
                     setRecError('לא נמצאו המלצות מסעדות עבור יעד זה. המודל לא הצליח לאתר תוצאות איכותיות.');

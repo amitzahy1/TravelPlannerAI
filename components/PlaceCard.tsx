@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, MapIcon, Trophy, Plus, Navigation } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
+import { resolveRealPlaceImage } from '../services/placeImageService';
 
 export interface PlaceCardProps {
         type: 'restaurant' | 'attraction';
@@ -52,13 +53,33 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                 : getAttractionImage(searchName, description, tags);
 
         const [imgSrc, setImgSrc] = useState(initialUrl);
+        const [realPhotoTried, setRealPhotoTried] = useState(false);
 
         useEffect(() => {
                 setImgSrc(initialUrl);
+                setRealPhotoTried(false);
         }, [initialUrl]);
 
+        // Try to upgrade the stock-photo fallback to a real photo from Wikipedia
+        // (first cached, then fetched async). Works best for famous attractions
+        // and chain / Michelin restaurants; silently stays on the stock photo
+        // otherwise so the card never renders broken.
+        useEffect(() => {
+                let cancelled = false;
+                resolveRealPlaceImage(searchName, location).then(real => {
+                        if (!cancelled && real) setImgSrc(real);
+                        if (!cancelled) setRealPhotoTried(true);
+                });
+                return () => { cancelled = true; };
+        }, [searchName, location]);
+
         const handleError = () => {
-                // Self-Healing Fallback
+                // Self-Healing Fallback — if the Wikipedia image 404s, go back to
+                // the category stock photo; if THAT breaks, use a global default.
+                if (imgSrc !== initialUrl && realPhotoTried) {
+                        setImgSrc(initialUrl);
+                        return;
+                }
                 setImgSrc(type === 'restaurant'
                         ? 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80'
                         : 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=800&q=80');
