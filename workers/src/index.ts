@@ -491,12 +491,13 @@ const WORKER_TRIP_SCHEMA: any = {
 async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // Stable Gemini 2.5 family — fastest-first. Matches the client chain in aiService.ts.
-        // Pro is intentionally last because email parsing is usually simple enough for flash-lite.
+        // Aligned with the client's SEARCH chain in aiService.ts — forwarded
+        // email PDFs are often complex confirmation docs (multi-leg flight,
+        // hotel with rooms, transfers), so we lead with the preview model.
         const CANDIDATES = [
-                "gemini-2.5-flash-lite",   // 1. PRIMARY: ~2s, free, accurate for structured extraction
-                "gemini-2.5-flash",        // 2. BACKUP: fuller reasoning
-                "gemini-2.5-pro",          // 3. FALLBACK: heaviest PDFs/edge cases
+                "gemini-3.1-pro-preview",  // 1. PRIMARY: best at complex document reasoning
+                "gemini-2.5-pro",          // 2. BACKUP: solid general-purpose
+                "gemini-2.5-flash",        // 3. FALLBACK: fast last resort
         ];
 
         // THIS IS A SYSTEM GENERATED PROMPT -- DO NOT EDIT MANUALLY IF NOT SYNCING WITH AISERVICE.TS
@@ -566,7 +567,7 @@ PHASE 3: DATE & TIME RULES (CRITICAL)
 
 1. ALL dates MUST be ISO 8601: YYYY-MM-DD
 2. ALL times MUST be 24-hour: HH:MM
-3. If year is missing, assume 2026 (forward bias)
+3. If year is missing, assume the current year (${new Date().getFullYear()}) unless the month has already passed this year and the booking looks forward-dated — then use next year.
 4. Hebrew months: ינואר=01, פברואר=02, ...
 5. Arrival MUST be after departure.
 

@@ -7,6 +7,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
 import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
+import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 
 // --- Interfaces ---
 interface MapItem {
@@ -646,6 +647,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
     // 3b. Geocode flight airport codes — used by the distance-based transport
     //     matcher so a flight from Trat matches a hotel in Koh Chang.
     const [airportCoords, setAirportCoords] = useState<Record<string, { lat: number; lng: number }>>({});
+    const [legClassifications, setLegClassifications] = useState<Record<string, LegClassification>>({});
     useEffect(() => {
         if (!trip?.flights?.segments?.length) return;
         const run = async () => {
@@ -671,6 +673,25 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         };
         run();
     }, [trip?.flights?.segments, geocodedCache]);
+
+    // 3c. AI-classify each consecutive pair of stops (drive / flight / ferry /
+    //     drive+ferry / multi) using the shared routeClassifier service. One
+    //     AI call per trip, cached in localStorage for 30 days. Runs after
+    //     routeStops settle. Failures degrade silently to the distance-based
+    //     heuristic in getSegmentTransport.
+    useEffect(() => {
+        if (!trip || items) return;
+        if (routeStops.length < 2) return;
+        const legs = routeStops.slice(0, -1).map((s, i) => ({
+            from: s.displayName || s.name,
+            to: routeStops[i + 1].displayName || routeStops[i + 1].name,
+        }));
+        let cancelled = false;
+        classifyTripRoute(trip.id, legs).then(result => {
+            if (!cancelled) setLegClassifications(result);
+        });
+        return () => { cancelled = true; };
+    }, [trip?.id, routeStops, items]);
 
     // 4. Init map
     useEffect(() => {
@@ -830,14 +851,29 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                     icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [18, 18], iconAnchor: [9, 9] })
                 }).addTo(routeLayer);
 
-                // Transport badge — skip for very short legs (< 20 km) to
-                // avoid cluttering the map with tiny in-town hops that
-                // don't need a dedicated label.
-                if (trip && dist >= 20) {
-                    const transport = getSegmentTransport(start, end, trip, dist, airportCoords);
-                    // Stagger badge position per leg (45% / 50% / 55% ...) so
-                    // multiple badges along the same broad area don't stack
-                    // on top of each other.
+                // Transport badge — show for all legs ≥ 5 km so the user
+                // always sees how to move between stops. Very short hops
+                // (< 5 km, e.g. same-city pins) still skip to reduce noise.
+                if (trip && dist >= 5) {
+                    // Prefer AI classification (knows about ferries, multi-mode
+                    // routes like Pattaya → Koh Chang). Fall back to the
+                    // distance-based heuristic when AI hasn't resolved yet.
+                    const legKeyLookup = `${(start.displayName || start.name).toLowerCase()}__${(end.displayName || end.name).toLowerCase()}`;
+                    const aiLeg = legClassifications[legKeyLookup];
+                    let transport = getSegmentTransport(start, end, trip, dist, airportCoords);
+                    if (aiLeg && aiLeg.mode) {
+                        transport = {
+                            mode: aiLeg.mode === 'drive+ferry' || aiLeg.mode === 'multi' ? 'drive' : aiLeg.mode as any,
+                            emoji: transportEmojiForMode(aiLeg.mode),
+                            label: aiLeg.notes || transportLabelForMode(aiLeg.mode),
+                            duration: aiLeg.durationHours
+                                ? (aiLeg.durationHours >= 1
+                                        ? `~${aiLeg.durationHours.toFixed(aiLeg.durationHours % 1 ? 1 : 0)} שעות`
+                                        : `~${Math.round(aiLeg.durationHours * 60)} דק׳`)
+                                : transport.duration,
+                            hasTransportData: true,
+                        };
+                    }
                     const stagger = 0.45 + (i % 3) * 0.05;
                     const badgeIdx = Math.floor(pathPoints.length * stagger);
                     const badgeIcon = makeRouteBadge(dist, transport, lineColor);
@@ -928,7 +964,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         }
 
         [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
-    }, [mapItems, activeCity, trip, routeStops, airportCoords]);
+    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications]);
 
     // Popup CSS injection
     useEffect(() => {
