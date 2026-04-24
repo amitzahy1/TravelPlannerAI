@@ -1304,12 +1304,57 @@ export const ItineraryView: React.FC<{
                                         );
                                     })
                                 ) : (
-                                    <div className="text-center py-12 px-4">
+                                    <div className="text-center py-8 px-4">
                                         <div className="w-14 h-14 bg-slate-100 rounded-pill flex items-center justify-center mx-auto mb-3">
                                             <Calendar className="w-6 h-6 text-slate-400" />
                                         </div>
                                         <p className="text-sm font-bold text-slate-600">יום חופשי</p>
-                                        <p className="text-xs text-slate-400 mt-1">הוסף פעילויות כדי לתכנן את היום</p>
+                                        <p className="text-xs text-slate-400 mt-1 mb-4">הוסף פעילויות או תן ל-AI להציע</p>
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                const city = activeDay.locationContext || trip.destination || '';
+                                                if (!city) return;
+                                                const btn = document.activeElement as HTMLButtonElement | null;
+                                                if (btn) { btn.disabled = true; btn.textContent = 'חושב על תכנית…'; }
+                                                try {
+                                                    const prompt = `Suggest 3 realistic activities for a traveller spending a free day in "${city}". Mix 1 cultural / 1 food / 1 relaxing. For each: time (HH:MM), name (Hebrew), short reason (≤ 40 chars, Hebrew). Output ONLY JSON: {"activities":[{"time":"10:00","name":"","reason":""}]}`;
+                                                    const { generateWithFallback } = await import('../services/aiService');
+                                                    const res = await generateWithFallback(
+                                                        null,
+                                                        [{ role: 'user', parts: [{ text: prompt }] }],
+                                                        { responseMimeType: 'application/json', temperature: 0.4 },
+                                                        'FAST'
+                                                    );
+                                                    const data = JSON.parse(res.text || '{}');
+                                                    const list = Array.isArray(data.activities) ? data.activities : [];
+                                                    if (list.length === 0) {
+                                                        toast.error('ה-AI לא הציע פעילויות. נסי שוב.');
+                                                        return;
+                                                    }
+                                                    const activities = list.map((a: any) => `${a.time || ''} ${a.name || ''}${a.reason ? ' — ' + a.reason : ''}`.trim());
+                                                    // Append to the day's itinerary
+                                                    const itinerary = [...(trip.itinerary || [])];
+                                                    const idx = itinerary.findIndex(d => d.date === activeDay.dateIso || d.date === activeDay.dateIso.split('-').reverse().join('/'));
+                                                    if (idx >= 0) {
+                                                        itinerary[idx] = { ...itinerary[idx], activities: [...(itinerary[idx].activities || []), ...activities] };
+                                                    } else {
+                                                        itinerary.push({ id: crypto.randomUUID(), day: 0, date: activeDay.dateIso, title: city, activities });
+                                                    }
+                                                    onUpdateTrip({ ...trip, itinerary });
+                                                    toast.success(`✨ נוספו ${activities.length} פעילויות ליום`);
+                                                } catch (err) {
+                                                    console.error('Plan-day failed', err);
+                                                    toast.error('לא הצלחנו לייצר תכנית. נסי שוב.');
+                                                } finally {
+                                                    if (btn) { btn.disabled = false; btn.innerHTML = '✨ תכננו לי את היום'; }
+                                                }
+                                            }}
+                                            className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-bold px-5 py-2.5 rounded-pill shadow-card-hover hover:shadow-popover active:scale-95 transition-all"
+                                        >
+                                            <Sparkles className="w-4 h-4" aria-hidden="true" />
+                                            תכננו לי את היום
+                                        </button>
                                     </div>
                                 )}
 
