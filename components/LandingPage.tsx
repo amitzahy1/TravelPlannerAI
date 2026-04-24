@@ -33,22 +33,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         return (
                 <div className="min-h-screen w-full relative overflow-hidden font-rubik selection:bg-indigo-100 selection:text-indigo-900" dir="rtl">
 
-                        {/* Video Background - Updated Source (Ship/Tropical) */}
+                        {/* Static Background — replaced the heavy video because
+                             it was blocking first paint on mobile (multi-MB MP4
+                             download + slow to start). Landscape Unsplash photo
+                             loads in < 300 ms thanks to auto=format + w=1600
+                             and the browser's native progressive JPEG support.
+                             Cleaner gradient overlay so the copy stays readable. */}
                         <div className="absolute inset-0 z-0">
-                                <video
-                                        autoPlay
-                                        muted
-                                        loop
-                                        playsInline
+                                <img
+                                        src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1600&q=80"
+                                        alt=""
+                                        aria-hidden="true"
+                                        loading="eager"
+                                        fetchPriority="high"
                                         className="absolute inset-0 w-full h-full object-cover"
-                                        poster="https://images.unsplash.com/photo-1599640845513-53343599d630?auto=format&fit=crop&w=1920&q=80"
-                                >
-                                        <source src={`${import.meta.env.BASE_URL}video-bg.mp4`} type="video/mp4" />
-                                        <source src="https://vjs.zencdn.net/v/oceans.mp4" type="video/mp4" />
-                                </video>
-                                {/* Gradient Overlay - Adjusted for better video visibility */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/40 to-slate-900/50" />
-                                <div className="absolute inset-0 bg-black/10" />
+                                />
+                                {/* Single clean gradient: deep blue bottom → soft indigo top.
+                                    Replaces the two stacked overlays that were making colours
+                                    feel muddy and inconsistent across devices. */}
+                                <div className="absolute inset-0 bg-gradient-to-b from-slate-900/55 via-slate-900/40 to-slate-900/75" />
                         </div>
 
                         {/* Floating Particles Effect */}

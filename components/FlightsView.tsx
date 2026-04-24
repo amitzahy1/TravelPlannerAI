@@ -687,13 +687,13 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
       {/* Flight Segments List */}
       <section>
         {activeSegments.length > 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
+          <div className="flex flex-col gap-3 sm:gap-4">
             {activeSegments.map((seg, i) => {
               // find real index in flights.segments for edit/delete handlers
               const realIndex = flights.segments.indexOf(seg);
               const isMissingData = !seg.departureTime || !seg.arrivalTime || seg.departureTime === 'INVALID DATE';
               return (
-                <div key={i}>
+                <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-card overflow-hidden">
                   {isMissingData && onUpdateTrip && (
                     <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex justify-between items-center">
                       <div className="flex items-center gap-2">

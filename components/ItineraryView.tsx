@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import { TripCountdown } from './shared';
+import { getDestinationCover } from '../utils/destinationCover';
 import { resolveLocationName, extractRobustCity, cleanCityName } from '../utils/geoData'; // Imported from new DB
 import { getCityTheme, buildCityColorMap, lookupCityTheme } from '../utils/cityColors'; // Color Engine
 import {
@@ -748,7 +749,7 @@ export const ItineraryView: React.FC<{
                 {/* Background Layer (Clipped) */}
                 <div className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-xl z-0">
                     <img
-                        src={trip.coverImage || 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80'}
+                        src={trip.coverImage || getDestinationCover(trip.destination)}
                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                         alt="Trip Cover"
                     />

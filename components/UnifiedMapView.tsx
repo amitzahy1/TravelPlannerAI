@@ -1023,16 +1023,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             {/* Map */}
             <div ref={mapContainerRef} style={{ height, width: '100%' }} className="z-10 bg-slate-50" />
 
-            {/* Bottom Timeline Strip */}
+            {/* Bottom Timeline Strip — mobile: vertical list inside a
+                 collapsible drawer. Desktop: horizontal strip as before. */}
             {routeStops.length > 0 && activeCity === 'ALL' && (
-                <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white/97 backdrop-blur-xl border-t border-slate-100 shadow-xl">
-                    <div className="flex items-center gap-0 overflow-x-auto p-3 no-scrollbar">
+                <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white/97 backdrop-blur-xl border-t border-slate-100 shadow-xl max-h-[40vh] overflow-y-auto">
+                    <div
+                        className="flex md:flex-row flex-wrap items-center gap-y-1 gap-x-0 p-2 sm:p-3 md:overflow-x-auto md:overflow-y-visible md:flex-nowrap no-scrollbar"
+                        dir="rtl"
+                    >
                         {routeStops.map((stop, idx) => {
                             const COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626'];
                             const color = COLORS[idx % COLORS.length];
                             const isLast = idx === routeStops.length - 1;
                             return (
-                                <div key={idx} className="flex items-center flex-shrink-0">
+                                <div key={idx} className="flex items-center shrink-0">
                                     <button
                                         onClick={() => {
                                             setActiveStop(activeStop === idx ? null : idx);
@@ -1040,20 +1044,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                                                 mapInstanceRef.current.flyTo([stop.coords.lat, stop.coords.lng], 12, { duration: 1.2 });
                                             }
                                         }}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all group ${activeStop === idx ? 'bg-slate-100 shadow-sm' : 'hover:bg-slate-50'}`}
+                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all group ${activeStop === idx ? 'bg-slate-100 shadow-sm' : 'hover:bg-slate-50 active:bg-slate-100'}`}
                                     >
-                                        <div style={{ background: color }} className="w-7 h-7 rounded-full flex items-center justify-center text-white font-black text-xs shadow-md flex-shrink-0">
+                                        <div style={{ background: color }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-white font-black text-2xs sm:text-xs shadow-md shrink-0">
                                             {idx + 1}
                                         </div>
-                                        <div className="text-left">
-                                            <div className="text-[10px] text-slate-400 font-semibold">{stop.emoji} {stop.type === 'flight' ? 'טיסה' : stop.type === 'hotel' ? 'מלון' : 'עצירה'}</div>
-                                            <div className="text-xs font-bold text-slate-800 whitespace-nowrap">{stop.displayName || stop.name}</div>
+                                        <div className="text-right">
+                                            <div className="text-2xs text-slate-400 font-semibold hidden sm:block">{stop.emoji} {stop.type === 'flight' ? 'טיסה' : stop.type === 'hotel' ? 'מלון' : 'עצירה'}</div>
+                                            <div className="text-2xs sm:text-xs font-bold text-slate-800 whitespace-nowrap max-w-[140px] sm:max-w-none truncate">{stop.displayName || stop.name}</div>
                                         </div>
                                     </button>
                                     {!isLast && (
-                                        <div className="flex items-center mx-1 flex-shrink-0">
+                                        <div className="hidden md:flex items-center mx-1 shrink-0">
                                             <div style={{ background: `linear-gradient(to right, ${color}, ${COLORS[(idx + 1) % COLORS.length]})` }}
-                                                className="h-0.5 w-8 rounded-full opacity-40" />
+                                                className="h-0.5 w-6 rounded-full opacity-40" />
                                             <div className="text-slate-300 text-xs mx-0.5">›</div>
                                         </div>
                                     )}
