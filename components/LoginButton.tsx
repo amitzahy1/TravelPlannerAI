@@ -17,23 +17,29 @@ const LoginButton: React.FC = () => {
   }
 
   if (user) {
+    // Mobile: avatar hidden, text-only "התנתק" button (user-reported
+    // overlap issue — the avatar next to the pill was cluttering the
+    // narrow header). Desktop (sm+): avatar + name remain.
     return (
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="hidden sm:flex items-center gap-2">
           {user.photoURL && (
-            <img 
-              src={user.photoURL} 
-              alt={user.displayName || 'User'} 
+            <img
+              src={user.photoURL}
+              alt={user.displayName || 'User'}
+              loading="lazy"
+              decoding="async"
               className="w-8 h-8 rounded-full border-2 border-blue-400"
             />
           )}
-          <span className="text-sm text-gray-700 hidden sm:block">
+          <span className="text-sm text-gray-700 hidden md:block">
             {user.displayName || user.email}
           </span>
         </div>
         <button
           onClick={signOut}
-          className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+          aria-label="התנתק מהחשבון"
+          className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           התנתק
         </button>

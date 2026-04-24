@@ -262,14 +262,54 @@ export const buildCityColorMap = (cities: string[]): Record<string, CityTheme> =
         return map;
 };
 
-/** Look up a city's theme from a map built by `buildCityColorMap`, falling
- *  back to the default (slate) for flight days / unknown cities. */
+/** Try to extract a pure city name out of a flight-ish phrase so that
+ *  "טיסה לבנגקוק" / "נחיתה בבנגקוק" / "Flight to Bangkok" still land on
+ *  Bangkok's colour instead of the dark default slate. */
+const stripFlightPrefix = (s: string): string => {
+        let out = s;
+        // Hebrew
+        out = out.replace(/^\s*(טיסה\s+ל|טיסה\s+חזרה|נחיתה\s+ב|טיסה)\s*/i, '').trim();
+        // English
+        out = out.replace(/^\s*(flight\s+to|flight\s+from|arrival|departure|landing|return\s+flight|flight)\s*/i, '').trim();
+        return out;
+};
+
+/** Look up a city's theme from a map built by `buildCityColorMap`. Falls
+ *  back to the default only for truly unknown names — for
+ *  "טיסה לבנגקוק" we strip the flight prefix and try Bangkok's theme
+ *  again so flight-labelled day cards never render as plain dark slate. */
 export const lookupCityTheme = (
         map: Record<string, CityTheme>,
         cityName: string
 ): CityTheme => {
         if (!cityName) return DEFAULT_THEME;
         const lower = normalizeCityName(cityName);
-        if (FLIGHT_KEYWORDS.some(kw => lower.includes(kw))) return DEFAULT_THEME;
-        return map[lower] || getCityTheme(cityName);
+
+        // First: try the name as-is
+        if (map[lower]) return map[lower];
+        const preferred = preferredThemeIndex(cityName);
+        if (preferred !== null) return THEMES[preferred];
+
+        // If it's a flight-like phrase, try stripping the prefix and looking
+        // up the underlying city.
+        if (FLIGHT_KEYWORDS.some(kw => lower.includes(kw))) {
+                const stripped = stripFlightPrefix(cityName);
+                if (stripped && stripped !== cityName) {
+                        const strippedLower = normalizeCityName(stripped);
+                        if (map[strippedLower]) return map[strippedLower];
+                        const strippedPreferred = preferredThemeIndex(stripped);
+                        if (strippedPreferred !== null) return THEMES[strippedPreferred];
+                        // Hash fallback on the stripped name
+                        let hash = 0;
+                        for (let i = 0; i < stripped.length; i++) {
+                                hash = stripped.charCodeAt(i) + ((hash << 5) - hash);
+                        }
+                        return THEMES[Math.abs(hash) % THEMES.length];
+                }
+                // Truly pure "flight" / "טיסה" with no city after it — use default
+                return DEFAULT_THEME;
+        }
+
+        // Not in map + not a flight phrase — hash the name into the palette
+        return getCityTheme(cityName);
 };
