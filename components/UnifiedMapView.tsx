@@ -595,20 +595,37 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 });
             }
 
-            // Geocode stops
+            // Geocode stops. Tries a chain of fallback queries so airport
+            // stops always resolve — this fixes the bug where BKK / TDX
+            // airport stops were being dropped from validStops because the
+            // primary query ("Bangkok Airport, BKK") occasionally failed
+            // and the numbered pins then started from stop #2 (Pattaya) =1.
             for (const stop of stops) {
                 if (stop.coords) continue;
-                const query = stop.code ? `${stop.name} Airport, ${stop.code}` : stop.name;
-                if (geocodedCache[query]) { stop.coords = geocodedCache[query]; continue; }
-                if (geocodedCache[stop.name]) { stop.coords = geocodedCache[stop.name]; continue; }
-                const coords = await geocodeAddress(query);
-                if (coords) {
-                    stop.coords = coords;
-                    setGeocodedCache(prev => {
-                        const next = { ...prev, [query]: coords };
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-                        return next;
-                    });
+                const queries: string[] = [];
+                if (stop.code) {
+                        queries.push(`${stop.name} Airport, ${stop.code}`);
+                        queries.push(`${stop.code} Airport`);
+                        queries.push(`${stop.code}`);
+                }
+                queries.push(stop.name);
+                // Try cache for every candidate first
+                for (const q of queries) {
+                        if (geocodedCache[q]) { stop.coords = geocodedCache[q]; break; }
+                }
+                if (stop.coords) continue;
+                // Network: try each in order, save the first hit
+                for (const q of queries) {
+                        const coords = await geocodeAddress(q);
+                        if (coords) {
+                                stop.coords = coords;
+                                setGeocodedCache(prev => {
+                                        const next = { ...prev, [q]: coords };
+                                        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                                        return next;
+                                });
+                                break;
+                        }
                 }
             }
 
@@ -675,9 +692,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
     useEffect(() => {
         if (!trip || items) return;
         if (routeStops.length < 2) return;
+        // Use the CITY name (s.name) rather than the hotel's displayName
+        // — the AI reasons about geography, not hotel brands. "Bangkok →
+        // Pattaya" is much more legible than "Holiday Inn Bangkok →
+        // Holiday Inn Pattaya". Also strip any stale zip-codes / country
+        // suffix that snuck through extractRobustCity.
         const legs = routeStops.slice(0, -1).map((s, i) => ({
-            from: s.displayName || s.name,
-            to: routeStops[i + 1].displayName || routeStops[i + 1].name,
+            from: cleanCityName(s.name),
+            to: cleanCityName(routeStops[i + 1].name),
         }));
         let cancelled = false;
         classifyTripRoute(trip.id, legs).then(result => {
@@ -851,7 +873,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                     // Prefer AI classification (knows about ferries, multi-mode
                     // routes like Pattaya → Koh Chang). Fall back to the
                     // distance-based heuristic when AI hasn't resolved yet.
-                    const legKeyLookup = `${(start.displayName || start.name).toLowerCase()}__${(end.displayName || end.name).toLowerCase()}`;
+                    // Key must match the one used in classifyTripRoute (city
+                    // name, lowercased, cleaned).
+                    const legKeyLookup = `${cleanCityName(start.name).toLowerCase()}__${cleanCityName(end.name).toLowerCase()}`;
                     const aiLeg = legClassifications[legKeyLookup];
                     let transport = getSegmentTransport(start, end, trip, dist, airportCoords);
                     if (aiLeg && aiLeg.mode) {
