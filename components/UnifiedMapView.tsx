@@ -658,6 +658,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
     //     matcher so a flight from Trat matches a hotel in Koh Chang.
     const [airportCoords, setAirportCoords] = useState<Record<string, { lat: number; lng: number }>>({});
     const [legClassifications, setLegClassifications] = useState<Record<string, LegClassification>>({});
+    const [waypointCoords, setWaypointCoords] = useState<Record<string, { lat: number; lng: number }>>({});
     useEffect(() => {
         if (!trip?.flights?.segments?.length) return;
         const run = async () => {
@@ -707,6 +708,45 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         });
         return () => { cancelled = true; };
     }, [trip?.id, routeStops, items]);
+
+    // 3d. Geocode multi-segment waypoints (ferry piers, train stations,
+    //     connection points) so we can draw sub-segment lines and place
+    //     small intermediate pins. Runs after legClassifications settle.
+    useEffect(() => {
+        const names = new Set<string>();
+        Object.values(legClassifications).forEach(leg => {
+            if (!leg.segments) return;
+            // Every sub-segment's `via` is a waypoint that ends that sub-leg.
+            // The FINAL via in a segments[] array is usually the leg's
+            // end-stop (already geocoded) — we still try to geocode so we
+            // can fall back to it if the main stop lookup misses.
+            leg.segments.forEach(s => { if (s.via) names.add(s.via); });
+        });
+        if (names.size === 0) return;
+        let cancelled = false;
+        const run = async () => {
+            const next: Record<string, { lat: number; lng: number }> = {};
+            for (const name of Array.from(names)) {
+                const key = name.toLowerCase();
+                if (waypointCoords[key]) { next[key] = waypointCoords[key]; continue; }
+                // Cache first
+                const cached = geocodedCache[name] || geocodedCache[name.toLowerCase()];
+                if (cached) { next[key] = cached; continue; }
+                const coords = await geocodeAddress(name);
+                if (coords) {
+                    next[key] = coords;
+                    setGeocodedCache(prev => {
+                        const p = { ...prev, [name]: coords };
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+                        return p;
+                    });
+                }
+            }
+            if (!cancelled && Object.keys(next).length) setWaypointCoords(next);
+        };
+        run();
+        return () => { cancelled = true; };
+    }, [legClassifications]);
 
     // 4. Init map
     useEffect(() => {
@@ -818,89 +858,157 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             const STOP_COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626'];
             const validStops = routeStops.filter(s => s.coords);
 
-            // Draw curved lines between stops
-            for (let i = 0; i < validStops.length - 1; i++) {
-                const start = validStops[i];
-                const end = validStops[i + 1];
-                if (!start.coords || !end.coords) continue;
-
-                const dist = getDistanceKm(start.coords.lat, start.coords.lng, end.coords.lat, end.coords.lng);
-                let pathPoints: [number, number][];
-
-                if (dist > 50) {
-                    const steps = 60;
-                    pathPoints = [];
-                    for (let s = 0; s <= steps; s++) {
-                        const t = s / steps;
-                        const lat = start.coords.lat + (end.coords.lat - start.coords.lat) * t;
-                        const lng = start.coords.lng + (end.coords.lng - start.coords.lng) * t;
-                        const curveFactor = Math.min(dist / 30, 5);
-                        const curveOffset = Math.sin(t * Math.PI) * curveFactor;
-                        const perpLat = -(end.coords.lng - start.coords.lng) / Math.max(dist, 1);
-                        const perpLng = (end.coords.lat - start.coords.lat) / Math.max(dist, 1);
-                        pathPoints.push([lat + perpLat * curveOffset * 0.6, lng + perpLng * curveOffset * 0.6]);
-                    }
-                } else {
-                    pathPoints = [[start.coords.lat, start.coords.lng], [end.coords.lat, end.coords.lng]];
+            // Compute a curved poly-line between two lat/lng points. Used
+            // for both primary legs and sub-legs of a multi-modal leg.
+            const curvedPath = (a: { lat: number; lng: number }, b: { lat: number; lng: number }): [number, number][] => {
+                const d = getDistanceKm(a.lat, a.lng, b.lat, b.lng);
+                if (d <= 50) return [[a.lat, a.lng], [b.lat, b.lng]];
+                const steps = 60;
+                const pts: [number, number][] = [];
+                for (let s = 0; s <= steps; s++) {
+                    const t = s / steps;
+                    const lat = a.lat + (b.lat - a.lat) * t;
+                    const lng = a.lng + (b.lng - a.lng) * t;
+                    const curveFactor = Math.min(d / 30, 5);
+                    const curveOffset = Math.sin(t * Math.PI) * curveFactor;
+                    const perpLat = -(b.lng - a.lng) / Math.max(d, 1);
+                    const perpLng = (b.lat - a.lat) / Math.max(d, 1);
+                    pts.push([lat + perpLat * curveOffset * 0.6, lng + perpLng * curveOffset * 0.6]);
                 }
+                return pts;
+            };
 
-                const lineColor = STOP_COLORS[i % STOP_COLORS.length];
-
-                // Glow
-                L.polyline(pathPoints, { color: lineColor, weight: 12, opacity: 0.12, lineCap: 'round' }).addTo(routeLayer);
-
-                // White stroke (outline)
+            // Draw a single sub-segment: glow + outline + colored dashed
+            // line + arrow + optional badge. Caller provides the colors
+            // so ferry legs can stand out from drive legs.
+            const drawSubSegment = (
+                pathPoints: [number, number][],
+                primaryColor: string,
+                badge: L.DivIcon | null,
+                badgePos: number = 0.5,
+            ) => {
+                if (pathPoints.length < 2) return;
+                L.polyline(pathPoints, { color: primaryColor, weight: 12, opacity: 0.12, lineCap: 'round' }).addTo(routeLayer);
                 L.polyline(pathPoints, { color: 'white', weight: 5.5, opacity: 1, lineCap: 'round' }).addTo(routeLayer);
-
-                // Main colored line
-                L.polyline(pathPoints, { color: lineColor, weight: 3.5, opacity: 0.92, dashArray: '10, 6', lineCap: 'round' }).addTo(routeLayer);
-
-                // Arrow at 60% point
-                const arrowIdx = Math.floor(pathPoints.length * 0.6);
-                const bearing = getBearing(pathPoints[arrowIdx - 1][0], pathPoints[arrowIdx - 1][1],
-                    end.coords.lat, end.coords.lng);
-                const arrowHtml = `<div style="transform:rotate(${bearing}deg);color:${lineColor};filter:drop-shadow(0 1px 3px rgba(0,0,0,0.3))">
+                L.polyline(pathPoints, { color: primaryColor, weight: 3.5, opacity: 0.92, dashArray: '10, 6', lineCap: 'round' }).addTo(routeLayer);
+                const arrowIdx = Math.max(1, Math.floor(pathPoints.length * 0.6));
+                const bearing = getBearing(pathPoints[arrowIdx - 1][0], pathPoints[arrowIdx - 1][1], pathPoints[pathPoints.length - 1][0], pathPoints[pathPoints.length - 1][1]);
+                const arrowHtml = `<div style="transform:rotate(${bearing}deg);color:${primaryColor};filter:drop-shadow(0 1px 3px rgba(0,0,0,0.3))">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L19 9H14V22H10V9H5L12 2Z"/></svg>
                 </div>`;
                 L.marker([pathPoints[arrowIdx][0], pathPoints[arrowIdx][1]], {
                     icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [18, 18], iconAnchor: [9, 9] })
                 }).addTo(routeLayer);
+                if (badge) {
+                    const badgeIdx = Math.floor(pathPoints.length * badgePos);
+                    L.marker([pathPoints[badgeIdx][0], pathPoints[badgeIdx][1]], {
+                        icon: badge, zIndexOffset: 1500, interactive: false,
+                    }).addTo(routeLayer);
+                }
+            };
 
-                // Transport badge — show for all legs ≥ 5 km so the user
-                // always sees how to move between stops. Very short hops
-                // (< 5 km, e.g. same-city pins) still skip to reduce noise.
-                if (trip && dist >= 5) {
-                    // Prefer AI classification (knows about ferries, multi-mode
-                    // routes like Pattaya → Koh Chang). Fall back to the
-                    // distance-based heuristic when AI hasn't resolved yet.
-                    // Key must match the one used in classifyTripRoute (city
-                    // name, lowercased, cleaned).
-                    const legKeyLookup = `${cleanCityName(start.name).toLowerCase()}__${cleanCityName(end.name).toLowerCase()}`;
-                    const aiLeg = legClassifications[legKeyLookup];
+            // Intermediate waypoint pin (e.g. ferry pier). Small diamond.
+            const makeWaypointPin = (name: string, mode: 'ferry' | 'drive' | 'train' | 'flight'): L.DivIcon => {
+                const emoji = mode === 'ferry' ? '⛴' : mode === 'train' ? '🚆' : mode === 'flight' ? '✈️' : '🚗';
+                const html = `<div style="display:inline-flex;align-items:center;gap:4px;background:white;border:1px solid #cbd5e1;border-radius:999px;padding:3px 8px;box-shadow:0 2px 6px rgba(15,23,42,.15);font-family:'Rubik',sans-serif;font-size:10px;font-weight:700;color:#334155;white-space:nowrap;direction:rtl;">
+                    <span style="font-size:11px">${emoji}</span>${name.length > 22 ? name.slice(0, 21) + '…' : name}
+                </div>`;
+                return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 10] });
+            };
+
+            const fmtHours = (h?: number): string | undefined =>
+                typeof h === 'number' && h > 0
+                    ? (h >= 1 ? `~${h.toFixed(h % 1 ? 1 : 0)} שעות` : `~${Math.round(h * 60)} דק׳`)
+                    : undefined;
+
+            // Draw lines between stops — multi-segment if AI classified the
+            // leg as drive+ferry / multi AND we've geocoded the waypoints.
+            for (let i = 0; i < validStops.length - 1; i++) {
+                const start = validStops[i];
+                const end = validStops[i + 1];
+                if (!start.coords || !end.coords) continue;
+
+                const lineColor = STOP_COLORS[i % STOP_COLORS.length];
+                const legKeyLookup = `${cleanCityName(start.name).toLowerCase()}__${cleanCityName(end.name).toLowerCase()}`;
+                const aiLeg = legClassifications[legKeyLookup];
+
+                // Multi-segment path — requires all waypoints to be geocoded.
+                const hasSegments = aiLeg?.segments && aiLeg.segments.length >= 2;
+                const resolvedSegments: Array<{ from: { lat: number; lng: number }; to: { lat: number; lng: number }; mode: 'drive' | 'flight' | 'train' | 'ferry'; durationHours?: number; viaName: string }> = [];
+                if (hasSegments && aiLeg?.segments) {
+                    let prev: { lat: number; lng: number } = start.coords;
+                    let ok = true;
+                    for (let s = 0; s < aiLeg.segments.length; s++) {
+                        const seg = aiLeg.segments[s];
+                        const isLast = s === aiLeg.segments.length - 1;
+                        // Last segment ends at the leg's end-stop — use its
+                        // known coords even if the via name didn't geocode.
+                        const coords = isLast
+                            ? end.coords
+                            : waypointCoords[seg.via.toLowerCase()];
+                        if (!coords) { ok = false; break; }
+                        resolvedSegments.push({ from: prev, to: coords, mode: seg.mode, durationHours: seg.durationHours, viaName: seg.via });
+                        prev = coords;
+                    }
+                    if (!ok) resolvedSegments.length = 0;
+                }
+
+                if (resolvedSegments.length >= 2) {
+                    // Draw each sub-segment with mode-aware colors + per-sub
+                    // badge + intermediate waypoint pin between sub-segments.
+                    resolvedSegments.forEach((sub, subIdx) => {
+                        const subColor = sub.mode === 'ferry'
+                            ? '#0ea5e9'  // sky — "water"
+                            : sub.mode === 'flight'
+                                ? '#2563eb'
+                                : sub.mode === 'train'
+                                    ? '#a855f7'
+                                    : lineColor; // drive uses the leg's stop color
+                        const subPath = curvedPath(sub.from, sub.to);
+                        const subLabel = sub.mode === 'ferry' ? 'מעבורת' : sub.mode === 'train' ? 'רכבת' : sub.mode === 'flight' ? 'טיסה' : 'נסיעה';
+                        const subEmoji = sub.mode === 'ferry' ? '⛴' : sub.mode === 'train' ? '🚆' : sub.mode === 'flight' ? '✈️' : '🚗';
+                        const subDist = getDistanceKm(sub.from.lat, sub.from.lng, sub.to.lat, sub.to.lng);
+                        const subTransport: SegmentTransportInfo = {
+                            mode: sub.mode,
+                            emoji: subEmoji,
+                            label: subLabel,
+                            duration: fmtHours(sub.durationHours),
+                            hasTransportData: true,
+                        };
+                        const badgeIcon = makeRouteBadge(subDist, subTransport, subColor);
+                        drawSubSegment(subPath, subColor, badgeIcon, 0.5);
+                        bounds.extend([sub.from.lat, sub.from.lng]);
+                        bounds.extend([sub.to.lat, sub.to.lng]);
+                        // Drop a small intermediate pin at the junction (not at
+                        // the final via which is the leg's end-stop).
+                        const isLast = subIdx === resolvedSegments.length - 1;
+                        if (!isLast) {
+                            const pinIcon = makeWaypointPin(sub.viaName, resolvedSegments[subIdx + 1].mode);
+                            L.marker([sub.to.lat, sub.to.lng], {
+                                icon: pinIcon, zIndexOffset: 1800, interactive: false,
+                            }).addTo(routeLayer);
+                        }
+                    });
+                } else {
+                    // Single-segment rendering (legacy path).
+                    const dist = getDistanceKm(start.coords.lat, start.coords.lng, end.coords.lat, end.coords.lng);
+                    const pathPoints = curvedPath(start.coords, end.coords);
                     let transport = getSegmentTransport(start, end, trip, dist, airportCoords);
                     if (aiLeg && aiLeg.mode) {
                         transport = {
                             mode: aiLeg.mode === 'drive+ferry' || aiLeg.mode === 'multi' ? 'drive' : aiLeg.mode as any,
                             emoji: transportEmojiForMode(aiLeg.mode),
                             label: aiLeg.notes || transportLabelForMode(aiLeg.mode),
-                            duration: aiLeg.durationHours
-                                ? (aiLeg.durationHours >= 1
-                                        ? `~${aiLeg.durationHours.toFixed(aiLeg.durationHours % 1 ? 1 : 0)} שעות`
-                                        : `~${Math.round(aiLeg.durationHours * 60)} דק׳`)
-                                : transport.duration,
+                            duration: fmtHours(aiLeg.durationHours) || transport.duration,
                             hasTransportData: true,
                         };
                     }
                     const stagger = 0.45 + (i % 3) * 0.05;
-                    const badgeIdx = Math.floor(pathPoints.length * stagger);
-                    const badgeIcon = makeRouteBadge(dist, transport, lineColor);
-                    L.marker([pathPoints[badgeIdx][0], pathPoints[badgeIdx][1]], {
-                        icon: badgeIcon, zIndexOffset: 1500, interactive: false
-                    }).addTo(routeLayer);
+                    const badgeIcon = dist >= 5 ? makeRouteBadge(dist, transport, lineColor) : null;
+                    drawSubSegment(pathPoints, lineColor, badgeIcon, stagger);
+                    bounds.extend([start.coords.lat, start.coords.lng]);
+                    bounds.extend([end.coords.lat, end.coords.lng]);
                 }
-
-                bounds.extend([start.coords.lat, start.coords.lng]);
-                bounds.extend([end.coords.lat, end.coords.lng]);
             }
 
             // Route stop pills
@@ -981,7 +1089,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         }
 
         [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
-    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications]);
+    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords]);
 
     // Popup CSS injection
     useEffect(() => {
