@@ -90,7 +90,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         return (
                 <div
                         onClick={onClick}
-                        className={`group relative w-full h-48 rounded-2xl overflow-hidden shadow-sm bg-slate-100 transition-all duration-300 ${onClick ? 'cursor-pointer hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' : ''}`}
+                        className={`group relative w-full h-36 sm:h-44 md:h-48 rounded-xl md:rounded-2xl overflow-hidden shadow-sm bg-slate-100 transition-all duration-300 ${onClick ? 'cursor-pointer hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' : ''}`}
                 >
                         {/* Background Image (Zoom Effect) */}
                         <img
