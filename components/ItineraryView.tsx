@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
+import { TripCountdown } from './shared';
 import { resolveLocationName, extractRobustCity, cleanCityName } from '../utils/geoData'; // Imported from new DB
 import { getCityTheme, buildCityColorMap, lookupCityTheme } from '../utils/cityColors'; // Color Engine
 import {
@@ -944,6 +945,11 @@ export const ItineraryView: React.FC<{
                         )}
                     </div>
                 </div>
+            </div>
+
+            {/* 2.3 TRIP COUNTDOWN */}
+            <div className="flex justify-center sm:justify-start px-1">
+                <TripCountdown trip={trip} />
             </div>
 
             {/* 2.5 SMART RECOMMENDATIONS BAR */}
