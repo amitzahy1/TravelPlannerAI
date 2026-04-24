@@ -57,7 +57,7 @@ export const AIChatOverlay: React.FC<AIChatOverlayProps> = ({ trip }) => {
                         // Filter redundant data to save tokens (optional optimization)
                         // For now sending full trip, assuming reasonable size.
 
-                        const aiResponseText = await chatWithTripContext(trip, userMsg.content, messages);
+                        const aiResponseText = await chatWithTripContext(userMsg.content, trip, messages);
 
                         const aiMsg: Message = {
                                 id: (Date.now() + 1).toString(),
@@ -133,9 +133,9 @@ export const AIChatOverlay: React.FC<AIChatOverlayProps> = ({ trip }) => {
                                                                 }`}
                                                 >
                                                         {msg.role === 'assistant' ? (
-                                                                <ReactMarkdown className="prose prose-sm prose-slate rtl:prose-p:text-right max-w-none">
-                                                                        {msg.content}
-                                                                </ReactMarkdown>
+                                                                <div className="prose prose-sm prose-slate rtl:prose-p:text-right max-w-none">
+                                                                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                                                </div>
                                                         ) : (
                                                                 msg.content
                                                         )}

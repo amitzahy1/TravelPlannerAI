@@ -54,7 +54,7 @@ export const CategoryListModal: React.FC<CategoryListModalProps> = ({ type, trip
                                                                 className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group flex gap-3"
                                                         >
                                                                 <div className="w-20 h-20 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 relative">
-                                                                        <img src={image} className="w-full h-full object-cover" alt="" />
+                                                                        <img src={image.url} className="w-full h-full object-cover" alt={image.label || ''} loading="lazy" decoding="async" />
                                                                         {(item.rating || item.googleRating) && (
                                                                                 <div className="absolute top-1 right-1 bg-white/90 backdrop-blur px-1 rounded text-[10px] font-bold flex items-center gap-0.5 shadow-sm">
                                                                                         {item.rating || item.googleRating}<Star className="w-2 h-2 text-yellow-500 fill-yellow-500" />

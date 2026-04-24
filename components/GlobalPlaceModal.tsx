@@ -123,7 +123,10 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
         const cleanName = displayName.replace(/\(.*\)/g, '').trim();
 
         let query = `${cleanName} ${cleanLocation}`;
-        if (item.isHotelRestaurant || type === 'hotel' || displayName.toLowerCase().includes('hotel')) {
+        // `type` is typed as food|attraction|restaurant; 'hotel' is just a
+        // runtime signal used by the smart-hotel entry point. Cast so
+        // TypeScript doesn't flag the always-false branch as dead.
+        if (item.isHotelRestaurant || (type as string) === 'hotel' || displayName.toLowerCase().includes('hotel')) {
                 query = `${cleanName}, ${cleanLocation}`;
         } else {
                 const categorySuffix = type === 'food' || type === 'restaurant' ? 'Restaurant' : 'Tourist Attraction';

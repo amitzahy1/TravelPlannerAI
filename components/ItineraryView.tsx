@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import { TripCountdown } from './shared';
@@ -84,6 +84,36 @@ export const ItineraryView: React.FC<{
     const [viewMode, setViewMode] = useState<'expanded' | 'compact'>(() =>
         typeof window !== 'undefined' && window.innerWidth < 768 ? 'compact' : 'expanded'
     ); // Mobile defaults to compact
+
+    // Scroll the day card matching today's date into view on mount, but only
+    // when the trip is actually in progress (start ≤ today ≤ end). Uses an
+    // id="day-{iso}" anchor we render on each card. Runs once after the
+    // first timeline build.
+    const todayScrolledRef = useRef(false);
+    useEffect(() => {
+        if (todayScrolledRef.current) return;
+        if (!timeline.length) return;
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        const iso = `${y}-${m}-${d}`;
+        const inRange = timeline.some(day => day.dateIso === iso);
+        if (!inRange) return;
+        // Wait a tick for cards to render + layout to stabilize
+        const t = setTimeout(() => {
+            const el = document.getElementById(`day-${iso}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2');
+                setTimeout(() => {
+                    el.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2');
+                }, 2500);
+                todayScrolledRef.current = true;
+            }
+        }, 400);
+        return () => clearTimeout(t);
+    }, [timeline]);
 
     // Calculate favorite counts (Task 7)
     const favoriteRestaurants = useMemo(() => {
@@ -1064,8 +1094,9 @@ export const ItineraryView: React.FC<{
                                         return (
                                             <article
                                                 key={day.dateIso}
+                                                id={`day-${day.dateIso}`}
                                                 onClick={() => setSelectedDayIso(day.dateIso)}
-                                                className="relative group cursor-pointer bg-white border border-slate-200 rounded-xl shadow-card hover:shadow-card-hover hover:border-blue-300 active:scale-[0.99] transition-all flex items-center gap-3 pr-2.5 pl-3 py-2.5 overflow-hidden"
+                                                className="relative group cursor-pointer bg-white border border-slate-200 rounded-xl shadow-card hover:shadow-card-hover hover:border-blue-300 active:scale-[0.99] transition-all flex items-center gap-3 pr-2.5 pl-3 py-2.5 overflow-hidden scroll-mt-24"
                                             >
                                                 <span aria-hidden className={`absolute top-0 bottom-0 right-0 w-1 ${accentStrip}`} />
 
@@ -1131,6 +1162,7 @@ export const ItineraryView: React.FC<{
                                     return (
                                         <div
                                             key={day.dateIso}
+                                            id={`day-${day.dateIso}`}
                                             onClick={() => setSelectedDayIso(day.dateIso)}
                                             className="bg-white border border-slate-200 rounded-xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden group flex flex-col relative"
                                         >
@@ -1300,7 +1332,7 @@ export const ItineraryView: React.FC<{
                                                             e.stopPropagation();
                                                             if (event.isManual) {
                                                                 handleDeleteActivity(event.dayId!, event.activityIndex!);
-                                                            } else {
+                                                            } else if (event.type === 'food' || event.type === 'attraction') {
                                                                 handleUnscheduleItem(event.id, event.type);
                                                             }
                                                         }}

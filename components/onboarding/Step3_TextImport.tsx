@@ -21,6 +21,7 @@ import {
         TextCursor,
 } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
+import { VoiceInputButton } from '../shared';
 import {
         parseFreeTextTrip,
         parseFilesToFreeText,
@@ -650,6 +651,20 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                         maxLength={MAX_CHARS}
                                                                         dir="rtl"
                                                                         className="w-full min-h-[320px] p-5 pb-10 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:outline-none resize-y bg-white text-brand-navy leading-relaxed font-medium text-[15px] shadow-sm placeholder:text-slate-400"
+                                                                />
+                                                                {/* Voice dictation — rendered only when the browser supports
+                                                                     the Web Speech API. Appends finalised speech to the text
+                                                                     buffer; interim results ignore so users aren't spammed. */}
+                                                                <VoiceInputButton
+                                                                        className="absolute top-3 left-3 w-10 h-10"
+                                                                        onTranscript={(chunk, isFinal) => {
+                                                                                if (!isFinal) return;
+                                                                                setText((prev) => {
+                                                                                        const trimmed = prev.trimEnd();
+                                                                                        const sep = trimmed.length > 0 && !/[\s\.\,\!\?]$/.test(trimmed) ? ' ' : '';
+                                                                                        return (trimmed + sep + chunk).slice(0, MAX_CHARS);
+                                                                                });
+                                                                        }}
                                                                 />
                                                                 <div className="absolute bottom-3 left-4 text-xs text-slate-400 font-medium bg-white/80 px-2 py-0.5 rounded-md pointer-events-none">
                                                                         {text.length.toLocaleString()} / {MAX_CHARS.toLocaleString()}
