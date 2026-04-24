@@ -5,6 +5,9 @@ import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, Arr
 import { formatDateTime, formatDateOnly, parseFlightTime, calculateFlightDuration, parseDateToIso, formatFlightTime } from '../utils/dateUtils';
 import { ConfirmModal } from './ConfirmModal';
 import { localTimeAtAirportToUTC, AIRPORT_TIMEZONES } from '../utils/airportTimezones';
+import { generateWithFallback } from '../services/aiService';
+import { toast } from '../stores/useToastStore';
+import { Sparkles } from 'lucide-react';
 
 const formatDurationMs = (ms: number): string => {
   if (!isFinite(ms) || ms <= 0) return '';
@@ -245,8 +248,15 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onCl
 
 // --- Sub-components ---
 
-const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelete?: () => void; isStale?: boolean }> = ({ segment, onEdit, onDelete, isStale }) => {
+const FlightRow: React.FC<{
+  segment: FlightSegment;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onApplyDuration?: (d: string) => void;
+  isStale?: boolean;
+}> = ({ segment, onEdit, onDelete, onApplyDuration, isStale }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isAskingAi, setIsAskingAi] = useState(false);
   const logoUrl = getAirlineLogo(segment.airline, segment.flightNumber);
 
   const airline = clean(segment.airline);
@@ -267,6 +277,32 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
     return `${date}T${h.padStart(2, '0')}:${m.padStart(2, '0')}:00`;
   };
 
+  // TZ-aware duration: convert local departure + arrival to true UTC via
+  // IATA → IANA timezone map, then subtract. This fixes the "TLV 20:10 →
+  // AUH 00:25 = 1h 15m" bug — without TZ correction the code was treating
+  // both clock times as if they were UTC, losing the +4h offset TLV ↔ AUH.
+  const computeTzAwareDuration = (): string | undefined => {
+    const depDateStr = (segment.date || segment.departureTime?.split('T')?.[0] || '').slice(0, 10);
+    const arrDateStr = segment.arrivalTime?.includes('T')
+      ? segment.arrivalTime.split('T')[0]
+      : depDateStr;
+    if (!depDateStr || !depTime || !arrTime) return undefined;
+
+    const depUtc = localTimeAtAirportToUTC(depDateStr, depTime, segment.fromCode);
+    let arrUtc = localTimeAtAirportToUTC(arrDateStr, arrTime, segment.toCode);
+    if (!depUtc || !arrUtc) return undefined;
+
+    // If arrival falls before departure in UTC, the flight crossed midnight
+    // (local clock arrival < local clock departure). Advance by 24 h.
+    if (arrUtc.getTime() <= depUtc.getTime()) {
+      arrUtc = new Date(arrUtc.getTime() + 24 * 60 * 60 * 1000);
+    }
+    const ms = arrUtc.getTime() - depUtc.getTime();
+    // Guardrail: real scheduled flights are between ~20 min and ~20 h.
+    if (ms < 15 * 60 * 1000 || ms > 22 * 60 * 60 * 1000) return undefined;
+    return formatDurationMs(ms);
+  };
+
   const depIsoForDuration = segment.departureTime?.includes('T')
     ? segment.departureTime
     : buildIsoFromTime(segment.date, depTime);
@@ -284,7 +320,10 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
     return baseIso;
   })();
 
+  // Priority order: (1) user-saved duration, (2) TZ-aware calculation from
+  // IATA codes, (3) naive fallback for flights without known airports.
   const duration = durationRaw
+    || computeTzAwareDuration()
     || calculateFlightDuration(depIsoForDuration, arrIsoForDuration)
     || undefined;
 
@@ -398,11 +437,56 @@ const FlightRow: React.FC<{ segment: FlightSegment; onEdit?: () => void; onDelet
 
           {/* Timeline */}
           <div className="grow flex flex-col items-center min-w-[44px]">
-            {duration && (
+            {duration ? (
               <span className="text-2xs font-bold text-slate-500 mb-1 whitespace-nowrap bg-white px-1.5 py-0.5 rounded-pill border border-slate-100 shadow-card">
                 {duration}
               </span>
-            )}
+            ) : onApplyDuration ? (
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (isAskingAi) return;
+                  setIsAskingAi(true);
+                  try {
+                    const prompt = `Flight ${airline || ''} ${flightNumber || ''} from ${fromLabel || segment.fromCode} (${segment.fromCode || ''}) to ${toLabel || segment.toCode} (${segment.toCode || ''}). Reply ONLY with the typical scheduled block-time duration in the format "Xh Ym" (e.g. "6h 25m"). No other words, no punctuation.`;
+                    const res = await generateWithFallback(
+                      null,
+                      [{ role: 'user', parts: [{ text: prompt }] }],
+                      { temperature: 0.1 },
+                      'FAST'
+                    );
+                    const raw = (res.text || '').trim();
+                    const match = raw.match(/(\d{1,2})\s*h(?:\s*(\d{1,2}))?\s*m?|(\d{1,2})\s*m/i);
+                    let normalized = '';
+                    if (match) {
+                      const h = parseInt(match[1] || '0', 10);
+                      const m = parseInt(match[2] || match[3] || '0', 10);
+                      normalized = h > 0 && m > 0 ? `${h}h ${m}m` : h > 0 ? `${h}h` : `${m}m`;
+                    } else if (/^\d+h\s*\d+m$/i.test(raw)) {
+                      normalized = raw;
+                    }
+                    if (!normalized) {
+                      toast.error('לא הצלחנו לקבל משך טיסה. נסי לערוך ידנית.', 4000);
+                      return;
+                    }
+                    onApplyDuration(normalized);
+                    toast.success(`✓ משך הטיסה נקבע: ${normalized}`, 2500);
+                  } catch (err) {
+                    console.error('AI duration failed', err);
+                    toast.error('שגיאה בבדיקת משך הטיסה');
+                  } finally {
+                    setIsAskingAi(false);
+                  }
+                }}
+                title="בדיקת משך טיסה עם AI"
+                aria-label="בדיקת משך טיסה עם AI"
+                disabled={isAskingAi}
+                className="text-2xs font-bold mb-1 whitespace-nowrap bg-blue-50 text-blue-700 px-2 py-0.5 rounded-pill border border-blue-200 hover:bg-blue-100 active:scale-95 transition-all flex items-center gap-1 disabled:opacity-60"
+              >
+                <Sparkles className={`w-2.5 h-2.5 ${isAskingAi ? 'animate-pulse' : ''}`} aria-hidden="true" />
+                {isAskingAi ? 'מחשב…' : 'משך עם AI'}
+              </button>
+            ) : null}
             <div className="w-full flex items-center gap-0.5">
               <div className="flex-1 border-t-2 border-dashed border-slate-300" />
               <Plane className="w-3.5 h-3.5 text-blue-500 -scale-x-100 shrink-0" aria-hidden="true" />
@@ -560,6 +644,13 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
     setDeletingIndex(null);
   };
 
+  const handleApplyDuration = (index: number, duration: string) => {
+    if (!onUpdateTrip) return;
+    const newSegments = [...flights.segments];
+    newSegments[index] = { ...newSegments[index], duration };
+    onUpdateTrip({ ...trip, flights: { ...trip.flights, segments: newSegments } });
+  };
+
   const flightToDelete = deletingIndex !== null ? flights.segments[deletingIndex] : null;
 
   return (
@@ -616,6 +707,7 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
                     segment={seg}
                     onEdit={onUpdateTrip ? () => setEditingIndex(realIndex) : undefined}
                     onDelete={onUpdateTrip ? () => setDeletingIndex(realIndex) : undefined}
+                    onApplyDuration={onUpdateTrip ? (d) => handleApplyDuration(realIndex, d) : undefined}
                   />
                 </div>
               );

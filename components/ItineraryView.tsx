@@ -253,12 +253,30 @@ export const ItineraryView: React.FC<{
                 const y = seg.date?.match(/^(\d{4})/)?.[1] || seg.departureTime?.match(/^(\d{4})/)?.[1];
                 return !y || parseInt(y) === itinTripYear;
             }).forEach(seg => {
+                // Extract just the HH:MM part for display. Handles both
+                // plain "20:10" and ISO "2026-08-06T20:10:00".
+                const clockOf = (t?: string): string => {
+                    if (!t) return '';
+                    if (t.includes('T')) return t.split('T')[1]?.slice(0, 5) || '';
+                    const m = t.match(/^(\d{1,2}:\d{2})/);
+                    return m ? m[1] : t;
+                };
+                const depClock = clockOf(seg.departureTime);
+                const arrClock = clockOf(seg.arrivalTime);
+                // Detect overnight (arrival clock < departure clock, no date override)
+                const crossesMidnight = depClock && arrClock && !seg.arrivalTime?.includes('T') && arrClock < depClock;
+                const airlineLabel = [seg.airline, seg.flightNumber].filter(Boolean).join(' ');
+                const timeLine = depClock && arrClock
+                    ? `${depClock} → ${arrClock}${crossesMidnight ? ' (+1)' : ''}`
+                    : depClock || arrClock || '';
+                const subtitleParts = [airlineLabel, timeLine].filter(Boolean);
+
                 addToDay(seg.date, {
                     id: `flight-dep-${seg.flightNumber}`,
                     type: 'flight',
                     time: seg.departureTime,
                     title: `טיסה ל${seg.toCity || seg.toCode || 'יעד'}`,
-                    subtitle: `המראה: ${seg.airline} ${seg.flightNumber}`,
+                    subtitle: subtitleParts.join(' · '),
                     location: `${seg.fromCode} ➔ ${seg.toCode}`,
                     icon: Plane,
                     colorClass: 'text-blue-600',

@@ -14,8 +14,6 @@ import { useTripStore } from './stores/useTripStore';
 
 // Lazy Load Heavy Views
 const FlightsView = React.lazy(() => import('./components/FlightsView').then(module => ({ default: module.FlightsView })));
-const RestaurantsView = React.lazy(() => import('./components/RestaurantsView').then(module => ({ default: module.RestaurantsView })));
-const AttractionsView = React.lazy(() => import('./components/AttractionsView').then(module => ({ default: module.AttractionsView })));
 const ItineraryView = React.lazy(() => import('./components/ItineraryView').then(module => ({ default: module.ItineraryView })));
 const HotelsView = React.lazy(() => import('./components/HotelsView').then(module => ({ default: module.HotelsView })));
 const AdminView = React.lazy(() => import('./components/AdminView').then(module => ({ default: module.AdminView })));
@@ -316,9 +314,12 @@ const AppContent: React.FC = () => {
         {(() => {
           switch (currentTab) {
             case 'flights': return <FlightsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
-            case 'restaurants': return <RestaurantsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
-            case 'attractions': return <AttractionsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
-            case 'discover': return <DiscoverView trip={activeTrip} onUpdateTrip={handleUpdate} />;
+            // 'restaurants' + 'attractions' are legacy deep-link aliases for
+            // 'discover' — the nav collapsed them into one tab in R5.
+            case 'restaurants':
+            case 'attractions':
+            case 'discover':
+              return <DiscoverView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdate} onSwitchTab={setCurrentTab} onRefresh={() => { }} />;
             case 'hotels': return <HotelsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'map_full': return <UnifiedMapView trip={activeTrip} title="מפת הטיול המלאה" />;
