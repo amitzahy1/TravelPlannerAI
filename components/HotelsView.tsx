@@ -37,6 +37,13 @@ const getPlaceImage = (hotel: HotelBooking): string => {
     if (combined.includes('dubai')) return 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=800&q=80';
     if (combined.includes('tokyo') || combined.includes('japan')) return 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=800&q=80';
     if (combined.includes('bali') || combined.includes('indonesia')) return 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?auto=format&fit=crop&w=800&q=80';
+    // South Africa + surrounding safari countries — was missing.
+    if (combined.includes('cape town') || combined.includes('קייפטאון')) return 'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('johannesburg') || combined.includes('יוהנסבורג')) return 'https://images.unsplash.com/photo-1577948000111-9c970dfe3743?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('south africa') || combined.includes('דרום אפריקה') || combined.includes('kruger') || combined.includes('safari')) return 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=800&q=80';
+    // Britain beyond London
+    if (combined.includes('edinburgh') || combined.includes('scotland')) return 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=800&q=80';
+    if (combined.includes('manchester') || combined.includes('liverpool')) return 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80';
     if (combined.includes('beach') || combined.includes('resort') || combined.includes('island')) return 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&q=80';
     if (combined.includes('holiday inn') || combined.includes('marriott') || combined.includes('hilton') || combined.includes('sheraton') || combined.includes('hyatt')) return 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=800&q=80';
     return HOTEL_FALLBACK;

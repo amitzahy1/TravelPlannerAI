@@ -50,10 +50,20 @@ Do NOT recommend places whose quality dropped in the last 12 months.
 Skip lost Michelin stars, chef departures that hurt quality, closures,
 bad new management. When in doubt, leave it out.
 
-**PART 4: LOCAL AUTHORITY SOURCES**
-Prefer Wongnai (Thailand), Tabelog (Japan), Dianping (China/HK),
-OpenRice (HK/SG/MY/TH), Naver Map (Korea), Zomato (India) — plus
-Michelin Guide, Asia's 50 Best, Eater, TimeOut, NYT food.
+**PART 4: LOCAL AUTHORITY SOURCES (use the ones that match the region)**
+- Asia: Wongnai (Thailand), Tabelog (Japan), Dianping (China/HK),
+  OpenRice (HK/SG/MY/TH), Naver Map (Korea), Zomato (India).
+- UK / Ireland: Time Out London, Square Meal, Hardens, Observer Food
+  Monthly, Guardian restaurant reviews.
+- Europe: Gault & Millau (France), Gambero Rosso (Italy), Michelin
+  Guide (continental), 50 Best Restaurants, The Fork ratings.
+- Americas: Eater (US cities), Yelp Elite, NYT food, Bon Appétit,
+  Infatuation, OpenTable Diners' Choice.
+- Africa: Eat Out (South Africa), Rosetta Awards, SA Tourism picks,
+  Afar magazine, Conde Nast Traveler Africa.
+- Middle East: Time Out (Tel Aviv / Dubai), Rest magazine, Gault &
+  Millau ME.
+Plus: Michelin Guide, World's 50 Best, Asia's 50 Best, Eater, TimeOut.
 AVOID TripAdvisor as primary. Fallback: "Local Favorite" / "Top-Rated".
 
 **PART 5: EXCLUDE**
@@ -90,8 +100,14 @@ Let the AI pick the best-fitting category — don't force mappings.
 An attraction can appear in two categories if equally relevant.
 
 Sources: Google Reviews, TripAdvisor, Lonely Planet, Atlas Obscura,
-Wongnai (Thailand), Tabelog+Jalan (Japan), Dianping (China/HK),
-Naver Map (Korea), Klook/KKday, UNESCO, local tourism boards.
+UNESCO, local tourism boards. Plus region-specific:
+- Asia: Wongnai, Tabelog + Jalan, Dianping, Naver Map, Klook/KKday.
+- UK: Visit Britain, Time Out London, English Heritage, National Trust.
+- Europe: Rick Steves, Visit Europe guides, official national tourism.
+- Americas: NPS (US national parks), Atlas Obscura, Visit a state.
+- Africa: SANParks (South Africa), Safari Bookings, Bradt Guides,
+  Afar Africa collection.
+- Middle East: Visit Dubai, Tourist Israel, Jordan Tourism.
 Use "Top-Rated" / "Local Favorite" when no specific source applies.
 
 Include iconic commercial attractions — water parks, go-karting parks,
