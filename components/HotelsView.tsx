@@ -795,7 +795,7 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
     const groupToDelete = hotelGroups.find(g => g.primary.id === hotelToDelete);
 
     return (
-        <div className="space-y-6 animate-fade-in pb-10">
+        <div className="space-y-4 sm:space-y-6 animate-fade-in pb-10">
 
             {hotels && hotels.length > 0 ? (
                 <>
@@ -1023,11 +1023,11 @@ const HotelFormModal: React.FC<{ initialData: HotelBooking | null; onClose: () =
                             <div className="grid grid-cols-2 gap-3 mt-3">
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-slate-400 mr-2">Latitude</label>
-                                    <input type="number" step="any" className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder="41.6938" value={formData.lat || ''} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) } as any)} />
+                                    <input type="number" step="any" inputMode="decimal" className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder="41.6938" value={formData.lat || ''} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) } as any)} />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-slate-400 mr-2">Longitude</label>
-                                    <input type="number" step="any" className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder="44.8015" value={formData.lng || ''} onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) } as any)} />
+                                    <input type="number" step="any" inputMode="decimal" className="w-full p-3 bg-slate-50 rounded-xl font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-100" placeholder="44.8015" value={formData.lng || ''} onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) } as any)} />
                                 </div>
                             </div>
                         )}

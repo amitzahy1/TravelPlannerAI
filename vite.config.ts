@@ -34,7 +34,18 @@ export default defineConfig(({ mode }) => {
           name: 'Travel Planner Pro',
           short_name: 'TravelPro',
           description: 'AI-Powered Travel Itinerary Planner',
-          theme_color: '#ffffff',
+          theme_color: '#2563eb',
+          background_color: '#f7f9fc',
+          display: 'standalone',
+          orientation: 'portrait',
+          lang: 'he',
+          dir: 'rtl',
+          start_url: '.',
+          scope: '.',
+          // Icons: Android needs ≥ 192px + 512px PNGs in /public for the
+          // install prompt to fire. TODO: generate + add `public/icon-192.png`
+          // and `public/icon-512.png` from the plane-gradient logo. Until
+          // then the prompt will silently fail on Chrome Android.
           icons: []
         }
       })

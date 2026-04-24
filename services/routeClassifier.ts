@@ -13,11 +13,25 @@
 import { generateWithFallback } from './aiService';
 
 export type LegMode = 'drive' | 'flight' | 'train' | 'ferry' | 'drive+ferry' | 'multi';
+export type SubMode = 'drive' | 'flight' | 'train' | 'ferry';
+
+export interface LegSegment {
+        /** Name of the intermediate waypoint this sub-segment ENDS at. E.g.
+         *  for Pattaya → Koh Chang the first segment ends at "Trat Pier",
+         *  the second segment ends at the final destination. */
+        via: string;
+        mode: SubMode;
+        durationHours?: number;
+}
 
 export interface LegClassification {
         mode: LegMode;
         durationHours?: number;
         notes?: string;
+        /** Populated when the leg is multi-modal (drive+ferry / multi). Each
+         *  segment represents one transport mode and its end-point so the
+         *  map can draw distinct lines + an intermediate pin. */
+        segments?: LegSegment[];
 }
 
 interface LegInput {
@@ -78,15 +92,36 @@ Rules:
 - "flight" = commercial flight. Use when far or no road access.
 - "train" = long-distance intercity rail.
 - "ferry" = island-to-island sea crossing with vehicle or without.
-- "drive+ferry" = drive to a ferry terminal then cross by ferry (e.g. mainland → Koh Chang).
-- "multi" = two or more modes; use notes to describe.
+- "drive+ferry" = drive to a ferry terminal then cross by ferry.
+- "multi" = two or more modes chained together.
 
-For each leg also estimate duration in hours (decimal OK, e.g. 2.5) and a short Hebrew note (≤ 40 chars) if the mode is not obvious.
+IMPORTANT — if the leg is "drive+ferry" or "multi", you MUST also
+return a "segments" array describing each sub-leg in order. Each
+segment has: "via" (name of the pier / station / airport where the
+sub-leg ENDS — the final segment's "via" is the leg's final
+destination), "mode" (one of drive|flight|train|ferry), and
+"durationHours". For example, for "Pattaya → Koh Chang" the segments
+should be:
+  [
+    {"via":"Trat Laem Ngop Pier", "mode":"drive",  "durationHours":3},
+    {"via":"Koh Chang",            "mode":"ferry",  "durationHours":0.5}
+  ]
+
+For each leg also estimate the TOTAL duration in hours (decimal OK,
+e.g. 2.5) and a short Hebrew note (≤ 40 chars) describing the route.
 
 Respond ONLY with a JSON array, one object per leg, in the same order. Example:
 [
   {"mode":"drive","durationHours":2,"notes":""},
-  {"mode":"drive+ferry","durationHours":3.5,"notes":"נסיעה לטראט + מעבורת"}
+  {
+    "mode":"drive+ferry",
+    "durationHours":3.5,
+    "notes":"נסיעה לטראט + מעבורת",
+    "segments":[
+      {"via":"Trat Laem Ngop Pier","mode":"drive","durationHours":3},
+      {"via":"Koh Chang","mode":"ferry","durationHours":0.5}
+    ]
+  }
 ]
 
 No explanation, no code fence, pure JSON.`;
@@ -107,10 +142,20 @@ No explanation, no code fence, pure JSON.`;
                 legs.forEach((leg, i) => {
                         const entry = parsed[i] || {};
                         const mode = (entry.mode || entry.type || 'drive') as LegMode;
+                        const segments: LegSegment[] | undefined = Array.isArray(entry.segments)
+                                ? entry.segments
+                                        .map((s: any) => ({
+                                                via: typeof s?.via === 'string' ? s.via.trim() : '',
+                                                mode: (['drive', 'flight', 'train', 'ferry'].includes(s?.mode) ? s.mode : 'drive') as SubMode,
+                                                durationHours: typeof s?.durationHours === 'number' ? s.durationHours : undefined,
+                                        }))
+                                        .filter((s: LegSegment) => s.via.length > 0)
+                                : undefined;
                         byLeg[legKey(leg.from, leg.to)] = {
                                 mode,
                                 durationHours: typeof entry.durationHours === 'number' ? entry.durationHours : undefined,
                                 notes: entry.notes || '',
+                                segments,
                         };
                 });
                 const nextCache: Cache = { ...cache, [tripId]: { t: Date.now(), byLeg } };

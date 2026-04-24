@@ -56,9 +56,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // 4. Cache (ללא שינוי)
+    // 4. AI cache — public read (saves API cost across users), but writes
+    // restricted to authenticated users so anonymous clients can't poison it.
     match /ai_cache/{hash} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
     // 5. Trip Invites — readable only if the caller knows the exact invite ID

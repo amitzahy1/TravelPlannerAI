@@ -397,19 +397,21 @@ const FlightRow: React.FC<{
             {onEdit && (
               <button
                 onClick={e => { e.stopPropagation(); onEdit(); }}
-                className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                className="w-11 h-11 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 title="ערוך טיסה"
+                aria-label="ערוך טיסה"
               >
-                <Edit2 className="w-4 h-4" />
+                <Edit2 className="w-4 h-4" aria-hidden="true" />
               </button>
             )}
             {onDelete && (
               <button
                 onClick={e => { e.stopPropagation(); onDelete(); }}
-                className="p-2 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600"
+                className="w-11 h-11 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                 title="מחק טיסה"
+                aria-label="מחק טיסה"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
               </button>
             )}
             <ChevronDown className={`w-4 h-4 text-slate-300 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />

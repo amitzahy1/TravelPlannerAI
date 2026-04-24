@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import { TripCountdown } from './shared';
 import { getDestinationCover } from '../utils/destinationCover';
+import { downloadTripHTML } from '../utils/generateTripHTML';
+import { FileText as FileTextIcon } from 'lucide-react';
 import { resolveLocationName, extractRobustCity, cleanCityName } from '../utils/geoData'; // Imported from new DB
 import { getCityTheme, buildCityColorMap, lookupCityTheme } from '../utils/cityColors'; // Color Engine
 import {
@@ -754,7 +756,19 @@ export const ItineraryView: React.FC<{
                         alt="Trip Cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
-                    <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" aria-label="החלף תמונת נושא"><Edit2 className="w-4 h-4" aria-hidden="true" /></button>
+                    {/* Export trip summary — moved to the home view per user
+                         request. Always visible (not hover-gated) so it's
+                         discoverable on mobile. */}
+                    <button
+                        onClick={() => downloadTripHTML(trip)}
+                        aria-label="ייצא סיכום טיול"
+                        title="ייצא סיכום"
+                        className="absolute top-4 left-16 md:left-20 h-10 px-3 bg-white/90 hover:bg-white backdrop-blur-md rounded-pill text-slate-900 text-2xs sm:text-xs font-bold flex items-center gap-1.5 shadow-popover transition-colors z-20"
+                    >
+                        <FileTextIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                        ייצא סיכום
+                    </button>
                 </div>
 
                 {/* Content Layer (Not clipped, allows Popovers) */}
@@ -1414,7 +1428,7 @@ export const ItineraryView: React.FC<{
                                 <input name="description" defaultValue="הסעה לשדה" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
                                 <div className="grid grid-cols-2 gap-4">
                                     <input name="time" type="time" defaultValue={transferModal.defaultTime} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
-                                    <input name="price" type="number" placeholder="מחיר" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
+                                    <input name="price" type="number" step="any" inputMode="decimal" placeholder="מחיר" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <input name="driverName" placeholder="שם הנהג" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium" />

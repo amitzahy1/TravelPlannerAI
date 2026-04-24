@@ -405,37 +405,9 @@ export const updateSharedTrip = async (
   }
 };
 
-/**
- * Subscribe to real-time updates on a shared trip
- */
-export const subscribeToSharedTrip = (
-  shareId: string,
-  callback: (trip: Trip, metadata: SharedTripMetadata) => void,
-  onError?: (error: any) => void
-): Unsubscribe => {
-  const tripRef = doc(db, 'shared-trips', shareId);
-
-  return onSnapshot(tripRef,
-    (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        const metadata: SharedTripMetadata = {
-          owner: data.owner,
-          collaborators: data.collaborators,
-          shareId: data.shareId,
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-          updatedBy: data.updatedBy
-        };
-        callback(data.tripData as Trip, metadata);
-      }
-    },
-    (error) => {
-      console.error("🔥 [FirestoreService] Subscription Error:", error);
-      if (onError) onError(error);
-    }
-  );
-};
+// `subscribeToSharedTrip` was defined here but never called anywhere in the
+// codebase (audit AA2). Removed to prevent accidental use of a dual-stream
+// onSnapshot pattern that would bypass React Query.
 
 /**
  * Get all shared trip references for a user

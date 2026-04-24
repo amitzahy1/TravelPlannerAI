@@ -57,7 +57,12 @@ export const Modal: React.FC<ModalProps> = ({
                                 ref={dialogRef}
                                 onClick={(e) => e.stopPropagation()}
                                 className={`bg-white w-full ${SIZE[size]} max-h-[92vh] flex flex-col rounded-t-2xl sm:rounded-2xl shadow-popover overflow-hidden`}
-                                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+                                style={{
+                                        // Safe-area insets on notched phones — respect bottom
+                                        // (home indicator) AND top (notch) so nothing clips.
+                                        paddingBottom: 'env(safe-area-inset-bottom)',
+                                        paddingTop: 'env(safe-area-inset-top)',
+                                }}
                         >
                                 {(title || subtitle) && (
                                         <header className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-100 shrink-0">

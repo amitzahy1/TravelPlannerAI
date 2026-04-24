@@ -34,10 +34,12 @@ interface LayoutProps {
 // Content nav tabs (excluding trip management)
 const contentNavItems = [
         { id: 'itinerary', label: 'ראשי', icon: Home },
-        { id: 'flights', label: 'טיסות', icon: Plane },
-        { id: 'hotels', label: 'מלונות', icon: Hotel },
+        // Discover is the second most-used tab (user's explicit request) —
+        // keep it second in the reading order (RTL first-after-home).
         { id: 'discover', label: 'גילויים', icon: Compass },
         { id: 'map_full', label: 'מפה', icon: MapPin },
+        { id: 'flights', label: 'טיסות', icon: Plane },
+        { id: 'hotels', label: 'מלונות', icon: Hotel },
 ];
 
 export const LayoutFixed: React.FC<LayoutProps> = ({

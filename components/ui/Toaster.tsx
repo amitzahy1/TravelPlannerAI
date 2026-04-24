@@ -16,7 +16,8 @@ export const Toaster: React.FC = () => {
         return (
                 <div
                         dir="rtl"
-                        className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none w-full max-w-md px-4"
+                        className="fixed left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none w-full max-w-md px-4"
+                        style={{ top: 'calc(env(safe-area-inset-top) + 1rem)' }}
                 >
                         <AnimatePresence>
                                 {toasts.map((t) => {
