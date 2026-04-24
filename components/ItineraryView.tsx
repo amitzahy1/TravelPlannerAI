@@ -5,7 +5,8 @@ import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType
 import { TripCountdown } from './shared';
 import { getDestinationCover } from '../utils/destinationCover';
 import { downloadTripHTML } from '../utils/generateTripHTML';
-import { FileText as FileTextIcon } from 'lucide-react';
+import { downloadTripIcal } from '../utils/generateTripIcal';
+import { FileText as FileTextIcon, CalendarDays as CalendarDaysIcon } from 'lucide-react';
 import { resolveLocationName, extractRobustCity, cleanCityName } from '../utils/geoData'; // Imported from new DB
 import { getCityTheme, buildCityColorMap, lookupCityTheme } from '../utils/cityColors'; // Color Engine
 import {
@@ -760,15 +761,25 @@ export const ItineraryView: React.FC<{
                     {/* Export trip summary — moved to the home view per user
                          request. Always visible (not hover-gated) so it's
                          discoverable on mobile. */}
-                    <button
-                        onClick={() => downloadTripHTML(trip)}
-                        aria-label="ייצא סיכום טיול"
-                        title="ייצא סיכום"
-                        className="absolute top-4 left-16 md:left-20 h-10 px-3 bg-white/90 hover:bg-white backdrop-blur-md rounded-pill text-slate-900 text-2xs sm:text-xs font-bold flex items-center gap-1.5 shadow-popover transition-colors z-20"
-                    >
-                        <FileTextIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                        ייצא סיכום
-                    </button>
+                    <div className="absolute top-4 left-16 md:left-20 flex items-center gap-1.5 z-20">
+                        <button
+                            onClick={() => downloadTripHTML(trip)}
+                            aria-label="ייצא סיכום טיול"
+                            title="ייצא סיכום"
+                            className="h-10 px-3 bg-white/90 hover:bg-white backdrop-blur-md rounded-pill text-slate-900 text-2xs sm:text-xs font-bold flex items-center gap-1.5 shadow-popover transition-colors"
+                        >
+                            <FileTextIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                            ייצא סיכום
+                        </button>
+                        <button
+                            onClick={() => downloadTripIcal(trip)}
+                            aria-label="ייצא ליומן (iCal)"
+                            title="הוסף ליומן"
+                            className="h-10 w-10 bg-white/90 hover:bg-white backdrop-blur-md rounded-pill text-slate-900 flex items-center justify-center shadow-popover transition-colors"
+                        >
+                            <CalendarDaysIcon className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content Layer (Not clipped, allows Popovers) */}
