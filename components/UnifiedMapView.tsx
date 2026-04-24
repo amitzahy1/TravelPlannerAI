@@ -12,7 +12,7 @@ import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegCla
 // --- Interfaces ---
 interface MapItem {
     id: string;
-    type: 'hotel' | 'restaurant' | 'attraction' | 'airport' | 'shopping';
+    type: 'hotel' | 'restaurant' | 'attraction' | 'airport';
     subType?: 'departure' | 'arrival';
     flightId?: string;
     name: string;
@@ -74,13 +74,6 @@ const TYPE_CONFIG = {
         emoji: '✈️',
         label: 'שדה תעופה',
         svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
-    },
-    shopping: {
-        color: '#ec4899',
-        gradient: ['#ec4899', '#db2777'],
-        emoji: '🛍️',
-        label: 'קניות',
-        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>`,
     },
 };
 
@@ -419,8 +412,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             }));
 
             // Shopping
-            trip.shoppingItems?.forEach(s => {
-                if (s.shopName) raw.push({ id: s.id, type: 'shopping', name: s.shopName, address: `${s.shopName}, ${trip.destination}`, description: s.name, date: s.purchaseDate, city: trip.destination });
+            // Legacy 'shoppingItems' removed from the schema — pin rendering dropped.
+            trip.shoppingItems?.forEach((_s: any) => {
             });
         }
 

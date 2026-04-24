@@ -121,15 +121,54 @@ const researchRestaurantsForTrip = async (
                 opts.onProgress?.('food', i + 1, cities.length);
                 const city = cities[i];
                 try {
-                        const prompt = buildRestaurantPrompt(city);
-                        const response = await generateWithFallback(
+                        // First pass: standard prompt
+                        const firstPrompt = buildRestaurantPrompt(city);
+                        let response = await generateWithFallback(
                                 null,
-                                [{ role: 'user', parts: [{ text: prompt }] }],
+                                [{ role: 'user', parts: [{ text: firstPrompt }] }],
                                 { responseMimeType: 'application/json', temperature: 0.1 },
                                 'SEARCH'
                         );
-                        const rawData = JSON.parse(response.text || '{}');
-                        const categoriesList = rawData.categories || (Array.isArray(rawData) ? rawData : []);
+                        let rawData = JSON.parse(response.text || '{}');
+                        let categoriesList = rawData.categories || (Array.isArray(rawData) ? rawData : []);
+
+                        // Count restaurants in this first pass
+                        const firstCount = categoriesList.reduce((sum: number, c: any) => sum + (c.restaurants?.length || 0), 0);
+
+                        // Retry path: if a city returned < 8 restaurants total
+                        // (Koh Chang / Trat / smaller islands), re-prompt asking
+                        // the AI to search harder and include smaller local
+                        // shops, ferry-pier eateries, markets.
+                        if (firstCount < 8) {
+                                console.log(`[bgResearch] ${city} first pass = ${firstCount}, retrying`);
+                                const retryPrompt = `${firstPrompt}
+
+⚠️ RETRY CONTEXT: Previous search for "${city}" returned only ${firstCount} restaurants. This city is smaller/less documented. Search HARDER this time — include:
+- Small local shops, street food legends, ferry-pier eateries
+- Hotel restaurants (flag isHotelRestaurant: true)
+- Market food courts and night markets
+- Beach shacks and roadside stops worth trying
+- Traveller-favourite spots from forums (Rick Steves, Reddit r/thailand, blog reviews)
+
+Still return the same 10-category JSON shape, but aim for 15-25 total restaurants minimum.`;
+                                try {
+                                        const retry = await generateWithFallback(
+                                                null,
+                                                [{ role: 'user', parts: [{ text: retryPrompt }] }],
+                                                { responseMimeType: 'application/json', temperature: 0.2 },
+                                                'SEARCH'
+                                        );
+                                        const retryData = JSON.parse(retry.text || '{}');
+                                        const retryList = retryData.categories || (Array.isArray(retryData) ? retryData : []);
+                                        const retryCount = retryList.reduce((sum: number, c: any) => sum + (c.restaurants?.length || 0), 0);
+                                        if (retryCount > firstCount) {
+                                                categoriesList = retryList;
+                                                console.log(`[bgResearch] ${city} retry ${retryCount} > first ${firstCount}; using retry`);
+                                        }
+                                } catch (retryErr) {
+                                        console.warn(`[bgResearch] retry for ${city} failed, using first pass`, retryErr);
+                                }
+                        }
                         if (!categoriesList.length) continue;
 
                         const processed = categoriesList.map((c: any, idx: number) => ({

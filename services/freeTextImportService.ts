@@ -147,6 +147,13 @@ export async function parseFreeTextTrip(
 
   const flights: FlightSegment[] = parsed.flights || [];
 
+  // Validation: if BOTH hotels and flights came back empty the AI
+  // either misunderstood the input or the user typed something too
+  // vague. Surface this instead of silently creating an empty trip.
+  if (hotels.length === 0 && flights.length === 0) {
+    throw new Error('לא נמצאו מלונות או טיסות בטקסט. נסי להוסיף פרטים ספציפיים יותר (תאריכים, שמות מלונות, קודי טיסה).');
+  }
+
   const summary: string = parsed.summary
     || `נמצאו ${hotels.length} מלונות ו-${flights.length} טיסות`;
 
