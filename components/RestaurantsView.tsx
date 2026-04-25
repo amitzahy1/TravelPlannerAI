@@ -553,34 +553,27 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const displayTitle = (title: string) => HEBREW_TITLES[title] || title;
 
-    // Extract Raters for Filtering (Cleaned)
+    // Extract Raters for Filtering — every source that actually appears in
+    // the data shows up as a filter. Authoritative sources (Michelin, 50
+    // Best, etc.) are consolidated under a canonical name so multiple
+    // wordings collapse; everything else (Wongnai, BK Magazine, regional
+    // blogs the AI surfaces) is preserved verbatim so the filter mirrors
+    // what the user sees on the cards.
     const availableRaters = useMemo(() => {
         const sources = new Set<string>();
-        const ALLOWED_AUTHORITIES = ['michelin', '50 best', 'timeout', 'eater', 'tripadvisor', 'google', 'local', 'gault'];
-
         allAiRestaurants.forEach(r => {
-            if (r.recommendationSource) {
-                let provider = r.recommendationSource;
-                const low = provider.toLowerCase();
-
-                // Consolidate Authoritative Sources
-                if (low.includes('michelin')) provider = "Michelin Guide";
-                else if (low.includes('50 best')) provider = "50 Best";
-                else if (low.includes('timeout')) provider = "TimeOut";
-                else if (low.includes('eater')) provider = "Eater";
-                else if (low.includes('tripadvisor') || low.includes('trip advisor')) provider = "TripAdvisor";
-                else if (low.includes('google')) provider = "Google Review";
-                else if (low.includes('local')) provider = "Local Key";
-
-                // Filter out junk (Blogs, Awards) unless it matches Authority
-                const isAuthority = ALLOWED_AUTHORITIES.some(auth => low.includes(auth));
-                if (isAuthority) {
-                    sources.add(provider);
-                } else {
-                    // Map unknown/junk to "Local/Google" or ignore for filter list (but keep in list)
-                    // We simply don't add it to the FILTER list so the user doesn't see "Burger Blog" button
-                }
-            }
+            const raw = (r.recommendationSource || '').trim();
+            if (!raw) return;
+            const low = raw.toLowerCase();
+            let provider = raw;
+            if (low.includes('michelin') || low.includes('bib gourmand')) provider = 'Michelin Guide';
+            else if (low.includes('50 best')) provider = '50 Best';
+            else if (low.includes('timeout') || low.includes('time out')) provider = 'TimeOut';
+            else if (low.includes('eater')) provider = 'Eater';
+            else if (low.includes('tripadvisor') || low.includes('trip advisor')) provider = 'TripAdvisor';
+            else if (low.includes('google')) provider = 'Google';
+            else if (low.includes('gault')) provider = 'Gault & Millau';
+            sources.add(provider);
         });
         return Array.from(sources).sort();
     }, [allAiRestaurants]);
@@ -694,14 +687,24 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         }
 
         if (selectedRater !== 'all') {
-            list = list.filter(r => {
-                if (!r.recommendationSource) return false;
-                const raterLower = selectedRater.toLowerCase();
-                const sourceLower = r.recommendationSource.toLowerCase();
-                if (raterLower === 'michelin guide') return sourceLower.includes('michelin');
-                if (raterLower === 'local / google') return (sourceLower.includes('local') || sourceLower.includes('google'));
-                return sourceLower.includes(raterLower);
-            });
+            // Map the canonical filter name back to the substrings that
+            // could appear in r.recommendationSource. Mirrors the
+            // consolidation in availableRaters above so the filter and
+            // the cards stay in lock-step.
+            const matchSource = (raw: string): boolean => {
+                const sourceLower = raw.toLowerCase();
+                switch (selectedRater) {
+                    case 'Michelin Guide': return sourceLower.includes('michelin') || sourceLower.includes('bib gourmand');
+                    case '50 Best':        return sourceLower.includes('50 best');
+                    case 'TimeOut':        return sourceLower.includes('timeout') || sourceLower.includes('time out');
+                    case 'Eater':          return sourceLower.includes('eater');
+                    case 'TripAdvisor':    return sourceLower.includes('tripadvisor') || sourceLower.includes('trip advisor');
+                    case 'Google':         return sourceLower.includes('google');
+                    case 'Gault & Millau': return sourceLower.includes('gault');
+                    default:               return sourceLower.includes(selectedRater.toLowerCase());
+                }
+            };
+            list = list.filter(r => !!r.recommendationSource && matchSource(r.recommendationSource));
         }
 
         // Global dedupe by place name — collapses 4×Sorn into 1

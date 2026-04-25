@@ -641,18 +641,25 @@ body {
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; direction: rtl; }
 .cal-header { background: linear-gradient(180deg, #f8fafc, #f1f5f9); padding: 8px 4px; text-align: center; font-weight: 800; font-size: 11px; color: #475569; border-radius: 6px; letter-spacing: 0.02em; }
 .cal-header.cal-header-sat, .cal-header.cal-header-fri { color: #dc2626; }
-.cal-cell { background: #fff; border: 1px solid #e2e8f0; min-height: 88px; padding: 4px 5px 5px; display: flex; flex-direction: column; gap: 2px; border-radius: 5px; overflow: hidden; }
+.cal-cell { background: #fff; border: 1px solid #e2e8f0; min-height: 110px; padding: 4px 5px 5px; display: flex; flex-direction: column; gap: 2px; border-radius: 5px; overflow: hidden; }
 .cal-cell.cal-padding { background: #f8fafc; opacity: 0.6; }
 .cal-cell.cal-today { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb inset; }
 .cal-num { font-weight: 800; font-size: 13px; color: #0f172a; text-align: left; line-height: 1.1; padding: 1px 2px; }
 .cal-num.cal-num-fri, .cal-num.cal-num-sat { color: #dc2626; }
 .cal-padding .cal-num { color: #94a3b8; font-weight: 600; }
-.cal-chip { display: block; padding: 2px 5px; font-size: 10px; line-height: 1.25; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; max-width: 100%; }
+/* Wrap to multiple lines so the full label is visible — no more "...ttaya". */
+.cal-chip { display: block; padding: 3px 6px; font-size: 10px; line-height: 1.3; border-radius: 4px; white-space: normal; overflow-wrap: break-word; word-break: break-word; font-weight: 700; max-width: 100%; text-align: right; }
 .cal-chip-flight { background: #fce7f3; color: #9d174d; }
 .cal-chip-hotel { background: #ccfbf1; color: #115e59; }
 .cal-chip-activity { background: #ede9fe; color: #5b21b6; }
 .cal-chip-food { background: #ffedd5; color: #9a3412; }
 .cal-chip-transfer { background: #fef3c7; color: #92400e; }
+/* Run chips (consecutive same-event days) — visually connect by losing
+     border-radius on the joining edges, keeping color continuous. */
+.cal-chip-run-mid { border-radius: 0; padding-top: 1px; padding-bottom: 1px; opacity: 0.92; }
+.cal-chip-run-start { border-bottom-right-radius: 0; border-top-right-radius: 4px; border-bottom-left-radius: 0; }
+.cal-chip-run-end { border-top-right-radius: 0; border-top-left-radius: 0; padding-top: 1px; opacity: 0.92; }
+.cal-chip-run-cont { font-size: 8.5px; font-weight: 600; opacity: 0.7; }
 .cal-more { font-size: 9px; color: #64748b; font-weight: 700; padding-right: 3px; }
 .cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 14px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; }
 .cal-legend-title { font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; padding-left: 4px; }
@@ -706,18 +713,16 @@ const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
   const tripEnd = new Date(timeline[timeline.length - 1].date); tripEnd.setHours(12, 0, 0, 0);
   const todayIso = isoDate(new Date());
 
-  // Pad the visible range with 3 days on each side, then snap to whole
-  // weeks so the grid starts on Sunday and ends on Saturday.
-  const padStart = addDays(tripStart, -3);
-  const padEnd = addDays(tripEnd, 3);
+  // Pad ±1 day (was ±3) so the grid stays compact and each cell can
+  // afford a wrapped label instead of a "...ttaya" truncation.
+  const padStart = addDays(tripStart, -1);
+  const padEnd = addDays(tripEnd, 1);
   const calStart = new Date(padStart);
   calStart.setDate(calStart.getDate() - calStart.getDay());
   const calEnd = new Date(padEnd);
   calEnd.setDate(calEnd.getDate() + (6 - calEnd.getDay()));
 
-  // Build per-hotel + per-city color maps so each booking + each stop in
-  // the calendar gets its own pastel chip — much easier to follow than a
-  // monochrome teal block.
+  // Build per-hotel + per-city color maps.
   const hotelColors: Record<string, { bg: string; fg: string }> = {};
   let hotelIdx = 0;
   (trip.hotels || []).forEach(h => {
@@ -738,9 +743,8 @@ const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
   trip.flights?.segments?.forEach(s => { if (s.toCity) ensureCityColor(s.toCity); });
   (trip.hotels || []).forEach(h => { if (h.city) ensureCityColor(h.city); });
 
-  // Map ISO date → list of chips (kind + label + optional color override).
   type ChipKind = 'flight' | 'hotel' | 'activity' | 'food' | 'transfer';
-  type Chip = { kind: ChipKind; label: string; color?: { bg: string; fg: string } };
+  type Chip = { kind: ChipKind; label: string; runKey: string; color?: { bg: string; fg: string } };
   const eventsByIso: Record<string, Chip[]> = {};
   timeline.forEach(d => {
     if (!eventsByIso[d.iso]) eventsByIso[d.iso] = [];
@@ -750,34 +754,73 @@ const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
       else if (e.type === 'hotel_in' || e.type === 'hotel_out' || e.type === 'hotel_stay') kind = 'hotel';
       else if (e.type === 'food') kind = 'food';
       else if (e.type === 'transfer') kind = 'transfer';
-      const label = e.time && e.time !== '—' ? `${e.time} ${e.title}` : e.title;
+      // Times removed per user request — calendar shows what, not when.
+      const label = e.title;
       let color: { bg: string; fg: string } | undefined;
+      // runKey detects "same event on consecutive days" so a 5-night hotel
+      // run renders as a connected band instead of 5 separate chips.
+      let runKey = `${kind}::${label}`;
       if (kind === 'hotel') {
         const name = (e.hotelData?.name || '').trim().toLowerCase();
         if (name && hotelColors[name]) color = hotelColors[name];
+        runKey = `hotel::${name}`;
       } else if (kind === 'flight') {
         const city = (e.flightData?.toCity || e.flightData?.fromCity || '').trim().toLowerCase();
         if (city && cityColors[city]) color = cityColors[city];
+        runKey = `flight::${city}`;
       }
-      eventsByIso[d.iso].push({ kind, label, color });
+      eventsByIso[d.iso].push({ kind, label, runKey, color });
     });
   });
 
-  const cells: string[] = [];
+  // Walk consecutive days and tag each chip with its position in the run
+  // (start / mid / end / single) plus whether to hide the label on a
+  // continuation day so we don't repeat "Holiday Inn Pattaya" 5 times.
+  type RunPos = 'single' | 'start' | 'mid' | 'end';
+  type RenderedChip = Chip & { runPos: RunPos };
+  const renderedByIso: Record<string, RenderedChip[]> = {};
+
   const totalDays = Math.round((calEnd.getTime() - calStart.getTime()) / 86400000) + 1;
+  const dayIsos: string[] = [];
+  for (let i = 0; i < totalDays; i++) dayIsos.push(isoDate(addDays(calStart, i)));
+
+  for (let i = 0; i < dayIsos.length; i++) {
+    const iso = dayIsos[i];
+    const events = eventsByIso[iso] || [];
+    renderedByIso[iso] = events.map(c => {
+      const prev = i > 0 ? eventsByIso[dayIsos[i - 1]] : undefined;
+      const next = i < dayIsos.length - 1 ? eventsByIso[dayIsos[i + 1]] : undefined;
+      const inPrev = !!prev?.some(p => p.runKey === c.runKey);
+      const inNext = !!next?.some(n => n.runKey === c.runKey);
+      let runPos: RunPos = 'single';
+      if (inPrev && inNext) runPos = 'mid';
+      else if (inNext) runPos = 'start';
+      else if (inPrev) runPos = 'end';
+      return { ...c, runPos };
+    });
+  }
+
+  const cells: string[] = [];
   for (let i = 0; i < totalDays; i++) {
     const cur = addDays(calStart, i);
     const iso = isoDate(cur);
     const inTrip = cur >= tripStart && cur <= tripEnd;
     const dow = cur.getDay();
-    const events = eventsByIso[iso] || [];
+    const events = renderedByIso[iso] || [];
     const visible = events.slice(0, 4);
     const overflow = events.length - visible.length;
     const chipsHtml = visible.map(c => {
       const styleAttr = c.color
         ? ` style="background:${c.color.bg};color:${c.color.fg}"`
         : '';
-      return `<span class="cal-chip cal-chip-${c.kind}"${styleAttr} title="${esc(c.label)}">${esc(c.label)}</span>`;
+      const runCls = c.runPos === 'single' ? '' : ` cal-chip-run-${c.runPos}`;
+      // On continuation cells (mid/end) show a thin bar with a dot
+      // instead of repeating the full hotel name. Start cell carries
+      // the full label.
+      const isContinuation = c.runPos === 'mid' || c.runPos === 'end';
+      const display = isContinuation ? '·' : esc(c.label);
+      const contCls = isContinuation ? ' cal-chip-run-cont' : '';
+      return `<span class="cal-chip cal-chip-${c.kind}${runCls}${contCls}"${styleAttr} title="${esc(c.label)}">${display}</span>`;
     }).join('');
     const moreHtml = overflow > 0 ? `<span class="cal-more">+${overflow} נוסף</span>` : '';
     const numCls = `cal-num${dow === 5 ? ' cal-num-fri' : ''}${dow === 6 ? ' cal-num-sat' : ''}`;

@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Utensils, Ticket, Compass } from 'lucide-react';
+import { Utensils, Ticket, Compass, Map as MapIcon } from 'lucide-react';
 import { Trip } from '../types';
 import { RestaurantsView } from './RestaurantsView';
 import { AttractionsView } from './AttractionsView';
+import { DiscoverMapView } from './DiscoverMapView';
 import { getTripCities } from '../utils/geoData';
 
-type DiscoverTab = 'food' | 'sights';
+type DiscoverTab = 'food' | 'sights' | 'map';
 
 interface DiscoverViewProps {
         trip: Trip;
@@ -123,6 +124,20 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ trip, onUpdateTrip }
                                                         </span>
                                                 )}
                                         </button>
+                                        <button
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={tab === 'map'}
+                                                onClick={() => setTab('map')}
+                                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                                                        tab === 'map'
+                                                                ? 'bg-white text-blue-600 shadow-card'
+                                                                : 'text-slate-500 hover:text-slate-700'
+                                                }`}
+                                        >
+                                                <MapIcon className="w-4 h-4" />
+                                                <span>מפה</span>
+                                        </button>
                                 </div>
                         </header>
 
@@ -137,8 +152,10 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ trip, onUpdateTrip }
                                 >
                                         {tab === 'food' ? (
                                                 <RestaurantsView trip={trip} onUpdateTrip={onUpdateTrip} />
-                                        ) : (
+                                        ) : tab === 'sights' ? (
                                                 <AttractionsView trip={trip} onUpdateTrip={onUpdateTrip} />
+                                        ) : (
+                                                <DiscoverMapView trip={trip} onUpdateTrip={onUpdateTrip} />
                                         )}
                                 </motion.div>
                         </AnimatePresence>

@@ -107,10 +107,12 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
 
                         {/* Top Row: cuisine chip (right in RTL) + actions (left in RTL).
                                  Buttons kept compact (w-7 = 28px) so the cuisine label
-                                 has room — the user reported that bigger buttons were
-                                 chopping off the label to "...G" / "...AI". */}
+                                 has room. The chip is `dir="ltr"` so truncation cuts
+                                 the END of the text (right side visually) instead of
+                                 the START — matches reading order for English labels
+                                 like "FINE DINING 💎" / "MICHELIN GUIDE". */}
                         <div className="absolute top-2 inset-x-2 flex items-start justify-between gap-1.5 z-30 pointer-events-none">
-                                <span className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[10px] font-black text-white uppercase tracking-wider truncate max-w-[72%] flex-1">
+                                <span dir="ltr" className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[9px] font-black text-white uppercase tracking-wide truncate max-w-[78%] flex-1 text-center">
                                         {visualLabel}
                                 </span>
                                 <div className="flex gap-1 pointer-events-auto flex-shrink-0">

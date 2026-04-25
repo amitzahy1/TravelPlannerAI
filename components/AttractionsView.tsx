@@ -435,7 +435,21 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 locationMatchesCity(a.description || '', selectedCity)
             );
         }
-        if (selectedRater !== 'all') list = list.filter(a => a.recommendationSource === selectedRater);
+        if (selectedRater !== 'all') {
+            const matchSource = (raw: string): boolean => {
+                const sourceLower = raw.toLowerCase();
+                switch (selectedRater) {
+                    case 'UNESCO':         return sourceLower.includes('unesco');
+                    case 'Lonely Planet':  return sourceLower.includes('lonely planet');
+                    case 'Atlas Obscura':  return sourceLower.includes('atlas obscura');
+                    case 'TimeOut':        return sourceLower.includes('timeout') || sourceLower.includes('time out');
+                    case 'TripAdvisor':    return sourceLower.includes('tripadvisor') || sourceLower.includes('trip advisor');
+                    case 'Google':         return sourceLower.includes('google');
+                    default:               return sourceLower.includes(selectedRater.toLowerCase());
+                }
+            };
+            list = list.filter(a => !!a.recommendationSource && matchSource(a.recommendationSource));
+        }
 
         // Global dedupe — collapses same attraction across categories
         return dedupeByName(list);
@@ -486,17 +500,24 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const displayTitle = (title: string) => HEBREW_TITLES[title] || title;
 
-    // Filtered Raters (Cleaned)
+    // Raters — every source that actually appears in the data, with
+    // common authoritative names consolidated (UNESCO, TripAdvisor, Lonely
+    // Planet, etc.) so multiple wordings collapse into a single chip.
+    // Anything else is preserved verbatim so regional sources show up too.
     const availableRaters = useMemo(() => {
         const sources = new Set<string>();
-        const ALLOWED = ['unesco', 'tripadvisor', 'lonely planet', 'atlas obscura', 'timeout', 'google', 'local'];
-
         aiCategories.forEach(c => c.attractions.forEach(a => {
-            if (a.recommendationSource) {
-                const low = a.recommendationSource.toLowerCase();
-                const isAuth = ALLOWED.some(k => low.includes(k));
-                if (isAuth) sources.add(a.recommendationSource);
-            }
+            const raw = (a.recommendationSource || '').trim();
+            if (!raw) return;
+            const low = raw.toLowerCase();
+            let provider = raw;
+            if (low.includes('unesco')) provider = 'UNESCO';
+            else if (low.includes('lonely planet')) provider = 'Lonely Planet';
+            else if (low.includes('atlas obscura')) provider = 'Atlas Obscura';
+            else if (low.includes('timeout') || low.includes('time out')) provider = 'TimeOut';
+            else if (low.includes('tripadvisor') || low.includes('trip advisor')) provider = 'TripAdvisor';
+            else if (low.includes('google')) provider = 'Google';
+            sources.add(provider);
         }));
         return Array.from(sources).sort();
     }, [aiCategories]);

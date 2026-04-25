@@ -787,29 +787,7 @@ export const ItineraryView: React.FC<{
                         alt="Trip Cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
-                    <button onClick={handleChangeCover} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" aria-label="החלף תמונת נושא"><Edit2 className="w-4 h-4" aria-hidden="true" /></button>
-                    {/* Export trip summary — moved to the home view per user
-                         request. Always visible (not hover-gated) so it's
-                         discoverable on mobile. */}
-                    <div className="absolute top-4 left-16 md:left-20 flex items-center gap-1.5 z-20">
-                        <button
-                            onClick={() => downloadTripHTML(trip)}
-                            aria-label="ייצא סיכום טיול"
-                            title="ייצא סיכום"
-                            className="h-10 px-3 bg-white/90 hover:bg-white backdrop-blur-md rounded-pill text-slate-900 text-2xs sm:text-xs font-bold flex items-center gap-1.5 shadow-popover transition-colors"
-                        >
-                            <FileTextIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                            ייצא סיכום
-                        </button>
-                        <button
-                            onClick={() => downloadTripIcal(trip)}
-                            aria-label="ייצא ליומן (iCal)"
-                            title="הוסף ליומן"
-                            className="h-10 w-10 bg-white/90 hover:bg-white backdrop-blur-md rounded-pill text-slate-900 flex items-center justify-center shadow-popover transition-colors"
-                        >
-                            <CalendarDaysIcon className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                    </div>
+                    <button onClick={handleChangeCover} className="absolute top-3 left-3 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" aria-label="החלף תמונת נושא"><Edit2 className="w-4 h-4" aria-hidden="true" /></button>
                 </div>
 
                 {/* Content Layer (Not clipped, allows Popovers) */}
