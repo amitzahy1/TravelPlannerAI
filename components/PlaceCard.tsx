@@ -105,28 +105,31 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                         {/* Premium Scrim (Bottom-up) */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
 
-                        {/* Top Row: cuisine chip (left) + actions (right) — flex layout prevents collision */}
-                        <div className="absolute top-2 inset-x-2 flex items-start justify-between gap-2 z-30 pointer-events-none">
-                                <span className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[10px] font-black text-white uppercase tracking-wider truncate max-w-[55%]">
+                        {/* Top Row: cuisine chip (right in RTL) + actions (left in RTL).
+                                 Buttons kept compact (w-7 = 28px) so the cuisine label
+                                 has room — the user reported that bigger buttons were
+                                 chopping off the label to "...G" / "...AI". */}
+                        <div className="absolute top-2 inset-x-2 flex items-start justify-between gap-1.5 z-30 pointer-events-none">
+                                <span className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[10px] font-black text-white uppercase tracking-wider truncate max-w-[72%] flex-1">
                                         {visualLabel}
                                 </span>
-                                <div className="flex gap-1.5 pointer-events-auto flex-shrink-0">
+                                <div className="flex gap-1 pointer-events-auto flex-shrink-0">
                                         <a
                                                 href={mapsUrl}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="w-9 h-9 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/15 rounded-full text-white hover:bg-white hover:text-slate-900 transition-all active:scale-90"
+                                                className="w-7 h-7 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/15 rounded-full text-white hover:bg-white hover:text-slate-900 transition-all active:scale-90"
                                                 aria-label="ניווט"
                                         >
-                                                <Navigation className="w-4 h-4" />
+                                                <Navigation className="w-3 h-3" />
                                         </a>
                                         <button
                                                 onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                                                className={`w-9 h-9 flex items-center justify-center backdrop-blur-md border rounded-full transition-all shadow-lg active:scale-90 ${isAdded ? 'bg-yellow-400 border-yellow-500 text-yellow-900' : 'bg-black/30 border-white/15 text-white hover:bg-white hover:text-slate-900'}`}
+                                                className={`w-7 h-7 flex items-center justify-center backdrop-blur-md border rounded-full transition-all shadow-lg active:scale-90 ${isAdded ? 'bg-yellow-400 border-yellow-500 text-yellow-900' : 'bg-black/30 border-white/15 text-white hover:bg-white hover:text-slate-900'}`}
                                                 aria-label={isAdded ? 'הסר מהמועדפים' : 'הוסף למועדפים'}
                                         >
-                                                <Star className={`w-4 h-4 ${isAdded ? 'fill-current' : ''}`} />
+                                                <Star className={`w-3 h-3 ${isAdded ? 'fill-current' : ''}`} />
                                         </button>
                                 </div>
                         </div>
@@ -142,20 +145,27 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                         <span className="truncate">{location}</span>
                                 </div>
 
-                                <div className="flex items-center justify-between gap-2 mt-0.5">
-                                        {rating ? (
-                                                <div className="flex items-center gap-0.5 text-white text-[10px] font-black bg-black/40 px-1.5 py-0.5 rounded-md backdrop-blur-sm flex-shrink-0">
-                                                        <Star className="w-2.5 h-2.5 fill-current text-yellow-400" />
-                                                        <span>{rating}</span>
-                                                </div>
-                                        ) : <span />}
-                                        {recommendationSource && (
-                                                <span className="flex items-center gap-1 text-yellow-300 text-[9px] font-black uppercase tracking-tight bg-black/40 px-1.5 py-0.5 rounded-md backdrop-blur-sm truncate max-w-[65%]">
-                                                        <Trophy className="w-2.5 h-2.5 flex-shrink-0" />
-                                                        <span className="truncate">{recommendationSource.replace('Bib', 'Michelin')}</span>
-                                                </span>
-                                        )}
-                                </div>
+                                {/* Bottom row: rating + recommendationSource on a single
+                                         pill so the recommendation has the full width when
+                                         present. Rating sits inline with the source — saves
+                                         a row and lets the long Michelin / Asia 50 Best
+                                         text use almost the entire card width. */}
+                                {(rating || recommendationSource) && (
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                                {rating && (
+                                                        <span className="flex items-center gap-0.5 text-white text-[10px] font-black bg-black/45 px-1.5 py-0.5 rounded-md backdrop-blur-sm flex-shrink-0">
+                                                                <Star className="w-2.5 h-2.5 fill-current text-yellow-400" />
+                                                                <span>{rating}</span>
+                                                        </span>
+                                                )}
+                                                {recommendationSource && (
+                                                        <span className="flex items-center gap-1 text-yellow-300 text-[9px] font-black uppercase tracking-tight bg-black/45 px-1.5 py-0.5 rounded-md backdrop-blur-sm min-w-0 flex-1">
+                                                                <Trophy className="w-2.5 h-2.5 flex-shrink-0" />
+                                                                <span className="truncate">{recommendationSource.replace('Bib', 'Michelin')}</span>
+                                                        </span>
+                                                )}
+                                        </div>
+                                )}
                         </div>
                 </div>
         );

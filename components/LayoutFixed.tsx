@@ -181,17 +181,6 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         {/* Separator */}
                                                         <div className="w-px h-6 bg-slate-200 mx-1"></div>
 
-                                                        {/* Trip completeness at a glance */}
-                                                        {activeTrip && (
-                                                                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
-                                                                        <span className="text-2xs font-bold text-slate-400 uppercase tracking-wider">התקדמות</span>
-                                                                        <TripProgress trip={activeTrip} compact={false} onNavigate={onSwitchTab} />
-                                                                </div>
-                                                        )}
-
-                                                        {/* Separator */}
-                                                        <div className="w-px h-6 bg-slate-200 mx-1"></div>
-
                                                         {/* New Trip Button */}
                                                         <button
                                                                 onClick={() => onOpenAdmin()}

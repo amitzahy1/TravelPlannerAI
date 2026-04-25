@@ -579,11 +579,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 // stop (#2). The pin-offset logic downstream keeps both
                 // visually distinct (~300 m east).
 
-                // Skip if another flight-pin already represents this city
-                // (e.g. return-leg second arrival in Bangkok — don't double-
-                // count the same airport).
-                const duplicateFlight = stops.some(s => s.type === 'flight' && cityKey(s.name) === k);
-                if (duplicateFlight) return;
+                // Collapse only BACK-TO-BACK flight arrivals to the same city
+                // (e.g. two layovers stacked). A repeat arrival separated by
+                // other stops — typical for a Bangkok→side-trip→Bangkok loop
+                // where the user later flies TDX→BKK — IS its own stop, so
+                // the map shows the actual landing leg instead of jumping
+                // from Koh Chang straight to a Bangkok hotel.
+                const last = stops[stops.length - 1];
+                if (last && last.type === 'flight' && cityKey(last.name) === k) return;
 
                 const { sortTs, isFlightOnly, ...stop } = c;
                 stops.push(stop);

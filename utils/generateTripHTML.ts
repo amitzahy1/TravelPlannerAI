@@ -654,6 +654,9 @@ body {
 .cal-chip-food { background: #ffedd5; color: #9a3412; }
 .cal-chip-transfer { background: #fef3c7; color: #92400e; }
 .cal-more { font-size: 9px; color: #64748b; font-weight: 700; padding-right: 3px; }
+.cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 14px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; }
+.cal-legend-title { font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; padding-left: 4px; }
+.cal-legend-chip { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
 @media (max-width: 640px) {
   .calendar-section { padding: 14px 8px 16px; }
   .cal-cell { min-height: 68px; padding: 3px 3px 4px; }
@@ -672,6 +675,30 @@ body {
 
 const CAL_DAY_LABELS = ['יום א׳', 'יום ב׳', 'יום ג׳', 'יום ד׳', 'יום ה׳', 'יום ו׳', 'שבת'];
 
+// Distinct chip palettes — used so each hotel + each city gets its own
+// pastel so the calendar reads like a real Google Calendar with multiple
+// calendars instead of a wall of teal.
+const HOTEL_PALETTE = [
+  { bg: '#ccfbf1', fg: '#115e59' }, // teal
+  { bg: '#fce7f3', fg: '#9d174d' }, // pink
+  { bg: '#fef3c7', fg: '#854d0e' }, // amber
+  { bg: '#dbeafe', fg: '#1e40af' }, // blue
+  { bg: '#ede9fe', fg: '#5b21b6' }, // violet
+  { bg: '#fed7aa', fg: '#9a3412' }, // orange
+  { bg: '#dcfce7', fg: '#166534' }, // green
+  { bg: '#fee2e2', fg: '#991b1b' }, // red
+];
+
+const CITY_PALETTE = [
+  { bg: '#e0f2fe', fg: '#0c4a6e' }, // sky
+  { bg: '#f3e8ff', fg: '#581c87' }, // purple
+  { bg: '#ffedd5', fg: '#7c2d12' }, // orange-deep
+  { bg: '#dcfce7', fg: '#14532d' }, // green-deep
+  { bg: '#fef9c3', fg: '#713f12' }, // yellow-deep
+  { bg: '#cffafe', fg: '#155e75' }, // cyan
+  { bg: '#fae8ff', fg: '#701a75' }, // fuchsia
+];
+
 const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
   if (timeline.length === 0) return '';
 
@@ -688,9 +715,33 @@ const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
   const calEnd = new Date(padEnd);
   calEnd.setDate(calEnd.getDate() + (6 - calEnd.getDay()));
 
-  // Map ISO date → list of chips (kind + label).
+  // Build per-hotel + per-city color maps so each booking + each stop in
+  // the calendar gets its own pastel chip — much easier to follow than a
+  // monochrome teal block.
+  const hotelColors: Record<string, { bg: string; fg: string }> = {};
+  let hotelIdx = 0;
+  (trip.hotels || []).forEach(h => {
+    const k = (h.name || '').trim().toLowerCase();
+    if (!k || hotelColors[k]) return;
+    hotelColors[k] = HOTEL_PALETTE[hotelIdx % HOTEL_PALETTE.length];
+    hotelIdx++;
+  });
+
+  const cityColors: Record<string, { bg: string; fg: string }> = {};
+  let cityIdx = 0;
+  const ensureCityColor = (city: string) => {
+    const k = (city || '').trim().toLowerCase();
+    if (!k || cityColors[k]) return;
+    cityColors[k] = CITY_PALETTE[cityIdx % CITY_PALETTE.length];
+    cityIdx++;
+  };
+  trip.flights?.segments?.forEach(s => { if (s.toCity) ensureCityColor(s.toCity); });
+  (trip.hotels || []).forEach(h => { if (h.city) ensureCityColor(h.city); });
+
+  // Map ISO date → list of chips (kind + label + optional color override).
   type ChipKind = 'flight' | 'hotel' | 'activity' | 'food' | 'transfer';
-  const eventsByIso: Record<string, Array<{ kind: ChipKind; label: string }>> = {};
+  type Chip = { kind: ChipKind; label: string; color?: { bg: string; fg: string } };
+  const eventsByIso: Record<string, Chip[]> = {};
   timeline.forEach(d => {
     if (!eventsByIso[d.iso]) eventsByIso[d.iso] = [];
     d.events.forEach(e => {
@@ -700,7 +751,15 @@ const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
       else if (e.type === 'food') kind = 'food';
       else if (e.type === 'transfer') kind = 'transfer';
       const label = e.time && e.time !== '—' ? `${e.time} ${e.title}` : e.title;
-      eventsByIso[d.iso].push({ kind, label });
+      let color: { bg: string; fg: string } | undefined;
+      if (kind === 'hotel') {
+        const name = (e.hotelData?.name || '').trim().toLowerCase();
+        if (name && hotelColors[name]) color = hotelColors[name];
+      } else if (kind === 'flight') {
+        const city = (e.flightData?.toCity || e.flightData?.fromCity || '').trim().toLowerCase();
+        if (city && cityColors[city]) color = cityColors[city];
+      }
+      eventsByIso[d.iso].push({ kind, label, color });
     });
   });
 
@@ -714,9 +773,12 @@ const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
     const events = eventsByIso[iso] || [];
     const visible = events.slice(0, 4);
     const overflow = events.length - visible.length;
-    const chipsHtml = visible.map(c =>
-      `<span class="cal-chip cal-chip-${c.kind}" title="${esc(c.label)}">${esc(c.label)}</span>`
-    ).join('');
+    const chipsHtml = visible.map(c => {
+      const styleAttr = c.color
+        ? ` style="background:${c.color.bg};color:${c.color.fg}"`
+        : '';
+      return `<span class="cal-chip cal-chip-${c.kind}"${styleAttr} title="${esc(c.label)}">${esc(c.label)}</span>`;
+    }).join('');
     const moreHtml = overflow > 0 ? `<span class="cal-more">+${overflow} נוסף</span>` : '';
     const numCls = `cal-num${dow === 5 ? ' cal-num-fri' : ''}${dow === 6 ? ' cal-num-sat' : ''}`;
     const cellCls = `cal-cell${!inTrip ? ' cal-padding' : ''}${iso === todayIso ? ' cal-today' : ''}`;
@@ -732,9 +794,22 @@ const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
     ? `${MONTHS_HE[tripStart.getMonth()]} ${tripStart.getFullYear()}`
     : `${MONTHS_HE[tripStart.getMonth()]}–${MONTHS_HE[tripEnd.getMonth()]} ${tripEnd.getFullYear()}`;
 
+  // Mini legend so the reader instantly knows which color = which hotel.
+  const hotelLegendHtml = Object.keys(hotelColors).length > 0
+    ? `<div class="cal-legend">
+        <span class="cal-legend-title">מלונות</span>
+        ${(trip.hotels || []).filter((h, i, arr) => arr.findIndex(x => (x.name || '').toLowerCase() === (h.name || '').toLowerCase()) === i).map(h => {
+          const c = hotelColors[(h.name || '').toLowerCase()];
+          if (!c) return '';
+          return `<span class="cal-legend-chip" style="background:${c.bg};color:${c.fg}">${esc(h.name || '')}</span>`;
+        }).join('')}
+      </div>`
+    : '';
+
   return `<section class="calendar-section">
     <h2 class="ov-title">📅 לוח הטיול — ${esc(monthLabel)}</h2>
     <div class="calendar-grid">${headerHtml}${cells.join('')}</div>
+    ${hotelLegendHtml}
   </section>`;
 };
 
@@ -785,6 +860,8 @@ export const generateTripHTML = (trip: Trip): string => {
     <div class="stat"><div class="stat-v">${itineraryActivityCount}</div><div class="stat-l">פעילויות</div></div>
   </div>
 
+  ${renderCalendarSection(trip, timeline)}
+
   ${renderFlightsOverview(trip)}
   ${renderHotelsOverview(trip)}
 
@@ -792,8 +869,6 @@ export const generateTripHTML = (trip: Trip): string => {
     <h2 class="ov-title">📆 יום-יום <span class="ov-count">${dayCount}</span></h2>
     <div class="days-grid">${dayCards}</div>
   </section>
-
-  ${renderCalendarSection(trip, timeline)}
 
   <div class="footer">
     <div class="footer-logo">✈ Travel Planner Pro</div>

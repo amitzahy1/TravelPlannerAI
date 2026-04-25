@@ -19,7 +19,11 @@ interface CoverEntry {
 
 const COVERS: CoverEntry[] = [
         // ── South-East Asia ──
-        { id: '1508009603885-50cf7c579365', keywords: ['thailand', 'תאילנד', 'bangkok', 'בנגקוק'] },
+        // Thailand cover: Thai longtail-boat beach (Phi Phi / Krabi vibe). User
+        // preferred a tropical beach over the Bangkok skyline — feels more
+        // aspirational and reflects the bulk of leisure trips to TH.
+        { id: '1552465011-b4e21bf6e79a', keywords: ['thailand', 'תאילנד'] },
+        { id: '1508009603885-50cf7c579365', keywords: ['bangkok', 'בנגקוק'] },
         { id: '1528181304800-259b08848526', keywords: ['phuket', 'פוקט'] },
         { id: '1528127269322-539801943592', keywords: ['koh chang', 'koh samui', 'קו צ׳אנג', 'קו צאנג', 'קוה סמוי'] },
         { id: '1552550049-db097c9480d1', keywords: ['pattaya', 'פטאייה'] },
