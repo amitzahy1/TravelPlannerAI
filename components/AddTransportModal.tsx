@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Transport, TransportMode } from '../types';
 import { MODE_COLORS } from '../utils/transportColors';
 import { X, Check } from 'lucide-react';
@@ -36,6 +36,16 @@ export const AddTransportModal: React.FC<AddTransportModalProps> = ({ initial, o
                 sourceArrayKey: 'transports',
         });
 
+        // Lock body scroll while the modal is open so the page underneath
+        // can't scroll out from under it on mobile, and force the viewport
+        // to the top so the modal is always visible without scrolling.
+        useEffect(() => {
+                const prev = document.body.style.overflow;
+                document.body.style.overflow = 'hidden';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return () => { document.body.style.overflow = prev; };
+        }, []);
+
         const handleSave = () => {
                 if (!form.from || !form.to || !form.date) return;
                 onSave({ ...form, sourceArrayKey: form.sourceArrayKey || 'transports' });
@@ -47,8 +57,8 @@ export const AddTransportModal: React.FC<AddTransportModalProps> = ({ initial, o
         const isFlightMode = form.mode === 'flight';
 
         return (
-                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={onClose}>
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()} dir="rtl">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto" onClick={onClose}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-auto max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()} dir="rtl">
                                 {/* Header */}
                                 <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between">
                                         <h2 className="text-lg font-black text-slate-900">{initial ? 'ערוך העברה' : 'הוסף העברה'}</h2>

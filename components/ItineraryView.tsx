@@ -1053,18 +1053,17 @@ export const ItineraryView: React.FC<{
             {/* 3. MAIN TIMELINE (Repositioned for Density) */}
             <div className="px-1 md:px-1 w-full space-y-6 relative z-10 -mt-2">
 
-                {/* View Toggle Button */}
+                {/* View Toggle — icon-only square, parked on the edge so it
+                     doesn't dominate the timeline header. Aria/title preserves
+                     the meaning. */}
                 <div className="flex justify-end mb-2">
                     <button
                         onClick={() => setViewMode(viewMode === 'expanded' ? 'compact' : 'expanded')}
-                        className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:border-blue-300 transition-all text-sm font-bold text-slate-600"
+                        className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-lg shadow-sm hover:border-blue-300 transition-colors text-slate-500"
                         title={viewMode === 'expanded' ? 'תצוגה מצומצמת' : 'תצוגה מורחבת'}
+                        aria-label={viewMode === 'expanded' ? 'תצוגה מצומצמת' : 'תצוגה מורחבת'}
                     >
-                        {viewMode === 'expanded' ? (
-                            <><LayoutGrid className="w-4 h-4" /> תצוגה מצומצמת</>
-                        ) : (
-                            <><List className="w-4 h-4" /> תצוגה מורחבת</>
-                        )}
+                        {viewMode === 'expanded' ? <LayoutGrid className="w-4 h-4" /> : <List className="w-4 h-4" />}
                     </button>
                 </div>
 

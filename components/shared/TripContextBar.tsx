@@ -67,9 +67,9 @@ export const TripContextBar: React.FC<TripContextBarProps> = ({ trip, recommenda
         if (cityNights.length === 0 && recommendationCount === 0) return null;
 
         return (
-                <div className="flex items-center gap-1.5 sm:gap-2 px-1 -mx-1 overflow-x-auto pb-1" dir="rtl">
+                <div className="flex items-center gap-1.5 flex-wrap" dir="rtl">
                         {cityNights.length > 0 && (
-                                <span className="shrink-0 inline-flex items-center gap-1.5 bg-slate-900 text-white text-2xs font-black px-2.5 py-1.5 rounded-pill whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 bg-slate-900 text-white text-[10px] font-black px-2 py-1 rounded-pill whitespace-nowrap">
                                         <HotelIcon className="w-3 h-3" />
                                         {total} {total === 1 ? 'לילה' : 'לילות'}
                                 </span>
@@ -77,11 +77,11 @@ export const TripContextBar: React.FC<TripContextBarProps> = ({ trip, recommenda
                         {cityNights.map(([city, nights]) => (
                                 <span
                                         key={city}
-                                        className="shrink-0 inline-flex items-center gap-1.5 bg-white text-slate-700 text-2xs font-bold px-2.5 py-1.5 rounded-pill border border-slate-200 whitespace-nowrap shadow-card"
+                                        className="inline-flex items-center gap-1 bg-white text-slate-700 text-[10px] font-bold px-2 py-1 rounded-pill border border-slate-200 whitespace-nowrap"
                                 >
                                         <MapPin className="w-3 h-3 text-slate-400" />
-                                        <span className="font-bold">{city}</span>
-                                        <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-1.5 py-0.5 rounded-md">
+                                        <span>{city}</span>
+                                        <span className="bg-slate-100 text-slate-600 text-[9px] font-black px-1.5 rounded-md">
                                                 {nights}
                                         </span>
                                 </span>
@@ -89,10 +89,10 @@ export const TripContextBar: React.FC<TripContextBarProps> = ({ trip, recommenda
                         {recommendationCount > 0 && onOpenRecommendations && (
                                 <button
                                         onClick={onOpenRecommendations}
-                                        className="shrink-0 inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 text-2xs font-black px-2.5 py-1.5 rounded-pill whitespace-nowrap hover:bg-amber-100 transition-colors me-auto"
+                                        className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-black px-2 py-1 rounded-pill whitespace-nowrap hover:bg-amber-100 transition-colors"
                                 >
-                                        <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
-                                        <span>{recommendationCount} המלצות</span>
+                                        <Lightbulb className="w-3 h-3 text-amber-600" />
+                                        <span>{recommendationCount}</span>
                                 </button>
                         )}
                 </div>
