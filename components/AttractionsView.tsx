@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Trip, Attraction, AttractionCategory } from '../types';
 import { MapPin, Ticket, Star, Landmark, Sparkles, Filter, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid, Heart } from 'lucide-react';
 // cleaned imports
@@ -81,6 +81,11 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         savedAttractionsCount === 0 ? 'recommended' : 'my_list'
     );
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+
+    // Always-fresh trip ref so background geocoder doesn't clobber user
+    // edits made while it's running (the "trip name got deleted" bug).
+    const tripRef = useRef(trip);
+    useEffect(() => { tripRef.current = trip; }, [trip]);
 
     // AI State
     const [aiCategories, setAiCategories] = useState<AttractionCategory[]>(trip.aiAttractions || []);
@@ -262,7 +267,9 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     : a),
             }));
             setAiCategories(next);
-            onUpdateTrip({ ...trip, aiAttractions: next });
+            // ⚠️ Use the freshest trip — NOT the closure-captured one.
+            const latestTrip = tripRef.current;
+            onUpdateTrip({ ...latestTrip, aiAttractions: next });
             pendingFlush = 0;
         };
 

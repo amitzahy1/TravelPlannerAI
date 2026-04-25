@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
-import { TripCountdown, TripContextBar } from './shared';
+import { TripCountdown } from './shared';
 import { pickTripCover } from '../utils/destinationCover';
 import { downloadTripHTML } from '../utils/generateTripHTML';
 import { downloadTripIcal } from '../utils/generateTripIcal';
@@ -15,7 +15,7 @@ import {
     ChevronDown, ChevronUp, AlertCircle, Clock, Check,
     Plane, Car, Globe, Hotel, Utensils, Ticket, Plus, Sparkles, X,
     ArrowLeft, Edit2, BedDouble, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, CheckCircle2,
-    LayoutGrid, List
+    LayoutGrid, List, Lightbulb
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 // CALENDAR INTEGRATION REMOVED - No longer calling Google Calendar API
@@ -795,10 +795,41 @@ export const ItineraryView: React.FC<{
         return buildCityColorMap(cities);
     }, [timeline]);
 
-    return (
-        <div className="space-y-8 animate-fade-in pb-24">
+    // City × nights for the hero — only cities the user actually has a
+    // hotel in, sorted by nights descending. Format: "Bangkok (3) · Pattaya (5)".
+    const heroCityNights = useMemo<Array<[string, number]>>(() => {
+        const map: Record<string, number> = {};
+        const isReal = (c: string) => !!c && c.length >= 2 && !/[\d\/\\]/.test(c);
+        const extractCity = (h: any): string => {
+            if (h.city && isReal(h.city)) return h.city;
+            if (h.address) {
+                const parts = String(h.address).split(',').map((p: string) => p.trim()).filter(isReal);
+                if (parts.length >= 2) return parts[1];
+                if (parts.length === 1) return parts[0];
+            }
+            return '';
+        };
+        (trip.hotels || []).forEach(h => {
+            const city = extractCity(h) || '';
+            if (!city) return;
+            let n = (h.nights && h.nights > 0) ? h.nights : 0;
+            if (!n && h.checkInDate && h.checkOutDate) {
+                const ci = new Date(String(h.checkInDate).slice(0, 10) + 'T12:00:00');
+                const co = new Date(String(h.checkOutDate).slice(0, 10) + 'T12:00:00');
+                if (!isNaN(ci.getTime()) && !isNaN(co.getTime())) {
+                    const d = Math.round((co.getTime() - ci.getTime()) / 86400000);
+                    if (d > 0) n = d;
+                }
+            }
+            if (n > 0) map[city] = (map[city] || 0) + n;
+        });
+        return Object.entries(map).sort((a, b) => b[1] - a[1]);
+    }, [trip.hotels]);
 
-            {/* 1. HERO SECTION WITH INTERACTIVE STATS */}
+    return (
+        <div className="space-y-4 sm:space-y-6 animate-fade-in pb-24">
+
+            {/* 1. HERO SECTION — countdown floats top-left web / bottom-left mobile */}
             <div className="relative h-[220px] mx-1 group">
                 {/* Background Layer (Clipped) */}
                 <div className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-xl z-0">
@@ -808,7 +839,17 @@ export const ItineraryView: React.FC<{
                         alt="Trip Cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
-                    <button onClick={handleChangeCover} className="absolute top-3 left-3 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" aria-label="החלף תמונת נושא"><Edit2 className="w-4 h-4" aria-hidden="true" /></button>
+                    <button onClick={handleChangeCover} className="absolute top-3 right-3 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" aria-label="החלף תמונת נושא"><Edit2 className="w-4 h-4" aria-hidden="true" /></button>
+                </div>
+
+                {/* Floating countdown — top-left on web, bottom-left on
+                     mobile per user request. "Left" = physical left = visual
+                     end in the RTL layout. */}
+                <div className="absolute left-3 top-3 hidden md:block z-20 pointer-events-auto">
+                    <TripCountdown trip={trip} variant="overlay" />
+                </div>
+                <div className="absolute left-3 bottom-3 md:hidden z-20 pointer-events-auto">
+                    <TripCountdown trip={trip} variant="overlay" />
                 </div>
 
                 {/* Content Layer (Not clipped, allows Popovers) */}
@@ -823,12 +864,6 @@ export const ItineraryView: React.FC<{
                                 <Calendar className="w-3.5 h-3.5" />
                                 <span dir="ltr">{formatHeroDates(trip.dates)}</span>
                             </div>
-                            <TripCountdown trip={trip} variant="overlay" />
-                            {/* Export buttons — moved out of the absolute-
-                                 positioned overlay (which was getting hidden
-                                 on mobile) into the wrapped header row. The
-                                 text "ייצא" hides under sm:; both buttons
-                                 stay tappable everywhere. */}
                             <button
                                 onClick={() => downloadTripHTML(trip)}
                                 aria-label="ייצא סיכום טיול"
@@ -838,10 +873,9 @@ export const ItineraryView: React.FC<{
                                 <FileTextIcon className="w-3.5 h-3.5" aria-hidden="true" />
                                 <span className="hidden sm:inline">ייצא סיכום</span>
                             </button>
-                            {/* Hero is intentionally lean now — iCal export
-                                 + refresh moved out per user feedback ("they
-                                 don't add value, take space"). The HTML export
-                                 stays because that's the headline action. */}
+                            {/* Hero is intentionally lean now — countdown
+                                 lives in the floating corner above; iCal +
+                                 refresh removed per earlier feedback. */}
                             {false && onRefresh && (
                                 <button
                                     onClick={(e) => {
@@ -858,12 +892,27 @@ export const ItineraryView: React.FC<{
                                 </button>
                             )}
                         </div>
-                        <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight drop-shadow-md">
+                        <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-white leading-tight tracking-tight drop-shadow-md">
                             {trip.name}
                         </h1>
-                        <div className="flex items-center gap-2 text-lg font-medium text-white/90">
-                            <MapPin className="w-4 h-4 text-blue-400" /> {trip.destination}
-                        </div>
+                        {heroCityNights.length > 0 ? (
+                            <div className="flex items-start gap-2 text-sm md:text-base font-medium text-white/95 flex-wrap">
+                                <MapPin className="w-4 h-4 text-blue-300 flex-shrink-0 mt-0.5" />
+                                <span className="leading-tight">
+                                    {heroCityNights.map(([city, nights], i) => (
+                                        <span key={city}>
+                                            <span className="font-bold">{city}</span>
+                                            <span className="text-white/70 text-xs ms-1">({nights})</span>
+                                            {i < heroCityNights.length - 1 && <span className="text-white/40 mx-2">·</span>}
+                                        </span>
+                                    ))}
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 text-lg font-medium text-white/90">
+                                <MapPin className="w-4 h-4 text-blue-400" /> {trip.destination}
+                            </div>
+                        )}
                     </div>
 
                     {/* Interactive Hero Stats Bar with Popover */}
@@ -1025,18 +1074,28 @@ export const ItineraryView: React.FC<{
                 </div>
             </div>
 
-            {/* 2.4 TRIP CONTEXT BAR — cities + nights + recommendations toggle.
-                 Replaces the always-visible recommendations row that was eating
-                 too much real estate and adds a quick city-nights summary the
-                 user asked for under the hero. */}
-            <div className="px-1">
-                <TripContextBar
-                    trip={trip}
-                    recommendationCount={(trip.aiRestaurants?.length || 0) + (trip.aiAttractions?.length || 0) + favoriteRestaurants.length + favoriteAttractions.length}
-                    onOpenRecommendations={() => setShowRecommendations(v => !v)}
-                    viewMode={viewMode}
-                    onToggleViewMode={() => setViewMode(viewMode === 'expanded' ? 'compact' : 'expanded')}
-                />
+            {/* 2.4 Compact actions — single row, two pills. Cities now
+                 live on the hero so this strip only carries the
+                 recommendations toggle + the timeline density toggle. */}
+            <div className="px-1 flex items-center gap-2">
+                <button
+                    onClick={() => setShowRecommendations(v => !v)}
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 text-xs font-black px-3 py-2 rounded-pill hover:bg-amber-100 transition-colors"
+                >
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+                    <span>המלצות לשיפור</span>
+                    <span className="bg-amber-200 text-amber-900 text-[10px] font-black px-1.5 rounded-md">
+                        {(trip.aiRestaurants?.length || 0) + (trip.aiAttractions?.length || 0) + favoriteRestaurants.length + favoriteAttractions.length}
+                    </span>
+                </button>
+                <button
+                    onClick={() => setViewMode(viewMode === 'expanded' ? 'compact' : 'expanded')}
+                    className="inline-flex items-center justify-center gap-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold px-3 py-2 rounded-pill hover:border-blue-300 transition-colors"
+                    title={viewMode === 'expanded' ? 'תצוגה מצומצמת' : 'תצוגה מורחבת'}
+                >
+                    {viewMode === 'expanded' ? <LayoutGrid className="w-3.5 h-3.5" /> : <List className="w-3.5 h-3.5" />}
+                    <span className="hidden sm:inline">{viewMode === 'expanded' ? 'מצומצמת' : 'מורחבת'}</span>
+                </button>
             </div>
 
             {/* 2.5 SMART RECOMMENDATIONS BAR — hidden by default; toggled from

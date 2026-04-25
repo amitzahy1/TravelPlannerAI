@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Trip, Restaurant, RestaurantIconType, RestaurantCategory } from '../types';
 import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel, Heart } from 'lucide-react';
 // cleaned imports
@@ -127,6 +127,13 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     );
     console.log("RestaurantView Loaded - v2 Clean Design - Smart Intent Active");
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+
+    // Always-fresh trip ref — used by background tasks (geocoder) so they
+    // don't overwrite trip.name / destination / etc. that the user edits
+    // while the task is running. Stale closure of `trip` was clobbering
+    // user edits and looked like a "trip got deleted" bug.
+    const tripRef = useRef(trip);
+    useEffect(() => { tripRef.current = trip; }, [trip]);
 
     // AI State
     const [aiCategories, setAiCategories] = useState<RestaurantCategory[]>(trip.aiRestaurants || []);
@@ -301,6 +308,12 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // Geocode any restaurants in `cats` that lack lat/lng and write the
     // resolved coords back to trip.aiRestaurants. Runs as a fire-and-forget
     // background task — UI updates incrementally as Photon resolves each.
+    //
+    // CRITICAL: uses tripRef instead of the captured `trip` prop so that
+    // when the background flush fires after the user has edited trip.name
+    // / destination / etc, we don't overwrite their changes with the stale
+    // trip we captured when research started. The flush merges into the
+    // LATEST trip and only touches aiRestaurants.
     const geocodeAndPersistRestaurants = (cats: RestaurantCategory[]) => {
         type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number };
         const flat: Item[] = [];
@@ -310,8 +323,6 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         })));
         if (flat.every(i => typeof i.lat === 'number' && typeof i.lng === 'number')) return;
 
-        // Maintain a fresh-coords map; flush back to onUpdateTrip in batches
-        // every 8 resolves to avoid spamming Firestore writes.
         const resolved: Record<string, { lat: number; lng: number }> = {};
         let pendingFlush = 0;
         const flush = () => {
@@ -323,7 +334,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     : r),
             }));
             setAiCategories(next);
-            onUpdateTrip({ ...trip, aiRestaurants: next });
+            // ⚠️ Use the freshest trip — NOT the closure-captured one.
+            const latestTrip = tripRef.current;
+            onUpdateTrip({ ...latestTrip, aiRestaurants: next });
             pendingFlush = 0;
         };
 
