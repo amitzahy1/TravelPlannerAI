@@ -68,15 +68,19 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({ trip, onUpdateTrip }
                                         )}
                                 </div>
 
-                                {/* Desktop-only rich chips */}
-                                <div className="hidden sm:flex flex-wrap items-center gap-2 mb-4">
-                                        <span className="inline-flex items-center gap-1.5 text-2xs font-semibold text-orange-700 bg-orange-50 px-2.5 py-1 rounded-pill ring-1 ring-orange-100">
+                                {/* Stat chips — full text on sm+, compact on mobile so
+                                     the user still sees the counts without the chips
+                                     swallowing a row of vertical space. */}
+                                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+                                        <span className="inline-flex items-center gap-1 sm:gap-1.5 text-2xs font-semibold text-orange-700 bg-orange-50 px-2 sm:px-2.5 py-1 rounded-pill ring-1 ring-orange-100">
                                                 <Utensils className="w-3 h-3" />
-                                                {foodItemCount} מסעדות · {foodCategoryCount} קטגוריות
+                                                <span className="sm:hidden">{foodItemCount}</span>
+                                                <span className="hidden sm:inline">{foodItemCount} מסעדות · {foodCategoryCount} קטגוריות</span>
                                         </span>
-                                        <span className="inline-flex items-center gap-1.5 text-2xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-pill ring-1 ring-purple-100">
+                                        <span className="inline-flex items-center gap-1 sm:gap-1.5 text-2xs font-semibold text-purple-700 bg-purple-50 px-2 sm:px-2.5 py-1 rounded-pill ring-1 ring-purple-100">
                                                 <Ticket className="w-3 h-3" />
-                                                {attrItemCount} אטרקציות · {attrCategoryCount} קטגוריות
+                                                <span className="sm:hidden">{attrItemCount}</span>
+                                                <span className="hidden sm:inline">{attrItemCount} אטרקציות · {attrCategoryCount} קטגוריות</span>
                                         </span>
                                 </div>
 
