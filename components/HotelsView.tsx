@@ -440,21 +440,21 @@ const HotelCard: React.FC<{
                 <div className="absolute top-2 left-2 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
                     <button
                         onClick={onEditPrimary}
-                        className="w-8 h-8 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="w-10 h-10 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         aria-label="ערוך מלון"
                         title="ערוך"
                     >
-                        <Edit className="w-3.5 h-3.5" aria-hidden="true" />
+                        <Edit className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
                         onClick={onDeleteGroup}
-                        className="w-8 h-8 rounded-md flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                        className="w-10 h-10 rounded-md flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
                         aria-label="מחק מלון"
                         title="מחק"
                     >
-                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>
-                    <span aria-hidden="true" className="w-8 h-8 flex items-center justify-center text-slate-300">
+                    <span aria-hidden="true" className="w-10 h-10 flex items-center justify-center text-slate-300">
                         <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                     </span>
                 </div>

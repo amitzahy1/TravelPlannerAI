@@ -399,13 +399,13 @@ const FlightRow: React.FC<{
               <div className="relative">
                 <button
                   onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }}
-                  className="w-9 h-9 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  className="w-11 h-11 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   title="פעולות"
                   aria-label="פעולות"
                   aria-haspopup="menu"
                   aria-expanded={menuOpen}
                 >
-                  <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                  <MoreVertical className="w-5 h-5" aria-hidden="true" />
                 </button>
                 {menuOpen && (
                   <>

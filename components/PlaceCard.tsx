@@ -116,17 +116,17 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="w-8 h-8 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/15 rounded-full text-white hover:bg-white hover:text-slate-900 transition-all active:scale-90"
+                                                className="w-9 h-9 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/15 rounded-full text-white hover:bg-white hover:text-slate-900 transition-all active:scale-90"
                                                 aria-label="ניווט"
                                         >
-                                                <Navigation className="w-3.5 h-3.5" />
+                                                <Navigation className="w-4 h-4" />
                                         </a>
                                         <button
                                                 onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                                                className={`w-8 h-8 flex items-center justify-center backdrop-blur-md border rounded-full transition-all shadow-lg active:scale-90 ${isAdded ? 'bg-yellow-400 border-yellow-500 text-yellow-900' : 'bg-black/30 border-white/15 text-white hover:bg-white hover:text-slate-900'}`}
+                                                className={`w-9 h-9 flex items-center justify-center backdrop-blur-md border rounded-full transition-all shadow-lg active:scale-90 ${isAdded ? 'bg-yellow-400 border-yellow-500 text-yellow-900' : 'bg-black/30 border-white/15 text-white hover:bg-white hover:text-slate-900'}`}
                                                 aria-label={isAdded ? 'הסר מהמועדפים' : 'הוסף למועדפים'}
                                         >
-                                                <Star className={`w-3.5 h-3.5 ${isAdded ? 'fill-current' : ''}`} />
+                                                <Star className={`w-4 h-4 ${isAdded ? 'fill-current' : ''}`} />
                                         </button>
                                 </div>
                         </div>
