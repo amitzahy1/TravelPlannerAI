@@ -686,6 +686,10 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
     const [hotelToDelete, setHotelToDelete] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Scroll to top on mount — the page was opening at the bottom because
+    // the previous view's scroll position was preserved across tab swaps.
+    useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); }, []);
+
     const parseCheckIn = (ds?: string): number => {
         if (!ds) return 0;
         if (ds.match(/^\d{4}-\d{2}-\d{2}/)) return new Date(ds.split('T')[0] + 'T12:00:00').getTime();

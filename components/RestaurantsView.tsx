@@ -795,8 +795,31 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const getMapItems = () => {
         const items: any[] = [];
-        if (activeTab === 'my_list') { trip.restaurants.forEach(cat => cat.restaurants.forEach(r => items.push({ id: r.id, type: 'restaurant', name: r.name, address: r.location, lat: r.lat, lng: r.lng, description: r.description }))); }
-        else { allAiRestaurants.forEach(r => items.push({ id: r.id, type: 'restaurant', name: r.name, address: r.location, lat: r.lat, lng: r.lng, description: `${r.googleRating}⭐` })); }
+        const sourceRestaurants = activeTab === 'my_list'
+            ? trip.restaurants.flatMap(cat => cat.restaurants)
+            : allAiRestaurants;
+        sourceRestaurants.forEach(r => {
+            // City filter — when the user picks a city we want the map to
+            // visualise only that city's pins so the bounds zoom in there.
+            if (selectedCity !== 'all' && !locationMatchesCity(r.location || '', selectedCity)) return;
+            items.push({
+                id: r.id, type: 'restaurant', name: r.name,
+                address: r.location, lat: r.lat, lng: r.lng,
+                description: r.googleRating ? `${r.googleRating}⭐` : r.description,
+            });
+        });
+        // Always layer hotels on top so the user can see how their food
+        // picks relate to where they're staying. Same city filter applies.
+        (trip.hotels || []).forEach(h => {
+            const hCity = h.city || h.address || '';
+            if (selectedCity !== 'all' && !locationMatchesCity(hCity, selectedCity)) return;
+            if (typeof h.lat !== 'number' || typeof h.lng !== 'number') return;
+            items.push({
+                id: `hotel-${h.id}`, type: 'hotel', name: h.name,
+                address: h.address, lat: h.lat, lng: h.lng,
+                description: h.city || h.address,
+            });
+        });
         return items;
     };
 

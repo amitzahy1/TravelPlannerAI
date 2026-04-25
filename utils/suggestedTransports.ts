@@ -117,5 +117,34 @@ export const detectSuggestedTransports = (trip: Trip): SuggestedTransport[] => {
                 });
         }
 
+        // 3. Departure-day hotel → airport: for each flight that DEPARTS
+        //    from a city where the user has a hotel checking out the
+        //    same day, suggest an airport transfer. Catches the standard
+        //    end-of-trip airport-shuttle the user always needs to book.
+        flights.forEach((seg: FlightSegment, fIdx) => {
+                const departDate = isoDate(seg.date);
+                const fromCity = cleanCity(seg.fromCity);
+                if (!departDate || !fromCity) return;
+                const sameDayCheckout = hotels.find(h => sameDay(h.checkOutDate, departDate));
+                if (!sameDayCheckout) return;
+                const hotelCity = cleanCity(sameDayCheckout.city || sameDayCheckout.address);
+                if (!hotelCity) return;
+                const covered = existing.some(t => transportCovers(t, hotelCity, fromCity, departDate));
+                if (covered) return;
+                out.push({
+                        id: newSuggestedId('departure-transfer', fIdx),
+                        mode: 'transfer' as TransportMode,
+                        from: sameDayCheckout.name || hotelCity,
+                        to: `${fromCity} (שדה תעופה)`,
+                        toCode: seg.fromCode,
+                        date: departDate,
+                        arrivalTime: seg.departureTime,
+                        notes: 'יום עזיבה — להזמין הסעה למלון → שדה תעופה מבעוד מועד.',
+                        sourceArrayKey: 'transports',
+                        suggested: true,
+                        reason: `צ'ק-אאוט מ-${sameDayCheckout.name || hotelCity} → טיסה ${seg.fromCode || fromCity} ב-${departDate}`,
+                });
+        });
+
         return out;
 };

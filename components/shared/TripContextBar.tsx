@@ -1,11 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { Trip } from '../../types';
-import { MapPin, Hotel as HotelIcon, Lightbulb } from 'lucide-react';
+import { MapPin, Hotel as HotelIcon, Lightbulb, LayoutGrid, List as ListIcon } from 'lucide-react';
 
 interface TripContextBarProps {
         trip: Trip;
         recommendationCount?: number;
         onOpenRecommendations?: () => void;
+        // Optional view-mode toggle — when provided, renders a small icon
+        // button at the end of the bar so the home page doesn't need a
+        // separate row for the expanded/compact switch.
+        viewMode?: 'expanded' | 'compact';
+        onToggleViewMode?: () => void;
 }
 
 const normDate = (d?: string): string => {
@@ -40,7 +45,7 @@ const extractCity = (hotel: Trip['hotels'][number]): string => {
  * full-width "המלצות לשיפור" card (the user wanted that as a tiny pill,
  * not a row-eating section).
  */
-export const TripContextBar: React.FC<TripContextBarProps> = ({ trip, recommendationCount = 0, onOpenRecommendations }) => {
+export const TripContextBar: React.FC<TripContextBarProps> = ({ trip, recommendationCount = 0, onOpenRecommendations, viewMode, onToggleViewMode }) => {
         const cityNights = useMemo(() => {
                 const map: Record<string, number> = {};
                 (trip.hotels || []).forEach(h => {
@@ -64,7 +69,7 @@ export const TripContextBar: React.FC<TripContextBarProps> = ({ trip, recommenda
 
         const total = cityNights.reduce((s, [, n]) => s + n, 0);
 
-        if (cityNights.length === 0 && recommendationCount === 0) return null;
+        if (cityNights.length === 0 && recommendationCount === 0 && !onToggleViewMode) return null;
 
         return (
                 <div className="flex items-center gap-1.5 flex-wrap" dir="rtl">
@@ -93,6 +98,16 @@ export const TripContextBar: React.FC<TripContextBarProps> = ({ trip, recommenda
                                 >
                                         <Lightbulb className="w-3 h-3 text-amber-600" />
                                         <span>{recommendationCount}</span>
+                                </button>
+                        )}
+                        {onToggleViewMode && (
+                                <button
+                                        onClick={onToggleViewMode}
+                                        className="ms-auto inline-flex items-center justify-center w-7 h-7 bg-white border border-slate-200 rounded-pill text-slate-500 hover:border-blue-300 transition-colors flex-shrink-0"
+                                        title={viewMode === 'expanded' ? 'תצוגה מצומצמת' : 'תצוגה מורחבת'}
+                                        aria-label={viewMode === 'expanded' ? 'תצוגה מצומצמת' : 'תצוגה מורחבת'}
+                                >
+                                        {viewMode === 'expanded' ? <LayoutGrid className="w-3.5 h-3.5" /> : <ListIcon className="w-3.5 h-3.5" />}
                                 </button>
                         )}
                 </div>

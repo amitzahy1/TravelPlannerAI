@@ -90,6 +90,13 @@ const AppContent: React.FC = () => {
     }
   }, [isLoading, authLoading, trips.length, joinShareId]);
 
+  // Scroll to top on tab change — without this the new view inherits the
+  // previous view's scroll position, so e.g. switching to Hotels from a
+  // long Itinerary lands the user at the bottom of the hotels list.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, [currentTab, activeTripId]);
+
   // Loading State
   if (authLoading) {
     return (

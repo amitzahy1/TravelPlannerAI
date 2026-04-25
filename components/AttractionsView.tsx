@@ -567,8 +567,27 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const getMapItems = () => {
         const items: any[] = [];
-        if (activeTab === 'my_list') attractionsData.forEach(c => c.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: a.description })));
-        else aiCategories.forEach(c => c.attractions.forEach(a => items.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: `${a.rating}⭐` })));
+        const sourceAttractions: Attraction[] = activeTab === 'my_list'
+            ? attractionsData.flatMap(c => c.attractions)
+            : aiCategories.flatMap(c => c.attractions);
+        sourceAttractions.forEach(a => {
+            if (selectedCity !== 'all' && !locationMatchesCity(a.location || '', selectedCity)) return;
+            items.push({
+                id: a.id, type: 'attraction', name: a.name,
+                address: a.location, lat: a.lat, lng: a.lng,
+                description: a.rating ? `${a.rating}⭐` : a.description,
+            });
+        });
+        (trip.hotels || []).forEach(h => {
+            const hCity = h.city || h.address || '';
+            if (selectedCity !== 'all' && !locationMatchesCity(hCity, selectedCity)) return;
+            if (typeof h.lat !== 'number' || typeof h.lng !== 'number') return;
+            items.push({
+                id: `hotel-${h.id}`, type: 'hotel', name: h.name,
+                address: h.address, lat: h.lat, lng: h.lng,
+                description: h.city || h.address,
+            });
+        });
         return items;
     };
 
