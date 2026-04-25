@@ -13,6 +13,7 @@ import { GlobalPlaceModal } from './GlobalPlaceModal';
 import { ConfirmModal } from './ConfirmModal';
 
 import { cleanTextForMap } from '../utils/textUtils';
+import { geocodePlacesBatch } from '../utils/geocodePlaces';
 
 
 // Enhanced Visuals with Gradients for Attractions
@@ -226,6 +227,9 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             setAiCategories(accumulatedCategories);
             onUpdateTrip({ ...trip, aiAttractions: accumulatedCategories });
             setSelectedCity('all');
+            // Upstream geocoding so the map view doesn't lazy-resolve 200+
+            // attractions on first open.
+            geocodeAndPersistAttractions(accumulatedCategories);
         } catch (e) {
             console.error("Critical Error in Research All:", e);
             setRecError('שגיאה במהלך מחקר מקיף.');
@@ -233,6 +237,44 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             setIsResearchingAll(false);
             setResearchProgress({ current: 0, total: 0 });
         }
+    };
+
+    // See RestaurantsView.geocodeAndPersistRestaurants for the same
+    // background-fill pattern. Resolves Photon → Nominatim → URL extraction
+    // and writes coords back to trip.aiAttractions in batches.
+    const geocodeAndPersistAttractions = (cats: AttractionCategory[]) => {
+        type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number };
+        const flat: Item[] = [];
+        cats.forEach(c => c.attractions.forEach(a => flat.push({
+            id: a.id, name: a.name, location: a.location,
+            googleMapsUrl: a.googleMapsUrl, lat: a.lat, lng: a.lng,
+        })));
+        if (flat.every(i => typeof i.lat === 'number' && typeof i.lng === 'number')) return;
+
+        const resolved: Record<string, { lat: number; lng: number }> = {};
+        let pendingFlush = 0;
+        const flush = () => {
+            if (pendingFlush === 0) return;
+            const next: AttractionCategory[] = cats.map(c => ({
+                ...c,
+                attractions: c.attractions.map(a => resolved[a.id]
+                    ? { ...a, lat: resolved[a.id].lat, lng: resolved[a.id].lng }
+                    : a),
+            }));
+            setAiCategories(next);
+            onUpdateTrip({ ...trip, aiAttractions: next });
+            pendingFlush = 0;
+        };
+
+        geocodePlacesBatch(
+            flat,
+            (id, coords) => {
+                resolved[id] = coords;
+                pendingFlush += 1;
+                if (pendingFlush >= 8) flush();
+            },
+            { concurrency: 4 },
+        ).finally(flush);
     };
 
     const createResearchPrompt = (target: string) => `

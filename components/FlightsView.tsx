@@ -1,10 +1,12 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip, FlightSegment } from '../types';
 import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check, Lock, ShieldCheck, ChevronDown, Trash2, AlertTriangle, MoreVertical, Plus } from 'lucide-react';
 import { Transport } from '../types';
 import { TransportRow } from './TransportRow';
 import { AddTransportModal } from './AddTransportModal';
+import { SuggestedTransportCard } from './SuggestedTransportCard';
+import { detectSuggestedTransports, SuggestedTransport } from '../utils/suggestedTransports';
 import { formatDateTime, formatDateOnly, parseFlightTime, calculateFlightDuration, parseDateToIso, formatFlightTime } from '../utils/dateUtils';
 import { ConfirmModal } from './ConfirmModal';
 import { localTimeAtAirportToUTC, AIRPORT_TIMEZONES } from '../utils/airportTimezones';
@@ -646,6 +648,14 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
   const [isAddingTransport, setIsAddingTransport] = useState(false);
 
   const transports = trip.transports || [];
+  const suggestedTransports = useMemo(() => detectSuggestedTransports(trip), [trip]);
+
+  const handleAddSuggestion = (s: SuggestedTransport) => {
+    // Strip the suggestion-specific fields so the modal opens with a
+    // plain Transport. The user can confirm or tweak before saving.
+    const { suggested: _s, reason: _r, ...rest } = s;
+    setEditingTransport({ ...rest, id: `tr-${Date.now().toString(36)}` });
+  };
 
   const handleSaveTransport = (t: Transport) => {
     if (!onUpdateTrip) return;
@@ -777,6 +787,30 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
           </div>
         )}
       </section>
+
+      {/* ── Suggested transports (yellow ⚠️ cards) ──
+           Heuristic gaps the trip data exposes — same-day landing →
+           hotel without a transfer booked, or city-to-city hotel moves
+           without any transport on file. Click → opens AddTransportModal
+           pre-filled. */}
+      {onUpdateTrip && suggestedTransports.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-base sm:text-lg font-black text-amber-900 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              העברות חסרות
+            </h3>
+            <span className="text-2xs font-bold text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md">
+              {suggestedTransports.length}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {suggestedTransports.map(s => (
+              <SuggestedTransportCard key={s.id} suggestion={s} onAdd={handleAddSuggestion} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Other transports (transfers, ferries, trains, buses, etc.) ── */}
       {transports.length > 0 && (

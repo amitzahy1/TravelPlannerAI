@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip, Restaurant, Attraction, HotelBooking } from '../types';
 import { Utensils, Ticket, MapPin, Hotel, Loader2 } from 'lucide-react';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
@@ -80,7 +83,7 @@ const isValidLatLng = (lat?: number, lng?: number): lat is number =>
 export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdateTrip }) => {
         const containerRef = useRef<HTMLDivElement>(null);
         const mapRef = useRef<L.Map | null>(null);
-        const layerRef = useRef<L.LayerGroup | null>(null);
+        const layerRef = useRef<L.MarkerClusterGroup | null>(null);
         const [filter, setFilter] = useState<'all' | Kind>('all');
         const [selectedCity, setSelectedCity] = useState<string>('all');
         const [selected, setSelected] = useState<MapPlace | null>(null);
@@ -174,7 +177,33 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                         .addAttribution('© <a href="https://www.openstreetmap.org/copyright">OSM</a> · © <a href="https://carto.com/attributions">CARTO</a>')
                         .addTo(map);
                 mapRef.current = map;
-                layerRef.current = L.layerGroup().addTo(map);
+                // Marker clustering — collapses dense pin areas into a single
+                // count badge so the map stops looking like a wall of
+                // overlapping tooltips. Tapping a cluster zooms in, finally
+                // breaking it into individual pins.
+                const cluster = (L as any).markerClusterGroup({
+                        maxClusterRadius: 48,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: false,
+                        zoomToBoundsOnClick: true,
+                        iconCreateFunction: (c: any) => {
+                                const count = c.getChildCount();
+                                const size = count < 10 ? 36 : count < 50 ? 44 : 54;
+                                return L.divIcon({
+                                        html: `<div style="
+                                                width:${size}px;height:${size}px;border-radius:50%;
+                                                background:rgba(15,23,42,0.85);
+                                                color:#fff;display:flex;align-items:center;justify-content:center;
+                                                font-weight:800;font-size:${count < 100 ? 13 : 11}px;
+                                                box-shadow:0 0 0 4px rgba(255,255,255,0.85),0 6px 14px rgba(15,23,42,0.25);
+                                                font-family:'Rubik','Inter',sans-serif;
+                                        ">${count}</div>`,
+                                        className: '', iconSize: [size, size],
+                                });
+                        },
+                }) as L.MarkerClusterGroup;
+                layerRef.current = cluster;
+                map.addLayer(cluster);
                 setTimeout(() => map.invalidateSize(), 200);
                 const ro = new ResizeObserver(() => map.invalidateSize());
                 ro.observe(containerRef.current);

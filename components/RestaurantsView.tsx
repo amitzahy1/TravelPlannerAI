@@ -64,6 +64,7 @@ const getCuisineVisuals = (cuisine: string = '') => {
 
 import { cleanTextForMap } from '../utils/textUtils';
 import { getTripCities, locationMatchesCity } from '../utils/geoData';
+import { geocodePlacesBatch } from '../utils/geocodePlaces';
 
 
 // Sorting helper: Favorites first, then Rating
@@ -283,6 +284,11 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             setAiCategories(accumulatedCategories);
             onUpdateTrip({ ...trip, aiRestaurants: accumulatedCategories });
             setSelectedCity('all');
+            // Upstream geocoding — fill in lat/lng for every newly-fetched
+            // restaurant in the background so the map view doesn't have to
+            // batch-geocode 200+ places lazily on first open. Coords are
+            // persisted back to the trip as they land.
+            geocodeAndPersistRestaurants(accumulatedCategories);
         } catch (e) {
             console.error("Critical Error in Research All:", e);
             setRecError('שגיאה במהלך מחקר מקיף.');
@@ -290,6 +296,46 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             setIsResearchingAll(false);
             setResearchProgress({ current: 0, total: 0 });
         }
+    };
+
+    // Geocode any restaurants in `cats` that lack lat/lng and write the
+    // resolved coords back to trip.aiRestaurants. Runs as a fire-and-forget
+    // background task — UI updates incrementally as Photon resolves each.
+    const geocodeAndPersistRestaurants = (cats: RestaurantCategory[]) => {
+        type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number };
+        const flat: Item[] = [];
+        cats.forEach(c => c.restaurants.forEach(r => flat.push({
+            id: r.id, name: r.name, location: r.location,
+            googleMapsUrl: r.googleMapsUrl, lat: r.lat, lng: r.lng,
+        })));
+        if (flat.every(i => typeof i.lat === 'number' && typeof i.lng === 'number')) return;
+
+        // Maintain a fresh-coords map; flush back to onUpdateTrip in batches
+        // every 8 resolves to avoid spamming Firestore writes.
+        const resolved: Record<string, { lat: number; lng: number }> = {};
+        let pendingFlush = 0;
+        const flush = () => {
+            if (pendingFlush === 0) return;
+            const next: RestaurantCategory[] = cats.map(c => ({
+                ...c,
+                restaurants: c.restaurants.map(r => resolved[r.id]
+                    ? { ...r, lat: resolved[r.id].lat, lng: resolved[r.id].lng }
+                    : r),
+            }));
+            setAiCategories(next);
+            onUpdateTrip({ ...trip, aiRestaurants: next });
+            pendingFlush = 0;
+        };
+
+        geocodePlacesBatch(
+            flat,
+            (id, coords) => {
+                resolved[id] = coords;
+                pendingFlush += 1;
+                if (pendingFlush >= 8) flush();
+            },
+            { concurrency: 4 },
+        ).finally(flush);
     };
 
     const createResearchPrompt = (specificCity: string) => `
