@@ -38,7 +38,7 @@ const contentNavItems = [
         // keep it second in the reading order (RTL first-after-home).
         { id: 'discover', label: 'גילויים', icon: Compass },
         { id: 'map_full', label: 'מפה', icon: MapPin },
-        { id: 'flights', label: 'טיסות', icon: Plane },
+        { id: 'flights', label: 'העברות', icon: Plane },
         { id: 'hotels', label: 'מלונות', icon: Hotel },
 ];
 

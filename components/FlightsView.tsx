@@ -1,7 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip, FlightSegment } from '../types';
-import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check, Lock, ShieldCheck, ChevronDown, Trash2, AlertTriangle, MoreVertical } from 'lucide-react';
+import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check, Lock, ShieldCheck, ChevronDown, Trash2, AlertTriangle, MoreVertical, Plus } from 'lucide-react';
+import { Transport } from '../types';
+import { TransportRow } from './TransportRow';
+import { AddTransportModal } from './AddTransportModal';
 import { formatDateTime, formatDateOnly, parseFlightTime, calculateFlightDuration, parseDateToIso, formatFlightTime } from '../utils/dateUtils';
 import { ConfirmModal } from './ConfirmModal';
 import { localTimeAtAirportToUTC, AIRPORT_TIMEZONES } from '../utils/airportTimezones';
@@ -639,6 +642,25 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
+  const [editingTransport, setEditingTransport] = useState<Transport | null>(null);
+  const [isAddingTransport, setIsAddingTransport] = useState(false);
+
+  const transports = trip.transports || [];
+
+  const handleSaveTransport = (t: Transport) => {
+    if (!onUpdateTrip) return;
+    const list = trip.transports || [];
+    const idx = list.findIndex(x => x.id === t.id);
+    const next = idx >= 0
+      ? list.map((x, i) => i === idx ? t : x)
+      : [...list, t];
+    onUpdateTrip({ ...trip, transports: next });
+  };
+
+  const handleDeleteTransport = (id: string) => {
+    if (!onUpdateTrip) return;
+    onUpdateTrip({ ...trip, transports: (trip.transports || []).filter(t => t.id !== id) });
+  };
 
   const tripYear = getTripYear(trip);
 
@@ -690,10 +712,22 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
         <div>
           <h2 className="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-3 tracking-tight">
             <span className="bg-blue-100 p-2 rounded-xl text-blue-600 shadow-sm flex-shrink-0"><Plane className="w-6 h-6 md:w-7 md:h-7" /></span>
-            הטיסות שלי
+            ההעברות שלי
           </h2>
-          <p className="text-slate-400 text-sm font-medium mt-0.5 mr-14">{activeSegments.length} {activeSegments.length === 1 ? 'טיסה' : 'טיסות'}</p>
+          <p className="text-slate-400 text-sm font-medium mt-0.5 mr-14">
+            {activeSegments.length} {activeSegments.length === 1 ? 'טיסה' : 'טיסות'}
+            {transports.length > 0 && ` · ${transports.length} נוספות`}
+          </p>
         </div>
+        {onUpdateTrip && (
+          <button
+            onClick={() => setIsAddingTransport(true)}
+            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            הוסף הסעה / מעבורת
+          </button>
+        )}
         {(flights.pnr || (flights.passengers && flights.passengers.length > 0)) && (
           <div dir="ltr" className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-sm">
             {flights.pnr && (
@@ -752,6 +786,37 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
           </div>
         )}
       </section>
+
+      {/* ── Other transports (transfers, ferries, trains, buses, etc.) ── */}
+      {transports.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <h3 className="text-lg sm:text-xl font-black text-slate-800">העברות נוספות</h3>
+            <span className="text-2xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+              {transports.length}
+            </span>
+          </div>
+          <div className="flex flex-col gap-3 sm:gap-4">
+            {[...transports].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map(t => (
+              <TransportRow
+                key={t.id}
+                transport={t}
+                onEdit={onUpdateTrip ? () => setEditingTransport(t) : undefined}
+                onDelete={onUpdateTrip ? () => handleDeleteTransport(t.id) : undefined}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* AddTransport modal — used both for adding new and editing existing */}
+      {(isAddingTransport || editingTransport) && (
+        <AddTransportModal
+          initial={editingTransport}
+          onSave={handleSaveTransport}
+          onClose={() => { setIsAddingTransport(false); setEditingTransport(null); }}
+        />
+      )}
 
       {/* Documents Section */}
       <section className="max-w-6xl mx-auto pt-8 border-t border-slate-100">

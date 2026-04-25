@@ -9,6 +9,7 @@ import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
+import { MODE_COLORS } from '../utils/transportColors';
 
 // --- Interfaces ---
 interface MapItem {
@@ -283,6 +284,27 @@ const getSegmentTransport = (
         (b.toCity?.toLowerCase() || '').includes(toStop.name.toLowerCase())
     );
     if (matchedBus) return { mode: 'bus', emoji: '🚌', label: matchedBus.provider || 'אוטובוס', hasTransportData: true };
+
+    // 2b. Unified transports — manual transfers, ferries, drives the user
+    //     added via "+ הוסף הסעה". Cheap city-name match against the leg.
+    const matchedTransport = trip.transports?.find(t => {
+        const fLow = (t.from || '').toLowerCase();
+        const tLow = (t.to || '').toLowerCase();
+        const fromName = fromStop.name.toLowerCase();
+        const toName = toStop.name.toLowerCase();
+        return (fLow.includes(fromName) || fromName.includes(fLow)) &&
+               (tLow.includes(toName) || toName.includes(tLow));
+    });
+    if (matchedTransport) {
+        const style = MODE_COLORS[matchedTransport.mode] || MODE_COLORS.drive;
+        return {
+            mode: matchedTransport.mode === 'cruise' || matchedTransport.mode === 'transfer' || matchedTransport.mode === 'car_rental' ? 'drive' : matchedTransport.mode as any,
+            emoji: style.emoji,
+            label: matchedTransport.provider || style.label,
+            duration: matchedTransport.duration,
+            hasTransportData: true,
+        };
+    }
 
     // 3. Default: drive. We explicitly do NOT guess "flight?" for long
     //    distances anymore — the user's convention is "if no flight is
@@ -1033,9 +1055,13 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                             hasTransportData: true,
                         };
                     }
+                    // Per-mode polyline colour — flight=blue, ferry=cyan,
+                    // drive=slate, train=violet, bus=amber. Falls back to
+                    // the per-stop colour for unknown modes.
+                    const modeColor = MODE_COLORS[transport.mode as keyof typeof MODE_COLORS]?.line || lineColor;
                     const stagger = 0.45 + (i % 3) * 0.05;
-                    const badgeIcon = dist >= 5 ? makeRouteBadge(dist, transport, lineColor) : null;
-                    drawSubSegment(pathPoints, lineColor, badgeIcon, stagger);
+                    const badgeIcon = dist >= 5 ? makeRouteBadge(dist, transport, modeColor) : null;
+                    drawSubSegment(pathPoints, modeColor, badgeIcon, stagger);
                     bounds.extend([start.coords.lat, start.coords.lng]);
                     bounds.extend([end.coords.lat, end.coords.lng]);
                 }

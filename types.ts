@@ -89,6 +89,46 @@ export interface FerryRide {
   price?: number;
 }
 
+/**
+ * Unified transport leg. Replaces the parallel arrays (flights, trains,
+ * buses, ferries, cruises) with a single Transport[] that any view can
+ * read sorted by date+time. The legacy arrays still work — buildUnifiedTransports
+ * mirrors them into Transport[] on read so old data keeps rendering.
+ */
+export type TransportMode = 'flight' | 'train' | 'bus' | 'ferry' | 'cruise' | 'transfer' | 'car_rental' | 'drive';
+
+export interface Transport {
+  id: string;
+  mode: TransportMode;
+  from: string;
+  to: string;
+  fromCode?: string;       // IATA / station / port code
+  toCode?: string;
+  date: string;            // ISO yyyy-mm-dd
+  departureTime?: string;  // HH:MM or full ISO
+  arrivalTime?: string;
+  duration?: string;       // "2h 15m" / "45m" — display string
+  provider?: string;       // airline / bus operator / ferry company
+  bookingRef?: string;     // PNR / confirmation code
+  price?: number;
+  currency?: string;
+  notes?: string;
+  fromLat?: number; fromLng?: number;
+  toLat?: number;   toLng?: number;
+  // Display
+  color?: string;          // explicit hex; if absent UI uses MODE_COLORS[mode]
+  // Provenance — points back to whichever legacy array the leg came from
+  // so updates can be written to the right place.
+  sourceFlightSegmentIndex?: number; // index into trip.flights.segments
+  sourceArrayKey?: 'flights' | 'trains' | 'buses' | 'ferries' | 'cruises' | 'transports';
+  // Mode-specific extras (carried as-is, optional)
+  flightNumber?: string;
+  terminal?: string;
+  gate?: string;
+  vehicle?: string;        // ferry: "Car" / "Foot"; train: car number; transfer: "Van" / "Taxi"
+  pickupPoint?: string;    // hotel pickup for transfers
+}
+
 export interface Ticket {
   passengers: string[]; // Supports multiple passengers per PNR
   pnr: string;
@@ -351,6 +391,11 @@ export interface Trip {
   cruises?: Cruise[];
   buses?: BusRide[];
   ferries?: FerryRide[];
+  /** Unified transport list — additive to the legacy arrays above. Holds
+   *  manual / AI-extracted transfers, ferries, drives that aren't in the
+   *  classic flight/train/bus/ferry shape. buildUnifiedTransports merges
+   *  this with the legacy arrays for views that want a single sorted list. */
+  transports?: Transport[];
   hotels: HotelBooking[];
   restaurants: RestaurantCategory[];
   reservations?: Reservation[];
