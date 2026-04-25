@@ -66,6 +66,23 @@ const getDayOfWeek = (date: Date) => {
     return days[date.getDay()];
 };
 
+/**
+ * Compact hero date format. "2026-08-06 - 2026-08-26" → "6/8 – 26/8".
+ * Falls through to the raw string if the input doesn't contain two ISO
+ * dates so we never lose information when the format is unexpected.
+ */
+const formatHeroDates = (raw?: string): string => {
+    if (!raw) return '';
+    const matches = raw.match(/(\d{4}-\d{2}-\d{2})/g);
+    if (!matches || matches.length < 2) return raw;
+    const [a, b] = matches.slice(0, 2).map(m => new Date(m + 'T12:00:00'));
+    if (isNaN(a.getTime()) || isNaN(b.getTime())) return raw;
+    const fmt = (d: Date) => `${d.getDate()}/${d.getMonth() + 1}`;
+    // Sort so the older date comes first (handles "26 - 06" reversal).
+    const [first, second] = a.getTime() <= b.getTime() ? [a, b] : [b, a];
+    return `${fmt(first)} – ${fmt(second)}`;
+};
+
 export const ItineraryView: React.FC<{
     trip: Trip,
     onUpdateTrip: (updatedTrip: Trip) => void,
@@ -791,14 +808,40 @@ export const ItineraryView: React.FC<{
                 </div>
 
                 {/* Content Layer (Not clipped, allows Popovers) */}
-                <div className="absolute inset-0 pointer-events-none z-10 flex flex-col md:flex-row justify-between items-end p-6">
+                <div className="absolute inset-0 pointer-events-none z-10 flex flex-col md:flex-row justify-between items-end p-4 sm:p-6">
                     {/* Text Info */}
-                    <div className="space-y-1 max-w-xl pointer-events-auto">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <div className="flex items-center gap-3 text-white/80 font-bold text-xs uppercase tracking-widest bg-white/10 backdrop-blur-md px-3 py-1 rounded-full w-fit border border-white/20">
-                                <Calendar className="w-3.5 h-3.5" /> {trip.dates}
+                    <div className="space-y-1 max-w-xl pointer-events-auto w-full md:w-auto">
+                        <div className="flex items-center gap-1.5 sm:gap-2 mb-2 flex-wrap">
+                            {/* Short date pill — "6/8 – 26/8" instead of the
+                                 raw 23-char ISO range so countdown + export
+                                 buttons fit on a single 360 px row. */}
+                            <div className="flex items-center gap-1.5 text-white/90 font-bold text-2xs sm:text-xs uppercase tracking-wide bg-white/15 backdrop-blur-md px-2.5 py-1.5 rounded-full w-fit border border-white/25">
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span dir="ltr">{formatHeroDates(trip.dates)}</span>
                             </div>
                             <TripCountdown trip={trip} variant="overlay" />
+                            {/* Export buttons — moved out of the absolute-
+                                 positioned overlay (which was getting hidden
+                                 on mobile) into the wrapped header row. The
+                                 text "ייצא" hides under sm:; both buttons
+                                 stay tappable everywhere. */}
+                            <button
+                                onClick={() => downloadTripHTML(trip)}
+                                aria-label="ייצא סיכום טיול"
+                                title="ייצא סיכום"
+                                className="h-9 px-2.5 sm:px-3 bg-white/90 hover:bg-white backdrop-blur-md rounded-full text-slate-900 text-2xs sm:text-xs font-bold flex items-center gap-1.5 shadow-popover transition-colors"
+                            >
+                                <FileTextIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                                <span className="hidden sm:inline">ייצא סיכום</span>
+                            </button>
+                            <button
+                                onClick={() => downloadTripIcal(trip)}
+                                aria-label="ייצא ליומן (iCal)"
+                                title="הוסף ליומן"
+                                className="h-9 w-9 bg-white/90 hover:bg-white backdrop-blur-md rounded-full text-slate-900 flex items-center justify-center shadow-popover transition-colors"
+                            >
+                                <CalendarDaysIcon className="w-4 h-4" aria-hidden="true" />
+                            </button>
                             {onRefresh && (
                                 <button
                                     onClick={(e) => {
@@ -808,7 +851,7 @@ export const ItineraryView: React.FC<{
                                         onRefresh();
                                         setTimeout(() => btn.classList.remove('animate-spin'), 1000);
                                     }}
-                                    className="p-1.5 bg-white/10 backdrop-blur-md text-white/80 hover:bg-white/20 hover:text-white rounded-full transition-colors border border-white/10"
+                                    className="h-9 w-9 bg-white/15 backdrop-blur-md text-white/85 hover:bg-white/25 hover:text-white rounded-full transition-colors border border-white/15 flex items-center justify-center"
                                     title="רענן נתונים"
                                 >
                                     <RefreshCw className="w-3.5 h-3.5" />
