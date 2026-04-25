@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip } from '../types';
-import { Map, Plane, Utensils, Hotel, Globe, Ticket, Compass, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home } from 'lucide-react';
+import { Map, Plane, Utensils, Hotel, Globe, Ticket, Compass, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home, Search } from 'lucide-react';
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
 import { TripProgress } from './shared';
@@ -31,12 +31,13 @@ interface LayoutProps {
         onDeleteTrip?: (tripId: string) => void;
 }
 
-// Content nav tabs (excluding trip management)
+// Content nav tabs (excluding trip management). R6 — split "גילויים"
+// back into separate "אוכל" + "אטרקציות" tabs per user request, each with
+// its own map/list toggle and tabs.
 const contentNavItems = [
         { id: 'itinerary', label: 'ראשי', icon: Home },
-        // Discover is the second most-used tab (user's explicit request) —
-        // keep it second in the reading order (RTL first-after-home).
-        { id: 'discover', label: 'גילויים', icon: Compass },
+        { id: 'food', label: 'אוכל', icon: Utensils },
+        { id: 'attractions', label: 'אטרקציות', icon: Ticket },
         { id: 'map_full', label: 'מפה', icon: MapPin },
         { id: 'flights', label: 'העברות', icon: Plane },
         { id: 'hotels', label: 'מלונות', icon: Hotel },

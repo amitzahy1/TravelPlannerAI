@@ -18,6 +18,8 @@ const ItineraryView = React.lazy(() => import('./components/ItineraryView').then
 const HotelsView = React.lazy(() => import('./components/HotelsView').then(module => ({ default: module.HotelsView })));
 const AdminView = React.lazy(() => import('./components/AdminView').then(module => ({ default: module.AdminView })));
 const DiscoverView = React.lazy(() => import('./components/DiscoverView').then(module => ({ default: module.DiscoverView })));
+const RestaurantsView = React.lazy(() => import('./components/RestaurantsView').then(module => ({ default: module.RestaurantsView })));
+const AttractionsView = React.lazy(() => import('./components/AttractionsView').then(module => ({ default: module.AttractionsView })));
 
 import { JoinTripModal } from './components/JoinTripModal';
 import { AIChatOverlay } from './components/AIChatOverlay';
@@ -315,12 +317,15 @@ const AppContent: React.FC = () => {
         {(() => {
           switch (currentTab) {
             case 'flights': return <FlightsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
-            // 'restaurants' + 'attractions' are legacy deep-link aliases for
-            // 'discover' — the nav collapsed them into one tab in R5.
+            // R6 — Food and Attractions are now separate top-nav tabs again.
+            // 'discover' is kept as a legacy alias that lands on Food.
             case 'restaurants':
-            case 'attractions':
+            case 'food':
             case 'discover':
-              return <DiscoverView trip={activeTrip} onUpdateTrip={handleUpdate} />;
+              return <RestaurantsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
+            case 'attractions':
+            case 'sights':
+              return <AttractionsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdate} onSwitchTab={setCurrentTab} onRefresh={() => { }} />;
             case 'hotels': return <HotelsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'map_full': return <UnifiedMapView trip={activeTrip} title="מפת הטיול המלאה" />;

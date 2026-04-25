@@ -559,20 +559,33 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 </div>
             )}
 
-            <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-2">
+            {/* Tab bar — my_list / market research toggle PLUS a list/map
+                 view toggle that's always visible (regardless of which tab),
+                 per user request. */}
+            <div className="flex items-center gap-2 mb-2">
+                <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative flex-1">
+                    <button
+                        onClick={() => setActiveTab('my_list')}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <Ticket className={`w-4 h-4 ${activeTab === 'my_list' ? 'text-purple-500' : 'text-slate-400'}`} />
+                        הרשימה שלי
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('recommended')}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <Sparkles className={`w-4 h-4 ${activeTab === 'recommended' ? 'text-blue-500' : 'text-slate-400'}`} />
+                        מחקר שוק (AI)
+                    </button>
+                </div>
                 <button
-                    onClick={() => setActiveTab('my_list')}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                    onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+                    className="w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl shadow-sm hover:border-blue-300 transition-colors text-slate-500 flex-shrink-0"
+                    title={viewMode === 'list' ? 'תצוגת מפה' : 'תצוגת רשימה'}
+                    aria-label={viewMode === 'list' ? 'תצוגת מפה' : 'תצוגת רשימה'}
                 >
-                    <Ticket className={`w-4 h-4 ${activeTab === 'my_list' ? 'text-purple-500' : 'text-slate-400'}`} />
-                    האטרקציות שלי
-                </button>
-                <button
-                    onClick={() => setActiveTab('recommended')}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <Sparkles className={`w-4 h-4 ${activeTab === 'recommended' ? 'text-blue-500' : 'text-slate-400'}`} />
-                    המלצות TOP (AI)
+                    {viewMode === 'list' ? <MapIcon className="w-4 h-4" /> : <List className="w-4 h-4" />}
                 </button>
             </div>
 
@@ -593,7 +606,6 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
             {viewMode === 'map' ? (
                 <div className="space-y-3">
-                    <div className="flex justify-end"><button onClick={() => setViewMode('list')} className="px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold text-xs bg-slate-100 text-slate-900 transition-all hover:bg-slate-200"><List className="w-3 h-3" /> חזרה לרשימה</button></div>
                     <UnifiedMapView items={getMapItems()} title={activeTab === 'my_list' ? "מפת אטרקציות שלי" : "מפת המלצות"} />
                 </div>
             ) : (
