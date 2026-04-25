@@ -269,15 +269,24 @@ const HEBREW_TO_ENGLISH_KEY: Record<string, string> = Object.entries(CITY_HEBREW
  * else to its cleaned form. Use this to detect that 'Bangkok' and 'בנגקוק' are
  * the same city, without deciding on a display language.
  */
+// Normalise apostrophe variants so "קו צ'אנג", "קו צ׳אנג" (Hebrew geresh),
+// "קו צ′אנג" (prime), and curly variants all reduce to the same form.
+// Without this, the same city ended up with two distinct keys and the
+// city filter listed "קו צ'אנג" twice on the Discover page.
+const normalizeApostrophes = (s: string): string =>
+        s.replace(/[‘’׳′‵`´]/g, "'");
+
 export const cityKey = (name: string): string => {
         if (!name) return '';
-        const cleaned = cleanCityName(name).trim();
+        const cleaned = normalizeApostrophes(cleanCityName(name).trim());
         if (!cleaned) return '';
         const lower = cleaned.toLowerCase();
         // English match
         if (CITY_HEBREW_NAMES[lower]) return lower;
-        // Hebrew match
+        // Hebrew match (try cleaned + a punctuation-stripped variant)
         if (HEBREW_TO_ENGLISH_KEY[cleaned]) return HEBREW_TO_ENGLISH_KEY[cleaned];
+        const stripped = cleaned.replace(/[׳'′]/g, '');
+        if (HEBREW_TO_ENGLISH_KEY[stripped]) return HEBREW_TO_ENGLISH_KEY[stripped];
         // Unknown — use lowercase cleaned as the key
         return lower;
 };

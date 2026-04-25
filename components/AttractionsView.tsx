@@ -588,7 +588,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         (trip.hotels || []).forEach(h => {
             const hCity = h.city || h.address || '';
             if (selectedCity !== 'all' && !locationMatchesCity(hCity, selectedCity)) return;
-            if (typeof h.lat !== 'number' || typeof h.lng !== 'number') return;
+            if (!h.address && (typeof h.lat !== 'number' || typeof h.lng !== 'number')) return;
             items.push({
                 id: `hotel-${h.id}`, type: 'hotel', name: h.name,
                 address: h.address, lat: h.lat, lng: h.lng,

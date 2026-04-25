@@ -822,11 +822,12 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             });
         });
         // Always layer hotels on top so the user can see how their food
-        // picks relate to where they're staying. Same city filter applies.
+        // picks relate to where they're staying. UnifiedMapView geocodes
+        // addresses lazily, so hotels without lat/lng still drop a pin.
         (trip.hotels || []).forEach(h => {
             const hCity = h.city || h.address || '';
             if (selectedCity !== 'all' && !locationMatchesCity(hCity, selectedCity)) return;
-            if (typeof h.lat !== 'number' || typeof h.lng !== 'number') return;
+            if (!h.address && (typeof h.lat !== 'number' || typeof h.lng !== 'number')) return;
             items.push({
                 id: `hotel-${h.id}`, type: 'hotel', name: h.name,
                 address: h.address, lat: h.lat, lng: h.lng,

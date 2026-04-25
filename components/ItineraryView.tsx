@@ -902,7 +902,7 @@ export const ItineraryView: React.FC<{
                                     {heroCityNights.map(([city, nights], i) => (
                                         <span key={city}>
                                             <span className="font-bold">{city}</span>
-                                            <span className="text-white/70 text-xs ms-1">({nights})</span>
+                                            <span className="text-white/75 text-xs ms-1">({nights} {nights === 1 ? 'לילה' : 'לילות'})</span>
                                             {i < heroCityNights.length - 1 && <span className="text-white/40 mx-2">·</span>}
                                         </span>
                                     ))}

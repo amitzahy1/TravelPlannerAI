@@ -18,7 +18,33 @@ export interface SuggestedTransport extends Transport {
         reason: string;
 }
 
-const isoDate = (s?: string): string => (s || '').slice(0, 10);
+// Normalise common date formats to yyyy-mm-dd.
+// Handles: ISO ("2026-08-07T12:00:00"), DD/MM/YYYY ("07/08/2026"),
+// MM/DD/YYYY (best-effort), and bare ISO strings.
+const isoDate = (s?: string): string => {
+        if (!s) return '';
+        const raw = String(s).trim();
+        // Already ISO yyyy-mm-dd...
+        const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+        // DD/MM/YYYY → yyyy-mm-dd. Heuristic: if first part > 12 it's day-first.
+        const slashMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (slashMatch) {
+                const [, a, b, y] = slashMatch;
+                const d = parseInt(a, 10), m = parseInt(b, 10);
+                // If first part > 12, must be day; else assume DD/MM (Hebrew/IL convention).
+                const isDayFirst = d > 12 || true;
+                const day = isDayFirst ? d : m;
+                const month = isDayFirst ? m : d;
+                return `${y}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+        // Last-ditch: try Date.parse and reformat.
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        return raw.slice(0, 10);
+};
 
 const sameDay = (a?: string, b?: string): boolean => {
         const ia = isoDate(a); const ib = isoDate(b);
@@ -38,8 +64,12 @@ const transportCovers = (t: Transport, fromCity: string, toCity: string, onDate?
         const tTo = cityKey(t.to);
         const wantFrom = cityKey(fromCity);
         const wantTo = cityKey(toCity);
-        const fromMatch = tFrom.includes(wantFrom) || wantFrom.includes(tFrom);
-        const toMatch = tTo.includes(wantTo) || wantTo.includes(tTo);
+        // Both sides must be non-empty; otherwise empty strings would
+        // match everything ("bangkok".includes("")=true) and falsely
+        // suppress suggestions.
+        if (!tFrom || !tTo || !wantFrom || !wantTo) return false;
+        const fromMatch = tFrom === wantFrom || tFrom.includes(wantFrom) || wantFrom.includes(tFrom);
+        const toMatch = tTo === wantTo || tTo.includes(wantTo) || wantTo.includes(tTo);
         if (!fromMatch || !toMatch) return false;
         if (onDate && t.date && isoDate(t.date) !== isoDate(onDate)) return false;
         return true;
