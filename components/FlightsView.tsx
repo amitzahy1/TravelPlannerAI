@@ -728,21 +728,12 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
             הוסף הסעה / מעבורת
           </button>
         )}
-        {(flights.pnr || (flights.passengers && flights.passengers.length > 0)) && (
+        {flights.pnr && (
           <div dir="ltr" className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-sm">
-            {flights.pnr && (
-              <div>
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">מספר הזמנה</div>
-                <div className="text-lg font-mono font-black text-slate-800 tracking-widest">{flights.pnr}</div>
-              </div>
-            )}
-            {flights.passengers && flights.passengers.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 border-l border-slate-100 pl-3">
-                {flights.passengers.map((p, idx) => (
-                  <span key={idx} className="bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full">{p}</span>
-                ))}
-              </div>
-            )}
+            <div>
+              <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">מספר הזמנה</div>
+              <div className="text-lg font-mono font-black text-slate-800 tracking-widest">{flights.pnr}</div>
+            </div>
           </div>
         )}
       </div>

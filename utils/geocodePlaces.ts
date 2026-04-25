@@ -61,6 +61,34 @@ export const extractCoordsFromMapsUrl = (url?: string): { lat: number; lng: numb
         return null;
 };
 
+/**
+ * Photon (Komoot) — open-source geocoder over OSM data with proper CORS
+ * headers. Used as the primary lookup because Nominatim's public endpoint
+ * blocks browser requests with CORS + 429 from github.io. Falls back to
+ * Nominatim if Photon misses.
+ */
+const photonGeocode = async (query: string): Promise<{ lat: number; lng: number } | null> => {
+        if (!query) return null;
+        try {
+                const res = await fetch(
+                        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`,
+                );
+                if (!res.ok) return null;
+                const data = await res.json();
+                const feat = data?.features?.[0];
+                const coords = feat?.geometry?.coordinates;
+                // Photon returns [lng, lat] (GeoJSON)
+                if (Array.isArray(coords) && coords.length >= 2) {
+                        const lng = parseFloat(coords[0]);
+                        const lat = parseFloat(coords[1]);
+                        if (isFinite(lat) && isFinite(lng)) return { lat, lng };
+                }
+                return null;
+        } catch {
+                return null;
+        }
+};
+
 const nominatimGeocode = async (query: string): Promise<{ lat: number; lng: number } | null> => {
         if (!query) return null;
         try {
@@ -79,6 +107,14 @@ const nominatimGeocode = async (query: string): Promise<{ lat: number; lng: numb
         } catch {
                 return null;
         }
+};
+
+const geocodeFallbackChain = async (query: string): Promise<{ lat: number; lng: number } | null> => {
+        // Photon first (CORS-friendly, no rate-limit on github.io); Nominatim
+        // as a fallback when Photon misses for niche queries.
+        const photon = await photonGeocode(query);
+        if (photon) return photon;
+        return await nominatimGeocode(query);
 };
 
 export interface GeocodableInput {
@@ -108,16 +144,16 @@ export const geocodePlace = async (input: GeocodableInput): Promise<{ lat: numbe
         }
 
         const query = [input.name, input.location || input.address].filter(Boolean).join(', ');
-        const fromNominatim = await nominatimGeocode(query);
-        if (fromNominatim) {
-                c[k] = { coords: fromNominatim, t: Date.now() };
+        const fromGeocoder = await geocodeFallbackChain(query);
+        if (fromGeocoder) {
+                c[k] = { coords: fromGeocoder, t: Date.now() };
                 persist();
-                return fromNominatim;
+                return fromGeocoder;
         }
 
         // Fallback: location-only query so we at least pin the right city.
         if (input.location || input.address) {
-                const locOnly = await nominatimGeocode(input.location || input.address || '');
+                const locOnly = await geocodeFallbackChain(input.location || input.address || '');
                 if (locOnly) {
                         // Don't cache loose city-level fallback under the precise key —
                         // future calls might want to retry the more specific lookup.

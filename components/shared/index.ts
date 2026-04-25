@@ -8,4 +8,5 @@ export type { ProgressDot } from './ProgressDots';
 export { TripProgress } from './TripProgress';
 export { Skeleton, TripListSkeleton, ViewSkeleton } from './Skeleton';
 export { TripCountdown } from './TripCountdown';
+export { TripContextBar } from './TripContextBar';
 export { VoiceInputButton } from './VoiceInputButton';

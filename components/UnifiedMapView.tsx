@@ -137,10 +137,23 @@ const getBearing = (lat1: number, lng1: number, lat2: number, lng2: number) => {
 
 const geocodeAddress = async (query: string): Promise<{ lat: number; lng: number } | null> => {
     if (!query) return null;
+    // Photon (Komoot) first — CORS-friendly. Nominatim is blocked on
+    // github.io with CORS + 429, so it's only a fallback now.
     try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
-            headers: { 'User-Agent': 'TravelPlannerPro/2.0' }
-        });
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`);
+        if (res.ok) {
+            const data = await res.json();
+            const coords = data?.features?.[0]?.geometry?.coordinates;
+            if (Array.isArray(coords) && coords.length >= 2) {
+                const lng = parseFloat(coords[0]);
+                const lat = parseFloat(coords[1]);
+                if (isFinite(lat) && isFinite(lng)) return { lat, lng };
+            }
+        }
+    } catch { /* fall through to Nominatim */ }
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+        if (!res.ok) return null;
         const data = await res.json();
         if (data?.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
         return null;

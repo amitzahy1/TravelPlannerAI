@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
-import { TripCountdown } from './shared';
+import { TripCountdown, TripContextBar } from './shared';
 import { pickTripCover } from '../utils/destinationCover';
 import { downloadTripHTML } from '../utils/generateTripHTML';
 import { downloadTripIcal } from '../utils/generateTripIcal';
@@ -97,6 +97,10 @@ export const ItineraryView: React.FC<{
     const [isSyncing, setIsSyncing] = useState(false);
     const [externalEvents, setExternalEvents] = useState<TimelineEvent[]>([]);
     const [viewingCategory, setViewingCategory] = useState<'food' | 'attractions' | 'hotels' | null>(null);
+    // Smart-recommendations card is hidden by default and toggled from
+    // the new TripContextBar pill below the hero — saves a row that was
+    // permanently consumed before.
+    const [showRecommendations, setShowRecommendations] = useState(false);
     const [scheduleItem, setScheduleItem] = useState<{ item: any, type: 'food' | 'attraction' } | null>(null); // For the scheduler
     const [viewMode, setViewMode] = useState<'expanded' | 'compact'>(() =>
         typeof window !== 'undefined' && window.innerWidth < 768 ? 'compact' : 'expanded'
@@ -834,15 +838,11 @@ export const ItineraryView: React.FC<{
                                 <FileTextIcon className="w-3.5 h-3.5" aria-hidden="true" />
                                 <span className="hidden sm:inline">ייצא סיכום</span>
                             </button>
-                            <button
-                                onClick={() => downloadTripIcal(trip)}
-                                aria-label="ייצא ליומן (iCal)"
-                                title="הוסף ליומן"
-                                className="h-9 w-9 bg-white/90 hover:bg-white backdrop-blur-md rounded-full text-slate-900 flex items-center justify-center shadow-popover transition-colors"
-                            >
-                                <CalendarDaysIcon className="w-4 h-4" aria-hidden="true" />
-                            </button>
-                            {onRefresh && (
+                            {/* Hero is intentionally lean now — iCal export
+                                 + refresh moved out per user feedback ("they
+                                 don't add value, take space"). The HTML export
+                                 stays because that's the headline action. */}
+                            {false && onRefresh && (
                                 <button
                                     onClick={(e) => {
                                         e.preventDefault();
@@ -1025,15 +1025,30 @@ export const ItineraryView: React.FC<{
                 </div>
             </div>
 
-            {/* 2.5 SMART RECOMMENDATIONS BAR */}
-            <SmartRecommendationsBar
-                trip={trip}
-                favoriteRestaurants={favoriteRestaurants}
-                favoriteAttractions={favoriteAttractions}
-                timeline={timeline}
-                onScheduleFavorite={handleScheduleFavorite}
-                onSwitchTab={onSwitchTab}
-            />
+            {/* 2.4 TRIP CONTEXT BAR — cities + nights + recommendations toggle.
+                 Replaces the always-visible recommendations row that was eating
+                 too much real estate and adds a quick city-nights summary the
+                 user asked for under the hero. */}
+            <div className="px-1">
+                <TripContextBar
+                    trip={trip}
+                    recommendationCount={(trip.aiRestaurants?.length || 0) + (trip.aiAttractions?.length || 0) + favoriteRestaurants.length + favoriteAttractions.length}
+                    onOpenRecommendations={() => setShowRecommendations(v => !v)}
+                />
+            </div>
+
+            {/* 2.5 SMART RECOMMENDATIONS BAR — hidden by default; toggled from
+                 the TripContextBar pill above. */}
+            {showRecommendations && (
+                <SmartRecommendationsBar
+                    trip={trip}
+                    favoriteRestaurants={favoriteRestaurants}
+                    favoriteAttractions={favoriteAttractions}
+                    timeline={timeline}
+                    onScheduleFavorite={handleScheduleFavorite}
+                    onSwitchTab={onSwitchTab}
+                />
+            )}
 
             {/* 3. MAIN TIMELINE (Repositioned for Density) */}
             <div className="px-1 md:px-1 w-full space-y-6 relative z-10 -mt-2">
