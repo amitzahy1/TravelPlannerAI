@@ -105,56 +105,56 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                         {/* Premium Scrim (Bottom-up) */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
 
-                        {/* Top Actions (Floating) */}
-                        <div className="absolute top-3 right-3 flex gap-2 z-30">
-                                <a
-                                        href={mapsUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="p-2.5 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-white hover:bg-white hover:text-slate-900 transition-all active:scale-90"
-                                >
-                                        <Navigation className="w-4 h-4" />
-                                </a>
-                                <button
-                                        onClick={(e) => { e.stopPropagation(); onAdd(); }}
-                                        className={`p-2.5 backdrop-blur-md border rounded-full transition-all shadow-lg active:scale-90 ${isAdded ? 'bg-yellow-400 border-yellow-500 text-yellow-900' : 'bg-black/20 border-white/10 text-white hover:bg-white hover:text-slate-900'}`}
-                                >
-                                        {isAdded ? <Star className="w-4 h-4 fill-current" /> : <Star className="w-4 h-4" />}
-                                </button>
-                        </div>
-
-                        {/* Context Badge (Top Left) */}
-                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg backdrop-blur-md bg-white/10 border border-white/20 z-20">
-                                <span className="text-[10px] font-black text-white uppercase tracking-wider">{visualLabel}</span>
+                        {/* Top Row: cuisine chip (left) + actions (right) — flex layout prevents collision */}
+                        <div className="absolute top-2 inset-x-2 flex items-start justify-between gap-2 z-30 pointer-events-none">
+                                <span className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[10px] font-black text-white uppercase tracking-wider truncate max-w-[55%]">
+                                        {visualLabel}
+                                </span>
+                                <div className="flex gap-1.5 pointer-events-auto flex-shrink-0">
+                                        <a
+                                                href={mapsUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="w-8 h-8 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/15 rounded-full text-white hover:bg-white hover:text-slate-900 transition-all active:scale-90"
+                                                aria-label="ניווט"
+                                        >
+                                                <Navigation className="w-3.5 h-3.5" />
+                                        </a>
+                                        <button
+                                                onClick={(e) => { e.stopPropagation(); onAdd(); }}
+                                                className={`w-8 h-8 flex items-center justify-center backdrop-blur-md border rounded-full transition-all shadow-lg active:scale-90 ${isAdded ? 'bg-yellow-400 border-yellow-500 text-yellow-900' : 'bg-black/30 border-white/15 text-white hover:bg-white hover:text-slate-900'}`}
+                                                aria-label={isAdded ? 'הסר מהמועדפים' : 'הוסף למועדפים'}
+                                        >
+                                                <Star className={`w-3.5 h-3.5 ${isAdded ? 'fill-current' : ''}`} />
+                                        </button>
+                                </div>
                         </div>
 
                         {/* Content Container */}
-                        <div className="absolute inset-0 p-4 flex flex-col justify-end z-10 pointer-events-none">
-                                <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                                {recommendationSource && (
-                                                        <span className="flex items-center gap-1 text-yellow-400 text-[9px] font-black uppercase tracking-tighter bg-black/20 px-1.5 py-0.5 rounded-md backdrop-blur-sm">
-                                                                <Trophy className="w-2.5 h-2.5" />
-                                                                {recommendationSource.replace('Bib', 'Michelin')}
-                                                        </span>
-                                                )}
-                                                {rating && (
-                                                        <div className="flex items-center gap-0.5 text-white text-[10px] font-black bg-black/20 px-1.5 py-0.5 rounded-md backdrop-blur-sm">
-                                                                <span>{rating}</span>
-                                                                <Star className="w-2.5 h-2.5 fill-current text-yellow-400" />
-                                                        </div>
-                                                )}
-                                        </div>
+                        <div className="absolute inset-x-0 bottom-0 p-3 flex flex-col gap-1 z-10 pointer-events-none">
+                                <h3 className="text-base font-black text-white leading-tight line-clamp-2 drop-shadow-sm" dir="ltr">
+                                        {displayName}
+                                </h3>
 
-                                        <h3 className="text-base font-black text-white leading-tight line-clamp-2 drop-shadow-sm" dir="ltr">
-                                                {displayName}
-                                        </h3>
+                                <div className="flex items-center gap-1 text-slate-300 text-[10px] font-medium opacity-90">
+                                        <Navigation className="w-2.5 h-2.5 flex-shrink-0" />
+                                        <span className="truncate">{location}</span>
+                                </div>
 
-                                        <div className="flex items-center gap-1 text-slate-300 text-[10px] font-medium opacity-90">
-                                                <Navigation className="w-2.5 h-2.5" />
-                                                <span className="truncate">{location}</span>
-                                        </div>
+                                <div className="flex items-center justify-between gap-2 mt-0.5">
+                                        {rating ? (
+                                                <div className="flex items-center gap-0.5 text-white text-[10px] font-black bg-black/40 px-1.5 py-0.5 rounded-md backdrop-blur-sm flex-shrink-0">
+                                                        <Star className="w-2.5 h-2.5 fill-current text-yellow-400" />
+                                                        <span>{rating}</span>
+                                                </div>
+                                        ) : <span />}
+                                        {recommendationSource && (
+                                                <span className="flex items-center gap-1 text-yellow-300 text-[9px] font-black uppercase tracking-tight bg-black/40 px-1.5 py-0.5 rounded-md backdrop-blur-sm truncate max-w-[65%]">
+                                                        <Trophy className="w-2.5 h-2.5 flex-shrink-0" />
+                                                        <span className="truncate">{recommendationSource.replace('Bib', 'Michelin')}</span>
+                                                </span>
+                                        )}
                                 </div>
                         </div>
                 </div>

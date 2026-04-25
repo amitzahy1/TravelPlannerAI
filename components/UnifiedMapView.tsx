@@ -8,6 +8,7 @@ import { Trip } from '../types';
 import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
+import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 
 // --- Interfaces ---
 interface MapItem {
@@ -602,6 +603,13 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             // and the numbered pins then started from stop #2 (Pattaya) =1.
             for (const stop of stops) {
                 if (stop.coords) continue;
+                // Hardcoded fallback for small airports first — if it's a known
+                // regional code (TDX, USM, KBV, …) this saves a guaranteed-fail
+                // network round-trip and keeps the stop on the map.
+                if (stop.code) {
+                        const hard = SMALL_AIRPORT_COORDS[stop.code.toUpperCase()];
+                        if (hard) { stop.coords = hard; continue; }
+                }
                 const queries: string[] = [];
                 if (stop.code) {
                         queries.push(`${stop.name} Airport, ${stop.code}`);
@@ -672,10 +680,19 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
             const next: Record<string, { lat: number; lng: number }> = {};
             for (const raw of Array.from(codes)) {
                 if (!raw) continue;
-                // First try the existing geo cache; then geocode fresh.
+                // 1. Hardcoded fallback for small / regional airports that
+                //    Nominatim consistently fails on (TDX, USM, KBV, …).
+                //    Cheaper than a network round-trip and prevents silent
+                //    drop-outs that hide entire flight legs from the map.
+                if (/^[a-z]{3}$/.test(raw)) {
+                    const hard = SMALL_AIRPORT_COORDS[raw.toUpperCase()];
+                    if (hard) { next[raw] = hard; continue; }
+                }
+                // 2. Existing geo cache (browser-persisted from prior trips).
                 const cached = geocodedCache[raw] || geocodedCache[raw.toUpperCase()] ||
                     geocodedCache[`${raw} Airport`] || geocodedCache[`${raw.toUpperCase()} Airport`];
                 if (cached) { next[raw] = cached; continue; }
+                // 3. Live geocode as last resort.
                 const q = /^[a-z]{3}$/.test(raw) ? `${raw.toUpperCase()} Airport` : raw;
                 const c = await geocodeAddress(q);
                 if (c) next[raw] = c;
@@ -698,10 +715,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         // Pattaya" is much more legible than "Holiday Inn Bangkok →
         // Holiday Inn Pattaya". Also strip any stale zip-codes / country
         // suffix that snuck through extractRobustCity.
-        const legs = routeStops.slice(0, -1).map((s, i) => ({
-            from: cleanCityName(s.name),
-            to: cleanCityName(routeStops[i + 1].name),
-        }));
+        //
+        // Pass date + airport context so the AI can infer same-day airport
+        // transfers (BKK→Pattaya) and ferry crossings (Pattaya→Koh Chang).
+        const legs = routeStops.slice(0, -1).map((s, i) => {
+            const next = routeStops[i + 1];
+            return {
+                from: cleanCityName(s.name),
+                to: cleanCityName(next.name),
+                departDate: s.date,
+                arrivalDate: next.date,
+                fromIsAirport: s.type === 'flight',
+                toIsAirport: next.type === 'flight',
+            };
+        });
         let cancelled = false;
         classifyTripRoute(trip.id, legs).then(result => {
             if (!cancelled) setLegClassifications(result);

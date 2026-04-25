@@ -5,6 +5,9 @@ import { Plane, Sparkles } from 'lucide-react';
 interface TripCountdownProps {
         trip: Trip;
         className?: string;
+        /** 'card' (default) — white pill card with shadow, used outside heroes.
+         *  'overlay' — translucent glass pill for placing on top of hero image. */
+        variant?: 'card' | 'overlay';
 }
 
 const parseFirstDate = (trip: Trip): Date | null => {
@@ -59,7 +62,7 @@ const startOfDay = (d: Date): Date => {
  *  - Past    → "הטיול הסתיים לפני N ימים"
  *  - Missing → render nothing (no dates known)
  */
-export const TripCountdown: React.FC<TripCountdownProps> = ({ trip, className = '' }) => {
+export const TripCountdown: React.FC<TripCountdownProps> = ({ trip, className = '', variant = 'card' }) => {
         const { kind, days, total, label } = useMemo(() => {
                 const first = parseFirstDate(trip);
                 const last = parseLastDate(trip) || first;
@@ -114,6 +117,23 @@ export const TripCountdown: React.FC<TripCountdownProps> = ({ trip, className = 
         }[kind];
 
         const Icon = kind === 'today' ? Sparkles : Plane;
+
+        if (variant === 'overlay') {
+                return (
+                        <div
+                                dir="rtl"
+                                className={`inline-flex items-center gap-2 bg-white/15 backdrop-blur-md rounded-pill border border-white/25 pr-2.5 pl-1.5 py-1.5 shadow-lg ${className}`}
+                        >
+                                <span className={`w-7 h-7 rounded-full bg-gradient-to-tr ${tone} text-white flex items-center justify-center shrink-0`}>
+                                        <Icon className={`w-3.5 h-3.5 ${kind === 'today' ? 'animate-pulse' : ''}`} aria-hidden="true" />
+                                </span>
+                                <div className="flex flex-col leading-tight min-w-0">
+                                        <span className="text-xs font-black text-white truncate drop-shadow-sm">{headline}</span>
+                                        {subline && <span className="text-[10px] text-white/85 truncate drop-shadow-sm">{subline}</span>}
+                                </div>
+                        </div>
+                );
+        }
 
         return (
                 <div

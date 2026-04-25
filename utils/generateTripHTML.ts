@@ -634,7 +634,109 @@ body {
 @media (min-width: 1400px) {
   .days-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 }
+
+/* ═══ CALENDAR SECTION (Google-Calendar-style monthly grid) ═══ */
+.calendar-section { margin-top: 24px; padding: 18px 14px 22px; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 1px 3px rgba(15,23,42,0.04); }
+.calendar-section .ov-title { margin-bottom: 14px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; direction: rtl; }
+.cal-header { background: linear-gradient(180deg, #f8fafc, #f1f5f9); padding: 8px 4px; text-align: center; font-weight: 800; font-size: 11px; color: #475569; border-radius: 6px; letter-spacing: 0.02em; }
+.cal-header.cal-header-sat, .cal-header.cal-header-fri { color: #dc2626; }
+.cal-cell { background: #fff; border: 1px solid #e2e8f0; min-height: 88px; padding: 4px 5px 5px; display: flex; flex-direction: column; gap: 2px; border-radius: 5px; overflow: hidden; }
+.cal-cell.cal-padding { background: #f8fafc; opacity: 0.6; }
+.cal-cell.cal-today { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb inset; }
+.cal-num { font-weight: 800; font-size: 13px; color: #0f172a; text-align: left; line-height: 1.1; padding: 1px 2px; }
+.cal-num.cal-num-fri, .cal-num.cal-num-sat { color: #dc2626; }
+.cal-padding .cal-num { color: #94a3b8; font-weight: 600; }
+.cal-chip { display: block; padding: 2px 5px; font-size: 10px; line-height: 1.25; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; max-width: 100%; }
+.cal-chip-flight { background: #fce7f3; color: #9d174d; }
+.cal-chip-hotel { background: #ccfbf1; color: #115e59; }
+.cal-chip-activity { background: #ede9fe; color: #5b21b6; }
+.cal-chip-food { background: #ffedd5; color: #9a3412; }
+.cal-chip-transfer { background: #fef3c7; color: #92400e; }
+.cal-more { font-size: 9px; color: #64748b; font-weight: 700; padding-right: 3px; }
+@media (max-width: 640px) {
+  .calendar-section { padding: 14px 8px 16px; }
+  .cal-cell { min-height: 68px; padding: 3px 3px 4px; }
+  .cal-chip { font-size: 8.5px; padding: 1px 3px; border-radius: 3px; }
+  .cal-num { font-size: 11px; }
+  .cal-header { font-size: 9.5px; padding: 6px 2px; }
+  .cal-more { font-size: 8px; }
+}
+@media print {
+  .calendar-section { break-inside: avoid; page-break-inside: avoid; }
+  .cal-cell { break-inside: avoid; }
+}
 `;
+
+// ── Calendar section (Google-Calendar-style monthly grid) ──────
+
+const CAL_DAY_LABELS = ['יום א׳', 'יום ב׳', 'יום ג׳', 'יום ד׳', 'יום ה׳', 'יום ו׳', 'שבת'];
+
+const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
+  if (timeline.length === 0) return '';
+
+  const tripStart = new Date(timeline[0].date); tripStart.setHours(12, 0, 0, 0);
+  const tripEnd = new Date(timeline[timeline.length - 1].date); tripEnd.setHours(12, 0, 0, 0);
+  const todayIso = isoDate(new Date());
+
+  // Pad the visible range with 3 days on each side, then snap to whole
+  // weeks so the grid starts on Sunday and ends on Saturday.
+  const padStart = addDays(tripStart, -3);
+  const padEnd = addDays(tripEnd, 3);
+  const calStart = new Date(padStart);
+  calStart.setDate(calStart.getDate() - calStart.getDay());
+  const calEnd = new Date(padEnd);
+  calEnd.setDate(calEnd.getDate() + (6 - calEnd.getDay()));
+
+  // Map ISO date → list of chips (kind + label).
+  type ChipKind = 'flight' | 'hotel' | 'activity' | 'food' | 'transfer';
+  const eventsByIso: Record<string, Array<{ kind: ChipKind; label: string }>> = {};
+  timeline.forEach(d => {
+    if (!eventsByIso[d.iso]) eventsByIso[d.iso] = [];
+    d.events.forEach(e => {
+      let kind: ChipKind = 'activity';
+      if (e.type === 'flight_dep' || e.type === 'flight_arr') kind = 'flight';
+      else if (e.type === 'hotel_in' || e.type === 'hotel_out' || e.type === 'hotel_stay') kind = 'hotel';
+      else if (e.type === 'food') kind = 'food';
+      else if (e.type === 'transfer') kind = 'transfer';
+      const label = e.time && e.time !== '—' ? `${e.time} ${e.title}` : e.title;
+      eventsByIso[d.iso].push({ kind, label });
+    });
+  });
+
+  const cells: string[] = [];
+  const totalDays = Math.round((calEnd.getTime() - calStart.getTime()) / 86400000) + 1;
+  for (let i = 0; i < totalDays; i++) {
+    const cur = addDays(calStart, i);
+    const iso = isoDate(cur);
+    const inTrip = cur >= tripStart && cur <= tripEnd;
+    const dow = cur.getDay();
+    const events = eventsByIso[iso] || [];
+    const visible = events.slice(0, 4);
+    const overflow = events.length - visible.length;
+    const chipsHtml = visible.map(c =>
+      `<span class="cal-chip cal-chip-${c.kind}" title="${esc(c.label)}">${esc(c.label)}</span>`
+    ).join('');
+    const moreHtml = overflow > 0 ? `<span class="cal-more">+${overflow} נוסף</span>` : '';
+    const numCls = `cal-num${dow === 5 ? ' cal-num-fri' : ''}${dow === 6 ? ' cal-num-sat' : ''}`;
+    const cellCls = `cal-cell${!inTrip ? ' cal-padding' : ''}${iso === todayIso ? ' cal-today' : ''}`;
+    cells.push(`<div class="${cellCls}"><span class="${numCls}">${cur.getDate()}</span>${chipsHtml}${moreHtml}</div>`);
+  }
+
+  const headerHtml = CAL_DAY_LABELS.map((l, i) => {
+    const cls = `cal-header${i === 5 ? ' cal-header-fri' : ''}${i === 6 ? ' cal-header-sat' : ''}`;
+    return `<div class="${cls}">${l}</div>`;
+  }).join('');
+
+  const monthLabel = tripStart.getMonth() === tripEnd.getMonth() && tripStart.getFullYear() === tripEnd.getFullYear()
+    ? `${MONTHS_HE[tripStart.getMonth()]} ${tripStart.getFullYear()}`
+    : `${MONTHS_HE[tripStart.getMonth()]}–${MONTHS_HE[tripEnd.getMonth()]} ${tripEnd.getFullYear()}`;
+
+  return `<section class="calendar-section">
+    <h2 class="ov-title">📅 לוח הטיול — ${esc(monthLabel)}</h2>
+    <div class="calendar-grid">${headerHtml}${cells.join('')}</div>
+  </section>`;
+};
 
 // ── Main generator ──────────────────────────────────────────────
 
@@ -690,6 +792,8 @@ export const generateTripHTML = (trip: Trip): string => {
     <h2 class="ov-title">📆 יום-יום <span class="ov-count">${dayCount}</span></h2>
     <div class="days-grid">${dayCards}</div>
   </section>
+
+  ${renderCalendarSection(trip, timeline)}
 
   <div class="footer">
     <div class="footer-logo">✈ Travel Planner Pro</div>

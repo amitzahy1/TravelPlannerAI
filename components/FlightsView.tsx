@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip, FlightSegment } from '../types';
-import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check, Lock, ShieldCheck, ChevronDown, Trash2, AlertTriangle } from 'lucide-react';
+import { Plane, FileText, FileImage, Download, UploadCloud, Clock, Calendar, ArrowRight, Briefcase, Edit2, X, Check, Lock, ShieldCheck, ChevronDown, Trash2, AlertTriangle, MoreVertical } from 'lucide-react';
 import { formatDateTime, formatDateOnly, parseFlightTime, calculateFlightDuration, parseDateToIso, formatFlightTime } from '../utils/dateUtils';
 import { ConfirmModal } from './ConfirmModal';
 import { localTimeAtAirportToUTC, AIRPORT_TIMEZONES } from '../utils/airportTimezones';
@@ -257,6 +257,7 @@ const FlightRow: React.FC<{
 }> = ({ segment, onEdit, onDelete, onApplyDuration, isStale }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAskingAi, setIsAskingAi] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const logoUrl = getAirlineLogo(segment.airline, segment.flightNumber);
 
   const airline = clean(segment.airline);
@@ -394,25 +395,51 @@ const FlightRow: React.FC<{
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {onEdit && (
-              <button
-                onClick={e => { e.stopPropagation(); onEdit(); }}
-                className="w-11 h-11 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                title="ערוך טיסה"
-                aria-label="ערוך טיסה"
-              >
-                <Edit2 className="w-4 h-4" aria-hidden="true" />
-              </button>
-            )}
-            {onDelete && (
-              <button
-                onClick={e => { e.stopPropagation(); onDelete(); }}
-                className="w-11 h-11 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-                title="מחק טיסה"
-                aria-label="מחק טיסה"
-              >
-                <Trash2 className="w-4 h-4" aria-hidden="true" />
-              </button>
+            {(onEdit || onDelete) && (
+              <div className="relative">
+                <button
+                  onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }}
+                  className="w-9 h-9 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  title="פעולות"
+                  aria-label="פעולות"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                >
+                  <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                </button>
+                {menuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-50"
+                      onClick={e => { e.stopPropagation(); setMenuOpen(false); }}
+                    />
+                    <div
+                      role="menu"
+                      className="absolute top-full left-0 mt-1 min-w-[140px] bg-white rounded-xl shadow-xl border border-slate-100 z-[60] overflow-hidden"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {onEdit && (
+                        <button
+                          role="menuitem"
+                          onClick={e => { e.stopPropagation(); setMenuOpen(false); onEdit(); }}
+                          className="w-full px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                        >
+                          <Edit2 className="w-4 h-4" aria-hidden="true" /> ערוך
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          role="menuitem"
+                          onClick={e => { e.stopPropagation(); setMenuOpen(false); onDelete(); }}
+                          className="w-full px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" aria-hidden="true" /> מחק
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             <ChevronDown className={`w-4 h-4 text-slate-300 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
           </div>

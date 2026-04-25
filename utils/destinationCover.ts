@@ -110,3 +110,34 @@ export const getDestinationCover = (destination?: string, size: number = 1600): 
 
         return toUrl(GENERIC_FALLBACK);
 };
+
+/**
+ * Returns true when the destination string matches a curated cover (i.e.
+ * not the generic luggage fallback). Lets callers prefer the keyword-based
+ * cover over a stale `trip.coverImage` saved from an earlier wizard run.
+ */
+export const hasCuratedCover = (destination?: string): boolean => {
+        if (!destination || !destination.trim()) return false;
+        const q = normalize(destination);
+        return COVERS.some(entry =>
+                entry.keywords.some(kw => q.includes(normalize(kw)))
+        );
+};
+
+/**
+ * Picks the BEST cover for a trip: a curated keyword-matched cover for the
+ * destination beats a stale wizard-uploaded `coverImage` (which was often
+ * the same generic boat-on-lake regardless of where the user is going).
+ * Falls back to the wizard cover if no keyword matches, then to the generic.
+ */
+export const pickTripCover = (
+        destination?: string,
+        wizardCover?: string,
+        size: number = 1600
+): string => {
+        if (hasCuratedCover(destination)) {
+                return getDestinationCover(destination, size);
+        }
+        if (wizardCover && wizardCover.trim()) return wizardCover;
+        return getDestinationCover(destination, size);
+};

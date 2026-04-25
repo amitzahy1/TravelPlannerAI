@@ -750,47 +750,6 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
         setEditingHotel(null);
     };
 
-    // Filter: a string is a valid city name if it has no digits, no slashes, reasonable length, no street keywords
-    const isRealCity = (c: string): boolean => {
-        if (!c || c.length < 2 || c.length > 40) return false;
-        if (/\d/.test(c)) return false;
-        if (/[\/\\]/.test(c)) return false;
-        if (/^(road|street|sai|moo|apt|floor|building|avenue|lane|blvd|drive|way|place|plaza|square)/i.test(c.trim())) return false;
-        return true;
-    };
-
-    const extractCity = (hotel: HotelBooking): string => {
-        if (hotel.city && isRealCity(hotel.city)) return hotel.city;
-        if (hotel.address) {
-            const parts = hotel.address.split(',').map(p => p.trim()).filter(isRealCity);
-            // Prefer the part that looks most like a city (not the first segment which is often street)
-            if (parts.length >= 2) return parts[1];
-            if (parts.length === 1) return parts[0];
-        }
-        return '';
-    };
-
-    // City breakdown — based on groups (no double-counting)
-    const cityBreakdown = (() => {
-        const cityMap: Record<string, number> = {};
-        hotelGroups.forEach(g => {
-            const city = extractCity(g.primary) || 'אחר';
-            const n = g.primary.nights && g.primary.nights > 0 ? g.primary.nights : (() => {
-                const ci = g.primary.checkInDate ? new Date(normDate(g.primary.checkInDate) + 'T12:00:00') : null;
-                const co = g.primary.checkOutDate ? new Date(normDate(g.primary.checkOutDate) + 'T12:00:00') : null;
-                if (ci && co && !isNaN(ci.getTime()) && !isNaN(co.getTime())) {
-                    const d = Math.round((co.getTime() - ci.getTime()) / 86400000);
-                    return d > 0 ? d : 0;
-                }
-                return 0;
-            })();
-            if (n > 0 || city !== 'אחר') cityMap[city] = (cityMap[city] || 0) + n;
-        });
-        return cityMap;
-    })();
-    const cities = Object.entries(cityBreakdown).filter(([city]) => city !== 'אחר' || Object.keys(cityBreakdown).length === 1);
-    const totalNights = Object.values(cityBreakdown).reduce((s, n) => s + n, 0);
-
     // Group to delete info (for confirm message)
     const groupToDelete = hotelGroups.find(g => g.primary.id === hotelToDelete);
 
@@ -820,27 +779,6 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                                 className="flex-1 sm:flex-none bg-white text-indigo-600 border border-indigo-200 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all hover:bg-indigo-50">
                                 <Plus className="w-4 h-4" /> ידני
                             </button>
-                        </div>
-                    </div>
-
-                    {/* ── Destination nights breakdown ── */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600"><Calendar className="w-4 h-4" /></span>
-                            <div>
-                                <div className="text-xl font-black text-slate-800 leading-none">{totalNights}</div>
-                                <div className="text-xs font-bold text-slate-400">לילות בסה״כ</div>
-                            </div>
-                        </div>
-                        {cities.length > 0 && <div className="w-px h-8 bg-slate-100 flex-shrink-0" />}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {cities.map(([city, nights]) => (
-                                <span key={city} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-lg">
-                                    <MapPin className="w-3 h-3 flex-shrink-0" />
-                                    {city}
-                                    {nights > 0 && <span className="bg-indigo-600 text-white text-2xs font-black px-1.5 py-0.5 rounded-md ml-1">{nights}L</span>}
-                                </span>
-                            ))}
                         </div>
                     </div>
 

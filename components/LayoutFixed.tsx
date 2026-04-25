@@ -94,16 +94,18 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
 
                                                 {/* Active trip pill + progress (mobile only — on desktop Row 2 has the full selector) */}
                                                 {activeTrip && (
-                                                        <div className="lg:hidden flex items-center gap-2 min-w-0 flex-1 mx-2">
+                                                        <div className="lg:hidden flex items-center gap-1.5 min-w-0 flex-1 mx-2 overflow-hidden">
                                                                 <button
                                                                         onClick={() => setIsTripMenuOpen(true)}
                                                                         title="החלף טיול"
-                                                                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-pill text-2xs font-bold border border-blue-100 transition-colors min-w-0 max-w-[160px]"
+                                                                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-pill text-2xs font-bold border border-blue-100 transition-colors min-w-0 max-w-[120px] flex-shrink"
                                                                 >
                                                                         <MapPin className="w-3 h-3 shrink-0" />
                                                                         <span className="truncate">{activeTrip.destination || activeTrip.name}</span>
                                                                 </button>
-                                                                <TripProgress trip={activeTrip} compact onNavigate={onSwitchTab} />
+                                                                <div className="min-w-0 overflow-hidden flex-shrink">
+                                                                        <TripProgress trip={activeTrip} compact onNavigate={onSwitchTab} />
+                                                                </div>
                                                         </div>
                                                 )}
 
@@ -125,18 +127,13 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                 </div>
 
                                                 {/* Left: Login & Mobile Menu */}
-                                                <div className="flex items-center gap-3">
-                                                        <div className="hidden md:block">
-                                                                <LoginButton />
-                                                        </div>
-                                                        <div className="md:hidden">
-                                                                <LoginButton />
-                                                        </div>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <LoginButton />
 
                                                         {/* Mobile Menu Trigger */}
                                                         <button
                                                                 onClick={() => setIsTripMenuOpen(true)}
-                                                                className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-700 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                                                className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-700 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 flex-shrink-0"
                                                                 aria-label="פתח תפריט"
                                                         >
                                                                 <List className="w-5 h-5" aria-hidden="true" />

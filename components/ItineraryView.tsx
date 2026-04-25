@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import { TripCountdown } from './shared';
-import { getDestinationCover } from '../utils/destinationCover';
+import { pickTripCover } from '../utils/destinationCover';
 import { downloadTripHTML } from '../utils/generateTripHTML';
 import { downloadTripIcal } from '../utils/generateTripIcal';
 import { FileText as FileTextIcon, CalendarDays as CalendarDaysIcon } from 'lucide-react';
@@ -782,7 +782,7 @@ export const ItineraryView: React.FC<{
                 {/* Background Layer (Clipped) */}
                 <div className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-xl z-0">
                     <img
-                        src={trip.coverImage || getDestinationCover(trip.destination)}
+                        src={pickTripCover(trip.destination, trip.coverImage)}
                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                         alt="Trip Cover"
                     />
@@ -816,10 +816,11 @@ export const ItineraryView: React.FC<{
                 <div className="absolute inset-0 pointer-events-none z-10 flex flex-col md:flex-row justify-between items-end p-6">
                     {/* Text Info */}
                     <div className="space-y-1 max-w-xl pointer-events-auto">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <div className="flex items-center gap-3 text-white/80 font-bold text-xs uppercase tracking-widest bg-white/10 backdrop-blur-md px-3 py-1 rounded-full w-fit border border-white/20">
                                 <Calendar className="w-3.5 h-3.5" /> {trip.dates}
                             </div>
+                            <TripCountdown trip={trip} variant="overlay" />
                             {onRefresh && (
                                 <button
                                     onClick={(e) => {
@@ -1001,11 +1002,6 @@ export const ItineraryView: React.FC<{
                         )}
                     </div>
                 </div>
-            </div>
-
-            {/* 2.3 TRIP COUNTDOWN */}
-            <div className="flex justify-center sm:justify-start px-1">
-                <TripCountdown trip={trip} />
             </div>
 
             {/* 2.5 SMART RECOMMENDATIONS BAR */}

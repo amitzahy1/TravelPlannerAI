@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X } from 'lucide-react';
+import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X, Trophy } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
 
@@ -186,6 +186,16 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                                         </div>
                                                 )}
                                         </div>
+
+                                        {item.recommendationSource && (
+                                                <div className="flex items-center gap-2 mb-4 -mt-1">
+                                                        <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 text-amber-800 text-2xs font-black uppercase tracking-wider px-2.5 py-1 rounded-lg shadow-sm">
+                                                                <Trophy className="w-3 h-3 text-amber-600" aria-hidden="true" />
+                                                                {String(item.recommendationSource).replace(/Bib/i, 'Michelin')}
+                                                        </span>
+                                                        <span className="text-2xs font-bold text-slate-400">מקור המלצה</span>
+                                                </div>
+                                        )}
 
                                         <p className="text-sm text-slate-600 leading-relaxed mb-6 font-medium text-right" dir="auto">
                                                 {/* Clean Description without prefix, assuming AI fixes language. If English detected, we just show it clean. */}

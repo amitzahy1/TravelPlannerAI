@@ -502,5 +502,15 @@ export const getTripCities = (
                 if (h.city) add(h.city);
         });
 
-        return output.filter(Boolean);
+        // 4. Drop country-level entries when actual cities are also present.
+        // Why: research/scan should target specific cities the user is staying
+        // in, not the country as a whole. Without this, "תאילנד" + "בנגקוק" +
+        // "פטאיה" + "קו צ'אנג" produces 4 AI calls and a useless country-wide
+        // search. With this, only the 3 cities are scanned.
+        const filtered = output.filter(Boolean);
+        const cityEntries = filtered.filter(name => !COUNTRY_KEY_TO_CITIES[cityKey(name)]);
+        if (cityEntries.length > 0 && cityEntries.length < filtered.length) {
+                return cityEntries;
+        }
+        return filtered;
 };

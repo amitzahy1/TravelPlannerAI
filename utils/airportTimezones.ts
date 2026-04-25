@@ -169,3 +169,31 @@ export const localTimeAtAirportToUTC = (
         // True UTC = candidate - offset (subtract offset because local = UTC + offset)
         return new Date(candidate.getTime() - offsetMinutes * 60000);
 };
+
+/**
+ * Coordinates for small / regional airports that Nominatim (OSM) frequently
+ * fails to geocode. Without this, flights to/from places like Trat (TDX) are
+ * silently dropped from the map — the AI route classifier sees only "Koh
+ * Chang" as the next stop and the TDX→BKK leg is rendered from the wrong
+ * origin. Add new airports here whenever a user reports a missing pin.
+ */
+export const SMALL_AIRPORT_COORDS: Record<string, { lat: number; lng: number }> = {
+        TDX: { lat: 12.2746, lng: 102.3192 }, // Trat (Laem Ngop / regional)
+        USM: { lat: 9.5479,  lng: 100.0625 }, // Ko Samui
+        KBV: { lat: 8.0992,  lng: 98.9862 },  // Krabi
+        HKT: { lat: 8.1132,  lng: 98.3169 },  // Phuket
+        CNX: { lat: 18.7669, lng: 98.9622 },  // Chiang Mai
+        HHQ: { lat: 12.6377, lng: 99.9514 },  // Hua Hin
+        URT: { lat: 9.1325,  lng: 99.1357 },  // Surat Thani
+        DPS: { lat: -8.7480, lng: 115.1672 }, // Bali / Denpasar
+        REP: { lat: 13.4111, lng: 103.8131 }, // Siem Reap
+        VTE: { lat: 17.9883, lng: 102.5630 }, // Vientiane
+        LPQ: { lat: 19.8973, lng: 102.1614 }, // Luang Prabang
+        BJV: { lat: 37.0140, lng: 27.6643 },  // Bodrum
+        SKG: { lat: 40.5197, lng: 22.9709 },  // Thessaloniki
+        JTR: { lat: 36.3992, lng: 25.4793 },  // Santorini
+        JMK: { lat: 37.4351, lng: 25.3481 },  // Mykonos
+        BTS: { lat: 48.1702, lng: 17.2127 },  // Bratislava
+        OLB: { lat: 40.8987, lng: 9.5176 },   // Olbia (Sardinia)
+        CAG: { lat: 39.2515, lng: 9.0543 },   // Cagliari
+};

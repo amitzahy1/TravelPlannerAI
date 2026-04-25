@@ -34,15 +34,31 @@ export interface LegClassification {
         segments?: LegSegment[];
 }
 
-interface LegInput {
+export interface LegInput {
         from: string;
         to: string;
+        /** Date the traveler leaves the `from` city (ISO yyyy-mm-dd). Lets the
+         *  AI infer airport→hotel transfers when same-day as a flight. */
+        departDate?: string;
+        /** Date the traveler arrives at `to` (ISO yyyy-mm-dd). When equal to
+         *  departDate the legs is same-day; when a hotel was just checked-out
+         *  it usually means a transit day. */
+        arrivalDate?: string;
+        /** True when `from` is an airport (i.e. user just landed). Helps the
+         *  AI add a drive transfer for landing-day legs. */
+        fromIsAirport?: boolean;
+        /** True when `to` is an airport (i.e. departure flight day). */
+        toIsAirport?: boolean;
 }
 
-const CACHE_KEY = 'travel_app_route_classify_v1';
+// v2 — bumped because the prompt + cache shape changed (now includes date
+// context). Old v1 cached classifications are stale and would suppress the
+// new same-day-transfer / drive+ferry inference, so we let them naturally
+// expire by changing the key.
+const CACHE_KEY = 'travel_app_route_classify_v2';
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-interface CacheEntry { t: number; byLeg: Record<string, LegClassification>; }
+interface CacheEntry { t: number; sig: string; byLeg: Record<string, LegClassification>; }
 type Cache = Record<string, CacheEntry>;
 
 const readCache = (): Cache => {
@@ -62,7 +78,9 @@ const writeCache = (next: Cache) => {
 const legKey = (from: string, to: string) => `${from}__${to}`.toLowerCase();
 
 const signature = (legs: LegInput[]) =>
-        legs.map(l => legKey(l.from, l.to)).join('|');
+        legs.map(l =>
+                `${legKey(l.from, l.to)}@${l.departDate || ''}_${l.arrivalDate || ''}_${l.fromIsAirport ? 'A' : ''}${l.toIsAirport ? 'A' : ''}`
+        ).join('|');
 
 export const classifyTripRoute = async (
         tripId: string,
@@ -74,34 +92,62 @@ export const classifyTripRoute = async (
         const tripCache = cache[tripId];
         const sig = signature(legs);
 
-        // Cache hit AND unchanged signature → done.
-        if (tripCache && Date.now() - tripCache.t < CACHE_TTL_MS) {
+        // Cache hit AND signature unchanged → done. Including the signature
+        // means a date / airport-flag change busts the cache so the AI
+        // re-classifies with the new context.
+        if (tripCache && Date.now() - tripCache.t < CACHE_TTL_MS && tripCache.sig === sig) {
                 const allKnown = legs.every(l => tripCache.byLeg[legKey(l.from, l.to)]);
                 if (allKnown) return tripCache.byLeg;
         }
 
         // Build prompt — single AI call for all legs so we pay ~1 s once.
-        const legList = legs.map((l, i) => `${i + 1}. "${l.from}" → "${l.to}"`).join('\n');
-        const prompt = `You are a travel logistics expert. For each leg below, decide the most likely transport mode for a Hebrew-speaking leisure traveller, based on real-world geography.
+        // Each leg gets context tags so the AI can infer same-day airport
+        // transfers and ferry crossings without us hard-coding routes.
+        const legList = legs.map((l, i) => {
+                const tags: string[] = [];
+                if (l.fromIsAirport) tags.push('FROM_IS_AIRPORT');
+                if (l.toIsAirport) tags.push('TO_IS_AIRPORT');
+                if (l.departDate && l.arrivalDate && l.departDate === l.arrivalDate) tags.push('SAME_DAY');
+                const dateInfo = l.departDate
+                        ? ` (depart ${l.departDate}${l.arrivalDate && l.arrivalDate !== l.departDate ? `, arrive ${l.arrivalDate}` : ''})`
+                        : '';
+                const tagInfo = tags.length ? ` [${tags.join(', ')}]` : '';
+                return `${i + 1}. "${l.from}" → "${l.to}"${dateInfo}${tagInfo}`;
+        }).join('\n');
+
+        const prompt = `You are a travel logistics expert. For each leg below, decide the most likely transport mode for a Hebrew-speaking leisure traveller, based on real-world geography AND the date / airport context tags.
 
 Legs:
 ${legList}
 
 Rules:
-- "drive" = road trip by car or van. Use when < 400 km within same country/island.
+- "drive" = road trip by car / van / taxi / shuttle. Use when < 400 km within the same country/island.
 - "flight" = commercial flight. Use when far or no road access.
 - "train" = long-distance intercity rail.
 - "ferry" = island-to-island sea crossing with vehicle or without.
 - "drive+ferry" = drive to a ferry terminal then cross by ferry.
 - "multi" = two or more modes chained together.
 
+CONTEXT TAGS (when present in [...]):
+- FROM_IS_AIRPORT + SAME_DAY  → traveller just landed and must reach
+  the destination same day. If destination is < 250 km, classify as
+  "drive" (taxi / shuttle / private transfer). Realistic durationHours
+  for known transfers: BKK→Pattaya ≈ 2, BKK→Hua Hin ≈ 3, BKK→Cha-Am
+  ≈ 2.5, NRT→Tokyo ≈ 1, FCO→Rome ≈ 0.6.
+- TO_IS_AIRPORT + SAME_DAY → traveller is heading to the airport for
+  a departing flight; usually a "drive" leg.
+- If the two cities are a Thai mainland-coast ↔ island pair (e.g.
+  Pattaya↔Koh Chang, Trat↔Koh Chang, Krabi↔Phi Phi, Surat Thani↔Ko
+  Samui), classify as "drive+ferry" with proper segments.
+- Pattaya → Koh Chang specifically = drive to Trat (Laem Ngop Pier),
+  then ferry across.
+
 IMPORTANT — if the leg is "drive+ferry" or "multi", you MUST also
 return a "segments" array describing each sub-leg in order. Each
 segment has: "via" (name of the pier / station / airport where the
 sub-leg ENDS — the final segment's "via" is the leg's final
 destination), "mode" (one of drive|flight|train|ferry), and
-"durationHours". For example, for "Pattaya → Koh Chang" the segments
-should be:
+"durationHours". Example, for "Pattaya → Koh Chang":
   [
     {"via":"Trat Laem Ngop Pier", "mode":"drive",  "durationHours":3},
     {"via":"Koh Chang",            "mode":"ferry",  "durationHours":0.5}
@@ -112,7 +158,7 @@ e.g. 2.5) and a short Hebrew note (≤ 40 chars) describing the route.
 
 Respond ONLY with a JSON array, one object per leg, in the same order. Example:
 [
-  {"mode":"drive","durationHours":2,"notes":""},
+  {"mode":"drive","durationHours":2,"notes":"מעבר משדה תעופה"},
   {
     "mode":"drive+ferry",
     "durationHours":3.5,
@@ -158,7 +204,7 @@ No explanation, no code fence, pure JSON.`;
                                 segments,
                         };
                 });
-                const nextCache: Cache = { ...cache, [tripId]: { t: Date.now(), byLeg } };
+                const nextCache: Cache = { ...cache, [tripId]: { t: Date.now(), sig, byLeg } };
                 writeCache(nextCache);
                 return byLeg;
         } catch (err) {
