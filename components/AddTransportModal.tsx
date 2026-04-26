@@ -57,8 +57,19 @@ export const AddTransportModal: React.FC<AddTransportModalProps> = ({ initial, o
         const isFlightMode = form.mode === 'flight';
 
         return (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto" onClick={onClose}>
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-auto max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()} dir="rtl">
+                <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm overflow-y-auto" onClick={onClose}>
+                        {/* Modal placed at the TOP of the viewport so it
+                             always lands in the user's eye-line — was
+                             centring vertically before, which on tall pages
+                             pushed it below the fold and the user had to
+                             scroll. Keeps overflow-y-auto on the wrapper so
+                             long content still scrolls within the modal. */}
+                        <div
+                                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto mt-4 sm:mt-12 mb-8 max-h-[calc(100vh-4rem)] overflow-y-auto"
+                                onClick={e => e.stopPropagation()}
+                                dir="rtl"
+                                style={{ width: 'calc(100% - 2rem)' }}
+                        >
                                 {/* Header */}
                                 <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between">
                                         <h2 className="text-lg font-black text-slate-900">{initial ? 'ערוך העברה' : 'הוסף העברה'}</h2>
