@@ -73,6 +73,10 @@ interface UnifiedMapViewProps {
     // existing per-tab callers (which want a tighter zoom around a single
     // city) pass `compactView={false}` to keep maxZoom 14.
     compactView?: boolean;
+    // Hide the built-in city filter bar + bottom timeline strip when a
+    // wrapper component (e.g. FullTripMapView) renders its own chrome.
+    // Defaults to false to preserve behaviour for existing callers.
+    embedded?: boolean;
 }
 
 const STORAGE_KEY = 'travel_app_geo_cache_v5';
@@ -493,6 +497,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     layers,
     tileTheme = 'light',
     compactView = false,
+    embedded = false,
 }) => {
     // Default every layer flag to TRUE so the existing per-tab callers
     // (RestaurantsView / AttractionsView) keep working without passing
@@ -978,14 +983,19 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         return () => { cancelled = true; };
     }, [legClassifications]);
 
-    // 4. Init map
+    // 4. Init map. Tile layer is held in a ref so the tileTheme prop can
+    // swap it (Voyager ↔ dark) without remounting the map.
+    const tileLayerRef = useRef<L.TileLayer | null>(null);
     useEffect(() => {
         if (!mapContainerRef.current || mapInstanceRef.current) return;
 
         const map = L.map(mapContainerRef.current, { zoomControl: false, attributionControl: false })
             .setView([41.7, 44.8], 7);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
+        const tileUrl = tileTheme === 'dark'
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+        tileLayerRef.current = L.tileLayer(tileUrl, { maxZoom: 20 }).addTo(map);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         // @ts-ignore
@@ -1018,6 +1028,17 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
         return () => { ro.disconnect(); map.remove(); mapInstanceRef.current = null; };
     }, []);
+
+    // Swap tile layer when tileTheme changes (without recreating the map).
+    useEffect(() => {
+        const map = mapInstanceRef.current;
+        if (!map) return;
+        if (tileLayerRef.current) tileLayerRef.current.remove();
+        const tileUrl = tileTheme === 'dark'
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+        tileLayerRef.current = L.tileLayer(tileUrl, { maxZoom: 20 }).addTo(map);
+    }, [tileTheme]);
 
     // Cities for filter bar
     const cities = useMemo(() => {
@@ -1286,10 +1307,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // they're just not the focal point.
         const applyBounds = (b: L.LatLngBounds) => {
             // Tighter default zoom + less padding on the "ALL" view so the
-            // trip's actual geography fills more of the screen. Was padding
-            // 80 + maxZoom 12 (too zoomed out, lots of wasted map margin).
+            // trip's actual geography fills more of the screen.
+            // compactView (FullTripMapView's "whole trip" mode) drops maxZoom
+            // further to 11 so the entire trip fits on one screen with city
+            // pins clearly distinguishable — no manual zoom needed to read
+            // the city names. Existing per-tab callers leave compactView
+            // false to keep the tighter 14/15 zoom they had before.
             const padding: [number, number] = activeCity !== 'ALL' ? [50, 50] : [40, 40];
-            const maxZoom = activeCity !== 'ALL' ? 15 : 14;
+            const fittedMax = activeCity !== 'ALL' ? 15 : 14;
+            const maxZoom = compactView && activeCity === 'ALL' ? 11 : fittedMax;
             map.fitBounds(b, { padding, maxZoom, duration: 1 });
         };
 
@@ -1378,29 +1404,32 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     return (
         <div className="w-full relative bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 animate-fade-in" style={{ direction: 'ltr' }}>
 
-            {/* Top City Filter Bar */}
-            <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-center pointer-events-none">
-                <div className="bg-white/97 backdrop-blur-2xl p-1.5 rounded-2xl shadow-2xl border border-white/70 flex gap-1.5 overflow-x-auto max-w-full pointer-events-auto no-scrollbar items-center">
-                    <button
-                        onClick={() => setActiveCity('ALL')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === 'ALL' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                    >
-                        <MapIcon className="w-3.5 h-3.5" />
-                        כל המסלול
-                    </button>
-                    <div className="w-px h-5 bg-slate-200" />
-                    {cities.map(c => (
+            {/* Top City Filter Bar — hidden when a wrapper renders its own
+                 chrome (FullTripMapView), so we don't double-render the chips. */}
+            {!embedded && (
+                <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-center pointer-events-none">
+                    <div className="bg-white/97 backdrop-blur-2xl p-1.5 rounded-2xl shadow-2xl border border-white/70 flex gap-1.5 overflow-x-auto max-w-full pointer-events-auto no-scrollbar items-center">
                         <button
-                            key={c.name}
-                            onClick={() => setActiveCity(c.name)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === c.name ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'}`}
+                            onClick={() => setActiveCity('ALL')}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === 'ALL' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                         >
-                            {c.name}
-                            {c.count > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${activeCity === c.name ? 'bg-white/25 text-white' : 'bg-indigo-50 text-indigo-500'}`}>{c.count}</span>}
+                            <MapIcon className="w-3.5 h-3.5" />
+                            כל המסלול
                         </button>
-                    ))}
+                        <div className="w-px h-5 bg-slate-200" />
+                        {cities.map(c => (
+                            <button
+                                key={c.name}
+                                onClick={() => setActiveCity(c.name)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === c.name ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'}`}
+                            >
+                                {c.name}
+                                {c.count > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${activeCity === c.name ? 'bg-white/25 text-white' : 'bg-indigo-50 text-indigo-500'}`}>{c.count}</span>}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Loading indicator */}
             {loading && (
@@ -1414,8 +1443,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             <div ref={mapContainerRef} style={{ height, width: '100%' }} className="z-10 bg-slate-50" />
 
             {/* Bottom Timeline Strip — mobile: vertical list inside a
-                 collapsible drawer. Desktop: horizontal strip as before. */}
-            {routeStops.length > 0 && activeCity === 'ALL' && (
+                 collapsible drawer. Desktop: horizontal strip as before.
+                 Hidden in embedded mode (wrapper draws its own chrome). */}
+            {!embedded && routeStops.length > 0 && activeCity === 'ALL' && (
                 <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white/97 backdrop-blur-xl border-t border-slate-100 shadow-xl max-h-[40vh] overflow-y-auto">
                     <div
                         className="flex md:flex-row flex-wrap items-center gap-y-1 gap-x-0 p-2 sm:p-3 md:overflow-x-auto md:overflow-y-visible md:flex-nowrap no-scrollbar"

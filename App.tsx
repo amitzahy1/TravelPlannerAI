@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Trip } from './types';
 import { LandingPage } from './components/LandingPage';
 import { UnifiedMapView } from './components/UnifiedMapView';
+import { FullTripMapView } from './components/FullTripMapView';
 import { useTrips, useTripMutations } from './hooks/useTrips';
 import { useTripStore } from './stores/useTripStore';
 
@@ -335,7 +336,7 @@ const AppContent: React.FC = () => {
               return <AttractionsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdate} onSwitchTab={setCurrentTab} onRefresh={() => { }} />;
             case 'hotels': return <HotelsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
-            case 'map_full': return <UnifiedMapView trip={activeTrip} title="מפת הטיול המלאה" />;
+            case 'map_full': return <FullTripMapView trip={activeTrip} title="מפת הטיול המלאה" onSwitchTab={setCurrentTab} />;
             default: return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdate} onSwitchTab={setCurrentTab} />;
           }
         })()}
