@@ -675,13 +675,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             const updated = [...mapItems];
             const newEntries: Record<string, { lat: number; lng: number }> = {};
 
-            await Promise.all(updated.map(async item => {
-                if (isValidCoordinate(item.lat, item.lng) || !item.address) return;
+            // Sequential with 250ms gap — prevents flooding Photon/Nominatim
+            // with 80+ parallel requests that trigger 429 rate-limit errors.
+            for (const item of updated) {
+                if (isValidCoordinate(item.lat, item.lng) || !item.address) continue;
                 const cacheKey = item.address;
-                if (geocodedCache[cacheKey]) { item.lat = geocodedCache[cacheKey].lat; item.lng = geocodedCache[cacheKey].lng; return; }
+                if (geocodedCache[cacheKey]) {
+                    item.lat = geocodedCache[cacheKey].lat;
+                    item.lng = geocodedCache[cacheKey].lng;
+                    continue;
+                }
                 const coords = await geocodeAddress(item.type === 'airport' ? `${item.name} Airport` : item.address!);
                 if (coords) { item.lat = coords.lat; item.lng = coords.lng; newEntries[cacheKey] = coords; }
-            }));
+                await new Promise(r => setTimeout(r, 250));
+            }
 
             if (Object.keys(newEntries).length > 0) {
                 setGeocodedCache(prev => {
