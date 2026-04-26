@@ -621,7 +621,14 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             items.push({
                 id: a.id, type: 'attraction', name: a.name,
                 address: a.location, lat: a.lat, lng: a.lng,
-                description: a.rating ? `${a.rating}⭐` : a.description,
+                description: a.description,
+                rating: typeof a.rating === 'number' ? a.rating : undefined,
+                category: a.type || a.categoryTitle,
+                recommendationSource: a.recommendationSource,
+                priceRange: a.price,
+                imageUrl: a.imageUrl,
+                notes: a.notes,
+                googleMapsUrl: a.googleMapsUrl,
             });
         });
         (trip.hotels || []).forEach(h => {

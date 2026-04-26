@@ -26,6 +26,17 @@ interface MapItem {
     time?: string;
     city?: string;
     order?: number; // Chronological order
+    // Optional rich fields rendered in the popup when present, so clicking a
+    // pin shows the same level of detail as the list view (rating, cuisine,
+    // recommendation source, price, image, notes).
+    rating?: number;
+    cuisine?: string;
+    category?: string; // e.g. attraction type
+    recommendationSource?: string;
+    priceRange?: string;
+    imageUrl?: string;
+    notes?: string;
+    googleMapsUrl?: string;
 }
 
 interface RouteStop {
@@ -163,10 +174,30 @@ const geocodeAddress = async (query: string): Promise<{ lat: number; lng: number
 };
 
 // --- PREMIUM PIN MARKER ---
+const escapeHtml = (s: string): string =>
+    String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+
 const makePinIcon = (config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG], label?: string) => {
     const [c1, c2] = config.gradient;
+    // When a label is supplied we render a name pill above the pin so the
+    // user can read every place's name at a glance without clicking. Long
+    // names are truncated to keep neighbouring pins from colliding.
+    const trimmed = label ? (label.length > 26 ? label.slice(0, 25) + '…' : label) : '';
+    const labelHtml = trimmed ? `
+        <div style="
+            background:white;border:1px solid ${c1}55;border-radius:8px;
+            padding:2px 8px;font-size:10px;font-weight:700;color:#0f172a;
+            box-shadow:0 2px 6px rgba(15,23,42,0.18);white-space:nowrap;
+            font-family:'Rubik','Inter',sans-serif;line-height:1.3;
+            margin-bottom:3px;direction:rtl;
+        ">${escapeHtml(trimmed)}</div>
+    ` : '';
+    // The wrapper needs a known width for proper Leaflet anchoring. We use
+    // `min-width:44px` (the pin width) so the icon centers on its lat/lng,
+    // and `width:max-content` so the label can grow and wrap above.
     const html = `
-        <div style="position:relative; width:44px; height:52px; display:flex; flex-direction:column; align-items:center;">
+        <div style="position:relative; min-width:44px; display:inline-flex; flex-direction:column; align-items:center;">
+            ${labelHtml}
             <div style="
                 width:44px; height:44px; border-radius:50% 50% 50% 0%;
                 transform:rotate(-45deg);
@@ -186,7 +217,10 @@ const makePinIcon = (config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG], label
             "></div>
         </div>
     `;
-    return L.divIcon({ html, className: '', iconSize: [44, 52], iconAnchor: [22, 52], popupAnchor: [0, -56] });
+    // iconSize=[0,0] lets the divIcon size to its content via inline-flex.
+    // iconAnchor anchors at the bottom-center of the 52px-tall pin (52 minus
+    // any label height — Leaflet will render relative to actual DOM size).
+    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [22, 52], popupAnchor: [0, -56] });
 };
 
 // --- ROUTE STOP PILL ---
@@ -369,8 +403,36 @@ const makeRouteBadge = (distKm: number, transport: SegmentTransportInfo, color: 
 const makePopupHtml = (item: MapItem) => {
     const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
     const dateStr = item.date ? parseTripDate(item.date)?.toLocaleDateString('he-IL', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+    // Star row — show only if the item carries a real numeric rating (the
+    // legacy `description: '4.5⭐'` shape is treated as a label fallback).
+    const ratingHtml = typeof item.rating === 'number' && item.rating > 0
+        ? `<div style="font-size:12px;font-weight:800;color:#f59e0b;margin-bottom:4px;">⭐ ${item.rating.toFixed(1)}</div>`
+        : '';
+    // Build a chips row for cuisine / category / price range — these are
+    // the same secondary attributes the list-view card shows under the name.
+    const chips: string[] = [];
+    if (item.cuisine) chips.push(item.cuisine);
+    if (item.category) chips.push(item.category);
+    if (item.priceRange) chips.push(item.priceRange);
+    const chipsHtml = chips.length
+        ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">${chips.map(c => `<span style="font-size:10px;font-weight:700;color:${cfg.color};background:${cfg.color}15;border:1px solid ${cfg.color}33;border-radius:999px;padding:2px 8px;">${escapeHtml(c)}</span>`).join('')}</div>`
+        : '';
+    const sourceHtml = item.recommendationSource
+        ? `<div style="font-size:10px;color:#64748b;margin-bottom:4px;font-style:italic;">— ${escapeHtml(item.recommendationSource)}</div>`
+        : '';
+    const descHtml = item.description
+        ? `<div style="font-size:11px;color:#475569;margin-bottom:6px;background:#f8fafc;padding:6px 8px;border-radius:8px;line-height:1.45;">${escapeHtml(item.description)}</div>`
+        : '';
+    const notesHtml = item.notes
+        ? `<div style="font-size:11px;color:#475569;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 8px;margin-bottom:6px;line-height:1.45;">📝 ${escapeHtml(item.notes)}</div>`
+        : '';
+    const imgHtml = item.imageUrl
+        ? `<img src="${escapeHtml(item.imageUrl)}" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:10px;margin-bottom:8px;" loading="lazy" />`
+        : '';
+    const mapsLink = item.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((item.name + ' ' + (item.address || '')).trim())}`;
     return `
-        <div style="font-family:'Rubik','Inter',sans-serif;direction:rtl;text-align:right;min-width:200px;max-width:260px;padding:2px;">
+        <div style="font-family:'Rubik','Inter',sans-serif;direction:rtl;text-align:right;min-width:220px;max-width:280px;padding:2px;">
+            ${imgHtml}
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                 <div style="
                     width:36px;height:36px;border-radius:10px;
@@ -378,14 +440,19 @@ const makePopupHtml = (item: MapItem) => {
                     display:flex;align-items:center;justify-content:center;
                     font-size:18px;flex-shrink:0;
                 ">${cfg.emoji}</div>
-                <div>
+                <div style="min-width:0;">
                     <div style="font-size:10px;font-weight:700;color:${cfg.color};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:1px;">${cfg.label}</div>
-                    <div style="font-size:14px;font-weight:800;color:#0f172a;line-height:1.2;">${item.name}</div>
+                    <div style="font-size:14px;font-weight:800;color:#0f172a;line-height:1.2;">${escapeHtml(item.name)}</div>
                 </div>
             </div>
-            ${item.address ? `<div style="font-size:11px;color:#64748b;display:flex;align-items:flex-start;gap:4px;margin-bottom:4px;">📍 <span>${item.address}</span></div>` : ''}
-            ${item.description ? `<div style="font-size:11px;color:#475569;margin-bottom:4px;background:#f8fafc;padding:4px 8px;border-radius:8px;">${item.description}</div>` : ''}
-            ${dateStr ? `<div style="font-size:11px;color:#94a3b8;font-weight:600;">📅 ${dateStr}</div>` : ''}
+            ${ratingHtml}
+            ${chipsHtml}
+            ${sourceHtml}
+            ${descHtml}
+            ${notesHtml}
+            ${item.address ? `<div style="font-size:11px;color:#64748b;display:flex;align-items:flex-start;gap:4px;margin-bottom:6px;">📍 <span>${escapeHtml(item.address)}</span></div>` : ''}
+            ${dateStr ? `<div style="font-size:11px;color:#94a3b8;font-weight:600;margin-bottom:6px;">📅 ${dateStr}</div>` : ''}
+            <a href="${escapeHtml(mapsLink)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#2563eb;text-decoration:none;background:#eff6ff;border:1px solid #bfdbfe;padding:4px 10px;border-radius:8px;">🧭 פתח ב-Google Maps</a>
         </div>
     `;
 };
@@ -901,22 +968,43 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
 
         const bounds = L.latLngBounds([]);
 
-        // Plot non-airport items with premium pins
+        // Plot non-airport items with premium pins. Hotels are routed to
+        // the unclustered route layer so they're always individually
+        // visible as a reference point — even at low zoom where dense
+        // clusters of restaurants/attractions would otherwise hide them.
         visibleItems.forEach(item => {
             if (item.type === 'airport') return;
             const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
-            const icon = makePinIcon(cfg);
+            const icon = makePinIcon(cfg, item.name);
 
-            L.marker([item.lat!, item.lng!], { icon })
+            const targetLayer = item.type === 'hotel' ? routeLayer : markerLayer;
+            L.marker([item.lat!, item.lng!], {
+                icon,
+                // Hotels float above clustered pins so they remain the
+                // anchor reference point at any zoom level.
+                zIndexOffset: item.type === 'hotel' ? 2000 : 0,
+            })
                 .bindPopup(makePopupHtml(item), {
                     className: 'premium-popup',
                     maxWidth: 280,
                     minWidth: 210,
                 })
-                .addTo(markerLayer);
+                .addTo(targetLayer);
 
             bounds.extend([item.lat!, item.lng!]);
         });
+
+        // Always include every hotel's coords in the bounds even if it
+        // isn't in `visibleItems` (e.g. when filtered to a single category)
+        // — the user explicitly asked for the hotel to remain a reference
+        // point regardless of what else is on screen.
+        if (trip?.hotels?.length) {
+            trip.hotels.forEach(h => {
+                if (isValidCoordinate(h.lat, h.lng)) {
+                    bounds.extend([h.lat!, h.lng!]);
+                }
+            });
+        }
 
         // Draw route (only in ALL view)
         if (activeCity === 'ALL' && trip && !items && routeStops.length > 0) {

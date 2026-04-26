@@ -850,7 +850,14 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             items.push({
                 id: r.id, type: 'restaurant', name: r.name,
                 address: r.location, lat: r.lat, lng: r.lng,
-                description: r.googleRating ? `${r.googleRating}⭐` : r.description,
+                description: r.description,
+                rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
+                cuisine: r.cuisine,
+                recommendationSource: r.recommendationSource,
+                priceRange: r.priceRange || r.price || r.priceLevel,
+                imageUrl: r.imageUrl,
+                notes: r.notes,
+                googleMapsUrl: r.googleMapsUrl,
             });
         });
         // Always layer hotels on top so the user can see how their food
