@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&family=Nunito:wght@300;400;500;600;700;800;900;1000&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -26,7 +26,7 @@
   }
 
   body {
-    @apply font-heebo bg-slate-50 text-slate-900 antialiased selection:bg-indigo-100 selection:text-indigo-900;
+    @apply font-rubik bg-slate-50 text-slate-900 antialiased selection:bg-indigo-100 selection:text-indigo-900;
   }
 
   h1,
@@ -35,7 +35,7 @@
   h4,
   h5,
   h6 {
-    @apply font-outfit tracking-tight;
+    @apply font-nunito tracking-tight;
   }
 
   /* Accessibility: keyboard-only focus ring. Shown for :focus-visible so
@@ -398,7 +398,7 @@
    ============================================ */
 .leaflet-popup-content-wrapper {
   border-radius: 1rem;
-  font-family: 'Heebo', sans-serif;
+  font-family: 'Rubik', sans-serif;
   box-shadow: var(--glass-shadow);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);

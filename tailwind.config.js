@@ -11,7 +11,8 @@ export default {
         theme: {
                 extend: {
                         fontFamily: {
-                                'rubik': ['Rubik', 'sans-serif'],
+                                'rubik':  ['Rubik', 'sans-serif'],
+                                'nunito': ['Nunito', 'sans-serif'],
                                 'outfit': ['Outfit', 'sans-serif'],
                                 'heebo': ['Heebo', 'sans-serif'],
                         },

@@ -1514,7 +1514,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
     // --- UI ---
     return (
-        <div className="w-full relative bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 animate-fade-in" style={{ direction: 'ltr' }}>
+        <div
+            className={embedded
+                ? 'w-full h-full relative'
+                : 'w-full relative bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 animate-fade-in'}
+            style={{ direction: 'ltr' }}
+        >
 
             {/* Top City Filter Bar — hidden when a wrapper renders its own
                  chrome (FullTripMapView), so we don't double-render the chips. */}
