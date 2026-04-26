@@ -77,6 +77,18 @@ interface UnifiedMapViewProps {
     // wrapper component (e.g. FullTripMapView) renders its own chrome.
     // Defaults to false to preserve behaviour for existing callers.
     embedded?: boolean;
+    // Controlled active-city — when provided, the wrapper owns city focus
+    // (not the internal filter bar). Changing this prop triggers a smooth
+    // flyToBounds animation instead of an instant fitBounds.
+    activeCity?: string | null;
+    // Concentric translucent circles around each hotel coord (1.2km
+    // ≈ 15min walk and 2.4km ≈ 30min walk at 5 km/h).
+    walkingCircles?: boolean;
+    // Day filter — when set to a Set of item IDs (returned by
+    // tripDays.idsOnDay), every pin/route element NOT in the set
+    // renders at 35% opacity so the day's plan stands out without
+    // making other items invisible.
+    dayFilterIds?: Set<string> | null;
 }
 
 const STORAGE_KEY = 'travel_app_geo_cache_v5';
@@ -498,6 +510,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     tileTheme = 'light',
     compactView = false,
     embedded = false,
+    activeCity: controlledActiveCity,
+    walkingCircles = false,
+    dayFilterIds = null,
 }) => {
     // Default every layer flag to TRUE so the existing per-tab callers
     // (RestaurantsView / AttractionsView) keep working without passing
@@ -519,6 +534,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     const [activeCity, setActiveCity] = useState<string | 'ALL'>('ALL');
     const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
     const [activeStop, setActiveStop] = useState<number | null>(null);
+
+    // Sync externally-controlled city → internal state. When
+    // `controlledActiveCity` is `undefined` the component manages its own
+    // city state (existing per-tab callers). `null` means "all cities".
+    useEffect(() => {
+        if (controlledActiveCity === undefined) return;
+        setActiveCity(controlledActiveCity ?? 'ALL');
+    }, [controlledActiveCity]);
 
     const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number; lng: number }>>(() => {
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
@@ -1097,7 +1120,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             const icon = makePinIcon(cfg, item.name);
 
             const targetLayer = item.type === 'hotel' ? routeLayer : markerLayer;
-            L.marker([item.lat!, item.lng!], {
+            const marker = L.marker([item.lat!, item.lng!], {
                 icon,
                 // Hotels float above clustered pins so they remain the
                 // anchor reference point at any zoom level.
@@ -1109,6 +1132,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     minWidth: 210,
                 })
                 .addTo(targetLayer);
+
+            // Dim pins that don't belong to the active day filter.
+            if (dayFilterIds !== null) {
+                const inDay = item.flightId && item.date
+                    ? dayFilterIds.has(`${item.flightId}_${item.date}`)
+                    : dayFilterIds.has(item.id);
+                if (!inDay) marker.setOpacity(0.28);
+            }
 
             bounds.extend([item.lat!, item.lng!]);
         });
@@ -1122,6 +1153,25 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 if (isValidCoordinate(h.lat, h.lng)) {
                     bounds.extend([h.lat!, h.lng!]);
                 }
+            });
+        }
+
+        // Walking-distance rings: 1.2 km ≈ 15 min walk, 2.4 km ≈ 30 min walk
+        // at 5 km/h. Drawn on routeLayer so they survive cluster-only redraws.
+        if (walkingCircles && trip?.hotels?.length) {
+            trip.hotels.forEach(h => {
+                if (!isValidCoordinate(h.lat, h.lng)) return;
+                L.circle([h.lat!, h.lng!], {
+                    radius: 1200,
+                    color: '#10b981', weight: 1.5,
+                    fillColor: '#10b981', fillOpacity: 0.08, opacity: 0.45,
+                }).addTo(routeLayer);
+                L.circle([h.lat!, h.lng!], {
+                    radius: 2400,
+                    color: '#10b981', weight: 1,
+                    fillColor: '#10b981', fillOpacity: 0.04, opacity: 0.30,
+                    dashArray: '6 4',
+                }).addTo(routeLayer);
             });
         }
 
@@ -1370,7 +1420,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         }
 
         [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
-    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords]);
+    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles, dayFilterIds]);
 
     // Popup CSS injection
     useEffect(() => {

@@ -881,12 +881,20 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const getMapItems = () => {
         const items: any[] = [];
+        // Map visualises EXACTLY what the list view shows. For the
+        // recommended tab, filteredRestaurants already applies category
+        // + rater + city filters (and dedupes), so the map mirrors the
+        // list 1-for-1. The my_list tab has no per-card filters today so
+        // we still flatten the full saved list there, but the city
+        // filter still applies via the .filter below.
         const sourceRestaurants = activeTab === 'my_list'
             ? trip.restaurants.flatMap(cat => cat.restaurants)
-            : allAiRestaurants;
+            : filteredRestaurants;
         sourceRestaurants.forEach(r => {
             // City filter — when the user picks a city we want the map to
             // visualise only that city's pins so the bounds zoom in there.
+            // (filteredRestaurants already filtered by city, but my_list
+            // hasn't yet — so apply here.)
             if (selectedCity !== 'all' && !locationMatchesCity(r.location || '', selectedCity)) return;
             items.push({
                 id: r.id, type: 'restaurant', name: r.name,

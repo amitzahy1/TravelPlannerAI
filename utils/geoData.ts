@@ -347,6 +347,17 @@ export const locationMatchesCity = (location: string, cityDisplayName: string): 
         const hebrewForm = CITY_HEBREW_NAMES[targetKey];
         if (hebrewForm && location.includes(hebrewForm)) return true;
 
+        // ALL English aliases that resolve to the same Hebrew form. The
+        // canonical English picked by cityKey() is whichever alias the
+        // lookup table iterates last (e.g. "ko chang" for קו צ'אנג even
+        // when the actual location string says "Koh Chang"). Without
+        // this loop, the substring check above misses the 'h' variant.
+        if (hebrewForm) {
+                for (const [en, he] of Object.entries(CITY_HEBREW_NAMES)) {
+                        if (he === hebrewForm && locLower.includes(en)) return true;
+                }
+        }
+
         // Country-level filter: match any major city in the country.
         // 'thailand' → matches 'Bangkok', 'Pattaya', 'Chiang Mai', etc.
         const countryCities = COUNTRY_KEY_TO_CITIES[targetKey];
