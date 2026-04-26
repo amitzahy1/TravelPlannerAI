@@ -252,6 +252,19 @@ export const generateWithFallback = async (
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
+      // SEARCH intent uses Google Search grounding on the Worker side.
+      // Grounding is incompatible with structured JSON output (responseMimeType /
+      // responseSchema), so we omit those for SEARCH and parse JSON from the
+      // model's free-form text via cleanJSON() below.
+      const isSearch = intent === 'SEARCH';
+      const generationConfig = isSearch
+        ? { ...config }  // keep caller-supplied temperature etc; Worker defaults to 0.2
+        : {
+            ...config,
+            responseMimeType: "application/json",
+            responseSchema: config.responseSchema || (intent === 'ANALYZE' ? TRIP_OUTPUT_SCHEMA : undefined),
+          };
+
       const response = await fetch(`${WORKER_URL}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -260,11 +273,8 @@ export const generateWithFallback = async (
           contents: adaptedContents,  // Send full structured content (multimodal support)
           prompt: adaptedContents,    // Backward compat with old worker
           Model: modelId,
-          generationConfig: {
-            ...config,
-            responseMimeType: "application/json",
-            responseSchema: config.responseSchema || (intent === 'ANALYZE' ? TRIP_OUTPUT_SCHEMA : undefined)
-          }
+          intent,                     // Worker uses this to enable googleSearch tool for SEARCH
+          generationConfig,
         })
       });
 
@@ -283,11 +293,8 @@ export const generateWithFallback = async (
             contents: adaptedContents,
             prompt: adaptedContents,
             Model: modelId,
-            generationConfig: {
-              ...config,
-              responseMimeType: "application/json",
-              responseSchema: config.responseSchema || (intent === 'ANALYZE' ? TRIP_OUTPUT_SCHEMA : undefined)
-            }
+            intent,
+            generationConfig,
           })
         });
         if (!retryResponse.ok) {
@@ -296,10 +303,12 @@ export const generateWithFallback = async (
           throw new Error(`Retry failed: ${retryResponse.status}${errDetail ? ` — ${errDetail}` : ''}`);
         }
         const retryData = await retryResponse.json();
-        const text = retryData.text;
-        JSON.parse(text);
+        const rawRetryText = retryData.text;
+        // SEARCH responses are grounded free-form text — extract JSON via cleanJSON.
+        const retryText = isSearch ? cleanJSON(rawRetryText) : rawRetryText;
+        JSON.parse(retryText);
         console.log(`✅ [AI] Success with ${modelId} (after retry)`);
-        return { text, model: modelId };
+        return { text: retryText, model: modelId };
       }
 
       if (!response.ok) {
@@ -313,10 +322,14 @@ export const generateWithFallback = async (
       }
 
       const data = await response.json();
-      const text = data.text; // Validated by Schema, no cleaning needed!
+      // For non-SEARCH intents the Worker enforces a JSON schema, so we can
+      // parse straight through. SEARCH responses come back as grounded
+      // free-form text — strip prose / fences before parsing.
+      const rawText = data.text;
+      const text = isSearch ? cleanJSON(rawText) : rawText;
       JSON.parse(text); // Verify JSON validity
 
-      console.log(`✅ [AI] Success with ${modelId}`);
+      console.log(`✅ [AI] Success with ${modelId}${isSearch ? ' (grounded)' : ''}`);
       return { text, model: modelId };
 
     } catch (error: any) {

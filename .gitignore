@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Cloudflare Worker secrets — local dev only, never commit
+workers/.dev.vars
+.dev.vars
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

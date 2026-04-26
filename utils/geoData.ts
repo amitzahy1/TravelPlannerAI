@@ -269,16 +269,23 @@ const HEBREW_TO_ENGLISH_KEY: Record<string, string> = Object.entries(CITY_HEBREW
  * else to its cleaned form. Use this to detect that 'Bangkok' and 'בנגקוק' are
  * the same city, without deciding on a display language.
  */
-// Normalise apostrophe variants so "קו צ'אנג", "קו צ׳אנג" (Hebrew geresh),
-// "קו צ′אנג" (prime), and curly variants all reduce to the same form.
-// Without this, the same city ended up with two distinct keys and the
-// city filter listed "קו צ'אנג" twice on the Discover page.
-const normalizeApostrophes = (s: string): string =>
-        s.replace(/[‘’׳′‵`´]/g, "'");
+// Normalise punctuation + invisibles + Unicode form so subtle character
+// differences ("קו צ'אנג" vs "קו צ׳אנג" vs "קו צ’אנג" vs same with a
+// stray ZWSP) all collapse to the same canonical form. Without this,
+// the city filter listed "קו צ'אנג" twice — same city, two encodings.
+const normalizeCityRaw = (s: string): string => s
+        .normalize('NFC')
+        // Strip zero-width / formatting / direction marks
+        .replace(/[​-‏‪-‮⁦-⁩﻿]/g, '')
+        // All apostrophe / geresh / prime variants → ASCII '
+        .replace(/[‘’״׳′‵`´]/g, "'")
+        // Collapse whitespace
+        .replace(/\s+/g, ' ')
+        .trim();
 
 export const cityKey = (name: string): string => {
         if (!name) return '';
-        const cleaned = normalizeApostrophes(cleanCityName(name).trim());
+        const cleaned = normalizeCityRaw(cleanCityName(name));
         if (!cleaned) return '';
         const lower = cleaned.toLowerCase();
         // English match
@@ -287,6 +294,10 @@ export const cityKey = (name: string): string => {
         if (HEBREW_TO_ENGLISH_KEY[cleaned]) return HEBREW_TO_ENGLISH_KEY[cleaned];
         const stripped = cleaned.replace(/[׳'′]/g, '');
         if (HEBREW_TO_ENGLISH_KEY[stripped]) return HEBREW_TO_ENGLISH_KEY[stripped];
+        // Try a relaxed match: normalise both sides of the lookup table
+        for (const [hebrew, en] of Object.entries(HEBREW_TO_ENGLISH_KEY)) {
+                if (normalizeCityRaw(hebrew) === cleaned) return en;
+        }
         // Unknown — use lowercase cleaned as the key
         return lower;
 };

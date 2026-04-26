@@ -70,6 +70,9 @@ AVOID TripAdvisor as primary. Fallback: "Local Favorite" / "Top-Rated".
 Global fast-food chains (McDonald's, Starbucks, KFC, Subway, Burger King,
 Pizza Hut, Domino's). Hotels without a named restaurant.
 
+For "googleMapsUrl": include the actual URL from your Google Search
+results, not a guessed one. Omit the field if you can't find a real URL.
+
 Descriptions in HEBREW. OUTPUT JSON ONLY:
 { "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl" } ] } ] }
 `;
@@ -114,8 +117,12 @@ Include iconic commercial attractions — water parks, go-karting parks,
 cabaret shows, aquariums, cultural villages, night markets. They're
 highly rated for a reason.
 
+For each attraction include "googleMapsUrl" — the actual URL from
+your Google Search results, NOT a guessed one. If you cannot find
+a real URL, omit the field entirely; do not fabricate.
+
 OUTPUT JSON ONLY:
-{ "categories": [ { "id", "title", "attractions": [ { "name", "description", "location", "rating", "type", "price", "recommendationSource" } ] } ] }
+{ "categories": [ { "id", "title", "attractions": [ { "name", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl" } ] } ] }
 `;
 
 interface ResearchOptions {
@@ -240,7 +247,7 @@ const researchAttractionsForTrip = async (
                         const response = await generateWithFallback(
                                 null,
                                 [{ role: 'user', parts: [{ text: prompt }] }],
-                                { responseMimeType: 'application/json' },
+                                { temperature: 0.2 },
                                 'SEARCH'
                         );
                         const rawData = JSON.parse(response.text || '{}');

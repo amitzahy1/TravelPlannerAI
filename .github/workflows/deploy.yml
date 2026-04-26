@@ -35,8 +35,9 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # These secrets are injected from GitHub Repository Secrets
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          # GEMINI key intentionally NOT injected here — every AI call goes
+          # through the Cloudflare Worker, which holds its own secret. Keeping
+          # the key out of the bundle prevents leakage from the public site.
           VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
@@ -63,3 +64,38 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # Deploy the Cloudflare Worker on every push so production stays in
+  # sync with workers/ source. Pushes the GEMINI_API_KEY secret each
+  # run so rotating the key in GitHub Secrets propagates without manual
+  # `wrangler secret put`. Other Worker secrets (Firebase service
+  # account etc.) are managed in the Cloudflare dashboard.
+  deploy-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Worker dependencies
+        run: npm install
+        working-directory: workers
+
+      - name: Push GEMINI_API_KEY secret
+        run: echo -n "${{ secrets.GEMINI_API_KEY }}" | npx wrangler secret put GEMINI_API_KEY
+        working-directory: workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers
+          command: deploy

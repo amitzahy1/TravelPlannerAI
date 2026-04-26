@@ -122,6 +122,10 @@ export interface GeocodableInput {
         location?: string;
         googleMapsUrl?: string;
         address?: string;
+        // Country / destination hint appended to the geocoder query when
+        // the location alone is ambiguous (e.g. "Pattaya" matches a tiny
+        // village in Israel; "Pattaya, Thailand" finds the right place).
+        countryHint?: string;
 }
 
 /**
@@ -143,17 +147,28 @@ export const geocodePlace = async (input: GeocodableInput): Promise<{ lat: numbe
                 return fromUrl;
         }
 
-        const query = [input.name, input.location || input.address].filter(Boolean).join(', ');
-        const fromGeocoder = await geocodeFallbackChain(query);
-        if (fromGeocoder) {
-                c[k] = { coords: fromGeocoder, t: Date.now() };
-                persist();
-                return fromGeocoder;
+        // Append the country hint so ambiguous city names ("Pattaya",
+        // "Koh Chang", "Phuket") don't resolve to homonyms in Israel /
+        // Russia / wherever Photon's first hit happens to live.
+        const baseQuery = [input.name, input.location || input.address].filter(Boolean).join(', ');
+        const queries = [
+                input.countryHint ? `${baseQuery}, ${input.countryHint}` : null,
+                baseQuery,
+        ].filter(Boolean) as string[];
+
+        for (const query of queries) {
+                const result = await geocodeFallbackChain(query);
+                if (result) {
+                        c[k] = { coords: result, t: Date.now() };
+                        persist();
+                        return result;
+                }
         }
 
         // Fallback: location-only query so we at least pin the right city.
         if (input.location || input.address) {
-                const locOnly = await geocodeFallbackChain(input.location || input.address || '');
+                const locParts = [input.location || input.address, input.countryHint].filter(Boolean) as string[];
+                const locOnly = await geocodeFallbackChain(locParts.join(', '));
                 if (locOnly) {
                         // Don't cache loose city-level fallback under the precise key —
                         // future calls might want to retry the more specific lookup.
@@ -167,11 +182,15 @@ export const geocodePlace = async (input: GeocodableInput): Promise<{ lat: numbe
 /**
  * Geocode a batch of places concurrently (gated to 4) and call back with
  * each resolved coord as soon as it lands so callers can update UI live.
+ *
+ * Failed items invoke `onFail` (if supplied) so callers can mark them
+ * (e.g. `geocodeFailed: true`) and surface a count to the user instead
+ * of silently dropping them off the map.
  */
 export const geocodePlacesBatch = async <T extends GeocodableInput & { id: string; lat?: number; lng?: number }>(
         items: T[],
         onResolve: (id: string, coords: { lat: number; lng: number }) => void,
-        opts?: { concurrency?: number; signal?: AbortSignal },
+        opts?: { concurrency?: number; signal?: AbortSignal; onFail?: (id: string) => void },
 ): Promise<void> => {
         const queue = items.filter(i => typeof i.lat !== 'number' || typeof i.lng !== 'number');
         const concurrency = Math.max(1, Math.min(opts?.concurrency ?? 4, 8));
@@ -183,8 +202,11 @@ export const geocodePlacesBatch = async <T extends GeocodableInput & { id: strin
                         const idx = cursor++;
                         const item = queue[idx];
                         const coords = await geocodePlace(item);
-                        if (coords && !opts?.signal?.aborted) {
+                        if (opts?.signal?.aborted) return;
+                        if (coords) {
                                 onResolve(item.id, coords);
+                        } else {
+                                opts?.onFail?.(item.id);
                         }
                         // Polite delay between requests per worker (Nominatim ToS asks
                         // for ≤1 req/sec, but distributed across N workers it's fine).

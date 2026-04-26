@@ -155,6 +155,11 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [searchResults, setSearchResults] = useState<Restaurant[] | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<ExtendedRestaurant | null>(null);
     const [confirmReset, setConfirmReset] = useState(false);
+    // Background-geocoding progress so the map view can show a loading
+    // banner while AI results are still being resolved to lat/lng. Failed
+    // items (`geocodeFailed: true`) live on the restaurant objects and
+    // surface as a separate warning banner.
+    const [geocodingInFlight, setGeocodingInFlight] = useState(0);
 
     // Wipe cached AI restaurants and start a fresh multi-city research
     const handleResetResearch = () => {
@@ -315,23 +320,37 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // trip we captured when research started. The flush merges into the
     // LATEST trip and only touches aiRestaurants.
     const geocodeAndPersistRestaurants = (cats: RestaurantCategory[]) => {
-        type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number };
+        type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number; countryHint?: string };
         const flat: Item[] = [];
+        // Append destination as country hint so "Pattaya" / "Koh Chang"
+        // resolve in Thailand instead of homonyms in Israel etc.
+        const countryHint = trip.destination?.split(/[-,]/)[0]?.trim() || '';
         cats.forEach(c => c.restaurants.forEach(r => flat.push({
             id: r.id, name: r.name, location: r.location,
             googleMapsUrl: r.googleMapsUrl, lat: r.lat, lng: r.lng,
+            countryHint,
         })));
-        if (flat.every(i => typeof i.lat === 'number' && typeof i.lng === 'number')) return;
+        const pendingItems = flat.filter(i => typeof i.lat !== 'number' || typeof i.lng !== 'number');
+        if (pendingItems.length === 0) return;
+
+        setGeocodingInFlight(prev => prev + pendingItems.length);
 
         const resolved: Record<string, { lat: number; lng: number }> = {};
+        const failed = new Set<string>();
         let pendingFlush = 0;
         const flush = () => {
             if (pendingFlush === 0) return;
             const next: RestaurantCategory[] = cats.map(c => ({
                 ...c,
-                restaurants: c.restaurants.map(r => resolved[r.id]
-                    ? { ...r, lat: resolved[r.id].lat, lng: resolved[r.id].lng }
-                    : r),
+                restaurants: c.restaurants.map(r => {
+                    if (resolved[r.id]) {
+                        return { ...r, lat: resolved[r.id].lat, lng: resolved[r.id].lng, geocodeFailed: false };
+                    }
+                    if (failed.has(r.id)) {
+                        return { ...r, geocodeFailed: true };
+                    }
+                    return r;
+                }),
             }));
             setAiCategories(next);
             // ⚠️ Use the freshest trip — NOT the closure-captured one.
@@ -345,9 +364,18 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             (id, coords) => {
                 resolved[id] = coords;
                 pendingFlush += 1;
+                setGeocodingInFlight(prev => Math.max(0, prev - 1));
                 if (pendingFlush >= 8) flush();
             },
-            { concurrency: 4 },
+            {
+                concurrency: 4,
+                onFail: (id) => {
+                    failed.add(id);
+                    pendingFlush += 1;
+                    setGeocodingInFlight(prev => Math.max(0, prev - 1));
+                    if (pendingFlush >= 8) flush();
+                },
+            },
         ).finally(flush);
     };
 
@@ -410,6 +438,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     - Global fast-food chains (McDonald's, Starbucks, KFC, Subway,
       Burger King, Pizza Hut, Domino's)
     - Places currently closed or with quality decline in last year
+
+    For "googleMapsUrl": include the actual URL from your Google Search
+    results, NOT a guessed one. Omit the field entirely if you cannot
+    find a real URL — fabricated URLs break the map view.
 
     OUTPUT JSON ONLY:
     { "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl" } ] } ] }
@@ -921,35 +953,41 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 </div>
             )}
 
-            {/* Tab bar — my_list / market research toggle PLUS a list/map
-                 view toggle that's always visible (regardless of which tab),
-                 per user request. The view toggle is a small icon-only pill
-                 sitting at the end of the row. */}
-            <div className="flex items-center gap-2 mb-2">
-                <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative flex-1">
-                    <button
-                        onClick={() => setActiveTab('my_list')}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        <Utensils className={`w-4 h-4 ${activeTab === 'my_list' ? 'text-orange-500' : 'text-slate-400'}`} />
-                        הרשימה שלי
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('recommended')}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        <Sparkles className={`w-4 h-4 ${activeTab === 'recommended' ? 'text-blue-500' : 'text-slate-400'}`} />
-                        מחקר שוק (AI)
-                    </button>
-                </div>
-                {/* View toggle — same for both tabs */}
+            {/* Tab bar — my_list / market research. The list/map view
+                 toggle has its OWN row below so it doesn't read like a
+                 third tab option (per user feedback). */}
+            <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-2">
                 <button
-                    onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
-                    className="w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl shadow-sm hover:border-blue-300 transition-colors text-slate-500 flex-shrink-0"
-                    title={viewMode === 'list' ? 'תצוגת מפה' : 'תצוגת רשימה'}
-                    aria-label={viewMode === 'list' ? 'תצוגת מפה' : 'תצוגת רשימה'}
+                    onClick={() => setActiveTab('my_list')}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
                 >
-                    {viewMode === 'list' ? <MapIcon className="w-4 h-4" /> : <List className="w-4 h-4" />}
+                    <Utensils className={`w-4 h-4 ${activeTab === 'my_list' ? 'text-orange-500' : 'text-slate-400'}`} />
+                    הרשימה שלי
+                </button>
+                <button
+                    onClick={() => setActiveTab('recommended')}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Sparkles className={`w-4 h-4 ${activeTab === 'recommended' ? 'text-blue-500' : 'text-slate-400'}`} />
+                    מחקר שוק (AI)
+                </button>
+            </div>
+
+            {/* View toggle — list vs map are mutually exclusive
+                 alternatives, so render them as a clear segmented control
+                 on their own row. */}
+            <div className="inline-flex bg-slate-100 rounded-xl p-1 mb-3">
+                <button
+                    onClick={() => setViewMode('list')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <List className="w-3.5 h-3.5" /> רשימה
+                </button>
+                <button
+                    onClick={() => setViewMode('map')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'map' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <MapIcon className="w-3.5 h-3.5" /> מפה
                 </button>
             </div>
 
@@ -970,6 +1008,31 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
             {viewMode === 'map' ? (
                 <div className="space-y-3">
+                    {(() => {
+                        // Surface map-readiness status: how many items are still
+                        // being geocoded vs. how many gave up. Filter by city so
+                        // the count matches what's missing from the current view.
+                        const pool: Restaurant[] = activeTab === 'my_list'
+                            ? trip.restaurants.flatMap(c => c.restaurants)
+                            : allAiRestaurants;
+                        const visible = pool.filter(r => selectedCity === 'all' || locationMatchesCity(r.location || '', selectedCity));
+                        const failedCount = visible.filter(r => r.geocodeFailed).length;
+                        return (
+                            <>
+                                {geocodingInFlight > 0 && (
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-sm">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>מאתר {geocodingInFlight} מקומות נוספים על המפה...</span>
+                                    </div>
+                                )}
+                                {geocodingInFlight === 0 && failedCount > 0 && (
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+                                        <span>⚠️ {failedCount} {failedCount === 1 ? 'מקום לא נמצא' : 'מקומות לא נמצאו'} במפה — נסה לפתוח את הכרטיס ולהוסיף קישור Google Maps ידנית.</span>
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
                     <UnifiedMapView items={getMapItems()} title={activeTab === 'my_list' ? `מפת מסעדות שלי` : 'מפת המלצות'} />
                 </div>
             ) : (

@@ -215,6 +215,7 @@ export interface Restaurant {
   lat?: number;
   lng?: number;
   estimatedCost?: number; // For budget
+  geocodeFailed?: boolean; // Set when all geocoding fallbacks exhausted; surfaces a UI warning
 
   // UX Improvements
   matchScore?: number; // 1-100 score of how well it fits the user
@@ -259,6 +260,7 @@ export interface Attraction {
   scheduledTime?: string; // HH:MM
   lat?: number;
   lng?: number;
+  geocodeFailed?: boolean; // Set when all geocoding fallbacks exhausted; surfaces a UI warning
   // Added optional fields to fix TypeScript errors
   type?: string;
   recommendationSource?: string;

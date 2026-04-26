@@ -57,7 +57,7 @@ export default {
                         // Secure API Endpoint for Frontend (supports multimodal content)
                         if (url.pathname === "/api/generate" && request.method === "POST") {
                                 const body = await request.json() as any;
-                                const { contents, prompt, Model, generationConfig } = body;
+                                const { contents, prompt, Model, generationConfig, intent } = body;
 
                                 // Accept either structured 'contents' (new) or flat 'prompt' (backward compat)
                                 const requestContent = contents || prompt;
@@ -66,10 +66,25 @@ export default {
                                 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
                                 const modelId = Model || "gemini-1.5-flash-latest";
 
-                                const model = genAI.getGenerativeModel({
+                                // SEARCH intent → ground via Google Search + low temperature.
+                                // Tools and structured-JSON output are mutually exclusive in the
+                                // Gemini API, so when grounding we drop responseMimeType /
+                                // responseSchema and ask the model for free-form text. The frontend
+                                // re-extracts JSON via cleanJSON().
+                                const isSearch = intent === 'SEARCH';
+                                const finalGenConfig = isSearch
+                                        ? { temperature: generationConfig?.temperature ?? 0.2 }
+                                        : (generationConfig || { responseMimeType: "application/json" });
+
+                                const modelOptions: any = {
                                         model: modelId,
-                                        generationConfig: generationConfig || { responseMimeType: "application/json" }
-                                });
+                                        generationConfig: finalGenConfig,
+                                };
+                                if (isSearch) {
+                                        modelOptions.tools = [{ googleSearch: {} } as any];
+                                }
+
+                                const model = genAI.getGenerativeModel(modelOptions);
 
                                 // Pass content directly — supports text, inlineData (images/PDFs), and mixed parts
                                 // The client sends Content[] format: [{ role: 'user', parts: [{text: ...}, {inlineData: ...}] }]
@@ -77,7 +92,7 @@ export default {
                                 const response = await result.response;
                                 const text = response.text();
 
-                                return new Response(JSON.stringify({ text, model: modelId }), {
+                                return new Response(JSON.stringify({ text, model: modelId, grounded: isSearch }), {
                                         headers: { ...corsHeaders, "Content-Type": "application/json" }
                                 });
                         }

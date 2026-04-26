@@ -96,11 +96,6 @@ users/
 
 ## Troubleshooting
 
-### Error: "VITE_GEMINI_API_KEY not configured"
-- Check that `.env.local` exists in the project root
-- Verify the variable name is exactly `VITE_GEMINI_API_KEY`
-- Restart the dev server after changing env files
-
 ### Error: "Firebase initialization error"
 - Verify all `VITE_FIREBASE_*` variables are set in `.env.local`
 - Check that Firebase project exists and is active
