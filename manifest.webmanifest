@@ -1,1 +1,1 @@
-{"name":"Travel Planner Pro","short_name":"TravelPro","description":"AI-Powered Travel Itinerary Planner","start_url":"/TravelPlannerAI/","display":"standalone","background_color":"#ffffff","theme_color":"#ffffff","lang":"en","scope":"/TravelPlannerAI/","icons":[]}
+{"name":"Travel Planner Pro","short_name":"TravelPro","description":"AI-Powered Travel Itinerary Planner","start_url":".","display":"standalone","background_color":"#f7f9fc","theme_color":"#2563eb","lang":"he","scope":".","orientation":"portrait","dir":"rtl","icons":[]}
