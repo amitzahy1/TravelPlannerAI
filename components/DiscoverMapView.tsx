@@ -9,6 +9,7 @@ import { Utensils, Ticket, MapPin, Hotel, Loader2 } from 'lucide-react';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
 import { getTripCities, locationMatchesCity } from '../utils/geoData';
+import { safeMapsUrl } from '../utils/mapsUrl';
 
 type Kind = 'food' | 'sights' | 'hotel';
 
@@ -469,7 +470,7 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                                                                 <span>{selected.address || selected.location}</span>
                                                         </div>
                                                         <a
-                                                                href={(selected.raw as HotelBooking).googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selected.name + ' ' + (selected.address || ''))}`}
+                                                                href={safeMapsUrl((selected.raw as HotelBooking).googleMapsUrl, selected.name, selected.address || (selected as any).location)}
                                                                 target="_blank" rel="noreferrer"
                                                                 className="block text-center py-2.5 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors"
                                                         >

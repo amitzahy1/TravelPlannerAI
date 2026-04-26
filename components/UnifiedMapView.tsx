@@ -10,6 +10,7 @@ import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
+import { safeMapsUrl } from '../utils/mapsUrl';
 
 // --- Interfaces ---
 interface MapItem {
@@ -54,6 +55,24 @@ interface UnifiedMapViewProps {
     items?: MapItem[];
     height?: string;
     title?: string;
+    // FullTripMapView (the unified map_full tab) passes these to gate which
+    // layers render. All flags default to ON to preserve behaviour for the
+    // existing Restaurants/Attractions tab callers — they don't pass `layers`.
+    layers?: {
+        route?: boolean;
+        hotels?: boolean;
+        myLists?: boolean;
+        aiRestaurants?: boolean;
+        aiAttractions?: boolean;
+    };
+    // Tile theme — defaults to the current Carto Voyager. Dark uses
+    // Carto's dark_all variant; pin labels stay readable on both.
+    tileTheme?: 'light' | 'dark';
+    // When true (the default) the auto-fit prefers showing the whole trip
+    // on one screen with maxZoom 11 so city pins remain readable. The
+    // existing per-tab callers (which want a tighter zoom around a single
+    // city) pass `compactView={false}` to keep maxZoom 14.
+    compactView?: boolean;
 }
 
 const STORAGE_KEY = 'travel_app_geo_cache_v5';
@@ -403,7 +422,11 @@ const makeRouteBadge = (distKm: number, transport: SegmentTransportInfo, color: 
 const makePopupHtml = (item: MapItem) => {
     const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
     const dateStr = item.date ? parseTripDate(item.date)?.toLocaleDateString('he-IL', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
-    const mapsLink = item.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((item.name + ' ' + (item.address || '')).trim())}`;
+    // Only honour the AI-supplied googleMapsUrl when it points at a real
+    // Google host — otherwise the link goes to a hallucinated domain
+    // (e.g. "maps.appgoo.gl") which is at best broken and at worst a
+    // phishing-shaped URL. Falls back to a deterministic search-by-name URL.
+    const mapsLink = safeMapsUrl(item.googleMapsUrl, item.name, item.address);
     const tagLabel = (item.cuisine || item.category || cfg.label || '').toString();
     // Mirror the list-view PlaceCard look: image-as-background, dark scrim,
     // big white name + location at the bottom, rating + source pills, plus
@@ -463,7 +486,24 @@ const makePopupHtml = (item: MapItem) => {
 };
 
 // ============================================================
-export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, height = "75vh" }) => {
+export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
+    trip,
+    items,
+    height = "75vh",
+    layers,
+    tileTheme = 'light',
+    compactView = false,
+}) => {
+    // Default every layer flag to TRUE so the existing per-tab callers
+    // (RestaurantsView / AttractionsView) keep working without passing
+    // `layers`. The new FullTripMapView wrapper passes explicit flags.
+    const layerFlags = {
+        route: layers?.route ?? true,
+        hotels: layers?.hotels ?? true,
+        myLists: layers?.myLists ?? true,
+        aiRestaurants: layers?.aiRestaurants ?? true,
+        aiAttractions: layers?.aiAttractions ?? true,
+    };
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
     const markersRef = useRef<L.LayerGroup | null>(null);
@@ -487,37 +527,90 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         if (items) {
             raw = items;
         } else if (trip) {
-            // Flights
-            const segs = [...(trip.flights?.segments || [])].sort((a, b) =>
-                (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0)
-            );
-            const originCode = segs[0]?.fromCode;
-            segs.forEach(seg => {
-                if (seg.fromCode !== originCode) {
-                    raw.push({ id: `f-${seg.flightNumber}-dep`, type: 'airport', subType: 'departure', flightId: seg.flightNumber, name: `${seg.fromCity || seg.fromCode}`, date: seg.date, time: seg.departureTime, city: seg.fromCity });
-                }
-                if (seg.toCode !== originCode) {
-                    raw.push({ id: `f-${seg.flightNumber}-arr`, type: 'airport', subType: 'arrival', flightId: seg.flightNumber, name: `${seg.toCity || seg.toCode}`, date: seg.date, time: seg.arrivalTime, city: seg.toCity });
-                }
-            });
+            // Flights — gated by `route` layer (FullTripMapView toggles it
+            // off when the user only wants pins, no transit overlay).
+            if (layerFlags.route) {
+                const segs = [...(trip.flights?.segments || [])].sort((a, b) =>
+                    (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0)
+                );
+                const originCode = segs[0]?.fromCode;
+                segs.forEach(seg => {
+                    if (seg.fromCode !== originCode) {
+                        raw.push({ id: `f-${seg.flightNumber}-dep`, type: 'airport', subType: 'departure', flightId: seg.flightNumber, name: `${seg.fromCity || seg.fromCode}`, date: seg.date, time: seg.departureTime, city: seg.fromCity });
+                    }
+                    if (seg.toCode !== originCode) {
+                        raw.push({ id: `f-${seg.flightNumber}-arr`, type: 'airport', subType: 'arrival', flightId: seg.flightNumber, name: `${seg.toCity || seg.toCode}`, date: seg.date, time: seg.arrivalTime, city: seg.toCity });
+                    }
+                });
+            }
 
-            // Hotels
-            trip.hotels?.forEach(h => {
-                const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
-                raw.push({ id: h.id, type: 'hotel', name: h.name, address: h.address, lat: h.lat, lng: h.lng, description: h.roomType, date: h.checkInDate, city });
-            });
+            // Hotels — always-on anchor reference (per Round 9c) unless
+            // explicitly disabled via the layers prop.
+            if (layerFlags.hotels) {
+                trip.hotels?.forEach(h => {
+                    const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
+                    raw.push({ id: h.id, type: 'hotel', name: h.name, address: h.address, lat: h.lat, lng: h.lng, description: h.roomType, date: h.checkInDate, city });
+                });
+            }
 
-            // Restaurants
-            trip.restaurants?.forEach(cat => cat.restaurants?.forEach(r => {
-                const city = r.location?.split(',')?.[1]?.trim() || trip.destination;
-                raw.push({ id: r.id, type: 'restaurant', name: r.name, address: r.location, lat: r.lat, lng: r.lng, description: r.description, date: r.reservationDate, time: r.reservationTime, city });
-            }));
+            // Saved restaurants + attractions ("my lists")
+            if (layerFlags.myLists) {
+                trip.restaurants?.forEach(cat => cat.restaurants?.forEach(r => {
+                    const city = r.location?.split(',')?.[1]?.trim() || trip.destination;
+                    raw.push({
+                        id: r.id, type: 'restaurant', name: r.name, address: r.location,
+                        lat: r.lat, lng: r.lng, description: r.description,
+                        date: r.reservationDate, time: r.reservationTime, city,
+                        rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
+                        cuisine: r.cuisine, recommendationSource: r.recommendationSource,
+                        priceRange: r.priceRange || r.price || r.priceLevel,
+                        imageUrl: r.imageUrl, notes: r.notes, googleMapsUrl: r.googleMapsUrl,
+                    });
+                }));
 
-            // Attractions
-            trip.attractions?.forEach(cat => cat.attractions?.forEach(a => {
-                const city = a.location?.split(',')?.[1]?.trim() || trip.destination;
-                raw.push({ id: a.id, type: 'attraction', name: a.name, address: a.location, lat: a.lat, lng: a.lng, description: a.description, date: a.scheduledDate, time: a.scheduledTime, city });
-            }));
+                trip.attractions?.forEach(cat => cat.attractions?.forEach(a => {
+                    const city = a.location?.split(',')?.[1]?.trim() || trip.destination;
+                    raw.push({
+                        id: a.id, type: 'attraction', name: a.name, address: a.location,
+                        lat: a.lat, lng: a.lng, description: a.description,
+                        date: a.scheduledDate, time: a.scheduledTime, city,
+                        rating: typeof a.rating === 'number' ? a.rating : undefined,
+                        category: a.type || a.categoryTitle,
+                        recommendationSource: a.recommendationSource, priceRange: a.price,
+                        imageUrl: a.imageUrl, notes: a.notes, googleMapsUrl: a.googleMapsUrl,
+                    });
+                }));
+            }
+
+            // AI restaurant recommendations — opt-in layer
+            if (layerFlags.aiRestaurants) {
+                trip.aiRestaurants?.forEach(cat => cat.restaurants?.forEach(r => {
+                    const city = r.location?.split(',')?.[1]?.trim() || trip.destination;
+                    raw.push({
+                        id: r.id, type: 'restaurant', name: r.name, address: r.location,
+                        lat: r.lat, lng: r.lng, description: r.description, city,
+                        rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
+                        cuisine: r.cuisine, recommendationSource: r.recommendationSource,
+                        priceRange: r.priceRange || r.price || r.priceLevel,
+                        imageUrl: r.imageUrl, notes: r.notes, googleMapsUrl: r.googleMapsUrl,
+                    });
+                }));
+            }
+
+            // AI attraction recommendations — opt-in layer
+            if (layerFlags.aiAttractions) {
+                trip.aiAttractions?.forEach(cat => cat.attractions?.forEach(a => {
+                    const city = a.location?.split(',')?.[1]?.trim() || trip.destination;
+                    raw.push({
+                        id: a.id, type: 'attraction', name: a.name, address: a.location,
+                        lat: a.lat, lng: a.lng, description: a.description, city,
+                        rating: typeof a.rating === 'number' ? a.rating : undefined,
+                        category: a.type || a.categoryTitle,
+                        recommendationSource: a.recommendationSource, priceRange: a.price,
+                        imageUrl: a.imageUrl, notes: a.notes, googleMapsUrl: a.googleMapsUrl,
+                    });
+                }));
+            }
 
             // Shopping
             // Legacy 'shoppingItems' removed from the schema — pin rendering dropped.
@@ -530,7 +623,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         sorted.forEach((item, i) => { item.order = i + 1; });
 
         setMapItems(sorted);
-    }, [trip, items]);
+    }, [trip, items, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions]);
 
     // 2. Geocode missing items
     useEffect(() => {
@@ -770,7 +863,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
         };
 
         buildRoute();
-    }, [trip, items]);
+    }, [trip, items, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions]);
 
     // 3b. Geocode flight airport codes — used by the distance-based transport
     //     matcher so a flight from Trat matches a hotel in Koh Chang.

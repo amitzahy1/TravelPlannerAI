@@ -13,6 +13,7 @@ import type { Trip, RestaurantCategory, AttractionCategory } from '../types';
 import { generateWithFallback } from './aiService';
 import { saveSingleTrip } from './storageService';
 import { getTripCities } from '../utils/geoData';
+import { stripChainRestaurants } from '../utils/chainRestaurants';
 import { toast } from '../stores/useToastStore';
 
 // Per-trip lock — prevents firing a second background research run for a
@@ -66,9 +67,28 @@ bad new management. When in doubt, leave it out.
 Plus: Michelin Guide, World's 50 Best, Asia's 50 Best, Eater, TimeOut.
 AVOID TripAdvisor as primary. Fallback: "Local Favorite" / "Top-Rated".
 
-**PART 5: EXCLUDE**
-Global fast-food chains (McDonald's, Starbucks, KFC, Subway, Burger King,
-Pizza Hut, Domino's). Hotels without a named restaurant.
+**PART 5: HARD EXCLUSIONS — CHAIN RESTAURANTS (CRITICAL)**
+You MUST NOT include any of the following types of places, even if locals
+sometimes eat there. The user has explicitly rejected chain food:
+- Global fast-food chains: McDonald's, Burger King, KFC, Subway, Wendy's,
+  Taco Bell, Hardee's, Carl's Jr, Five Guys, Wingstop, Chick-fil-A,
+  Popeyes, Jollibee, Dairy Queen, Arby's
+- Global pizza chains: Pizza Hut, Domino's, Papa John's, Little Caesars,
+  Pizza Inn, Round Table Pizza
+- Regional fast-food pizza chains positioned LIKE Domino's: **Pizza
+  Company** (Thailand), Pizza Marzano (mass-market casual), any chain
+  with 50+ outlets aimed at quick delivery
+- Global coffee chains: Starbucks, Costa Coffee, Café Nero, Tim Hortons
+- Global bakery/dessert chains: Krispy Kreme, Dunkin', Cold Stone
+- Hotels without a named, locally-known restaurant
+If only a chain came to mind for a category, return FEWER results
+(or empty array) rather than padding with chains. Quality over quantity.
+
+**PART 6: QUALITY FLOOR (CRITICAL)**
+For every category you return, include AT LEAST 3 places — and each
+must be a strong recommendation, not a filler. If you genuinely cannot
+find 3 quality independent options for a category in this city,
+return an empty array for that category. Better empty than bad.
 
 For "googleMapsUrl": include the actual URL from your Google Search
 results, not a guessed one. Omit the field if you can't find a real URL.
@@ -198,7 +218,10 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
                                 ...c,
                                 id: c.id || `ai-food-cat-${city}-${idx}-${Date.now()}`,
                                 region: city,
-                                restaurants: (c.restaurants || []).map((r: any, j: number) => ({
+                                // Frontend safety-net: even with the prompt's hard exclusion list,
+                                // the model occasionally slips chains through (Pizza Company,
+                                // Burger King observed). Strip them here so they never reach the UI.
+                                restaurants: stripChainRestaurants(c.restaurants || []).map((r: any, j: number) => ({
                                         ...r,
                                         id: `ai-rec-${city}-${idx}-${Math.random().toString(36).slice(2, 7)}-${j}`,
                                         categoryTitle: c.title,

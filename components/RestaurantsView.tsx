@@ -10,6 +10,7 @@ import { ThinkingLoader } from './ThinkingLoader';
 import { PlaceCard } from './PlaceCard';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
 import { ConfirmModal } from './ConfirmModal';
+import { stripChainRestaurants } from '../utils/chainRestaurants';
 
 // Extended interface for internal use
 interface ExtendedRestaurant extends Restaurant {
@@ -266,7 +267,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             ...c,
                             id: c.id || `ai-food-cat-${city}-${index}-${Date.now()}`,
                             region: city,
-                            restaurants: (c.restaurants || []).map((r: any, j: number) => ({
+                            // Frontend safety-net (Round 10): even with the prompt's hard
+                            // exclusion list, the model occasionally slips chains through.
+                            restaurants: stripChainRestaurants(c.restaurants || []).map((r: any, j: number) => ({
                                 ...r,
                                 id: `ai-rec-${city}-${index}-${Math.random().toString(36).substr(2, 5)}-${j}`,
                                 categoryTitle: c.title
@@ -434,10 +437,28 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     Use "Local Favorite" / "Top-Rated" as a fallback when no specific
     citation applies.
 
-    **PART 5: EXCLUDE**
-    - Global fast-food chains (McDonald's, Starbucks, KFC, Subway,
-      Burger King, Pizza Hut, Domino's)
+    **PART 5: HARD EXCLUSIONS — CHAIN RESTAURANTS (CRITICAL)**
+    You MUST NOT include any of the following, even if locals sometimes
+    eat there. The user has explicitly rejected chain food:
+    - Global fast-food chains: McDonald's, Burger King, KFC, Subway,
+      Wendy's, Taco Bell, Hardee's, Carl's Jr, Five Guys, Wingstop,
+      Chick-fil-A, Popeyes, Jollibee, Dairy Queen, Arby's
+    - Global pizza chains: Pizza Hut, Domino's, Papa John's, Little
+      Caesars, Pizza Inn, Round Table Pizza
+    - Regional fast-food pizza chains positioned LIKE Domino's: **Pizza
+      Company** (Thailand), Pizza Marzano (mass-market casual), any chain
+      with 50+ outlets aimed at quick delivery
+    - Global coffee chains: Starbucks, Costa Coffee, Café Nero, Tim Hortons
+    - Global bakery/dessert chains: Krispy Kreme, Dunkin', Cold Stone
     - Places currently closed or with quality decline in last year
+    If only a chain came to mind for a category, return FEWER results
+    (or empty array). Quality over quantity — never pad with chains.
+
+    **PART 6: QUALITY FLOOR (CRITICAL)**
+    For every category you return, include AT LEAST 3 places — each one
+    must be a strong recommendation. If you genuinely can't find 3
+    quality independent options for a category in this city, return an
+    empty array for that category. Empty is better than padded.
 
     For "googleMapsUrl": include the actual URL from your Google Search
     results, NOT a guessed one. Omit the field entirely if you cannot
@@ -506,16 +527,35 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             AVOID TripAdvisor as primary source.
             Fallback: "Local Favorite" / "Top-Rated" when no specific source.
 
-            **PART 5: FORMATTING**
+            **PART 5: HARD EXCLUSIONS — CHAIN RESTAURANTS (CRITICAL)**
+            You MUST NOT include any of the following, even if locals
+            sometimes eat there. The user has explicitly rejected chain food:
+            - Global fast-food chains: McDonald's, Burger King, KFC, Subway,
+              Wendy's, Taco Bell, Hardee's, Carl's Jr, Five Guys, Wingstop,
+              Chick-fil-A, Popeyes, Jollibee, Dairy Queen, Arby's
+            - Global pizza chains: Pizza Hut, Domino's, Papa John's, Little
+              Caesars, Pizza Inn, Round Table Pizza
+            - Regional fast-food pizza chains positioned LIKE Domino's:
+              **Pizza Company** (Thailand), Pizza Marzano, any chain with
+              50+ outlets aimed at quick delivery
+            - Global coffee chains: Starbucks, Costa Coffee, Café Nero, Tim Hortons
+            - Global bakery/dessert chains: Krispy Kreme, Dunkin', Cold Stone
+            - Hotels without a specific named restaurant. Don't recommend
+              "The Hilton" — but DO recommend "Gaggan Anand at SO/ Bangkok".
+              If a restaurant is inside a hotel set isHotelRestaurant = true
+              and use "Name (at Hotel Name)" format.
+            If only a chain came to mind for a category, return FEWER
+            results. Quality over quantity — never pad with chains.
+
+            **PART 6: QUALITY FLOOR (CRITICAL)**
+            Each category you return must contain AT LEAST 3 strong picks.
+            If you can't find 3 quality independent options, return an
+            empty array for that category. Empty is better than bad.
+
+            **PART 7: FORMATTING**
             - Return pure JSON. Title MUST be the Hebrew string exactly.
             - Map 'cuisine' to one of: Local, Fine, Bar, Family, Ramen, Pizza,
               Burger, Cafe, Thai, Japanese.
-            - EXCLUDE hotels unless they have a specific named restaurant
-              (e.g. "Gaggan Anand at SO/ Bangkok"). Don't recommend "The Hilton".
-              If restaurant is inside a hotel, set isHotelRestaurant = true and
-              use "Name (at Hotel Name)" format.
-            - EXCLUDE global fast-food chains (McDonald's, Starbucks, KFC,
-              Subway, Burger King, Pizza Hut, Domino's).
             `;
 
             // Replaced Schema with Prompt Instruction for standard SDK
@@ -564,7 +604,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         ...c,
                         id: c.id || `ai-food-cat-${idx}-${Date.now()}`,
                         region: specificCity,
-                        restaurants: (c.restaurants || []).map((r: any, i: number) => ({
+                        // Same chain safety-net as the multi-city research path.
+                        restaurants: stripChainRestaurants(c.restaurants || []).map((r: any, i: number) => ({
                             ...r,
                             id: `ai-rec-${c.id || idx}-${Math.random().toString(36).substr(2, 5)}-${i}`,
                             categoryTitle: c.title
@@ -998,15 +1039,16 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 </button>
             </div>
 
-            {/* City Filter Bar (Task 3). Tap on a city → auto-switch to map
-                 view so the user instantly sees the chosen city centred near
-                 the hotel (the hotel pin is always included in fitBounds). */}
+            {/* City Filter Bar (Task 3). Tapping a city only changes the
+                 filter — keep the user on whichever view (list/map) they
+                 were already on. The unified-map tab is where the
+                 "snap-to-city" behaviour lives now. */}
             {tripCities.length > 1 && (
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
                     {tripCities.map(city => (
                         <button
                             key={city}
-                            onClick={() => { setSelectedCity(city); setViewMode('map'); }}
+                            onClick={() => setSelectedCity(city)}
                             className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                         >
                             {city}

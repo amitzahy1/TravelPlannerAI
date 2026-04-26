@@ -708,14 +708,15 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 </button>
             </div>
 
-            {/* City Filter Bar — tap on a city → auto-switch to map view
-                 so the chosen city snaps into focus near the hotel anchor. */}
+            {/* City Filter Bar — tapping a city only changes the filter,
+                 the user stays on whichever view (list/map) they were on.
+                 The unified-map tab is where snap-to-city behaviour lives. */}
             {tripCities.length > 1 && (
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
                     {tripCities.map(city => (
                         <button
                             key={city}
-                            onClick={() => { setSelectedCity(city); setViewMode('map'); }}
+                            onClick={() => setSelectedCity(city)}
                             className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                         >
                             {city}
