@@ -85,11 +85,6 @@ interface UnifiedMapViewProps {
     // Concentric translucent circles around each hotel coord (1.2km
     // ≈ 15min walk and 2.4km ≈ 30min walk at 5 km/h).
     walkingCircles?: boolean;
-    // Day filter — when set to a Set of item IDs (returned by
-    // tripDays.idsOnDay), every pin/route element NOT in the set
-    // renders at 35% opacity so the day's plan stands out without
-    // making other items invisible.
-    dayFilterIds?: Set<string> | null;
     // When true, AI restaurant/attraction pins are augmented with
     // overlapping semi-transparent circles creating a density-heat visual.
     heatmap?: boolean;
@@ -475,25 +470,25 @@ const makePopupHtml = (item: MapItem) => {
         ? `<div style="font-size:11px;color:#475569;margin-top:8px;line-height:1.5;">${escapeHtml(item.description)}</div>`
         : '';
     const notesHtml = item.notes
-        ? `<div style="font-size:11px;color:#475569;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 8px;margin-top:8px;line-height:1.45;">📝 ${escapeHtml(item.notes)}</div>`
+        ? `<div style="font-size:11px;color:#475569;background:#fffaeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-top:8px;line-height:1.5;">📝 ${escapeHtml(item.notes)}</div>`
         : '';
     const dateHtml = dateStr
         ? `<div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:8px;">📅 ${dateStr}</div>`
         : '';
 
     return `
-        <div style="font-family:'Rubik','Inter',sans-serif;direction:rtl;text-align:right;width:240px;padding:0;">
+        <div style="font-family:'Rubik','Inter',sans-serif;direction:rtl;text-align:right;width:272px;padding:0;">
             <div style="
                 position:relative;
                 width:100%;
-                height:140px;
+                height:168px;
                 ${cardBg}
                 overflow:hidden;
             ">
                 ${tagChip}
                 ${priceChip}
                 <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 12px;display:flex;flex-direction:column;gap:3px;">
-                    <h3 dir="ltr" style="margin:0;font-size:15px;font-weight:900;color:#fff;line-height:1.2;text-align:left;text-shadow:0 1px 2px rgba(0,0,0,0.4);">${escapeHtml(item.name)}</h3>
+                    <h3 dir="ltr" style="margin:0;font-size:16px;font-weight:900;color:#fff;line-height:1.2;text-align:left;text-shadow:0 1px 2px rgba(0,0,0,0.4);">${escapeHtml(item.name)}</h3>
                     ${item.address ? `<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:#cbd5e1;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.5);">📍 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(item.address)}</span></div>` : ''}
                     ${(ratingPill || sourcePill) ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;">${ratingPill}${sourcePill}</div>` : ''}
                 </div>
@@ -519,7 +514,6 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     embedded = false,
     activeCity: controlledActiveCity,
     walkingCircles = false,
-    dayFilterIds = null,
     heatmap = false,
     flyTo = null,
 }) => {
@@ -538,6 +532,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     const markersRef = useRef<L.LayerGroup | null>(null);
     const routeLayerRef = useRef<L.LayerGroup | null>(null);
     const locateMarkerRef = useRef<L.CircleMarker | null>(null);
+    // Mirror of geocodedCache as a ref so the mapItems-building useEffect can
+    // pre-populate coordinates from cache without listing it as a dependency
+    // (which would cause infinite render loops).
+    const geocodedCacheRef = useRef<Record<string, { lat: number; lng: number }>>({});
 
     const [mapItems, setMapItems] = useState<MapItem[]>([]);
     const [loading, setLoading] = useState(false);
@@ -558,6 +556,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number; lng: number }>>(() => {
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
     });
+
+    // Keep geocodedCacheRef in sync so the mapItems useEffect can read it.
+    useEffect(() => { geocodedCacheRef.current = geocodedCache; }, [geocodedCache]);
 
     // 1. Build raw map items from trip data
     useEffect(() => {
@@ -589,7 +590,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             if (layerFlags.hotels) {
                 trip.hotels?.forEach(h => {
                     const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
-                    raw.push({ id: h.id, type: 'hotel', name: h.name, address: h.address, lat: h.lat, lng: h.lng, description: h.roomType, date: h.checkInDate, city });
+                    raw.push({
+                        id: h.id, type: 'hotel', name: h.name, address: h.address,
+                        lat: h.lat, lng: h.lng, description: h.roomType, date: h.checkInDate, city,
+                        imageUrl: h.imageUrl,
+                        notes: h.notes,
+                        googleMapsUrl: h.googleMapsUrl,
+                        priceRange: h.price,
+                        recommendationSource: h.bookingSource,
+                    });
                 });
             }
 
@@ -661,6 +670,18 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // Assign chronological order
         const sorted = [...raw].sort((a, b) => getItemTimestamp(a) - getItemTimestamp(b));
         sorted.forEach((item, i) => { item.order = i + 1; });
+
+        // Pre-populate coordinates from geocoding cache so items that were
+        // resolved in a previous session show immediately without re-geocoding.
+        // Uses a ref (not state) to avoid adding geocodedCache as a dependency
+        // which would create an infinite render loop.
+        const cacheSnap = geocodedCacheRef.current;
+        sorted.forEach(item => {
+            if (!isValidCoordinate(item.lat, item.lng) && item.address && cacheSnap[item.address]) {
+                item.lat = cacheSnap[item.address].lat;
+                item.lng = cacheSnap[item.address].lng;
+            }
+        });
 
         setMapItems(sorted);
     }, [trip, items, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions]);
@@ -1147,7 +1168,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             })
                 .bindPopup(makePopupHtml(item), {
                     className: 'premium-popup',
-                    maxWidth: 280,
+                    maxWidth: 292,
                     minWidth: 210,
                 })
                 .addTo(targetLayer);
@@ -1166,14 +1187,6 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     setHoveredItem(null);
                     setHoverPos(null);
                 });
-
-            // Dim pins that don't belong to the active day filter.
-            if (dayFilterIds !== null) {
-                const inDay = item.flightId && item.date
-                    ? dayFilterIds.has(`${item.flightId}_${item.date}`)
-                    : dayFilterIds.has(item.id);
-                if (!inDay) marker.setOpacity(0.28);
-            }
 
             // Heatmap: draw a soft glow circle under AI items so dense areas
             // appear "hotter". Circles are added to markerLayer so they clear
@@ -1467,7 +1480,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         }
 
         [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
-    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles, dayFilterIds]);
+    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles]);
 
     // Popup CSS injection
     useEffect(() => {

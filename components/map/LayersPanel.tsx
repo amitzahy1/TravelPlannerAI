@@ -1,18 +1,40 @@
 /**
- * Sticky-right panel (desktop) / bottom sheet (mobile) on the unified
- * trip map. Toggles visibility of map layers, walking circles, theme,
- * heatmap mode, and exposes the missing-data summary pill.
+ * Layers panel — desktop: rendered as sidebar content (parent owns the <aside>).
+ * Mobile: rendered inside the parent's bottom-sheet wrapper.
  *
- * Pure presentational — owns no state of its own. The parent
- * (FullTripMapView) holds all preferences via `useMapPreferences`.
+ * Pure presentational — owns no state. FullTripMapView holds all preferences.
  */
 
 import React from 'react';
-import { Map as MapIcon, Building2, ListChecks, Utensils, Star, AlertTriangle, Footprints, Flame, Moon, Sun, X } from 'lucide-react';
+import {
+        Map as MapIcon, Building2, ListChecks, Utensils, Star,
+        AlertTriangle, Footprints, Flame, Moon, Sun, X,
+} from 'lucide-react';
 import { MapPreferences } from '../../hooks/useMapPreferences';
 
-interface LayerCheckboxProps {
-        id: string;
+// ── Toggle switch (iOS-style) ────────────────────────────────────────────────
+interface ToggleProps {
+        checked: boolean;
+        onChange: (next: boolean) => void;
+        label: string;
+}
+
+const Toggle: React.FC<ToggleProps> = ({ checked, onChange, label }) => (
+        <button
+                onClick={() => onChange(!checked)}
+                className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-blue-400 ${checked ? 'bg-blue-500' : 'bg-slate-200'}`}
+                role="switch"
+                aria-checked={checked}
+                aria-label={label}
+        >
+                <span
+                        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`}
+                />
+        </button>
+);
+
+// ── Layer row ────────────────────────────────────────────────────────────────
+interface LayerRowProps {
         label: string;
         checked: boolean;
         onChange: (next: boolean) => void;
@@ -21,32 +43,30 @@ interface LayerCheckboxProps {
         count?: number;
 }
 
-const LayerCheckbox: React.FC<LayerCheckboxProps> = ({ id, label, checked, onChange, icon, accentColor, count }) => (
-        <label
-                htmlFor={id}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all border ${checked ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50/50 border-transparent'}`}
-        >
-                <input
-                        id={id}
-                        type="checkbox"
-                        checked={checked}
-                        onChange={e => onChange(e.target.checked)}
-                        className="w-4 h-4 rounded border-slate-300 cursor-pointer"
-                        style={{ accentColor }}
-                        aria-label={label}
-                />
-                <span className="flex-1 flex items-center gap-2 text-sm font-bold text-slate-700">
-                        <span style={{ color: accentColor }}>{icon}</span>
-                        {label}
+const LayerRow: React.FC<LayerRowProps> = ({ label, checked, onChange, icon, accentColor, count }) => (
+        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-50 transition-colors">
+                <span
+                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${accentColor}1a`, color: accentColor }}
+                >
+                        {icon}
                 </span>
+                <span className="flex-1 text-sm font-semibold text-slate-700 leading-none">{label}</span>
                 {typeof count === 'number' && count > 0 && (
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 min-w-[20px] text-center">
-                                {count}
-                        </span>
+                        <span className="text-[11px] font-black text-slate-400 tabular-nums">{count}</span>
                 )}
-        </label>
+                <Toggle checked={checked} onChange={onChange} label={label} />
+        </div>
 );
 
+// ── Section header ───────────────────────────────────────────────────────────
+const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+        <div className="px-3 pt-4 pb-1.5">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{children}</span>
+        </div>
+);
+
+// ── Main panel ───────────────────────────────────────────────────────────────
 interface LayersPanelProps {
         prefs: MapPreferences;
         onPrefChange: (patch: Partial<MapPreferences>) => void;
@@ -58,12 +78,7 @@ interface LayersPanelProps {
         };
         missingCount: number;
         onMissingClick: () => void;
-        // Mobile bottom-sheet support: when `mobileOpen` and `onMobileClose`
-        // are provided, the panel renders inline content; the parent owns
-        // the sheet wrapper. Desktop callers leave both undefined and the
-        // panel renders as a sticky card.
         onClose?: () => void;
-        layout: 'desktop' | 'mobile';
 }
 
 export const LayersPanel: React.FC<LayersPanelProps> = ({
@@ -73,116 +88,112 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
         missingCount,
         onMissingClick,
         onClose,
-        layout,
-}) => {
-        const wrapperClasses = layout === 'desktop'
-                ? 'absolute top-4 right-4 z-[1000] w-64 max-h-[calc(100vh-2rem)] overflow-y-auto bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/80 p-3 space-y-2'
-                : 'w-full bg-white p-4 space-y-2';
-
-        return (
-                <div className={wrapperClasses} dir="rtl">
-                        <div className="flex items-center justify-between px-1 pb-1">
-                                <h3 className="text-sm font-black text-slate-800">שכבות במפה</h3>
+}) => (
+        <div className="flex flex-col h-full" dir="rtl">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100">
+                        <h3 className="text-sm font-black text-slate-800 tracking-tight">שכבות מפה</h3>
+                        <div className="flex items-center gap-2">
+                                {missingCount > 0 && (
+                                        <button
+                                                onClick={onMissingClick}
+                                                className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors"
+                                                title={`${missingCount} פריטים חסרים בטיול`}
+                                        >
+                                                <AlertTriangle className="w-3 h-3 text-amber-500" />
+                                                <span className="text-[10px] font-black text-amber-700">{missingCount}</span>
+                                        </button>
+                                )}
                                 {onClose && (
                                         <button
                                                 onClick={onClose}
-                                                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500"
+                                                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 transition-colors"
                                                 aria-label="סגור פנל שכבות"
                                         >
                                                 <X className="w-4 h-4" />
                                         </button>
                                 )}
                         </div>
+                </div>
 
-                        <LayerCheckbox
-                                id="layer-route"
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto py-1">
+                        <SectionHeader>הצגה</SectionHeader>
+                        <LayerRow
                                 label="מסלול הטיול"
                                 checked={prefs.route}
                                 onChange={v => onPrefChange({ route: v })}
-                                icon={<MapIcon className="w-4 h-4" />}
+                                icon={<MapIcon className="w-3.5 h-3.5" />}
                                 accentColor="#2563eb"
                         />
-                        <LayerCheckbox
-                                id="layer-hotels"
+                        <LayerRow
                                 label="מלונות"
                                 checked={prefs.hotels}
                                 onChange={v => onPrefChange({ hotels: v })}
-                                icon={<Building2 className="w-4 h-4" />}
+                                icon={<Building2 className="w-3.5 h-3.5" />}
                                 accentColor="#0ea5e9"
                                 count={counts.hotels}
                         />
-                        <LayerCheckbox
-                                id="layer-mylists"
+                        <LayerRow
                                 label="הרשימות שלי"
                                 checked={prefs.myLists}
                                 onChange={v => onPrefChange({ myLists: v })}
-                                icon={<ListChecks className="w-4 h-4" />}
+                                icon={<ListChecks className="w-3.5 h-3.5" />}
                                 accentColor="#a855f7"
                                 count={counts.myLists}
                         />
-                        <LayerCheckbox
-                                id="layer-airestaurants"
+                        <LayerRow
                                 label="אוכל מומלץ (AI)"
                                 checked={prefs.aiRestaurants}
                                 onChange={v => onPrefChange({ aiRestaurants: v })}
-                                icon={<Utensils className="w-4 h-4" />}
+                                icon={<Utensils className="w-3.5 h-3.5" />}
                                 accentColor="#f97316"
                                 count={counts.aiRestaurants}
                         />
-                        <LayerCheckbox
-                                id="layer-aiattractions"
-                                label="אטרקציות מומלצות (AI)"
+                        <LayerRow
+                                label="אטרקציות (AI)"
                                 checked={prefs.aiAttractions}
                                 onChange={v => onPrefChange({ aiAttractions: v })}
-                                icon={<Star className="w-4 h-4" />}
+                                icon={<Star className="w-3.5 h-3.5" />}
                                 accentColor="#8b5cf6"
                                 count={counts.aiAttractions}
                         />
 
-                        <div className="my-2 h-px bg-slate-200" />
-
-                        {/* Extras: walking circles + heatmap + theme */}
-                        <LayerCheckbox
-                                id="extra-walking"
-                                label="מעגל הליכה (15/30 דק׳)"
+                        <SectionHeader>תצוגה</SectionHeader>
+                        <LayerRow
+                                label="מעגל הליכה 15/30 דק׳"
                                 checked={prefs.walkingCircles}
                                 onChange={v => onPrefChange({ walkingCircles: v })}
-                                icon={<Footprints className="w-4 h-4" />}
+                                icon={<Footprints className="w-3.5 h-3.5" />}
                                 accentColor="#10b981"
                         />
-                        <LayerCheckbox
-                                id="extra-heatmap"
+                        <LayerRow
                                 label="מפת צפיפות (AI)"
                                 checked={prefs.heatmap}
                                 onChange={v => onPrefChange({ heatmap: v })}
-                                icon={<Flame className="w-4 h-4" />}
+                                icon={<Flame className="w-3.5 h-3.5" />}
                                 accentColor="#ef4444"
                         />
 
-                        <button
-                                onClick={() => onPrefChange({ theme: prefs.theme === 'dark' ? 'light' : 'dark' })}
-                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors border border-transparent text-sm font-bold text-slate-700"
-                        >
-                                <span className="flex items-center gap-2">
-                                        {prefs.theme === 'dark' ? <Moon className="w-4 h-4 text-indigo-500" /> : <Sun className="w-4 h-4 text-amber-500" />}
-                                        ערכת מפה: {prefs.theme === 'dark' ? 'כהה' : 'בהירה'}
-                                </span>
-                                <span className="text-[10px] font-black text-slate-400">החלף</span>
-                        </button>
-
-                        {missingCount > 0 && (
-                                <>
-                                        <div className="my-2 h-px bg-slate-200" />
+                        {/* Theme toggle — two pills */}
+                        <div className="px-3 py-3 mt-1">
+                                <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
                                         <button
-                                                onClick={onMissingClick}
-                                                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors text-sm font-bold text-amber-800"
+                                                onClick={() => onPrefChange({ theme: 'light' })}
+                                                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${prefs.theme === 'light' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
                                         >
-                                                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                                                <span className="flex-1 text-right">{missingCount} פריטים חסרים בטיול</span>
-                                                <span className="text-[10px] font-black text-amber-600">פרט</span>
+                                                <Sun className="w-3.5 h-3.5 text-amber-500" />
+                                                בהירה
                                         </button>
-                                </>
-                        )}
+                                        <button
+                                                onClick={() => onPrefChange({ theme: 'dark' })}
+                                                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${prefs.theme === 'dark' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                                <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                                                כהה
+                                        </button>
+                                </div>
+                        </div>
                 </div>
-        );
-};
+        </div>
+);
