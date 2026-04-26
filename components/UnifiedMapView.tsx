@@ -403,56 +403,61 @@ const makeRouteBadge = (distKm: number, transport: SegmentTransportInfo, color: 
 const makePopupHtml = (item: MapItem) => {
     const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
     const dateStr = item.date ? parseTripDate(item.date)?.toLocaleDateString('he-IL', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
-    // Star row — show only if the item carries a real numeric rating (the
-    // legacy `description: '4.5⭐'` shape is treated as a label fallback).
-    const ratingHtml = typeof item.rating === 'number' && item.rating > 0
-        ? `<div style="font-size:12px;font-weight:800;color:#f59e0b;margin-bottom:4px;">⭐ ${item.rating.toFixed(1)}</div>`
+    const mapsLink = item.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((item.name + ' ' + (item.address || '')).trim())}`;
+    const tagLabel = (item.cuisine || item.category || cfg.label || '').toString();
+    // Mirror the list-view PlaceCard look: image-as-background, dark scrim,
+    // big white name + location at the bottom, rating + source pills, plus
+    // a top-right cuisine/category chip. Description/notes/maps-link sit
+    // beneath the card. When no imageUrl is present, fall back to a tinted
+    // gradient placeholder using the type's brand colours.
+    const cardBg = item.imageUrl
+        ? `background-image:linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.2) 55%,transparent 90%),url('${escapeHtml(item.imageUrl)}');background-size:cover;background-position:center;`
+        : `background:linear-gradient(135deg,${cfg.gradient[0]} 0%,${cfg.gradient[1]} 100%);`;
+    const ratingPill = typeof item.rating === 'number' && item.rating > 0
+        ? `<span style="display:inline-flex;align-items:center;gap:2px;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:6px;flex-shrink:0;">⭐ ${item.rating.toFixed(1)}</span>`
         : '';
-    // Build a chips row for cuisine / category / price range — these are
-    // the same secondary attributes the list-view card shows under the name.
-    const chips: string[] = [];
-    if (item.cuisine) chips.push(item.cuisine);
-    if (item.category) chips.push(item.category);
-    if (item.priceRange) chips.push(item.priceRange);
-    const chipsHtml = chips.length
-        ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">${chips.map(c => `<span style="font-size:10px;font-weight:700;color:${cfg.color};background:${cfg.color}15;border:1px solid ${cfg.color}33;border-radius:999px;padding:2px 8px;">${escapeHtml(c)}</span>`).join('')}</div>`
+    const sourcePill = item.recommendationSource
+        ? `<span style="display:inline-flex;align-items:center;gap:2px;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);color:#fde047;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.3px;padding:2px 6px;border-radius:6px;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🏆 ${escapeHtml(item.recommendationSource)}</span>`
         : '';
-    const sourceHtml = item.recommendationSource
-        ? `<div style="font-size:10px;color:#64748b;margin-bottom:4px;font-style:italic;">— ${escapeHtml(item.recommendationSource)}</div>`
+    const tagChip = tagLabel
+        ? `<span dir="ltr" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.18);color:#fff;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.4px;padding:3px 8px;border-radius:6px;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(tagLabel)}</span>`
+        : '';
+    const priceChip = item.priceRange
+        ? `<span style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.18);color:#fff;font-size:9px;font-weight:900;padding:3px 8px;border-radius:6px;">${escapeHtml(item.priceRange)}</span>`
         : '';
     const descHtml = item.description
-        ? `<div style="font-size:11px;color:#475569;margin-bottom:6px;background:#f8fafc;padding:6px 8px;border-radius:8px;line-height:1.45;">${escapeHtml(item.description)}</div>`
+        ? `<div style="font-size:11px;color:#475569;margin-top:8px;line-height:1.5;">${escapeHtml(item.description)}</div>`
         : '';
     const notesHtml = item.notes
-        ? `<div style="font-size:11px;color:#475569;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 8px;margin-bottom:6px;line-height:1.45;">📝 ${escapeHtml(item.notes)}</div>`
+        ? `<div style="font-size:11px;color:#475569;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 8px;margin-top:8px;line-height:1.45;">📝 ${escapeHtml(item.notes)}</div>`
         : '';
-    const imgHtml = item.imageUrl
-        ? `<img src="${escapeHtml(item.imageUrl)}" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:10px;margin-bottom:8px;" loading="lazy" />`
+    const dateHtml = dateStr
+        ? `<div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:8px;">📅 ${dateStr}</div>`
         : '';
-    const mapsLink = item.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((item.name + ' ' + (item.address || '')).trim())}`;
+
     return `
-        <div style="font-family:'Rubik','Inter',sans-serif;direction:rtl;text-align:right;min-width:220px;max-width:280px;padding:2px;">
-            ${imgHtml}
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                <div style="
-                    width:36px;height:36px;border-radius:10px;
-                    background:linear-gradient(135deg,${cfg.gradient[0]},${cfg.gradient[1]});
-                    display:flex;align-items:center;justify-content:center;
-                    font-size:18px;flex-shrink:0;
-                ">${cfg.emoji}</div>
-                <div style="min-width:0;">
-                    <div style="font-size:10px;font-weight:700;color:${cfg.color};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:1px;">${cfg.label}</div>
-                    <div style="font-size:14px;font-weight:800;color:#0f172a;line-height:1.2;">${escapeHtml(item.name)}</div>
+        <div style="font-family:'Rubik','Inter',sans-serif;direction:rtl;text-align:right;width:240px;padding:0;">
+            <div style="
+                position:relative;
+                width:100%;
+                height:140px;
+                ${cardBg}
+                overflow:hidden;
+            ">
+                ${tagChip}
+                ${priceChip}
+                <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 12px;display:flex;flex-direction:column;gap:3px;">
+                    <h3 dir="ltr" style="margin:0;font-size:15px;font-weight:900;color:#fff;line-height:1.2;text-align:left;text-shadow:0 1px 2px rgba(0,0,0,0.4);">${escapeHtml(item.name)}</h3>
+                    ${item.address ? `<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:#cbd5e1;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.5);">📍 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(item.address)}</span></div>` : ''}
+                    ${(ratingPill || sourcePill) ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;">${ratingPill}${sourcePill}</div>` : ''}
                 </div>
             </div>
-            ${ratingHtml}
-            ${chipsHtml}
-            ${sourceHtml}
-            ${descHtml}
-            ${notesHtml}
-            ${item.address ? `<div style="font-size:11px;color:#64748b;display:flex;align-items:flex-start;gap:4px;margin-bottom:6px;">📍 <span>${escapeHtml(item.address)}</span></div>` : ''}
-            ${dateStr ? `<div style="font-size:11px;color:#94a3b8;font-weight:600;margin-bottom:6px;">📅 ${dateStr}</div>` : ''}
-            <a href="${escapeHtml(mapsLink)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#2563eb;text-decoration:none;background:#eff6ff;border:1px solid #bfdbfe;padding:4px 10px;border-radius:8px;">🧭 פתח ב-Google Maps</a>
+            <div style="padding:10px 12px;">
+                ${descHtml}
+                ${notesHtml}
+                ${dateHtml}
+                <a href="${escapeHtml(mapsLink)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:#2563eb;text-decoration:none;background:#eff6ff;border:1px solid #bfdbfe;padding:5px 10px;border-radius:8px;margin-top:8px;">🧭 ניווט ב-Google Maps</a>
+            </div>
         </div>
     `;
 };
@@ -1259,14 +1264,17 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({ trip, items, hei
                 padding: 0;
                 overflow: hidden;
             }
-            .premium-popup .leaflet-popup-content { margin: 14px 14px; }
+            /* Zero margin lets the image card go edge-to-edge inside the
+               popup wrapper, mirroring the list-view PlaceCard look. */
+            .premium-popup .leaflet-popup-content { margin: 0; width: 240px !important; }
             .premium-popup .leaflet-popup-tip-container { display: none; }
             .premium-popup .leaflet-popup-close-button {
-                top: 8px; right: 8px;
-                color: #94a3b8; font-size: 18px; font-weight: 300;
-                background: rgba(248,250,252,0.8); border-radius: 50%;
+                top: 8px; right: 8px; z-index: 10;
+                color: #fff; font-size: 18px; font-weight: 300;
+                background: rgba(0,0,0,0.4); border-radius: 50%;
                 width: 24px; height: 24px; display: flex; align-items: center; justify-content:center;
                 line-height: 1;
+                backdrop-filter: blur(4px);
             }
         `;
         document.head.appendChild(style);

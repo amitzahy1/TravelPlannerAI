@@ -288,8 +288,15 @@ export const cityKey = (name: string): string => {
         const cleaned = normalizeCityRaw(cleanCityName(name));
         if (!cleaned) return '';
         const lower = cleaned.toLowerCase();
-        // English match
-        if (CITY_HEBREW_NAMES[lower]) return lower;
+        // English match → bounce through the Hebrew form to canonicalise across
+        // English alias variants. Multiple English keys can map to the SAME
+        // Hebrew (e.g. "Koh Chang" + "Ko Chang" → "קו צ'אנג"), so we look up
+        // the Hebrew, then look up the canonical English back. That collapses
+        // every alias to whichever English form the lookup table picks last
+        // (the de facto canonical). Without this round-trip, the city filter
+        // listed "קו צ'אנג" twice — same Hebrew display, different keys.
+        const hebrewFromLower = CITY_HEBREW_NAMES[lower];
+        if (hebrewFromLower) return HEBREW_TO_ENGLISH_KEY[hebrewFromLower] || lower;
         // Hebrew match (try cleaned + a punctuation-stripped variant)
         if (HEBREW_TO_ENGLISH_KEY[cleaned]) return HEBREW_TO_ENGLISH_KEY[cleaned];
         const stripped = cleaned.replace(/[׳'′]/g, '');

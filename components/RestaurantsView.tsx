@@ -998,13 +998,15 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 </button>
             </div>
 
-            {/* City Filter Bar (Task 3) */}
+            {/* City Filter Bar (Task 3). Tap on a city → auto-switch to map
+                 view so the user instantly sees the chosen city centred near
+                 the hotel (the hotel pin is always included in fitBounds). */}
             {tripCities.length > 1 && (
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
                     {tripCities.map(city => (
                         <button
                             key={city}
-                            onClick={() => setSelectedCity(city)}
+                            onClick={() => { setSelectedCity(city); setViewMode('map'); }}
                             className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                         >
                             {city}
