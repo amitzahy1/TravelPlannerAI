@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle } from 'lucide-react';
 
 interface ConfirmModalProps {
@@ -22,12 +23,27 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         onClose,
         isDangerous = false
 }) => {
-        if (!isOpen) return null;
+        // Lock body scroll while the modal is open so the page beneath doesn't
+        // shift around and the modal stays anchored where the user is looking.
+        useEffect(() => {
+                if (!isOpen) return;
+                const previousOverflow = document.body.style.overflow;
+                document.body.style.overflow = 'hidden';
+                return () => { document.body.style.overflow = previousOverflow; };
+        }, [isOpen]);
 
-        return (
+        if (!isOpen) return null;
+        if (typeof document === 'undefined') return null;
+
+        // Render through a portal so the modal escapes any transformed /
+        // filtered ancestor (Tailwind animations, framer-motion wrappers,
+        // backdrop-blur containers etc. all create new containing blocks
+        // that turn `position: fixed` into `position: absolute`, which is
+        // why the user had to scroll the page to find the modal).
+        return createPortal(
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
 
-                        <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 transform transition-all scale-100" onClick={e => e.stopPropagation()}>
+                        <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 transition-all scale-100" onClick={e => e.stopPropagation()}>
                                 <div className="flex flex-col items-center text-center gap-4">
                                         <div className={`p-3 rounded-full ${isDangerous ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
                                                 <AlertTriangle className="w-8 h-8" />
@@ -55,6 +71,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                                         </div>
                                 </div>
                         </div>
-                </div>
+                </div>,
+                document.body
         );
 };

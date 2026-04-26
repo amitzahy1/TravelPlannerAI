@@ -362,17 +362,34 @@ export const locationMatchesCity = (location: string, cityDisplayName: string): 
  */
 export const displayCityName = (name: string, lang: 'he' | 'en' = 'he'): string => {
         if (!name) return '';
-        const cleaned = cleanCityName(name).trim();
+        // Same normalisation pipeline as cityKey() so Unicode-variant inputs
+        // (Hebrew geresh ׳ vs ASCII ', stray ZWSP, etc.) hit the lookup table.
+        // Without this, two raw forms of "קו צ'אנג" produce two display labels
+        // even though cityKey() correctly collapses them — and the city filter
+        // ends up showing the same city twice.
+        const cleaned = normalizeCityRaw(cleanCityName(name));
         const lower = cleaned.toLowerCase();
         if (lang === 'he') {
                 if (CITY_HEBREW_NAMES[lower]) return CITY_HEBREW_NAMES[lower];
                 if (HEBREW_TO_ENGLISH_KEY[cleaned]) return cleaned; // already Hebrew we recognise
+                // Last-chance Hebrew lookup — try matching against any normalised
+                // key in the table, so unrecognised apostrophe variants still find
+                // their canonical Hebrew form.
+                for (const [hebrew, en] of Object.entries(HEBREW_TO_ENGLISH_KEY)) {
+                        if (normalizeCityRaw(hebrew) === cleaned) return hebrew;
+                }
                 return cleaned;
         } else {
                 if (CITY_HEBREW_NAMES[lower]) return cleaned; // already English we recognise
                 const englishKey = HEBREW_TO_ENGLISH_KEY[cleaned];
                 if (englishKey) {
                         return englishKey.replace(/\b\w/g, c => c.toUpperCase());
+                }
+                // Last-chance English lookup — same idea as the Hebrew block.
+                for (const [hebrew, en] of Object.entries(HEBREW_TO_ENGLISH_KEY)) {
+                        if (normalizeCityRaw(hebrew) === cleaned) {
+                                return en.replace(/\b\w/g, c => c.toUpperCase());
+                        }
                 }
                 return cleaned;
         }
