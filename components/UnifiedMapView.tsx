@@ -138,8 +138,9 @@ const HEBREW_TO_ENGLISH_CITY_MAP: Record<string, string[]> = {
 const getCityKeywords = (cityName: string): string[] => {
     const lowerCity = cityName.toLowerCase();
     for (const [hebrew, englishList] of Object.entries(HEBREW_TO_ENGLISH_CITY_MAP)) {
-        if (hebrew.toLowerCase() === lowerCity) return englishList.map(e => e.toLowerCase());
-        if (englishList.some(e => e.toLowerCase() === lowerCity)) return [hebrew.toLowerCase(), ...englishList.map(e => e.toLowerCase())];
+        // Always include the original input so Hebrew city names match Hebrew city fields.
+        if (hebrew.toLowerCase() === lowerCity) return [lowerCity, ...englishList.map(e => e.toLowerCase())];
+        if (englishList.some(e => e.toLowerCase() === lowerCity)) return [lowerCity, hebrew.toLowerCase(), ...englishList.map(e => e.toLowerCase())];
     }
     return [lowerCity];
 };
@@ -1144,11 +1145,29 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         const visibleItems = activeCity === 'ALL'
             ? validItems
             : validItems.filter(i => {
-                const str = (i.address || i.city || '').toLowerCase();
-                return getCityKeywords(activeCity).some(kw => str.includes(kw));
+                const keywords = getCityKeywords(activeCity);
+                const addr = (i.address || '').toLowerCase();
+                const itemCity = (i.city || '').toLowerCase();
+                // Check address string AND city field — city may be stored in
+                // Hebrew while keywords include the Hebrew form after the fix.
+                return keywords.some(kw => addr.includes(kw) || itemCity.includes(kw));
             });
 
         const bounds = L.latLngBounds([]);
+
+        // Build a trip-region guard: any non-airport pin more than
+        // MAX_TRIP_RADIUS_KM from the nearest hotel is almost certainly
+        // a geocoding error (AI restaurant whose name also exists in
+        // another continent). Skip it entirely rather than zooming the map
+        // out to show, e.g., Australia pins on a Thailand trip.
+        const MAX_TRIP_RADIUS_KM = 2500;
+        const hotelAnchors = (trip?.hotels || [])
+            .filter(h => isValidCoordinate(h.lat, h.lng))
+            .map(h => ({ lat: h.lat!, lng: h.lng! }));
+        const isInTripRegion = (lat: number, lng: number): boolean => {
+            if (hotelAnchors.length === 0) return true;
+            return hotelAnchors.some(a => getDistanceKm(lat, lng, a.lat, a.lng) <= MAX_TRIP_RADIUS_KM);
+        };
 
         // Plot non-airport items with premium pins. Hotels are routed to
         // the unclustered route layer so they're always individually
@@ -1156,6 +1175,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // clusters of restaurants/attractions would otherwise hide them.
         visibleItems.forEach(item => {
             if (item.type === 'airport') return;
+            if (item.type !== 'hotel' && !isInTripRegion(item.lat!, item.lng!)) return;
             const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
             const icon = makePinIcon(cfg, item.name);
 
@@ -1204,15 +1224,18 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             bounds.extend([item.lat!, item.lng!]);
         });
 
-        // Always include every hotel's coords in the bounds even if it
-        // isn't in `visibleItems` (e.g. when filtered to a single category)
-        // — the user explicitly asked for the hotel to remain a reference
-        // point regardless of what else is on screen.
+        // Include hotel coords in bounds — if a city filter is active, only
+        // hotels in that city; otherwise all hotels so the full trip anchors.
         if (trip?.hotels?.length) {
+            const cityKws = activeCity !== 'ALL' ? getCityKeywords(activeCity) : null;
             trip.hotels.forEach(h => {
-                if (isValidCoordinate(h.lat, h.lng)) {
-                    bounds.extend([h.lat!, h.lng!]);
+                if (!isValidCoordinate(h.lat, h.lng)) return;
+                if (cityKws) {
+                    const addr = (h.address || '').toLowerCase();
+                    const hCity = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip)).toLowerCase();
+                    if (!cityKws.some(kw => addr.includes(kw) || hCity.includes(kw))) return;
                 }
+                bounds.extend([h.lat!, h.lng!]);
             });
         }
 

@@ -8,7 +8,7 @@
 import React from 'react';
 import {
         Map as MapIcon, Building2, ListChecks, Utensils, Star,
-        AlertTriangle, Footprints, Flame, Moon, Sun, X,
+        AlertTriangle, Footprints, X,
 } from 'lucide-react';
 import { MapPreferences } from '../../hooks/useMapPreferences';
 
@@ -167,33 +167,6 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
                                 icon={<Footprints className="w-3.5 h-3.5" />}
                                 accentColor="#10b981"
                         />
-                        <LayerRow
-                                label="מפת צפיפות (AI)"
-                                checked={prefs.heatmap}
-                                onChange={v => onPrefChange({ heatmap: v })}
-                                icon={<Flame className="w-3.5 h-3.5" />}
-                                accentColor="#ef4444"
-                        />
-
-                        {/* Theme toggle — two pills */}
-                        <div className="px-3 py-3 mt-1">
-                                <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
-                                        <button
-                                                onClick={() => onPrefChange({ theme: 'light' })}
-                                                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${prefs.theme === 'light' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
-                                        >
-                                                <Sun className="w-3.5 h-3.5 text-amber-500" />
-                                                בהירה
-                                        </button>
-                                        <button
-                                                onClick={() => onPrefChange({ theme: 'dark' })}
-                                                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${prefs.theme === 'dark' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
-                                        >
-                                                <Moon className="w-3.5 h-3.5 text-indigo-500" />
-                                                כהה
-                                        </button>
-                                </div>
-                        </div>
                 </div>
         </div>
 );

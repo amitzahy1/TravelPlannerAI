@@ -48,8 +48,8 @@ const DEFAULT_LAYERS: MapLayers = {
         route: true,
         hotels: true,
         myLists: true,
-        aiRestaurants: false,    // AI off by default — user opts in
-        aiAttractions: false,
+        aiRestaurants: true,
+        aiAttractions: true,
 };
 
 const DEFAULT_EXTRAS: MapExtras = {
