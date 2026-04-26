@@ -11,6 +11,7 @@ import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegCla
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
 import { safeMapsUrl } from '../utils/mapsUrl';
+import { HoverPreviewCard } from './map/HoverPreviewCard';
 
 // --- Interfaces ---
 interface MapItem {
@@ -89,6 +90,12 @@ interface UnifiedMapViewProps {
     // renders at 35% opacity so the day's plan stands out without
     // making other items invisible.
     dayFilterIds?: Set<string> | null;
+    // When true, AI restaurant/attraction pins are augmented with
+    // overlapping semi-transparent circles creating a density-heat visual.
+    heatmap?: boolean;
+    // When set, the map smooth-flies to these coordinates. Set to a new
+    // object reference each time a fly is desired (e.g. GPS locate).
+    flyTo?: { lat: number; lng: number; zoom?: number } | null;
 }
 
 const STORAGE_KEY = 'travel_app_geo_cache_v5';
@@ -513,6 +520,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     activeCity: controlledActiveCity,
     walkingCircles = false,
     dayFilterIds = null,
+    heatmap = false,
+    flyTo = null,
 }) => {
     // Default every layer flag to TRUE so the existing per-tab callers
     // (RestaurantsView / AttractionsView) keep working without passing
@@ -528,12 +537,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     const mapInstanceRef = useRef<L.Map | null>(null);
     const markersRef = useRef<L.LayerGroup | null>(null);
     const routeLayerRef = useRef<L.LayerGroup | null>(null);
+    const locateMarkerRef = useRef<L.CircleMarker | null>(null);
 
     const [mapItems, setMapItems] = useState<MapItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeCity, setActiveCity] = useState<string | 'ALL'>('ALL');
     const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
     const [activeStop, setActiveStop] = useState<number | null>(null);
+    const [hoveredItem, setHoveredItem] = useState<MapItem | null>(null);
+    const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
 
     // Sync externally-controlled city → internal state. When
     // `controlledActiveCity` is `undefined` the component manages its own
@@ -1133,12 +1145,40 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 })
                 .addTo(targetLayer);
 
+            // Hover preview (desktop) — set React state from the Leaflet
+            // event so a card renders in the map container's coordinate space.
+            marker
+                .on('mouseover', (e: L.LeafletMouseEvent) => {
+                    setHoveredItem(item);
+                    setHoverPos({ x: e.containerPoint.x, y: e.containerPoint.y });
+                })
+                .on('mousemove', (e: L.LeafletMouseEvent) => {
+                    setHoverPos({ x: e.containerPoint.x, y: e.containerPoint.y });
+                })
+                .on('mouseout', () => {
+                    setHoveredItem(null);
+                    setHoverPos(null);
+                });
+
             // Dim pins that don't belong to the active day filter.
             if (dayFilterIds !== null) {
                 const inDay = item.flightId && item.date
                     ? dayFilterIds.has(`${item.flightId}_${item.date}`)
                     : dayFilterIds.has(item.id);
                 if (!inDay) marker.setOpacity(0.28);
+            }
+
+            // Heatmap: draw a soft glow circle under AI items so dense areas
+            // appear "hotter". Circles are added to markerLayer so they clear
+            // together with the pins on each redraw.
+            if (heatmap && (item.type === 'restaurant' || item.type === 'attraction')) {
+                const heatColor = item.type === 'restaurant' ? '#f97316' : '#8b5cf6';
+                L.circleMarker([item.lat!, item.lng!], {
+                    radius: 28,
+                    color: 'transparent',
+                    fillColor: heatColor,
+                    fillOpacity: 0.18,
+                }).addTo(markerLayer);
             }
 
             bounds.extend([item.lat!, item.lng!]);
@@ -1450,6 +1490,28 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         return () => { void document.head.removeChild(style); };
     }, []);
 
+    // Fly to a GPS-located position and show a "you are here" marker.
+    useEffect(() => {
+        const map = mapInstanceRef.current;
+        if (!map || !flyTo) return;
+
+        map.flyTo([flyTo.lat, flyTo.lng], flyTo.zoom ?? 15, { duration: 1.2 });
+
+        // Remove previous locate marker before adding a new one.
+        if (locateMarkerRef.current) {
+            locateMarkerRef.current.remove();
+        }
+        locateMarkerRef.current = L.circleMarker([flyTo.lat, flyTo.lng], {
+            radius: 10,
+            color: '#2563eb',
+            weight: 3,
+            fillColor: '#fff',
+            fillOpacity: 1,
+        })
+            .bindTooltip('אתה כאן', { direction: 'top', permanent: false })
+            .addTo(map);
+    }, [flyTo]);
+
     // --- UI ---
     return (
         <div className="w-full relative bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 animate-fade-in" style={{ direction: 'ltr' }}>
@@ -1491,6 +1553,28 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
             {/* Map */}
             <div ref={mapContainerRef} style={{ height, width: '100%' }} className="z-10 bg-slate-50" />
+
+            {/* Hover preview card — shown on desktop when cursor is over a pin.
+                 Positioned relative to the map container using containerPoint. */}
+            {hoveredItem && hoverPos && (
+                <div
+                    className="absolute z-[2000]"
+                    style={{
+                        left: hoverPos.x,
+                        top: hoverPos.y - 16,
+                        transform: 'translate(-50%, -100%)',
+                    }}
+                >
+                    <HoverPreviewCard
+                        type={hoveredItem.type}
+                        name={hoveredItem.name}
+                        rating={hoveredItem.rating}
+                        cuisine={hoveredItem.cuisine}
+                        category={hoveredItem.category}
+                        priceRange={hoveredItem.priceRange}
+                    />
+                </div>
+            )}
 
             {/* Bottom Timeline Strip — mobile: vertical list inside a
                  collapsible drawer. Desktop: horizontal strip as before.
