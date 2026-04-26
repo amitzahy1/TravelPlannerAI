@@ -554,6 +554,42 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         setActiveCity(controlledActiveCity ?? 'ALL');
     }, [controlledActiveCity]);
 
+    // Dedicated city flyTo: when the external city selection changes,
+    // immediately geocode that city and fly the map there. This is separate
+    // from the render useEffect so it fires reliably even when items for
+    // the selected city haven't been geocoded yet.
+    useEffect(() => {
+        if (!controlledActiveCity) return; // null → ALL view, nothing to fly to
+        const map = mapInstanceRef.current;
+        if (!map) return;
+
+        const cacheKey = `city:${controlledActiveCity}`;
+        const cached = geocodedCacheRef.current[cacheKey];
+        if (cached) {
+            map.flyTo([cached.lat, cached.lng], 13, { duration: 1 });
+            return;
+        }
+
+        // Prefer English name — better Photon coverage. getCityKeywords already
+        // returns the Hebrew name plus any English alias; grab the first
+        // ASCII-only variant, falling back to the raw city string.
+        const keywords = getCityKeywords(controlledActiveCity);
+        const query = keywords.find(k => /^[a-z]/i.test(k) && k !== controlledActiveCity.toLowerCase())
+            ?? controlledActiveCity;
+
+        geocodeAddress(query).then(coords => {
+            if (!coords) return;
+            const m = mapInstanceRef.current;
+            if (!m) return;
+            setGeocodedCache(prev => {
+                const next = { ...prev, [cacheKey]: coords };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                return next;
+            });
+            m.flyTo([coords.lat, coords.lng], 13, { duration: 1 });
+        });
+    }, [controlledActiveCity]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number; lng: number }>>(() => {
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
     });
@@ -1144,28 +1180,40 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         const validItems = mapItems.filter(i => isValidCoordinate(i.lat, i.lng));
         const visibleItems = activeCity === 'ALL'
             ? validItems
-            : validItems.filter(i => {
+            : (() => {
+                // Use geoData's cityKey which canonicalises both Hebrew and English
+                // city names to the same key — covers ALL cities, not just the
+                // 12-entry HEBREW_TO_ENGLISH_CITY_MAP used by getCityKeywords.
+                const activeCityKey = cityKey(activeCity);
                 const keywords = getCityKeywords(activeCity);
-                const addr = (i.address || '').toLowerCase();
-                const itemCity = (i.city || '').toLowerCase();
-                // Check address string AND city field — city may be stored in
-                // Hebrew while keywords include the Hebrew form after the fix.
-                return keywords.some(kw => addr.includes(kw) || itemCity.includes(kw));
-            });
+                return validItems.filter(i => {
+                    // Primary: canonical key match (handles Hebrew ↔ English variants)
+                    if (activeCityKey && cityKey(i.city || '') === activeCityKey) return true;
+                    // Fallback: keyword substring match in address
+                    const addr = (i.address || '').toLowerCase();
+                    const iCity = (i.city || '').toLowerCase();
+                    return keywords.some(kw => addr.includes(kw) || iCity.includes(kw));
+                });
+            })();
 
         const bounds = L.latLngBounds([]);
 
-        // Build a trip-region guard: any non-airport pin more than
-        // MAX_TRIP_RADIUS_KM from the nearest hotel is almost certainly
-        // a geocoding error (AI restaurant whose name also exists in
-        // another continent). Skip it entirely rather than zooming the map
-        // out to show, e.g., Australia pins on a Thailand trip.
+        // Build a trip-region guard: any pin more than MAX_TRIP_RADIUS_KM from
+        // the nearest hotel anchor is almost certainly a geocoding error (AI
+        // restaurant whose name also exists in another continent).
         const MAX_TRIP_RADIUS_KM = 2500;
         const hotelAnchors = (trip?.hotels || [])
             .filter(h => isValidCoordinate(h.lat, h.lng))
             .map(h => ({ lat: h.lat!, lng: h.lng! }));
+        // If no hotels have coords, fall back to the cached destination centroid
+        // so the guard still fires on the first visit before geocoding completes.
+        if (hotelAnchors.length === 0 && trip?.destination) {
+            const destKey = `dest:${trip.destination}`;
+            const cached = geocodedCacheRef.current[destKey];
+            if (cached) hotelAnchors.push(cached);
+        }
         const isInTripRegion = (lat: number, lng: number): boolean => {
-            if (hotelAnchors.length === 0) return true;
+            if (hotelAnchors.length === 0) return true; // no anchor → can't validate
             return hotelAnchors.some(a => getDistanceKm(lat, lng, a.lat, a.lng) <= MAX_TRIP_RADIUS_KM);
         };
 
@@ -1225,15 +1273,17 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         });
 
         // Include hotel coords in bounds — if a city filter is active, only
-        // hotels in that city; otherwise all hotels so the full trip anchors.
+        // hotels in that city so the zoom is city-scoped, not trip-wide.
         if (trip?.hotels?.length) {
-            const cityKws = activeCity !== 'ALL' ? getCityKeywords(activeCity) : null;
+            const activeCityKey = activeCity !== 'ALL' ? cityKey(activeCity) : null;
+            const kws = activeCityKey ? getCityKeywords(activeCity) : null;
             trip.hotels.forEach(h => {
                 if (!isValidCoordinate(h.lat, h.lng)) return;
-                if (cityKws) {
+                if (activeCityKey) {
+                    const hCity = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
+                    if (cityKey(hCity) === activeCityKey) { bounds.extend([h.lat!, h.lng!]); return; }
                     const addr = (h.address || '').toLowerCase();
-                    const hCity = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip)).toLowerCase();
-                    if (!cityKws.some(kw => addr.includes(kw) || hCity.includes(kw))) return;
+                    if (!kws!.some(kw => addr.includes(kw))) return;
                 }
                 bounds.extend([h.lat!, h.lng!]);
             });
@@ -1420,9 +1470,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 }
             }
 
-            // Route stop pills
+            // Route stop pills — apply region guard so layover stops that
+            // slipped through the isFlightOnly filter don't appear in Europe.
             validStops.forEach((stop, idx) => {
                 if (!stop.coords) return;
+                if (!isInTripRegion(stop.coords.lat, stop.coords.lng)) return;
                 const color = STOP_COLORS[idx % STOP_COLORS.length];
                 const icon = makeStopPill(idx + 1, stop.displayName || stop.name, stop.emoji || '📍', color);
 
