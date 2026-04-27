@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { createRoot } from 'react-dom/client';
+import { flushSync } from 'react-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster';
@@ -10,8 +12,8 @@ import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
-import { safeMapsUrl } from '../utils/mapsUrl';
 import { HoverPreviewCard } from './map/HoverPreviewCard';
+import { MapItemPopup } from './map/MapItemPopup';
 
 // --- Interfaces ---
 interface MapItem {
@@ -94,6 +96,30 @@ interface UnifiedMapViewProps {
 }
 
 const STORAGE_KEY = 'travel_app_geo_cache_v5';
+const MAX_CACHE_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+type CachedCoord = { lat: number; lng: number; ts?: number };
+
+const loadGeoCache = (): Record<string, { lat: number; lng: number }> => {
+    try {
+        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as Record<string, CachedCoord>;
+        const now = Date.now();
+        const result: Record<string, { lat: number; lng: number }> = {};
+        Object.entries(raw).forEach(([k, v]) => {
+            if (!v.ts || now - v.ts < MAX_CACHE_AGE_MS) result[k] = { lat: v.lat, lng: v.lng };
+        });
+        return result;
+    } catch { return {}; }
+};
+
+const saveGeoCache = (cache: Record<string, { lat: number; lng: number }>) => {
+    try {
+        const now = Date.now();
+        const toStore: Record<string, CachedCoord> = {};
+        Object.entries(cache).forEach(([k, v]) => { toStore[k] = { ...v, ts: now }; });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+    } catch { /* storage quota */ }
+};
 
 // Type config — colors and icons
 const TYPE_CONFIG = {
@@ -212,8 +238,6 @@ const geocodeAddress = async (query: string): Promise<{ lat: number; lng: number
 };
 
 // --- PREMIUM PIN MARKER ---
-const escapeHtml = (s: string): string =>
-    String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
 const makePinIcon = (config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG], label?: string) => {
     const [c1, c2] = config.gradient;
@@ -228,7 +252,7 @@ const makePinIcon = (config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG], label
             box-shadow:0 2px 6px rgba(15,23,42,0.18);white-space:nowrap;
             font-family:'Rubik','Inter',sans-serif;line-height:1.3;
             margin-bottom:3px;direction:rtl;
-        ">${escapeHtml(trimmed)}</div>
+        ">${trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
     ` : '';
     // The wrapper needs a known width for proper Leaflet anchoring. We use
     // `min-width:44px` (the pin width) so the icon centers on its lat/lng,
@@ -437,73 +461,6 @@ const makeRouteBadge = (distKm: number, transport: SegmentTransportInfo, color: 
     return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 12] });
 };
 
-// --- POPUP HTML ---
-const makePopupHtml = (item: MapItem) => {
-    const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
-    const dateStr = item.date ? parseTripDate(item.date)?.toLocaleDateString('he-IL', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
-    // Only honour the AI-supplied googleMapsUrl when it points at a real
-    // Google host — otherwise the link goes to a hallucinated domain
-    // (e.g. "maps.appgoo.gl") which is at best broken and at worst a
-    // phishing-shaped URL. Falls back to a deterministic search-by-name URL.
-    const mapsLink = safeMapsUrl(item.googleMapsUrl, item.name, item.address);
-    const tagLabel = (item.cuisine || item.category || cfg.label || '').toString();
-    // Mirror the list-view PlaceCard look: image-as-background, dark scrim,
-    // big white name + location at the bottom, rating + source pills, plus
-    // a top-right cuisine/category chip. Description/notes/maps-link sit
-    // beneath the card. When no imageUrl is present, fall back to a tinted
-    // gradient placeholder using the type's brand colours.
-    const cardBg = item.imageUrl
-        ? `background-image:linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.2) 55%,transparent 90%),url('${escapeHtml(item.imageUrl)}');background-size:cover;background-position:center;`
-        : `background:linear-gradient(135deg,${cfg.gradient[0]} 0%,${cfg.gradient[1]} 100%);`;
-    const ratingPill = typeof item.rating === 'number' && item.rating > 0
-        ? `<span style="display:inline-flex;align-items:center;gap:2px;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:6px;flex-shrink:0;">⭐ ${item.rating.toFixed(1)}</span>`
-        : '';
-    const sourcePill = item.recommendationSource
-        ? `<span style="display:inline-flex;align-items:center;gap:2px;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);color:#fde047;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.3px;padding:2px 6px;border-radius:6px;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🏆 ${escapeHtml(item.recommendationSource)}</span>`
-        : '';
-    const tagChip = tagLabel
-        ? `<span dir="ltr" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.18);color:#fff;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.4px;padding:3px 8px;border-radius:6px;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(tagLabel)}</span>`
-        : '';
-    const priceChip = item.priceRange
-        ? `<span style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.18);color:#fff;font-size:9px;font-weight:900;padding:3px 8px;border-radius:6px;">${escapeHtml(item.priceRange)}</span>`
-        : '';
-    const descHtml = item.description
-        ? `<div style="font-size:11px;color:#475569;margin-top:8px;line-height:1.5;">${escapeHtml(item.description)}</div>`
-        : '';
-    const notesHtml = item.notes
-        ? `<div style="font-size:11px;color:#475569;background:#fffaeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-top:8px;line-height:1.5;">📝 ${escapeHtml(item.notes)}</div>`
-        : '';
-    const dateHtml = dateStr
-        ? `<div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:8px;">📅 ${dateStr}</div>`
-        : '';
-
-    return `
-        <div style="font-family:'Rubik','Inter',sans-serif;direction:rtl;text-align:right;width:272px;padding:0;">
-            <div style="
-                position:relative;
-                width:100%;
-                height:168px;
-                ${cardBg}
-                overflow:hidden;
-            ">
-                ${tagChip}
-                ${priceChip}
-                <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 12px;display:flex;flex-direction:column;gap:3px;">
-                    <h3 dir="ltr" style="margin:0;font-size:16px;font-weight:900;color:#fff;line-height:1.2;text-align:left;text-shadow:0 1px 2px rgba(0,0,0,0.4);">${escapeHtml(item.name)}</h3>
-                    ${item.address ? `<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:#cbd5e1;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.5);">📍 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(item.address)}</span></div>` : ''}
-                    ${(ratingPill || sourcePill) ? `<div style="display:flex;align-items:center;gap:4px;margin-top:2px;">${ratingPill}${sourcePill}</div>` : ''}
-                </div>
-            </div>
-            <div style="padding:10px 12px;">
-                ${descHtml}
-                ${notesHtml}
-                ${dateHtml}
-                <a href="${escapeHtml(mapsLink)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:#2563eb;text-decoration:none;background:#eff6ff;border:1px solid #bfdbfe;padding:5px 10px;border-radius:8px;margin-top:8px;">🧭 ניווט ב-Google Maps</a>
-            </div>
-        </div>
-    `;
-};
-
 // ============================================================
 export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     trip,
@@ -540,6 +497,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
     const [mapItems, setMapItems] = useState<MapItem[]>([]);
     const [loading, setLoading] = useState(false);
+    const [geocodeProgress, setGeocodeProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
     const [activeCity, setActiveCity] = useState<string | 'ALL'>('ALL');
     const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
     const [activeStop, setActiveStop] = useState<number | null>(null);
@@ -583,16 +541,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             if (!m) return;
             setGeocodedCache(prev => {
                 const next = { ...prev, [cacheKey]: coords };
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                saveGeoCache(next);
                 return next;
             });
             m.flyTo([coords.lat, coords.lng], 13, { duration: 1 });
         });
     }, [controlledActiveCity]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number; lng: number }>>(() => {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
-    });
+    const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number; lng: number }>>(loadGeoCache);
 
     // Keep geocodedCacheRef in sync so the mapItems useEffect can read it.
     useEffect(() => { geocodedCacheRef.current = geocodedCache; }, [geocodedCache]);
@@ -723,40 +679,50 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         setMapItems(sorted);
     }, [trip, items, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions]);
 
-    // 2. Geocode missing items
+    // 2. Geocode missing items — batched 5-concurrent to cut wait from 7s → ~2s.
+    //    Items appear on the map progressively as each batch resolves.
     useEffect(() => {
         const run = async () => {
-            const toGeocode = mapItems.filter(i => !isValidCoordinate(i.lat, i.lng) && i.address);
-            if (toGeocode.length === 0) return;
+            const pending = mapItems.filter(i => !isValidCoordinate(i.lat, i.lng) && i.address);
+            if (pending.length === 0) return;
             setLoading(true);
+            setGeocodeProgress({ done: 0, total: pending.length });
 
-            const updated = [...mapItems];
-            const newEntries: Record<string, { lat: number; lng: number }> = {};
+            const BATCH_SIZE = 5;
+            for (let batchStart = 0; batchStart < pending.length; batchStart += BATCH_SIZE) {
+                const batch = pending.slice(batchStart, batchStart + BATCH_SIZE);
+                const batchResults = await Promise.all(batch.map(async item => {
+                    const cacheKey = item.address!;
+                    const q = item.type === 'airport' ? `${item.name} Airport` : cacheKey;
+                    const coords = await geocodeAddress(q);
+                    return { itemId: item.id, cacheKey, coords };
+                }));
 
-            // Sequential with 250ms gap — prevents flooding Photon/Nominatim
-            // with 80+ parallel requests that trigger 429 rate-limit errors.
-            for (const item of updated) {
-                if (isValidCoordinate(item.lat, item.lng) || !item.address) continue;
-                const cacheKey = item.address;
-                if (geocodedCache[cacheKey]) {
-                    item.lat = geocodedCache[cacheKey].lat;
-                    item.lng = geocodedCache[cacheKey].lng;
-                    continue;
+                // Apply resolved coords immediately so pins appear as each batch lands
+                const newEntries: Record<string, { lat: number; lng: number }> = {};
+                batchResults.forEach(r => { if (r.coords) newEntries[r.cacheKey] = r.coords; });
+
+                if (Object.keys(newEntries).length > 0) {
+                    setGeocodedCache(prev => {
+                        const next = { ...prev, ...newEntries };
+                        saveGeoCache(next);
+                        return next;
+                    });
+                    setMapItems(prev => prev.map(i => {
+                        const entry = batchResults.find(r => r.itemId === i.id);
+                        if (!entry?.coords) return i;
+                        return { ...i, lat: entry.coords.lat, lng: entry.coords.lng };
+                    }));
                 }
-                const coords = await geocodeAddress(item.type === 'airport' ? `${item.name} Airport` : item.address!);
-                if (coords) { item.lat = coords.lat; item.lng = coords.lng; newEntries[cacheKey] = coords; }
-                await new Promise(r => setTimeout(r, 250));
+
+                setGeocodeProgress(p => ({ ...p, done: Math.min(p.total, p.done + batch.length) }));
+                if (batchStart + BATCH_SIZE < pending.length) {
+                    await new Promise(r => setTimeout(r, 200));
+                }
             }
 
-            if (Object.keys(newEntries).length > 0) {
-                setGeocodedCache(prev => {
-                    const next = { ...prev, ...newEntries };
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-                    return next;
-                });
-            }
-            setMapItems(updated);
             setLoading(false);
+            setGeocodeProgress({ done: 0, total: 0 });
         };
         run();
     }, [mapItems.length]);
@@ -937,7 +903,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                                 stop.coords = coords;
                                 setGeocodedCache(prev => {
                                         const next = { ...prev, [q]: coords };
-                                        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                                        saveGeoCache(next);
                                         return next;
                                 });
                                 break;
@@ -1072,7 +1038,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     next[key] = coords;
                     setGeocodedCache(prev => {
                         const p = { ...prev, [name]: coords };
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+                        saveGeoCache(p);
                         return p;
                     });
                 }
@@ -1230,16 +1196,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             const targetLayer = item.type === 'hotel' ? routeLayer : markerLayer;
             const marker = L.marker([item.lat!, item.lng!], {
                 icon,
-                // Hotels float above clustered pins so they remain the
-                // anchor reference point at any zoom level.
                 zIndexOffset: item.type === 'hotel' ? 2000 : 0,
-            })
-                .bindPopup(makePopupHtml(item), {
-                    className: 'premium-popup',
-                    maxWidth: 292,
-                    minWidth: 210,
-                })
-                .addTo(targetLayer);
+            }).addTo(targetLayer);
+
+            // React portal popup — renders MapItemPopup synchronously via
+            // flushSync so the DOM is populated before Leaflet opens the popup.
+            marker.on('click', () => {
+                const container = document.createElement('div');
+                const popupRoot = createRoot(container);
+                flushSync(() => {
+                    popupRoot.render(<MapItemPopup item={item} />);
+                });
+                marker.bindPopup(container, { className: 'tp-popup', maxWidth: 300 }).openPopup();
+                marker.once('popupclose', () => popupRoot.unmount());
+            });
 
             // Hover preview (desktop) — set React state from the Leaflet
             // event so a card renders in the map container's coordinate space.
@@ -1298,13 +1268,17 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     radius: 1200,
                     color: '#10b981', weight: 1.5,
                     fillColor: '#10b981', fillOpacity: 0.08, opacity: 0.45,
-                }).addTo(routeLayer);
+                })
+                    .bindTooltip('15 דק׳ הליכה', { permanent: true, direction: 'top', className: 'walking-label' })
+                    .addTo(routeLayer);
                 L.circle([h.lat!, h.lng!], {
                     radius: 2400,
                     color: '#10b981', weight: 1,
                     fillColor: '#10b981', fillOpacity: 0.04, opacity: 0.30,
                     dashArray: '6 4',
-                }).addTo(routeLayer);
+                })
+                    .bindTooltip('30 דק׳ הליכה', { permanent: true, direction: 'top', className: 'walking-label' })
+                    .addTo(routeLayer);
             });
         }
 
@@ -1513,7 +1487,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                             if (c) {
                                 setGeocodedCache(prev => {
                                     const next = { ...prev, [destCacheKey]: c };
-                                    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                                    saveGeoCache(next);
                                     return next;
                                 });
                             }
@@ -1557,33 +1531,6 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
     }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles]);
 
-    // Popup CSS injection
-    useEffect(() => {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            .premium-popup .leaflet-popup-content-wrapper {
-                border-radius: 16px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.12);
-                border: 1px solid rgba(255,255,255,0.8);
-                padding: 0;
-                overflow: hidden;
-            }
-            /* Zero margin lets the image card go edge-to-edge inside the
-               popup wrapper, mirroring the list-view PlaceCard look. */
-            .premium-popup .leaflet-popup-content { margin: 0; width: 240px !important; }
-            .premium-popup .leaflet-popup-tip-container { display: none; }
-            .premium-popup .leaflet-popup-close-button {
-                top: 8px; right: 8px; z-index: 10;
-                color: #fff; font-size: 18px; font-weight: 300;
-                background: rgba(0,0,0,0.4); border-radius: 50%;
-                width: 24px; height: 24px; display: flex; align-items: center; justify-content:center;
-                line-height: 1;
-                backdrop-filter: blur(4px);
-            }
-        `;
-        document.head.appendChild(style);
-        return () => { void document.head.removeChild(style); };
-    }, []);
 
     // Fly to a GPS-located position and show a "you are here" marker.
     useEffect(() => {
@@ -1640,6 +1587,16 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                             </button>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* Geocoding progress bar — thin stripe across the top edge */}
+            {geocodeProgress.total > 0 && geocodeProgress.done < geocodeProgress.total && (
+                <div className="absolute top-0 left-0 right-0 z-[2001] h-0.5 bg-blue-100 pointer-events-none">
+                    <div
+                        className="h-full bg-blue-500 transition-all duration-500 ease-out"
+                        style={{ width: `${(geocodeProgress.done / geocodeProgress.total) * 100}%` }}
+                    />
                 </div>
             )}
 

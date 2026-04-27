@@ -433,3 +433,54 @@
 .safe-area-top {
   padding-top: max(1rem, env(safe-area-inset-top));
 }
+
+/* ============================================
+   LEAFLET MAP OVERRIDES
+   ============================================ */
+
+/* React-portal popup — no arrow, rounded, edge-to-edge image */
+.tp-popup .leaflet-popup-content-wrapper {
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.12);
+  border: 1px solid rgba(255,255,255,0.8);
+  padding: 0;
+  overflow: hidden;
+}
+.tp-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+  min-width: 272px;
+}
+.tp-popup .leaflet-popup-tip-container { display: none; }
+.tp-popup .leaflet-popup-close-button {
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 300;
+  background: rgba(0,0,0,0.4);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  backdrop-filter: blur(4px);
+}
+
+/* Walking-circle tooltip labels */
+.walking-label {
+  background: rgba(16,185,129,0.9) !important;
+  border: none !important;
+  border-radius: 6px !important;
+  color: #fff !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  font-family: 'Rubik', 'Inter', sans-serif !important;
+  padding: 2px 7px !important;
+  box-shadow: 0 2px 6px rgba(16,185,129,0.4) !important;
+  white-space: nowrap !important;
+}
+.walking-label::before { display: none !important; }
