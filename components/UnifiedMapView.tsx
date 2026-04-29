@@ -9,7 +9,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
 import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
-import { getCountryBbox, coordInBbox } from '../utils/geocodePlaces';
+import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl } from '../utils/geocodePlaces';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
@@ -96,7 +96,7 @@ interface UnifiedMapViewProps {
     flyTo?: { lat: number; lng: number; zoom?: number } | null;
 }
 
-const STORAGE_KEY = 'travel_app_geo_cache_v5';
+const STORAGE_KEY = 'travel_app_geo_cache_v6';
 const MAX_CACHE_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 type CachedCoord = { lat: number; lng: number; ts?: number };
@@ -160,6 +160,17 @@ const HEBREW_TO_ENGLISH_CITY_MAP: Record<string, string[]> = {
     'ירושלים': ['Jerusalem'], 'אילת': ['Eilat'], 'לונדון': ['London'],
     'פריז': ['Paris'], 'ניו יורק': ['New York', 'NYC'], 'רומא': ['Rome'],
     'ברצלונה': ['Barcelona'], 'טביליסי': ['Tbilisi'], 'גיאורגיה': ['Georgia'],
+    'פטאייה': ['Pattaya'], 'קו צ\'אנג': ['Koh Chang', 'Ko Chang'],
+    'קו סמוי': ['Koh Samui', 'Ko Samui'], 'קוסמוי': ['Koh Samui', 'Ko Samui'],
+    'צ\'יאנג מאי': ["Chiang Mai"], 'קראבי': ['Krabi'],
+    'האה הין': ['Hua Hin'], 'איי סמיי': ['Koh Samui'],
+    'טוקיו': ['Tokyo'], 'אוסקה': ['Osaka'], 'קיוטו': ['Kyoto'],
+    'דובאי': ['Dubai'], 'סינגפור': ['Singapore'], 'באלי': ['Bali'],
+    'אמסטרדם': ['Amsterdam'], 'ברלין': ['Berlin'], 'מדריד': ['Madrid'],
+    'ליסבון': ['Lisbon'], 'אתונה': ['Athens'], 'פראג': ['Prague'],
+    'וינה': ['Vienna'], 'בודפשט': ['Budapest'], 'ורשה': ['Warsaw'],
+    'איסטנבול': ['Istanbul'], 'מרוקו': ['Morocco'], 'מרקש': ['Marrakech'],
+    'קהיר': ['Cairo'], 'תאילנד': ['Thailand'], 'יפן': ['Japan'],
 };
 
 const getCityKeywords = (cityName: string): string[] => {
@@ -524,21 +535,34 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         const map = mapInstanceRef.current;
         if (!map) return;
 
+        // Country bbox from trip — passed alongside `items` by RestaurantsView /
+        // AttractionsView so we can constrain Photon and reject wrong-country results.
+        const tripBbox = trip ? getCountryBbox(trip.destinationEnglish || trip.destination || '') : null;
+        const countryName = trip?.destinationEnglish || trip?.destination || '';
+
         const cacheKey = `city:${controlledActiveCity}`;
         const cached = geocodedCacheRef.current[cacheKey];
         if (cached) {
-            map.flyTo([cached.lat, cached.lng], 13, { duration: 1 });
-            return;
+            // Reject cached city coords outside the country (saved before bbox validation).
+            if (tripBbox && !coordInBbox(cached.lat, cached.lng, tripBbox)) {
+                delete geocodedCacheRef.current[cacheKey];
+            } else {
+                map.flyTo([cached.lat, cached.lng], 13, { duration: 1 });
+                return;
+            }
         }
 
-        // Prefer English name — better Photon coverage. getCityKeywords already
-        // returns the Hebrew name plus any English alias; grab the first
-        // ASCII-only variant, falling back to the raw city string.
+        // Prefer English name — better Photon coverage. getCityKeywords returns
+        // the Hebrew name plus any English alias; grab the first ASCII-only variant.
         const keywords = getCityKeywords(controlledActiveCity);
-        const query = keywords.find(k => /^[a-z]/i.test(k) && k !== controlledActiveCity.toLowerCase())
+        const baseQuery = keywords.find(k => /^[a-z]/i.test(k) && k !== controlledActiveCity.toLowerCase())
             ?? controlledActiveCity;
+        // Append country name so "Pattaya" → "Pattaya, Thailand" — disambiguates
+        // against same-named places in other countries and improves Photon ranking.
+        const query = countryName && !baseQuery.toLowerCase().includes(countryName.toLowerCase())
+            ? `${baseQuery}, ${countryName}` : baseQuery;
 
-        geocodeAddress(query).then(coords => {
+        geocodeAddress(query, tripBbox).then(coords => {
             if (!coords) return;
             const m = mapInstanceRef.current;
             if (!m) return;
@@ -549,7 +573,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             });
             m.flyTo([coords.lat, coords.lng], 13, { duration: 1 });
         });
-    }, [controlledActiveCity]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [controlledActiveCity, trip]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number; lng: number }>>(loadGeoCache);
 
@@ -727,6 +751,19 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 const batch = pending.slice(batchStart, batchStart + BATCH_SIZE);
                 const batchResults = await Promise.all(batch.map(async item => {
                     const cacheKey = item.address!;
+                    const bbox = item.type !== 'airport' ? tripBbox : null;
+
+                    // 1. Try Google Maps URL first — embedded coords are exact and
+                    //    require no HTTP round-trip. User confirmed navigation links
+                    //    already point to the correct location.
+                    if (item.googleMapsUrl) {
+                        const fromUrl = extractCoordsFromMapsUrl(item.googleMapsUrl);
+                        if (fromUrl && (!bbox || coordInBbox(fromUrl.lat, fromUrl.lng, bbox))) {
+                            return { itemId: item.id, cacheKey, coords: fromUrl };
+                        }
+                    }
+
+                    // 2. Fallback: Photon geocoding with country bbox constraint.
                     let q = item.type === 'airport' ? `${item.name} Airport` : cacheKey;
                     // Append city if not already present in the address — prevents geocoder from
                     // resolving restaurant/attraction names to same-named places in other cities.
@@ -735,9 +772,6 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                             q = `${q}, ${item.city}`;
                         }
                     }
-                    // Pass bbox only for non-airport items — airport coords come from our
-                    // IATA table and must not be constrained to a single-country bbox.
-                    const bbox = item.type !== 'airport' ? tripBbox : null;
                     const coords = await geocodeAddress(q, bbox);
                     return { itemId: item.id, cacheKey, coords };
                 }));
