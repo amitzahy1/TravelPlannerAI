@@ -58,6 +58,20 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
-    }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          // Split the heaviest dependencies into their own chunks so the main
+          // bundle (which loads on every page) drops below ~1.2 MB. Map code
+          // ships its own chunk that's only fetched when a map view mounts.
+          manualChunks: {
+            map: ['leaflet', 'leaflet.markercluster'],
+            firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+            framer: ['framer-motion'],
+          },
+        },
+      },
+    },
   };
 });

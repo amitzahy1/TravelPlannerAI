@@ -20,6 +20,7 @@ import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
 import { MagicalWizard } from './onboarding/MagicalWizard';
 import { UnifiedMapView } from './UnifiedMapView';
+import { DataHealthPanel } from './admin/DataHealthPanel';
 
 
 interface TripSettingsModalProps {
@@ -116,7 +117,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     const [isSaving, setIsSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'logs'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'health' | 'logs'>('overview');
     const [freeText, setFreeText] = useState('');
     const [isFreeTextProcessing, setIsFreeTextProcessing] = useState(false);
     const [freeTextResult, setFreeTextResult] = useState<{ hotels: HotelBooking[], flights: FlightSegment[], summary: string } | null>(null);
@@ -921,6 +922,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             >
                                 <Sparkles className="w-5 h-5" /> Magic Import
                             </button>
+                            {auth.currentUser?.email === 'amitzahy1@gmail.com' && (
+                                <button
+                                    onClick={() => setActiveTab('health')}
+                                    className={`w-full text-right px-4 py-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'health' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <CheckCircle className="w-5 h-5" /> בריאות נתונים
+                                </button>
+                            )}
                             <button
                                 onClick={() => setActiveTab('logs')}
                                 className={`w-full text-right px-4 py-3 rounded-xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'logs' ? 'bg-slate-800 text-green-400' : 'text-slate-600 hover:bg-slate-50'}`}
@@ -958,6 +967,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             { id: 'overview', label: 'פרטים כלליים', emoji: '📋' },
                             { id: 'logistics', label: 'טיסות ומלונות', emoji: '✈️' },
                             { id: 'ai', label: 'Magic Import', emoji: '✨' },
+                            ...(auth.currentUser?.email === 'amitzahy1@gmail.com' ? [{ id: 'health', label: 'בריאות', emoji: '❤️' }] : []),
                             { id: 'logs', label: 'לוגים', emoji: '🖥️' },
                         ].map(tab => (
                             <button
@@ -1146,6 +1156,17 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                         )}
 
 
+
+                        {/* TAB: DATA HEALTH - Admin Only */}
+                        {activeTab === 'health' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (
+                            <DataHealthPanel
+                                trip={activeTrip || null}
+                                onUpdateTrip={(updated) => {
+                                    setTrips(prev => prev.map(t => t.id === updated.id ? updated : t));
+                                    onSave(trips.map(t => t.id === updated.id ? updated : t));
+                                }}
+                            />
+                        )}
 
                         {/* TAB: SYSTEM LOGS - Admin Only */}
                         {activeTab === 'logs' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (
