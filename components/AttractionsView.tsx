@@ -407,6 +407,14 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     CRITICAL — "location" field MUST be in English (used by a geocoding API). Format: "Attraction or Neighbourhood, City". Example: "Chatuchak Weekend Market, Bangkok".
 
+    CRITICAL — "recommendationSource" MUST be a SHORT platform/publication name only (max 40 chars).
+    Use one of: "TripAdvisor", "Lonely Planet", "Atlas Obscura", "UNESCO", "TimeOut",
+    "YouTube (channel name)", "Google", "Wongnai", "Klook", "National Geographic",
+    "Condé Nast Traveler", "BBC Travel", "Top-Rated", "Local Favorite".
+    NEVER write descriptions ("Known for...", "Perfect for...") in this field.
+    NEVER include the attraction's own name in this field.
+    If no authoritative source applies, use "Local Favorite".
+
     OUTPUT JSON ONLY:
     { "categories": [ { "id", "title", "attractions": [ { "name", "description",
     "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl" } ] } ] }
@@ -589,19 +597,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             list = list.filter(a => attractionMatchesCity(a, selectedCity));
         }
         if (selectedRater !== 'all') {
-            const matchSource = (raw: string): boolean => {
-                const sourceLower = raw.toLowerCase();
-                switch (selectedRater) {
-                    case 'UNESCO':         return sourceLower.includes('unesco');
-                    case 'Lonely Planet':  return sourceLower.includes('lonely planet');
-                    case 'Atlas Obscura':  return sourceLower.includes('atlas obscura');
-                    case 'TimeOut':        return sourceLower.includes('timeout') || sourceLower.includes('time out');
-                    case 'TripAdvisor':    return sourceLower.includes('tripadvisor') || sourceLower.includes('trip advisor');
-                    case 'Google':         return sourceLower.includes('google');
-                    default:               return sourceLower.includes(selectedRater.toLowerCase());
-                }
-            };
-            list = list.filter(a => !!a.recommendationSource && matchSource(a.recommendationSource));
+            list = list.filter(a => normalizeSource(a.recommendationSource || '') === selectedRater);
         }
 
         // Global dedupe — collapses same attraction across categories
@@ -653,26 +649,41 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const displayTitle = (title: string) => HEBREW_TITLES[title] || title;
 
-    // Raters — every source that actually appears in the data, with
-    // common authoritative names consolidated (UNESCO, TripAdvisor, Lonely
-    // Planet, etc.) so multiple wordings collapse into a single chip.
-    // Anything else is preserved verbatim so regional sources show up too.
+    const normalizeSource = (raw: string): string => {
+        if (!raw) return '';
+        const low = raw.toLowerCase();
+        if (/^(known for|praised for|offers|serves|recommended for|highly|experience|locals|family-friendly|ranked|ideal for|considered|regarded|features|perfect for)/i.test(raw.trim())) return 'Other';
+        if (raw.length > 80) return 'Other';
+        if (low.includes('youtube')) return 'YouTube';
+        if (low.includes('unesco')) return 'UNESCO';
+        if (low.includes('lonely planet')) return 'Lonely Planet';
+        if (low.includes('atlas obscura')) return 'Atlas Obscura';
+        if (low.includes('wongnai')) return 'Wongnai';
+        if (low.includes('timeout') || low.includes('time out')) return 'TimeOut';
+        if (low.includes('tripadvisor') || low.includes('trip advisor')) return 'TripAdvisor';
+        if (low.includes('klook') || low.includes('kkday')) return 'Klook / KKday';
+        if (low.includes('google')) return 'Google';
+        if (low.includes('michelin')) return 'Michelin Guide';
+        if (low.includes('condé nast') || low.includes('conde nast')) return "Condé Nast";
+        if (low.includes('national geographic') || low.includes('nat geo')) return 'National Geographic';
+        if (low.includes('bbc')) return 'BBC Travel';
+        if (low.includes('official site') || low.includes('official website')) return 'Official Site';
+        if (low.includes('wanderlog') || low.includes('tatinta') || low.includes('thailand magazine') ||
+            low.includes('pattaya') || low.includes('asean now') || low.includes('traveling tum')) return 'Local Media';
+        if (/\b(temple|museum|park|beach|market|island|palace)\b/i.test(raw) && raw.length > 30) return 'Other';
+        return 'Other';
+    };
+
     const availableRaters = useMemo(() => {
         const sources = new Set<string>();
         aiCategories.forEach(c => c.attractions.forEach(a => {
-            const raw = (a.recommendationSource || '').trim();
-            if (!raw) return;
-            const low = raw.toLowerCase();
-            let provider = raw;
-            if (low.includes('unesco')) provider = 'UNESCO';
-            else if (low.includes('lonely planet')) provider = 'Lonely Planet';
-            else if (low.includes('atlas obscura')) provider = 'Atlas Obscura';
-            else if (low.includes('timeout') || low.includes('time out')) provider = 'TimeOut';
-            else if (low.includes('tripadvisor') || low.includes('trip advisor')) provider = 'TripAdvisor';
-            else if (low.includes('google')) provider = 'Google';
-            sources.add(provider);
+            const group = normalizeSource((a.recommendationSource || '').trim());
+            if (group) sources.add(group);
         }));
-        return Array.from(sources).sort();
+        const ORDER = ['UNESCO', 'Lonely Planet', 'Atlas Obscura', 'National Geographic', 'Wongnai',
+                       'TripAdvisor', 'YouTube', 'TimeOut', 'Google', 'Klook / KKday',
+                       'Michelin Guide', 'Condé Nast', 'BBC Travel', 'Official Site', 'Local Media', 'Other'];
+        return ORDER.filter(s => sources.has(s));
     }, [aiCategories]);
 
 
