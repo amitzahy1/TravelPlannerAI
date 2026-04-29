@@ -24,6 +24,7 @@ export type GapKind =
         | 'no_hotel_for_day'
         | 'no_transport_to_hotel'
         | 'unresolved_geocode'
+        | 'ambiguous_location'
         | 'no_research_for_city';
 
 export interface MissingPoint {
@@ -34,6 +35,13 @@ export interface MissingPoint {
         deepLinkTab: 'hotels' | 'flights' | 'food' | 'attractions' | 'itinerary';
         lat?: number;
         lng?: number;
+        // External link the CTA should open in a new tab — e.g. an existing
+        // googleMapsUrl or a Google Maps search query for unresolved items.
+        externalUrl?: string;
+        // Place name + entity id, used by the Data Health "Mark as manual"
+        // action and for analytics.
+        entityId?: string;
+        entityName?: string;
 }
 
 export const getMissingDataPoints = (trip: Trip): MissingPoint[] => {
@@ -98,13 +106,22 @@ export const getMissingDataPoints = (trip: Trip): MissingPoint[] => {
         const failedSavedR = (trip.restaurants || []).flatMap(c => c.restaurants || []).filter(r => r.geocodeFailed);
         const failedSavedA = (trip.attractions || []).flatMap(c => c.attractions || []).filter(a => a.geocodeFailed);
 
+        const buildSearchUrl = (place: { name?: string; location?: string; googleMapsUrl?: string }) => {
+                if (place.googleMapsUrl) return place.googleMapsUrl;
+                const q = encodeURIComponent([place.name, place.location].filter(Boolean).join(' '));
+                return `https://www.google.com/maps/search/?api=1&query=${q}`;
+        };
+
         [...failedRestaurants, ...failedSavedR].forEach(r => {
                 out.push({
                         id: `gap-geocode-r-${r.id}`,
                         kind: 'unresolved_geocode',
                         label: `${r.name} לא נמצאה במפה`,
-                        suggestedAction: 'הוסף קישור Google Maps ידנית',
+                        suggestedAction: 'פתח ב-Google Maps',
                         deepLinkTab: 'food',
+                        externalUrl: buildSearchUrl(r),
+                        entityId: r.id,
+                        entityName: r.name,
                 });
         });
         [...failedAttractions, ...failedSavedA].forEach(a => {
@@ -112,8 +129,51 @@ export const getMissingDataPoints = (trip: Trip): MissingPoint[] => {
                         id: `gap-geocode-a-${a.id}`,
                         kind: 'unresolved_geocode',
                         label: `${a.name} לא נמצאה במפה`,
-                        suggestedAction: 'הוסף קישור Google Maps ידנית',
+                        suggestedAction: 'פתח ב-Google Maps',
                         deepLinkTab: 'attractions',
+                        externalUrl: buildSearchUrl(a),
+                        entityId: a.id,
+                        entityName: a.name,
+                });
+        });
+
+        // --- 3b. Items with ambiguous verification --------------------------
+        // Photon resolved them but country/city didn't match the trip
+        // confidently. User should eyeball them.
+        const ambiguousR = [
+                ...(trip.aiRestaurants || []).flatMap(c => c.restaurants || []),
+                ...(trip.restaurants || []).flatMap(c => c.restaurants || []),
+        ].filter(r => r.verificationStatus === 'ambiguous');
+        const ambiguousA = [
+                ...(trip.aiAttractions || []).flatMap(c => c.attractions || []),
+                ...(trip.attractions || []).flatMap(c => c.attractions || []),
+        ].filter(a => a.verificationStatus === 'ambiguous');
+        ambiguousR.forEach(r => {
+                out.push({
+                        id: `gap-ambig-r-${r.id}`,
+                        kind: 'ambiguous_location',
+                        label: `${r.name} — מיקום לא מאומת`,
+                        suggestedAction: 'אמת ב-Google Maps',
+                        deepLinkTab: 'food',
+                        lat: r.lat,
+                        lng: r.lng,
+                        externalUrl: buildSearchUrl(r),
+                        entityId: r.id,
+                        entityName: r.name,
+                });
+        });
+        ambiguousA.forEach(a => {
+                out.push({
+                        id: `gap-ambig-a-${a.id}`,
+                        kind: 'ambiguous_location',
+                        label: `${a.name} — מיקום לא מאומת`,
+                        suggestedAction: 'אמת ב-Google Maps',
+                        deepLinkTab: 'attractions',
+                        lat: a.lat,
+                        lng: a.lng,
+                        externalUrl: buildSearchUrl(a),
+                        entityId: a.id,
+                        entityName: a.name,
                 });
         });
 

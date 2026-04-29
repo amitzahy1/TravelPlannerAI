@@ -217,6 +217,16 @@ export interface Restaurant {
   estimatedCost?: number; // For budget
   geocodeFailed?: boolean; // Set when all geocoding fallbacks exhausted; surfaces a UI warning
 
+  // Photon-based verification metadata (free, no paid API). Populated by
+  // utils/placeVerification.ts; written from backgroundResearch + lazy
+  // map geocoding so the UI can show a verified/ambiguous/not_found badge.
+  osmId?: string;                // "<osm_type>:<osm_id>" — stable OSM identifier
+  verifiedCountry?: string;      // Photon properties.country
+  verifiedCity?: string;         // Photon properties.city
+  verificationStatus?: 'verified' | 'ambiguous' | 'not_found' | 'manual';
+  verificationSource?: 'photon' | 'google_maps_url' | 'manual';
+  verifiedAt?: number;           // epoch ms — used to skip re-verify within 30 days
+
   // UX Improvements
   matchScore?: number; // 1-100 score of how well it fits the user
   matchReason?: string; // "Good for families", "Near your hotel"
@@ -261,6 +271,17 @@ export interface Attraction {
   lat?: number;
   lng?: number;
   geocodeFailed?: boolean; // Set when all geocoding fallbacks exhausted; surfaces a UI warning
+
+  // Photon-based verification metadata (free, no paid API). Same shape as
+  // Restaurant — kept in sync so utils/placeVerification.ts can write to
+  // either entity through one helper.
+  osmId?: string;
+  verifiedCountry?: string;
+  verifiedCity?: string;
+  verificationStatus?: 'verified' | 'ambiguous' | 'not_found' | 'manual';
+  verificationSource?: 'photon' | 'google_maps_url' | 'manual';
+  verifiedAt?: number;
+
   // Added optional fields to fix TypeScript errors
   type?: string;
   recommendationSource?: string;

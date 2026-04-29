@@ -157,10 +157,26 @@ export const extractCoordsFromMapsUrl = (url?: string): { lat: number; lng: numb
  * headers. Nominatim's public endpoint blocks browser requests from
  * github.io, so we avoid calling it from the client.
  */
-const photonGeocode = async (
+
+export interface PhotonFeature {
+        lat: number;
+        lng: number;
+        osmId?: string;        // "<osm_type>:<osm_id>"
+        country?: string;
+        city?: string;
+        name?: string;
+        type?: string;         // Photon "type" (e.g. "house", "city")
+}
+
+/**
+ * Same Photon call, but returns the full feature (osm_id, country,
+ * city, name) so callers like placeVerification.ts can do verification
+ * checks without paying for a second HTTP round-trip.
+ */
+export const photonGeocodeRich = async (
         query: string,
         bbox?: [number, number, number, number],
-): Promise<{ lat: number; lng: number } | null> => {
+): Promise<PhotonFeature | null> => {
         if (!query) return null;
         try {
                 const bboxParam = bbox ? `&bbox=${bbox.join(',')}` : '';
@@ -170,17 +186,36 @@ const photonGeocode = async (
                 if (!res.ok) return null;
                 const data = await res.json();
                 const feat = data?.features?.[0];
+                if (!feat) return null;
                 const coords = feat?.geometry?.coordinates;
                 // Photon returns [lng, lat] (GeoJSON)
-                if (Array.isArray(coords) && coords.length >= 2) {
-                        const lng = parseFloat(coords[0]);
-                        const lat = parseFloat(coords[1]);
-                        if (isFinite(lat) && isFinite(lng)) return { lat, lng };
-                }
-                return null;
+                if (!Array.isArray(coords) || coords.length < 2) return null;
+                const lng = parseFloat(coords[0]);
+                const lat = parseFloat(coords[1]);
+                if (!isFinite(lat) || !isFinite(lng)) return null;
+                const props = feat.properties || {};
+                const osmType = props.osm_type;
+                const osmIdRaw = props.osm_id;
+                return {
+                        lat,
+                        lng,
+                        osmId: osmType && osmIdRaw ? `${osmType}:${osmIdRaw}` : undefined,
+                        country: props.country,
+                        city: props.city || props.locality || props.district,
+                        name: props.name,
+                        type: props.type,
+                };
         } catch {
                 return null;
         }
+};
+
+const photonGeocode = async (
+        query: string,
+        bbox?: [number, number, number, number],
+): Promise<{ lat: number; lng: number } | null> => {
+        const feat = await photonGeocodeRich(query, bbox);
+        return feat ? { lat: feat.lat, lng: feat.lng } : null;
 };
 
 const geocodeFallbackChain = async (
