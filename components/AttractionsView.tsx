@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Trip, Attraction, AttractionCategory } from '../types';
 import { MapPin, Ticket, Star, Landmark, Sparkles, Filter, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid, Heart } from 'lucide-react';
 // cleaned imports
-import { getTripCities, locationMatchesCity } from '../utils/geoData';
+import { getTripCities, locationMatchesCity, displayCityName } from '../utils/geoData';
 import { getAttractionImage } from '../services/imageMapper';
 import { SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
@@ -38,6 +38,12 @@ const sortAttractions = (list: Attraction[]) => {
     });
 };
 
+const attractionMatchesCity = (attraction: Pick<Attraction, 'location' | 'region' | 'description'>, city: string): boolean => {
+    return locationMatchesCity(attraction.location || '', city)
+        || locationMatchesCity(attraction.region || '', city)
+        || locationMatchesCity(attraction.description || '', city);
+};
+
 const AttractionRecommendationCard: React.FC<{
     rec: any,
     tripDestination: string,
@@ -49,7 +55,7 @@ const AttractionRecommendationCard: React.FC<{
     const nameForMap = cleanTextForMap(rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
     const mapsQuery = encodeURIComponent(`${nameForMap} ${locationForMap}`);
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+    const mapsUrl = rec.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
     const visuals = getAttractionVisuals(rec.type);
 
     return (
@@ -112,14 +118,14 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [geocodingInFlight, setGeocodingInFlight] = useState(0);
 
     // Nuke the saved AI research for this trip and start a fresh multi-city run
+    // Wipe cached AI attractions — user starts fresh research manually
     const handleResetResearch = () => {
         setAiCategories([]);
-        onUpdateTrip({ ...trip, aiAttractions: [] });
+        onUpdateTrip({ ...tripRef.current, aiAttractions: [] });
         setSelectedCategory('all');
         setSelectedRater('all');
         setConfirmReset(false);
-        // Kick off a fresh research immediately so the user sees new results
-        setTimeout(() => researchAllCities(), 50);
+        setTimeout(() => researchAllCities([]), 0);
     };
 
     const attractionsData = trip.attractions || [];
@@ -151,7 +157,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
              OUTPUT JSON ONLY:
             { "results": [{ "name", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl", "business_status", "verification_needed" }] } `;
 
-            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SMART');
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
             const data = JSON.parse(response.text || '{}');
             if (data.results) {
                 const valid = data.results.filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search - attr - ${i} `, categoryTitle: 'תוצאות חיפוש' }));
@@ -168,24 +174,27 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const initiateResearch = (city?: string) => {
         if (city) setSelectedCity(city);
-        fetchRecommendations(true, city || trip.destinationEnglish || tripCities[0]);
+        const cityEn = city ? displayCityName(city, 'en') : (trip.destinationEnglish || displayCityName(tripCities[0], 'en'));
+        fetchRecommendations(true, cityEn);
     };
 
-    const researchAllCities = async () => {
+    const researchAllCities = async (baseCategories: AttractionCategory[] = aiCategories) => {
         setIsResearchingAll(true);
         setRecError('');
         const cities = tripCities;
         setResearchProgress({ current: 0, total: cities.length });
 
         try {
-            let accumulatedCategories: AttractionCategory[] = [...aiCategories];
+            let accumulatedCategories: AttractionCategory[] = [...baseCategories];
 
             for (let i = 0; i < cities.length; i++) {
                 setResearchProgress({ current: i + 1, total: cities.length });
                 const city = cities[i];
+                // Translate Hebrew display name to English for the AI prompt
+                const cityEn = displayCityName(city, 'en');
 
                 try {
-                    const prompt = createResearchPrompt(city);
+                    const prompt = createResearchPrompt(cityEn);
                     const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
                     const rawData = JSON.parse(response.text || '{}');
 
@@ -206,8 +215,10 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         const processed = categoriesList.map((c: any, index: number) => ({
                             ...c,
                             id: c.id || `ai-cat-${city}-${index}-${Date.now()}`,
+                            region: city,
                             attractions: (c.attractions || []).map((a: any, j: number) => ({
                                 ...a,
+                                region: a.region || city,
                                 id: `ai-attr-${city}-${index}-${Math.random().toString(36).substr(2, 5)}-${j}`,
                                 categoryTitle: c.title
                             }))
@@ -229,13 +240,26 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             }
                         });
                     }
-                } catch (cityErr) {
+                } catch (cityErr: any) {
+                    const msg = cityErr?.message || '';
                     console.error(`Error researching ${city}:`, cityErr);
+                    // Day quota exhausted — waiting won't help, abort the entire loop.
+                    if (/PerDay/i.test(msg) || /per_day/i.test(msg)) {
+                        setRecError('מכסת ה-AI היומית מוצתה. נסה שוב מחר.');
+                        break;
+                    }
+                    // Per-minute rate limit only — wait for quota reset before next city.
+                    const retryMatch = msg.match(/retry in (\d+(?:\.\d+)?)s/i);
+                    if (retryMatch && i < cities.length - 1) {
+                        const waitMs = Math.ceil(parseFloat(retryMatch[1])) * 1000 + 5000;
+                        await new Promise(r => setTimeout(r, waitMs));
+                    }
                 }
             }
 
             setAiCategories(accumulatedCategories);
-            onUpdateTrip({ ...trip, aiAttractions: accumulatedCategories });
+            const latestTrip = tripRef.current;
+            onUpdateTrip({ ...latestTrip, aiAttractions: accumulatedCategories });
             setSelectedCity('all');
             // Upstream geocoding so the map view doesn't lazy-resolve 200+
             // attractions on first open.
@@ -250,7 +274,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     };
 
     // See RestaurantsView.geocodeAndPersistRestaurants for the same
-    // background-fill pattern. Resolves Photon → Nominatim → URL extraction
+    // background-fill pattern. Resolves CORS-friendly geocoding and URL extraction
     // and writes coords back to trip.aiAttractions in batches.
     //
     // Failed lookups now set geocodeFailed: true on the attraction (instead
@@ -259,12 +283,18 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const geocodeAndPersistAttractions = (cats: AttractionCategory[]) => {
         type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number; countryHint?: string };
         const flat: Item[] = [];
-        const countryHint = trip.destination?.split(/[-,]/)[0]?.trim() || '';
-        cats.forEach(c => c.attractions.forEach(a => flat.push({
-            id: a.id, name: a.name, location: a.location,
-            googleMapsUrl: a.googleMapsUrl, lat: a.lat, lng: a.lng,
-            countryHint,
-        })));
+        const baseCountryHint = (trip.destinationEnglish || trip.destination)?.split(/[-,]/)[0]?.trim() || '';
+        cats.forEach(c => {
+            const categoryRegion = c.region || '';
+            c.attractions.forEach(a => flat.push({
+                id: a.id, name: a.name, location: a.location,
+                googleMapsUrl: a.googleMapsUrl, lat: a.lat, lng: a.lng,
+                countryHint: [
+                    displayCityName(a.region || categoryRegion, 'en') || a.region || categoryRegion,
+                    baseCountryHint
+                ].filter(Boolean).join(', '),
+            }));
+        });
         const pendingItems = flat.filter(i => typeof i.lat !== 'number' || typeof i.lng !== 'number');
         if (pendingItems.length === 0) return;
 
@@ -295,7 +325,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         };
 
         geocodePlacesBatch(
-            flat,
+            pendingItems,
             (id, coords) => {
                 resolved[id] = coords;
                 pendingFlush += 1;
@@ -345,6 +375,15 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     9. "חיי לילה ואווירה"
     10. "פינות נסתרות"
 
+    **NOTE FOR SMALL CITIES, ISLANDS & RESORT TOWNS:**
+    If "${target}" is a beach resort, island, small town, or rural area:
+    - Collapse categories that don't exist locally (e.g. no museums on a tiny island)
+      into "אתרי חובה" or "טבע ונופים" as appropriate.
+    - Water sports, boat tours, snorkeling spots, viewpoints, local markets, and
+      resort activities all count as real attractions — include them.
+    - Aim for at least 8-12 total attractions across all filled categories.
+    - Better to fill 4-5 categories well than to leave 8 categories empty.
+
     **PART 3: QUALITY SIGNALS (not restrictions — just ranking)**
     - Prefer places with high Google ratings (4.0+), awards, or strong press.
     - Include iconic must-visit commercial attractions in tourist cities
@@ -366,6 +405,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     Google Search results, NOT a guessed one. If you can't find a real URL
     for a place, omit the field entirely; do not fabricate.
 
+    CRITICAL — "location" field MUST be in English (used by a geocoding API). Format: "Attraction or Neighbourhood, City". Example: "Chatuchak Weekend Market, Bangkok".
+
     OUTPUT JSON ONLY:
     { "categories": [ { "id", "title", "attractions": [ { "name", "description",
     "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl" } ] } ] }
@@ -375,6 +416,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setLoadingRecs(true);
         setRecError('');
         try {
+            const targetCity = specificCity || trip.destinationEnglish || displayCityName(tripCities[0], 'en') || trip.destination;
+            const prompt = createResearchPrompt(targetCity);
             const promptWithJsonInstruction = prompt + `
 
             For each attraction include "googleMapsUrl" — the actual URL
@@ -403,20 +446,25 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 const rawData = JSON.parse(textContent || '{}');
 
                 // ROBUST PARSER: Handle both { categories: [...] } and direct [...] formats
-                let categoriesList = [];
-                if (rawData.categories && Array.isArray(rawData.categories)) {
-                    categoriesList = rawData.categories;
+                let categoriesList: any[] = [];
+                if (rawData.categories) {
+                    categoriesList = Array.isArray(rawData.categories)
+                        ? rawData.categories
+                        : Object.values(rawData.categories);
                 } else if (Array.isArray(rawData)) {
                     categoriesList = rawData;
                 }
+                if (!Array.isArray(categoriesList)) categoriesList = [];
 
                 if (categoriesList.length > 0) {
                     console.log(`✅[AI Success] Parsed ${categoriesList.length} attraction categories(Format: ${Array.isArray(rawData) ? 'Direct Array' : 'Wrapped Object'})`);
                     const processed = categoriesList.map((c: any, index: number) => ({
                         ...c,
                         id: c.id || `ai-cat-${index}-${Date.now()}`,
+                        region: targetCity,
                         attractions: (c.attractions || []).map((a: any, i: number) => ({
                             ...a,
+                            region: a.region || targetCity,
                             id: `ai-attr-${c.id || index}-${Math.random().toString(36).substr(2, 5)}-${i}`,
                             categoryTitle: c.title
                         }))
@@ -441,7 +489,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                     setAiCategories(merged);
                     setSelectedCategory('all');
-                    onUpdateTrip({ ...trip, aiAttractions: merged });
+                    const latestTrip = tripRef.current;
+                    onUpdateTrip({ ...latestTrip, aiAttractions: merged });
                 } else {
                     console.warn("⚠️ [AI Warning] Response was valid JSON but contained no attraction results.", rawData);
                     setRecError('לא נמצאו אטרקציות עבור יעד זה.');
@@ -483,10 +532,10 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const inTripScope = useMemo(() => {
         return (a: any) => {
                 const loc = a.location || '';
-                if (!loc) return true; // no location info → give benefit of the doubt
+                const region = a.region || '';
+                if (!loc && !region) return true; // no location info → give benefit of the doubt
                 return tripCities.some(c =>
-                        locationMatchesCity(loc, c) ||
-                        locationMatchesCity(a.description || '', c)
+                        attractionMatchesCity({ location: loc, region, description: a.description || '' }, c)
                 );
         };
     }, [tripCities]);
@@ -496,32 +545,48 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // highest-rated / most-detailed copy.
     const dedupeByName = (list: any[]): any[] => {
         const pick: Map<string, any> = new Map();
+        const getAttractionCityKey = (a: any): string => {
+            for (const city of tripCities) {
+                if (attractionMatchesCity(a, city)) return displayCityName(city, 'en').toLowerCase();
+            }
+            const raw = a.region || (a.location || '').split(',').pop()?.trim() || '';
+            return displayCityName(raw, 'en').toLowerCase();
+        };
         for (const a of list) {
             const key = (a.name || '').trim().toLowerCase();
             if (!key) continue;
-            const existing = pick.get(key);
-            if (!existing) { pick.set(key, a); continue; }
+            const scopedKey = `${key}|${getAttractionCityKey(a)}`;
+            const existing = pick.get(scopedKey);
+            if (!existing) { pick.set(scopedKey, a); continue; }
             const existingScore = (existing.rating || 0) + (existing.recommendationSource ? 0.1 : 0);
             const newScore = (a.rating || 0) + (a.recommendationSource ? 0.1 : 0);
-            if (newScore > existingScore) pick.set(key, a);
+            if (newScore > existingScore) pick.set(scopedKey, a);
         }
         return Array.from(pick.values());
     };
 
     const filteredRecommendations = useMemo(() => {
         let list: any[] = [];
-        if (selectedCategory === 'all') aiCategories.forEach(c => list.push(...c.attractions.map(a => ({ ...a, categoryTitle: c.title }))));
-        else { const cat = aiCategories.find(c => c.id === selectedCategory); if (cat) list = cat.attractions.map(a => ({ ...a, categoryTitle: cat.title })); }
+        if (selectedCategory === 'all') aiCategories.forEach(c => list.push(...c.attractions.map(a => ({
+            ...a,
+            region: a.region || c.region,
+            categoryTitle: c.title
+        }))));
+        else {
+            const cat = aiCategories.find(c => c.id === selectedCategory);
+            if (cat) list = cat.attractions.map(a => ({
+                ...a,
+                region: a.region || cat.region,
+                categoryTitle: cat.title
+            }));
+        }
 
         // Always trim to trip scope first — drops out-of-country items the AI
         // may have cached from a previous bugged session.
         if (tripCities.length > 0) list = list.filter(inTripScope);
 
         if (selectedCity !== 'all') {
-            list = list.filter(a =>
-                locationMatchesCity(a.location || '', selectedCity) ||
-                locationMatchesCity(a.description || '', selectedCity)
-            );
+            list = list.filter(a => attractionMatchesCity(a, selectedCity));
         }
         if (selectedRater !== 'all') {
             const matchSource = (raw: string): boolean => {
@@ -614,10 +679,10 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const getMapItems = () => {
         const items: any[] = [];
         const sourceAttractions: Attraction[] = activeTab === 'my_list'
-            ? attractionsData.flatMap(c => c.attractions)
-            : aiCategories.flatMap(c => c.attractions);
+            ? attractionsData.flatMap(c => c.attractions.map(a => ({ ...a, region: a.region || c.region })))
+            : aiCategories.flatMap(c => c.attractions.map(a => ({ ...a, region: a.region || c.region, categoryTitle: a.categoryTitle || c.title })));
         sourceAttractions.forEach(a => {
-            if (selectedCity !== 'all' && !locationMatchesCity(a.location || '', selectedCity)) return;
+            if (selectedCity !== 'all' && !attractionMatchesCity(a, selectedCity)) return;
             items.push({
                 id: a.id, type: 'attraction', name: a.name,
                 address: a.location, lat: a.lat, lng: a.lng,
@@ -727,32 +792,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
             {viewMode === 'map' ? (
                 <div className="space-y-3">
-                    {(() => {
-                        // Surface map-readiness status: how many items are still
-                        // being geocoded, and how many gave up (geocodeFailed).
-                        // Only count items that match the current city filter so
-                        // the banner reflects what's missing from THIS view.
-                        const pool: Attraction[] = activeTab === 'my_list'
-                            ? attractionsData.flatMap(c => c.attractions)
-                            : aiCategories.flatMap(c => c.attractions);
-                        const visible = pool.filter(a => selectedCity === 'all' || locationMatchesCity(a.location || '', selectedCity));
-                        const failedCount = visible.filter(a => a.geocodeFailed).length;
-                        return (
-                            <>
-                                {geocodingInFlight > 0 && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-sm">
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        <span>מאתר {geocodingInFlight} מקומות נוספים על המפה...</span>
-                                    </div>
-                                )}
-                                {geocodingInFlight === 0 && failedCount > 0 && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
-                                        <span>⚠️ {failedCount} {failedCount === 1 ? 'מקום לא נמצא' : 'מקומות לא נמצאו'} במפה — נסה לפתוח את הכרטיס ולהוסיף קישור Google Maps ידנית.</span>
-                                    </div>
-                                )}
-                            </>
-                        );
-                    })()}
+                    {geocodingInFlight > 0 && (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-sm">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>מאתר {geocodingInFlight} מקומות נוספים על המפה...</span>
+                        </div>
+                    )}
                     <UnifiedMapView items={getMapItems()} title={activeTab === 'my_list' ? "מפת אטרקציות שלי" : "מפת המלצות"} />
                 </div>
             ) : (
@@ -805,12 +850,16 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                         {(() => {
                                             // Flatten List Logic
                                             const flatList: Attraction[] = [];
-                                            attractionsData.forEach(c => c.attractions.forEach(a => flatList.push({ ...a, categoryTitle: c.title })));
+                                            attractionsData.forEach(c => c.attractions.forEach(a => flatList.push({
+                                                ...a,
+                                                region: a.region || c.region,
+                                                categoryTitle: c.title
+                                            })));
 
                                             // Filter
                                             let filtered = flatList;
                                             if (selectedCity !== 'all') {
-                                                filtered = flatList.filter(a => locationMatchesCity(a.location || '', selectedCity));
+                                                filtered = flatList.filter(a => attractionMatchesCity(a, selectedCity));
                                             }
 
                                             // Sort
@@ -1000,7 +1049,11 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // Helper to get all AI recs for initial check
     function allAiAttractions() {
         let all: any[] = [];
-        aiCategories.forEach(c => all.push(...c.attractions));
+        aiCategories.forEach(c => all.push(...c.attractions.map(a => ({
+            ...a,
+            region: a.region || c.region,
+            categoryTitle: a.categoryTitle || c.title,
+        }))));
         return all;
     }
 };

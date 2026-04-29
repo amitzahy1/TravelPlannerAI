@@ -8,27 +8,30 @@ import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 const GOOGLE_MODELS = {
   // Tier 1: Used for SMART/ANALYZE intent (trip extraction, PDF parsing, structured JSON).
   // Ordered fastest-first — 2.5-flash-lite handles realistic trip-extraction with 100% accuracy
-  // at ~2s, while pro takes 15+s for no quality gain on this task. Pro stays as last-resort
-  // fallback for genuinely heavy inputs (massive PDFs, very ambiguous text).
+  // at ~2s, while pro takes 15+s for no quality gain on this task. Gemini 3 Flash is a quality
+  // backstop if 2.5 models are exhausted; 2.5-pro stays as absolute last resort for heavy PDFs.
   SMART_CANDIDATES: [
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
+    "gemini-3-flash-preview",
     "gemini-2.5-pro",
   ],
   // Tier 2: Used for SEARCH intent (restaurant/attraction market research).
-  // Knowledge-recall task — the pro tier gives dramatically better coverage
-  // of niche local places than flash-lite. User confirmed 3.1 preview gives
-  // the deepest results when it completes; the 2.5-pro fallback is there
-  // for the cases when 3.1 times out on unusually large prompts.
+  // Quality first — stronger models produce better, more nuanced restaurant/attraction lists.
+  // Gemini 3 Pro has the best grounded-search capability; fall through to 3 Flash, then 2.5,
+  // and finally OpenRouter free-tier LLaMA if all Google quota is exhausted.
   RESEARCH_CANDIDATES: [
-    "gemini-3.1-pro-preview",  // PRIMARY — newest + deepest knowledge
-    "gemini-2.5-pro",          // FALLBACK — GA, fast on timeout
-    "gemini-2.5-flash",        // LAST RESORT — if pros rate-limit
+    "gemini-3.1-pro-preview",                        // PRIMARY — best quality, Gemini 3 grounded search
+    "gemini-3-flash-preview",                        // FALLBACK 1 — Gemini 3, fast + capable
+    "gemini-2.5-flash",                              // FALLBACK 2 — stable, reliable quota
+    "gemini-2.5-flash-lite",                         // FALLBACK 3 — highest quota tolerance
+    "meta-llama/llama-3.3-70b-instruct:free",        // FALLBACK 4 — OpenRouter free tier (non-Google)
   ],
   // Tier 3: Used for FAST intent (chat, quick suggestions)
   FAST_CANDIDATES: [
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
+    "meta-llama/llama-3.3-70b-instruct:free",        // last resort if all Gemini quota gone
   ]
 };
 
@@ -197,6 +200,23 @@ export const validateFiles = (files: File[]): { validFiles: File[]; errors: File
  */
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+const parseRetryDelayMs = (message: string, fallbackMs = 5000): number => {
+  const retryInfoMatch = message.match(/retryDelay["']?\s*[:=]\s*["']?(\d+)s/i);
+  if (retryInfoMatch) return Number(retryInfoMatch[1]) * 1000;
+
+  const plainMatch = message.match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+  if (plainMatch) return Math.ceil(Number(plainMatch[1]) * 1000);
+
+  return fallbackMs;
+};
+
+const isTransientWorkerError = (status: number, message: string): boolean => {
+  if (status === 429) return true;
+  if (status < 500) return false;
+  if (/PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay|limit:\s*0/i.test(message)) return false;
+  return /503|Service Unavailable|high demand|temporar|retry/i.test(message);
+};
+
 // ============================================================================
 // 🔄 GENERATE WITH FALLBACK (THE WATERFALL)
 // ============================================================================
@@ -228,6 +248,8 @@ export const generateWithFallback = async (
   chain = [...new Set(chain)];
 
   let lastError: Error | null = null;
+  let hadDayQuotaError = false;
+  let hadNonDayQuotaError = false;
   const WORKER_URL = import.meta.env.VITE_WORKER_URL || "https://travelplannerai-api.amitzahy1.workers.dev";
 
   for (let i = 0; i < chain.length; i++) {
@@ -280,12 +302,29 @@ export const generateWithFallback = async (
 
       clearTimeout(timeout);
 
-      // Rate limit — wait and retry same model once
-      if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('retry-after') || '5', 10);
-        console.warn(`⏳ [AI] Rate limited on ${modelId}, waiting ${retryAfter}s...`);
-        await delay(retryAfter * 1000);
-        // Retry once on same model — include full config to match original request
+      // Rate-limit / temporary provider outage — wait and retry same model once.
+      if (response.status === 429 || !response.ok) {
+        let errDetail = '';
+        if (!response.ok) {
+          try {
+            const errBody = await response.json();
+            errDetail = errBody.error || errBody.message || '';
+          } catch { /* ignore parse error */ }
+        }
+
+        if (!isTransientWorkerError(response.status, errDetail)) {
+          console.error(`❌ [AI] Worker ${response.status} on ${modelId}:`, errDetail || response.statusText);
+          throw new Error(`Worker Error: ${response.status}${errDetail ? ` — ${errDetail}` : ''}`);
+        }
+
+        const retryAfterHeader = Number(response.headers.get('retry-after'));
+        const retryAfterMs = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+          ? retryAfterHeader * 1000
+          : parseRetryDelayMs(errDetail);
+        console.warn(`⏳ [AI] Temporary failure on ${modelId}, waiting ${Math.ceil(retryAfterMs / 1000)}s...`);
+        await delay(retryAfterMs);
+
+        // Retry once on same model — include full config to match original request.
         const retryResponse = await fetch(`${WORKER_URL}/api/generate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -311,16 +350,6 @@ export const generateWithFallback = async (
         return { text: retryText, model: modelId };
       }
 
-      if (!response.ok) {
-        let errDetail = '';
-        try {
-          const errBody = await response.json();
-          errDetail = errBody.error || errBody.message || '';
-        } catch { /* ignore parse error */ }
-        console.error(`❌ [AI] Worker ${response.status} on ${modelId}:`, errDetail || response.statusText);
-        throw new Error(`Worker Error: ${response.status}${errDetail ? ` — ${errDetail}` : ''}`);
-      }
-
       const data = await response.json();
       // For non-SEARCH intents the Worker enforces a JSON schema, so we can
       // parse straight through. SEARCH responses come back as grounded
@@ -335,6 +364,9 @@ export const generateWithFallback = async (
     } catch (error: any) {
       console.warn(`⚠️ [AI] Failed ${modelId}:`, error.message);
       lastError = error;
+      const isDayQuotaError = /PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay/i.test(error.message || '');
+      if (isDayQuotaError) hadDayQuotaError = true;
+      else hadNonDayQuotaError = true;
       // Small backoff between different models
       if (i < chain.length - 1) {
         await delay(500 * (i + 1));
@@ -343,6 +375,12 @@ export const generateWithFallback = async (
   }
 
   console.error("❌ [AI] All models failed.");
+  // Only surface a hard daily-quota message when every observed failure was
+  // day-quota related. If Flash failed due to temporary demand after Pro quota
+  // errors, keep the true last error so callers can retry later.
+  if (hadDayQuotaError && !hadNonDayQuotaError) {
+    throw new Error(`PerDay quota exhausted — all models failed. Last error: ${lastError?.message || ''}`);
+  }
   throw lastError || new Error("All AI models failed to generate response.");
 };
 

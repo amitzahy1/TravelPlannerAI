@@ -162,9 +162,11 @@ const buildTimeline = (trip: Trip): TimelineDay[] => {
   Object.values(days).forEach(day => {
     const d = isoDate(day.date);
     const active = trip.hotels?.find(h => d > isoDate(h.checkInDate) && d < isoDate(h.checkOutDate));
-    if (active && day.events.length === 0) {
-      day.title = `נופש ב-${active.name}`;
-      day.events.push({
+    if (active) {
+      if (day.events.length === 0) day.title = `נופש ב-${active.name}`;
+      // Always prepend the hotel-stay chip so every middle day shows the hotel
+      // name in the calendar — even on days that also have flights or activities.
+      day.events.unshift({
         id: `s-${d}`, type: 'hotel_stay', time: '', title: active.name,
         subtitle: 'יום חופשי במלון', icon: '🛏️', hotelData: active
       });
@@ -659,7 +661,7 @@ body {
 .cal-chip-run-mid { border-radius: 0; padding-top: 1px; padding-bottom: 1px; opacity: 0.92; }
 .cal-chip-run-start { border-bottom-right-radius: 0; border-top-right-radius: 4px; border-bottom-left-radius: 0; }
 .cal-chip-run-end { border-top-right-radius: 0; border-top-left-radius: 0; padding-top: 1px; opacity: 0.92; }
-.cal-chip-run-cont { font-size: 8.5px; font-weight: 600; opacity: 0.7; }
+.cal-chip-run-cont { font-size: 10px; font-weight: 600; opacity: 0.85; }
 .cal-more { font-size: 9px; color: #64748b; font-weight: 700; padding-right: 3px; }
 .cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 14px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; }
 .cal-legend-title { font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; padding-left: 4px; }
@@ -744,7 +746,7 @@ const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
   (trip.hotels || []).forEach(h => { if (h.city) ensureCityColor(h.city); });
 
   type ChipKind = 'flight' | 'hotel' | 'activity' | 'food' | 'transfer';
-  type Chip = { kind: ChipKind; label: string; runKey: string; color?: { bg: string; fg: string } };
+  type Chip = { kind: ChipKind; label: string; runKey: string; color?: { bg: string; fg: string }; hotelCity?: string; hotelName?: string };
   const eventsByIso: Record<string, Chip[]> = {};
   timeline.forEach(d => {
     if (!eventsByIso[d.iso]) eventsByIso[d.iso] = [];
@@ -754,22 +756,23 @@ const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
       else if (e.type === 'hotel_in' || e.type === 'hotel_out' || e.type === 'hotel_stay') kind = 'hotel';
       else if (e.type === 'food') kind = 'food';
       else if (e.type === 'transfer') kind = 'transfer';
-      // Times removed per user request — calendar shows what, not when.
       const label = e.title;
       let color: { bg: string; fg: string } | undefined;
-      // runKey detects "same event on consecutive days" so a 5-night hotel
-      // run renders as a connected band instead of 5 separate chips.
       let runKey = `${kind}::${label}`;
+      let hotelCity: string | undefined;
+      let hotelName: string | undefined;
       if (kind === 'hotel') {
         const name = (e.hotelData?.name || '').trim().toLowerCase();
         if (name && hotelColors[name]) color = hotelColors[name];
         runKey = `hotel::${name}`;
+        hotelCity = e.hotelData?.city || '';
+        hotelName = e.hotelData?.name || '';
       } else if (kind === 'flight') {
         const city = (e.flightData?.toCity || e.flightData?.fromCity || '').trim().toLowerCase();
         if (city && cityColors[city]) color = cityColors[city];
         runKey = `flight::${city}`;
       }
-      eventsByIso[d.iso].push({ kind, label, runKey, color });
+      eventsByIso[d.iso].push({ kind, label, runKey, color, hotelCity, hotelName });
     });
   });
 
@@ -814,11 +817,11 @@ const renderCalendarSection = (trip: Trip, timeline: TimelineDay[]): string => {
         ? ` style="background:${c.color.bg};color:${c.color.fg}"`
         : '';
       const runCls = c.runPos === 'single' ? '' : ` cal-chip-run-${c.runPos}`;
-      // On continuation cells (mid/end) show a thin bar with a dot
-      // instead of repeating the full hotel name. Start cell carries
-      // the full label.
+      // Always show the label — for stay days (mid/end) the label IS the
+      // hotel name; for checkout (end) it's "צ'ק-אאוט". Smaller font on
+      // continuation cells keeps it visually distinct from the start chip.
       const isContinuation = c.runPos === 'mid' || c.runPos === 'end';
-      const display = isContinuation ? '·' : esc(c.label);
+      const display = esc(c.label);
       const contCls = isContinuation ? ' cal-chip-run-cont' : '';
       return `<span class="cal-chip cal-chip-${c.kind}${runCls}${contCls}"${styleAttr} title="${esc(c.label)}">${display}</span>`;
     }).join('');

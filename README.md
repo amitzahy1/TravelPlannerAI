@@ -16,5 +16,6 @@ View your app in AI Studio: https://ai.studio/apps/drive/14vZLo45-BtpPB3t_IH4x5V
 1. Install dependencies:
    `npm install`
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+   - Optional fallback for restaurant/attraction research: set the Worker secret `OPENROUTER_API_KEY` to enable `openrouter/free` when Gemini is overloaded or out of quota.
 3. Run the app:
    `npm run dev`

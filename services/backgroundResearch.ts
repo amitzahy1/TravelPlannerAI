@@ -12,7 +12,7 @@
 import type { Trip, RestaurantCategory, AttractionCategory } from '../types';
 import { generateWithFallback } from './aiService';
 import { saveSingleTrip } from './storageService';
-import { getTripCities } from '../utils/geoData';
+import { displayCityName, getTripCities } from '../utils/geoData';
 import { stripChainRestaurants } from '../utils/chainRestaurants';
 import { toast } from '../stores/useToastStore';
 
@@ -148,7 +148,17 @@ OUTPUT JSON ONLY:
 interface ResearchOptions {
         onProgress?: (phase: 'food' | 'attractions', current: number, total: number) => void;
         onComplete?: (phase: 'food' | 'attractions') => void;
+        persistPatch?: (patch: Pick<Partial<Trip>, 'aiRestaurants' | 'aiAttractions'>) => Promise<void>;
 }
+
+const extractCategoriesList = (rawData: any): any[] => {
+        if (rawData?.categories) {
+                return Array.isArray(rawData.categories)
+                        ? rawData.categories
+                        : Object.values(rawData.categories);
+        }
+        return Array.isArray(rawData) ? rawData : [];
+};
 
 const researchRestaurantsForTrip = async (
         trip: Trip,
@@ -163,9 +173,10 @@ const researchRestaurantsForTrip = async (
         for (let i = 0; i < cities.length; i++) {
                 opts.onProgress?.('food', i + 1, cities.length);
                 const city = cities[i];
+                const cityEn = displayCityName(city, 'en');
                 try {
                         // First pass: standard prompt
-                        const firstPrompt = buildRestaurantPrompt(city);
+                        const firstPrompt = buildRestaurantPrompt(cityEn);
                         let response = await generateWithFallback(
                                 null,
                                 [{ role: 'user', parts: [{ text: firstPrompt }] }],
@@ -173,7 +184,7 @@ const researchRestaurantsForTrip = async (
                                 'SEARCH'
                         );
                         let rawData = JSON.parse(response.text || '{}');
-                        let categoriesList = rawData.categories || (Array.isArray(rawData) ? rawData : []);
+                        let categoriesList = extractCategoriesList(rawData);
 
                         // Count restaurants in this first pass
                         const firstCount = categoriesList.reduce((sum: number, c: any) => sum + (c.restaurants?.length || 0), 0);
@@ -186,7 +197,7 @@ const researchRestaurantsForTrip = async (
                                 console.log(`[bgResearch] ${city} first pass = ${firstCount}, retrying`);
                                 const retryPrompt = `${firstPrompt}
 
-⚠️ RETRY CONTEXT: Previous search for "${city}" returned only ${firstCount} restaurants. This city is smaller/less documented. Search HARDER this time — include:
+⚠️ RETRY CONTEXT: Previous search for "${cityEn}" returned only ${firstCount} restaurants. This city is smaller/less documented. Search HARDER this time — include:
 - Small local shops, street food legends, ferry-pier eateries
 - Hotel restaurants (flag isHotelRestaurant: true)
 - Market food courts and night markets
@@ -202,7 +213,7 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
                                                 'SEARCH'
                                         );
                                         const retryData = JSON.parse(retry.text || '{}');
-                                        const retryList = retryData.categories || (Array.isArray(retryData) ? retryData : []);
+                                        const retryList = extractCategoriesList(retryData);
                                         const retryCount = retryList.reduce((sum: number, c: any) => sum + (c.restaurants?.length || 0), 0);
                                         if (retryCount > firstCount) {
                                                 categoriesList = retryList;
@@ -223,6 +234,7 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
                                 // Burger King observed). Strip them here so they never reach the UI.
                                 restaurants: stripChainRestaurants(c.restaurants || []).map((r: any, j: number) => ({
                                         ...r,
+                                        region: r.region || city,
                                         id: `ai-rec-${city}-${idx}-${Math.random().toString(36).slice(2, 7)}-${j}`,
                                         categoryTitle: c.title,
                                 })),
@@ -241,8 +253,10 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
                         });
 
                         // Persist after every city so the UI sees partial results
-                        const partialTrip: Trip = { ...trip, aiRestaurants: accumulated };
-                        try { await saveSingleTrip(partialTrip, userId); } catch (e) { console.warn('[bgResearch] partial save failed', e); }
+                        try {
+                                if (opts.persistPatch) await opts.persistPatch({ aiRestaurants: accumulated });
+                                else await saveSingleTrip({ ...trip, aiRestaurants: accumulated }, userId);
+                        } catch (e) { console.warn('[bgResearch] partial save failed', e); }
                 } catch (cityErr) {
                         console.error(`[bgResearch] food research for ${city} failed`, cityErr);
                 }
@@ -265,8 +279,9 @@ const researchAttractionsForTrip = async (
         for (let i = 0; i < cities.length; i++) {
                 opts.onProgress?.('attractions', i + 1, cities.length);
                 const city = cities[i];
+                const cityEn = displayCityName(city, 'en');
                 try {
-                        const prompt = buildAttractionPrompt(city);
+                        const prompt = buildAttractionPrompt(cityEn);
                         const response = await generateWithFallback(
                                 null,
                                 [{ role: 'user', parts: [{ text: prompt }] }],
@@ -274,21 +289,16 @@ const researchAttractionsForTrip = async (
                                 'SEARCH'
                         );
                         const rawData = JSON.parse(response.text || '{}');
-                        let categoriesList: any[] = [];
-                        if (rawData.categories) {
-                                categoriesList = Array.isArray(rawData.categories)
-                                        ? rawData.categories
-                                        : Object.values(rawData.categories);
-                        } else if (Array.isArray(rawData)) {
-                                categoriesList = rawData;
-                        }
+                        let categoriesList = extractCategoriesList(rawData);
                         if (!categoriesList.length) continue;
 
                         const processed = categoriesList.map((c: any, idx: number) => ({
                                 ...c,
                                 id: c.id || `ai-cat-${city}-${idx}-${Date.now()}`,
+                                region: city,
                                 attractions: (c.attractions || []).map((a: any, j: number) => ({
                                         ...a,
+                                        region: a.region || city,
                                         id: `ai-attr-${city}-${idx}-${Math.random().toString(36).slice(2, 7)}-${j}`,
                                         categoryTitle: c.title,
                                 })),
@@ -306,8 +316,10 @@ const researchAttractionsForTrip = async (
                                 }
                         });
 
-                        const partialTrip: Trip = { ...trip, aiAttractions: accumulated };
-                        try { await saveSingleTrip(partialTrip, userId); } catch (e) { console.warn('[bgResearch] partial save failed', e); }
+                        try {
+                                if (opts.persistPatch) await opts.persistPatch({ aiAttractions: accumulated });
+                                else await saveSingleTrip({ ...trip, aiAttractions: accumulated }, userId);
+                        } catch (e) { console.warn('[bgResearch] partial save failed', e); }
                 } catch (cityErr) {
                         console.error(`[bgResearch] attraction research for ${city} failed`, cityErr);
                 }
@@ -345,9 +357,19 @@ export const runBackgroundResearch = (
         console.log('[bgResearch] starting for trip', trip.id);
         toast.info('🔍 מחקר אוכל ואטרקציות רץ ברקע…', 4000);
 
+        let latestTrip: Trip = { ...trip };
+        let saveQueue = Promise.resolve();
+        const persistPatch: ResearchOptions['persistPatch'] = async (patch) => {
+                latestTrip = { ...latestTrip, ...patch };
+                const snapshot = latestTrip;
+                saveQueue = saveQueue.catch(() => undefined).then(() => saveSingleTrip(snapshot, userId));
+                return saveQueue;
+        };
+
         const opts: ResearchOptions = {
                 onProgress: (phase, c, t) => console.log(`[bgResearch] ${phase} ${c}/${t}`),
                 onComplete: (phase) => console.log(`[bgResearch] ${phase} done`),
+                persistPatch,
         };
 
         let foodFailed = false;
@@ -368,6 +390,7 @@ export const runBackgroundResearch = (
         }
 
         return Promise.all(tasks)
+                .then(() => saveQueue.catch(() => undefined))
                 .then(() => {
                         console.log('[bgResearch] all phases complete for trip', trip.id);
                         if (foodFailed && attractionsFailed) {

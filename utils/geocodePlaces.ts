@@ -2,10 +2,10 @@
  * Lazy geocoding for places (restaurants / attractions / hotels) that
  * came back from the AI without lat/lng. Strategy:
  *   1. If a googleMapsUrl is present, try to extract @lat,lng from it.
- *   2. Otherwise hit Nominatim (OSM) with "<name>, <location>".
+ *   2. Otherwise hit Photon (OSM) with "<name>, <location>".
  *
  * Results are cached in localStorage so repeat visits to the map don't
- * burn through the public Nominatim quota. Concurrency is gated to 4
+ * hammer public geocoding endpoints. Concurrency is gated to 4
  * to stay polite.
  */
 
@@ -63,9 +63,8 @@ export const extractCoordsFromMapsUrl = (url?: string): { lat: number; lng: numb
 
 /**
  * Photon (Komoot) — open-source geocoder over OSM data with proper CORS
- * headers. Used as the primary lookup because Nominatim's public endpoint
- * blocks browser requests with CORS + 429 from github.io. Falls back to
- * Nominatim if Photon misses.
+ * headers. Nominatim's public endpoint blocks browser requests from
+ * github.io, so we avoid calling it from the client.
  */
 const photonGeocode = async (query: string): Promise<{ lat: number; lng: number } | null> => {
         if (!query) return null;
@@ -89,32 +88,8 @@ const photonGeocode = async (query: string): Promise<{ lat: number; lng: number 
         }
 };
 
-const nominatimGeocode = async (query: string): Promise<{ lat: number; lng: number } | null> => {
-        if (!query) return null;
-        try {
-                const res = await fetch(
-                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
-                        { headers: { 'Accept-Language': 'en' } }
-                );
-                if (!res.ok) return null;
-                const data = await res.json();
-                if (Array.isArray(data) && data.length > 0) {
-                        const lat = parseFloat(data[0].lat);
-                        const lng = parseFloat(data[0].lon);
-                        if (isFinite(lat) && isFinite(lng)) return { lat, lng };
-                }
-                return null;
-        } catch {
-                return null;
-        }
-};
-
 const geocodeFallbackChain = async (query: string): Promise<{ lat: number; lng: number } | null> => {
-        // Photon first (CORS-friendly, no rate-limit on github.io); Nominatim
-        // as a fallback when Photon misses for niche queries.
-        const photon = await photonGeocode(query);
-        if (photon) return photon;
-        return await nominatimGeocode(query);
+        return await photonGeocode(query);
 };
 
 export interface GeocodableInput {
@@ -132,7 +107,7 @@ export interface GeocodableInput {
  * Resolve coordinates for a single place. Order:
  *   1. localStorage cache
  *   2. extractCoordsFromMapsUrl (free, instant)
- *   3. Nominatim geocode (one HTTP round-trip)
+ *   3. Photon geocode (one HTTP round-trip)
  */
 export const geocodePlace = async (input: GeocodableInput): Promise<{ lat: number; lng: number } | null> => {
         const c = cache();
@@ -208,8 +183,7 @@ export const geocodePlacesBatch = async <T extends GeocodableInput & { id: strin
                         } else {
                                 opts?.onFail?.(item.id);
                         }
-                        // Polite delay between requests per worker (Nominatim ToS asks
-                        // for ≤1 req/sec, but distributed across N workers it's fine).
+                        // Polite delay between requests per worker.
                         await new Promise(r => setTimeout(r, 250));
                 }
         };

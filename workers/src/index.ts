@@ -14,11 +14,77 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // --- INTERFACES ---
 interface Env {
-        GEMINI_API_KEY: string;
+        GEMINI_API_KEY?: string;
+        OPENROUTER_API_KEY?: string;
         FIREBASE_SERVICE_ACCOUNT: string;
         FIREBASE_PROJECT_ID: string;
         AUTH_SECRET: string;
 }
+
+const isOpenRouterModel = (modelId: string) => modelId.startsWith("openrouter/");
+
+const partToText = (part: any): string => {
+        if (!part) return "";
+        if (typeof part === "string") return part;
+        if (typeof part.text === "string") return part.text;
+        return "";
+};
+
+const contentsToOpenRouterMessages = (requestContent: any): any[] => {
+        if (typeof requestContent === "string") return [{ role: "user", content: requestContent }];
+        if (!Array.isArray(requestContent)) return [{ role: "user", content: String(requestContent || "") }];
+
+        return requestContent.map((entry: any) => {
+                if (entry?.content) return entry;
+                const content = Array.isArray(entry?.parts)
+                        ? entry.parts.map(partToText).filter(Boolean).join("\n")
+                        : partToText(entry);
+                return {
+                        role: entry?.role === "model" ? "assistant" : (entry?.role || "user"),
+                        content,
+                };
+        }).filter((message: any) => message.content);
+};
+
+const callOpenRouter = async (
+        requestContent: any,
+        modelId: string,
+        generationConfig: any,
+        env: Env
+): Promise<{ text: string; model: string }> => {
+        if (!env.OPENROUTER_API_KEY) {
+                throw new Error("Missing OPENROUTER_API_KEY");
+        }
+
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${env.OPENROUTER_API_KEY}`,
+                        "HTTP-Referer": "https://amitzahy1.github.io/TravelPlannerAI/",
+                        "X-Title": "Travel Planner Pro",
+                },
+                body: JSON.stringify({
+                        model: modelId,
+                        messages: contentsToOpenRouterMessages(requestContent),
+                        temperature: generationConfig?.temperature ?? 0.2,
+                }),
+        });
+
+        if (!response.ok) {
+                let detail = "";
+                try {
+                        const errorBody = await response.json() as any;
+                        detail = errorBody?.error?.message || errorBody?.message || JSON.stringify(errorBody);
+                } catch { /* ignore */ }
+                throw new Error(`OpenRouter Error: ${response.status}${detail ? ` — ${detail}` : ""}`);
+        }
+
+        const data = await response.json() as any;
+        const text = data?.choices?.[0]?.message?.content || "";
+        if (!text) throw new Error("OpenRouter returned an empty response");
+        return { text, model: data?.model || modelId };
+};
 
 // --- MAIN HANDLER ---
 export default {
@@ -36,9 +102,15 @@ export default {
         },
 
         async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-                // CORS Headers
+                // CORS Headers — allow production + local dev
+                const origin = request.headers.get("Origin") || "";
+                const allowedOrigin = (
+                        origin === "https://amitzahy1.github.io" ||
+                        origin.startsWith("http://localhost:") ||
+                        origin.startsWith("http://127.0.0.1:")
+                ) ? origin : "https://amitzahy1.github.io";
                 const corsHeaders = {
-                        "Access-Control-Allow-Origin": "*", // Replace with specific domain in production!
+                        "Access-Control-Allow-Origin": allowedOrigin,
                         "Access-Control-Allow-Methods": "POST, OPTIONS",
                         "Access-Control-Allow-Headers": "Content-Type, X-Auth-Token",
                 };
@@ -50,10 +122,6 @@ export default {
                 const url = new URL(request.url);
 
                 try {
-                        if (!env.GEMINI_API_KEY) {
-                                throw new Error("Missing Environment Variables");
-                        }
-
                         // Secure API Endpoint for Frontend (supports multimodal content)
                         if (url.pathname === "/api/generate" && request.method === "POST") {
                                 const body = await request.json() as any;
@@ -63,19 +131,34 @@ export default {
                                 const requestContent = contents || prompt;
                                 if (!requestContent) return new Response("Missing prompt/contents", { status: 400, headers: corsHeaders });
 
-                                const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
                                 const modelId = Model || "gemini-1.5-flash-latest";
+                                const isSearch = intent === 'SEARCH';
+                                const finalGenConfig = isSearch
+                                        ? { temperature: generationConfig?.temperature ?? 0.2 }
+                                        : (generationConfig || { responseMimeType: "application/json" });
+
+                                if (isOpenRouterModel(modelId)) {
+                                        const openRouter = await callOpenRouter(requestContent, modelId, finalGenConfig, env);
+                                        return new Response(JSON.stringify({
+                                                text: openRouter.text,
+                                                model: openRouter.model,
+                                                grounded: false,
+                                                provider: "openrouter",
+                                        }), {
+                                                headers: { ...corsHeaders, "Content-Type": "application/json" }
+                                        });
+                                }
+
+                                if (!env.GEMINI_API_KEY) {
+                                        throw new Error("Missing GEMINI_API_KEY");
+                                }
 
                                 // SEARCH intent → ground via Google Search + low temperature.
                                 // Tools and structured-JSON output are mutually exclusive in the
                                 // Gemini API, so when grounding we drop responseMimeType /
                                 // responseSchema and ask the model for free-form text. The frontend
                                 // re-extracts JSON via cleanJSON().
-                                const isSearch = intent === 'SEARCH';
-                                const finalGenConfig = isSearch
-                                        ? { temperature: generationConfig?.temperature ?? 0.2 }
-                                        : (generationConfig || { responseMimeType: "application/json" });
-
+                                const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
                                 const modelOptions: any = {
                                         model: modelId,
                                         generationConfig: finalGenConfig,

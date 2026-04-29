@@ -64,7 +64,7 @@ const getCuisineVisuals = (cuisine: string = '') => {
 };
 
 import { cleanTextForMap } from '../utils/textUtils';
-import { getTripCities, locationMatchesCity } from '../utils/geoData';
+import { getTripCities, locationMatchesCity, displayCityName } from '../utils/geoData';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
 
 
@@ -80,6 +80,11 @@ const sortMyRestaurants = (list: Restaurant[]) => {
     });
 };
 
+const restaurantMatchesCity = (restaurant: Pick<Restaurant, 'location' | 'region'>, city: string): boolean => {
+    return locationMatchesCity(restaurant.location || '', city)
+        || locationMatchesCity(restaurant.region || '', city);
+};
+
 const RestaurantCard: React.FC<{
     rec: ExtendedRestaurant,
     tripDestination: string,
@@ -93,7 +98,7 @@ const RestaurantCard: React.FC<{
     const nameForMap = cleanTextForMap(rec.nameEnglish || rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
     const mapsQuery = encodeURIComponent(`${nameForMap} ${locationForMap}`);
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+    const mapsUrl = rec.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
     const visuals = getCuisineVisuals(rec.cuisine);
 
@@ -162,14 +167,14 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // surface as a separate warning banner.
     const [geocodingInFlight, setGeocodingInFlight] = useState(0);
 
-    // Wipe cached AI restaurants and start a fresh multi-city research
+    // Wipe cached AI restaurants — user starts fresh research manually
     const handleResetResearch = () => {
         setAiCategories([]);
-        onUpdateTrip({ ...trip, aiRestaurants: [] });
+        onUpdateTrip({ ...tripRef.current, aiRestaurants: [] });
         setSelectedCategory('all');
         setSelectedRater('all');
         setConfirmReset(false);
-        setTimeout(() => researchAllCities(), 50);
+        setTimeout(() => researchAllCities([]), 0);
     };
 
     // Sync state with trip prop
@@ -240,27 +245,38 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     // --- AI Market Research Logic ---
     const initiateResearch = (city?: string) => {
-        fetchRecommendations(true, city || trip.destinationEnglish || tripCities[0]);
+        const cityEn = city ? displayCityName(city, 'en') : (trip.destinationEnglish || displayCityName(tripCities[0], 'en'));
+        fetchRecommendations(true, cityEn);
     };
 
-    const researchAllCities = async () => {
+    const researchAllCities = async (baseCategories: RestaurantCategory[] = aiCategories) => {
         setIsResearchingAll(true);
         setRecError('');
         const cities = tripCities;
         setResearchProgress({ current: 0, total: cities.length });
 
         try {
-            let accumulatedCategories: RestaurantCategory[] = [...aiCategories];
+            let accumulatedCategories: RestaurantCategory[] = [...baseCategories];
 
             for (let i = 0; i < cities.length; i++) {
                 setResearchProgress({ current: i + 1, total: cities.length });
                 const city = cities[i];
+                // Translate Hebrew display name to English for the AI prompt
+                const cityEn = displayCityName(city, 'en');
 
                 try {
-                    const prompt = createResearchPrompt(city);
+                    const prompt = createResearchPrompt(cityEn);
                     const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
                     const rawData = JSON.parse(response.text || '{}');
-                    const categoriesList = rawData.categories || (Array.isArray(rawData) ? rawData : []);
+                    let categoriesList: any[] = [];
+                    if (rawData.categories) {
+                        categoriesList = Array.isArray(rawData.categories)
+                            ? rawData.categories
+                            : Object.values(rawData.categories);
+                    } else if (Array.isArray(rawData)) {
+                        categoriesList = rawData;
+                    }
+                    if (!Array.isArray(categoriesList)) categoriesList = [];
 
                     if (categoriesList.length > 0) {
                         const processed = categoriesList.map((c: any, index: number) => ({
@@ -271,6 +287,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             // exclusion list, the model occasionally slips chains through.
                             restaurants: stripChainRestaurants(c.restaurants || []).map((r: any, j: number) => ({
                                 ...r,
+                                region: r.region || city,
                                 id: `ai-rec-${city}-${index}-${Math.random().toString(36).substr(2, 5)}-${j}`,
                                 categoryTitle: c.title
                             }))
@@ -291,13 +308,26 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             }
                         });
                     }
-                } catch (cityErr) {
+                } catch (cityErr: any) {
+                    const msg = cityErr?.message || '';
                     console.error(`Error researching ${city}:`, cityErr);
+                    // Day quota exhausted — waiting won't help, abort the entire loop.
+                    if (/PerDay/i.test(msg) || /per_day/i.test(msg)) {
+                        setRecError('מכסת ה-AI היומית מוצתה. נסה שוב מחר.');
+                        break;
+                    }
+                    // Per-minute rate limit only — wait for quota reset before next city.
+                    const retryMatch = msg.match(/retry in (\d+(?:\.\d+)?)s/i);
+                    if (retryMatch && i < cities.length - 1) {
+                        const waitMs = Math.ceil(parseFloat(retryMatch[1])) * 1000 + 5000;
+                        await new Promise(r => setTimeout(r, waitMs));
+                    }
                 }
             }
 
             setAiCategories(accumulatedCategories);
-            onUpdateTrip({ ...trip, aiRestaurants: accumulatedCategories });
+            const latestTrip = tripRef.current;
+            onUpdateTrip({ ...latestTrip, aiRestaurants: accumulatedCategories });
             setSelectedCity('all');
             // Upstream geocoding — fill in lat/lng for every newly-fetched
             // restaurant in the background so the map view doesn't have to
@@ -325,14 +355,21 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const geocodeAndPersistRestaurants = (cats: RestaurantCategory[]) => {
         type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number; countryHint?: string };
         const flat: Item[] = [];
-        // Append destination as country hint so "Pattaya" / "Koh Chang"
-        // resolve in Thailand instead of homonyms in Israel etc.
-        const countryHint = trip.destination?.split(/[-,]/)[0]?.trim() || '';
-        cats.forEach(c => c.restaurants.forEach(r => flat.push({
-            id: r.id, name: r.name, location: r.location,
-            googleMapsUrl: r.googleMapsUrl, lat: r.lat, lng: r.lng,
-            countryHint,
-        })));
+        // City-qualified countryHint: "Bangkok, Thailand" not just "Thailand" —
+        // prevents the geocoder from resolving ambiguous addresses (e.g. a street
+        // name that exists in multiple cities) to the wrong city.
+        const baseCountryHint = (trip.destinationEnglish || trip.destination)?.split(/[-,]/)[0]?.trim() || '';
+        cats.forEach(c => {
+            const categoryRegion = c.region || '';
+            c.restaurants.forEach(r => flat.push({
+                id: r.id, name: r.name, location: r.location,
+                googleMapsUrl: r.googleMapsUrl, lat: r.lat, lng: r.lng,
+                countryHint: [
+                    displayCityName(r.region || categoryRegion, 'en') || r.region || categoryRegion,
+                    baseCountryHint
+                ].filter(Boolean).join(', '),
+            }));
+        });
         const pendingItems = flat.filter(i => typeof i.lat !== 'number' || typeof i.lng !== 'number');
         if (pendingItems.length === 0) return;
 
@@ -363,7 +400,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         };
 
         geocodePlacesBatch(
-            flat,
+            pendingItems,
             (id, coords) => {
                 resolved[id] = coords;
                 pendingFlush += 1;
@@ -410,6 +447,15 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     8. "בתי קפה וקינוחים"
     9. "תאילנדי"
     10. "יפני"
+
+    **NOTE FOR SMALL CITIES, ISLANDS & RESORT TOWNS:**
+    If "${specificCity}" is a beach resort, island, small town, or rural area:
+    - Collapse categories with no real local options (e.g. no ramen on a Thai island)
+      into "אוכל מקומי אותנטי" or the best-fitting existing category.
+    - Hotel restaurants, beach bars, resort dining, food stalls, and waterfront
+      seafood spots all count as real local options — include them.
+    - Aim for at least 8-12 total restaurants across all filled categories.
+    - Better to fill 4-5 categories well than to leave 8 categories empty.
 
     **PART 3: RECENCY CHECK — CRITICAL**
     Do NOT recommend places whose quality has dropped:
@@ -464,6 +510,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     results, NOT a guessed one. Omit the field entirely if you cannot
     find a real URL — fabricated URLs break the map view.
 
+    CRITICAL — "location" field MUST be in English (used by a geocoding API). Format: "Street or Neighbourhood, City". Example: "Silom Road, Bangkok".
+
     OUTPUT JSON ONLY:
     { "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl" } ] } ] }
     `;
@@ -474,20 +522,21 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         try {
             const currentYear = new Date().getFullYear();
             const prevYear = currentYear - 1;
+            const targetCity = specificCity || trip.destinationEnglish || displayCityName(tripCities[0], 'en') || trip.destination;
 
             // Single-city research — lean prompt, aligned with the multi-city
             // createResearchPrompt. Focus: top-rated + award winners + recency
             // check + local-authority sources.
             const prompt = `
             You are a food expert helping someone find the BEST restaurants in
-            "${specificCity}". Find top-rated places, award winners, spots
+            "${targetCity}". Find top-rated places, award winners, spots
             with strong recent press, and iconic hole-in-the-wall local legends.
 
             **PART 1: QUOTA & SCOPE**
             - For EACH of the 10 categories below, return 3-5 real restaurants
               (aim for 5 in a major food city). Empty array ONLY if the category
               truly has nothing. Total response for a major city = 30-50.
-            - Every "location" MUST be in or near "${specificCity}".
+            - Every "location" MUST be in or near "${targetCity}".
             - If the city is small/village, expand radius to 30km.
 
             **PART 2: CATEGORIES (use EXACTLY these Hebrew titles as "title"):**
@@ -504,7 +553,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
             Let the actual cuisine + vibe decide the best-fitting category.
             A restaurant may appear in two categories if equally relevant.
-            Descriptions MUST be in HEBREW. "location" format: "Street, City".
+            Descriptions MUST be in HEBREW. "location" field MUST be in English (used for geocoding) — format: "Street, City".
 
             **PART 3: RECENCY CHECK (CRITICAL)**
             Do NOT recommend places whose quality dropped in the last 12 months:
@@ -574,7 +623,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
               ]
             }`;
 
-            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SMART');
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
 
             const textContent = response.text;
             console.log("🔍 [AI Raw Response Preview]:", textContent?.substring(0, 500) + "...");
@@ -603,10 +652,11 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     const processed = categoriesList.map((c: any, idx: number) => ({
                         ...c,
                         id: c.id || `ai-food-cat-${idx}-${Date.now()}`,
-                        region: specificCity,
+                        region: targetCity,
                         // Same chain safety-net as the multi-city research path.
                         restaurants: stripChainRestaurants(c.restaurants || []).map((r: any, i: number) => ({
                             ...r,
+                            region: r.region || targetCity,
                             id: `ai-rec-${c.id || idx}-${Math.random().toString(36).substr(2, 5)}-${i}`,
                             categoryTitle: c.title
                         }))
@@ -632,7 +682,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                     setAiCategories(merged);
                     setSelectedCategory('all');
-                    onUpdateTrip({ ...trip, aiRestaurants: merged });
+                    const latestTrip = tripRef.current;
+                    onUpdateTrip({ ...latestTrip, aiRestaurants: merged });
                 } else {
                     console.warn("⚠️ [AI Warning] Response was valid JSON but contained no results.", rawData);
                     setRecError('לא נמצאו המלצות מסעדות עבור יעד זה. המודל לא הצליח לאתר תוצאות איכותיות.');
@@ -652,7 +703,11 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const allAiRestaurants = useMemo(() => {
         let all: ExtendedRestaurant[] = [];
-        aiCategories.forEach(cat => cat.restaurants.forEach(r => all.push({ ...r, categoryTitle: cat.title })));
+        aiCategories.forEach(cat => cat.restaurants.forEach(r => all.push({
+            ...r,
+            region: r.region || cat.region,
+            categoryTitle: cat.title
+        })));
         // Sort by Rating Descending
         return all.sort((a, b) => (b.googleRating || 0) - (a.googleRating || 0));
     }, [aiCategories]);
@@ -777,8 +832,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const inTripScope = useMemo(() => {
         return (r: any) => {
             const loc = r.location || '';
-            if (!loc) return true; // no location → give benefit of the doubt
-            return tripCities.some(c => locationMatchesCity(loc, c));
+            const region = r.region || '';
+            if (!loc && !region) return true; // no location → give benefit of the doubt
+            return tripCities.some(c => restaurantMatchesCity({ location: loc, region }, c));
         };
     }, [tripCities]);
 
@@ -787,15 +843,23 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // once. Keeps the highest-rated / most-complete entry.
     const dedupeByName = (list: any[]): any[] => {
         const pick: Map<string, any> = new Map();
+        const getRestaurantCityKey = (r: any): string => {
+            for (const city of tripCities) {
+                if (restaurantMatchesCity(r, city)) return displayCityName(city, 'en').toLowerCase();
+            }
+            const raw = r.region || (r.location || '').split(',').pop()?.trim() || '';
+            return displayCityName(raw, 'en').toLowerCase();
+        };
         for (const r of list) {
             const key = (r.nameEnglish || r.name || '').trim().toLowerCase();
             if (!key) continue;
-            const existing = pick.get(key);
-            if (!existing) { pick.set(key, r); continue; }
+            const scopedKey = `${key}|${getRestaurantCityKey(r)}`;
+            const existing = pick.get(scopedKey);
+            if (!existing) { pick.set(scopedKey, r); continue; }
             // Keep the entry with the higher rating or more complete source
             const existingScore = (existing.googleRating || 0) + (existing.recommendationSource ? 0.1 : 0);
             const newScore = (r.googleRating || 0) + (r.recommendationSource ? 0.1 : 0);
-            if (newScore > existingScore) pick.set(key, r);
+            if (newScore > existingScore) pick.set(scopedKey, r);
         }
         return Array.from(pick.values());
     };
@@ -807,7 +871,11 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             list = allAiRestaurants;
         } else {
             const cat = aiCategories.find(c => c.id === selectedCategory);
-            list = cat ? [...cat.restaurants].sort((a, b) => (b.googleRating || 0) - (a.googleRating || 0)) : [];
+            list = cat
+                ? cat.restaurants
+                    .map(r => ({ ...r, region: r.region || cat.region }))
+                    .sort((a, b) => (b.googleRating || 0) - (a.googleRating || 0))
+                : [];
         }
 
         // Trim to trip scope — catches stale data from old research runs
@@ -815,7 +883,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
         // City Filter — language-agnostic via locationMatchesCity
         if (selectedCity !== 'all') {
-            list = list.filter(r => locationMatchesCity(r.location || '', selectedCity));
+            list = list.filter(r => restaurantMatchesCity(r, selectedCity));
         }
 
         if (selectedRater !== 'all') {
@@ -858,7 +926,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         // Apply Filters
         let filtered = flatList;
         if (selectedCity !== 'all') {
-            filtered = flatList.filter(r => locationMatchesCity(r.location || '', selectedCity));
+            filtered = flatList.filter(r => restaurantMatchesCity(r, selectedCity));
         }
 
         // Group by Category (User Request: "Food Categories", not streets)
@@ -895,7 +963,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             // visualise only that city's pins so the bounds zoom in there.
             // (filteredRestaurants already filtered by city, but my_list
             // hasn't yet — so apply here.)
-            if (selectedCity !== 'all' && !locationMatchesCity(r.location || '', selectedCity)) return;
+            if (selectedCity !== 'all' && !restaurantMatchesCity(r, selectedCity)) return;
             items.push({
                 id: r.id, type: 'restaurant', name: r.name,
                 address: r.location, lat: r.lat, lng: r.lng,
@@ -1068,25 +1136,12 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             {viewMode === 'map' ? (
                 <div className="space-y-3">
                     {(() => {
-                        // Surface map-readiness status: how many items are still
-                        // being geocoded vs. how many gave up. Filter by city so
-                        // the count matches what's missing from the current view.
-                        const pool: Restaurant[] = activeTab === 'my_list'
-                            ? trip.restaurants.flatMap(c => c.restaurants)
-                            : allAiRestaurants;
-                        const visible = pool.filter(r => selectedCity === 'all' || locationMatchesCity(r.location || '', selectedCity));
-                        const failedCount = visible.filter(r => r.geocodeFailed).length;
                         return (
                             <>
                                 {geocodingInFlight > 0 && (
                                     <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-sm">
                                         <Loader2 className="w-4 h-4 animate-spin" />
                                         <span>מאתר {geocodingInFlight} מקומות נוספים על המפה...</span>
-                                    </div>
-                                )}
-                                {geocodingInFlight === 0 && failedCount > 0 && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
-                                        <span>⚠️ {failedCount} {failedCount === 1 ? 'מקום לא נמצא' : 'מקומות לא נמצאו'} במפה — נסה לפתוח את הכרטיס ולהוסיף קישור Google Maps ידנית.</span>
                                     </div>
                                 )}
                             </>
@@ -1147,13 +1202,14 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                                 const flatList: ExtendedRestaurant[] = [];
                                                 trip.restaurants.forEach(cat => cat.restaurants.forEach(r => flatList.push({
                                                     ...r,
+                                                    region: r.region || cat.region,
                                                     cuisine: r.cuisine || r.iconType || cat.title || 'General' // Ensure genre is passed
                                                 })));
 
                                                 // Apply Filters — language-agnostic city match
                                                 let filtered = flatList;
                                                 if (selectedCity !== 'all') {
-                                                    filtered = flatList.filter(r => locationMatchesCity(r.location || '', selectedCity));
+                                                    filtered = flatList.filter(r => restaurantMatchesCity(r, selectedCity));
                                                 }
 
                                                 // Sort by Favorite then Rating

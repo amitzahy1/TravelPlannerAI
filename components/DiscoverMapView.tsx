@@ -76,7 +76,7 @@ const isValidLatLng = (lat?: number, lng?: number): lat is number =>
 /**
  * Map view for the Discover tab — restaurants + attractions + hotels
  * plotted on a clean cartographic basemap. AI-research items that came
- * back without lat/lng are geocoded in the background (Nominatim, with
+ * back without lat/lng are geocoded in the background (Photon, with
  * Maps-URL extraction first) so the map fills in over a few seconds
  * instead of staying empty. Each pin opens the same detail popup the
  * list view uses.
@@ -89,7 +89,7 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
         const [selectedCity, setSelectedCity] = useState<string>('all');
         const [selected, setSelected] = useState<MapPlace | null>(null);
         // Map of "kind:id" -> coords for places we just geocoded in this session.
-        // Lets us light up pins as soon as Nominatim resolves them, even before
+        // Lets us light up pins as soon as geocoding resolves them, even before
         // the parent commits the coords back to the Trip.
         const [resolvedCoords, setResolvedCoords] = useState<Record<string, { lat: number; lng: number }>>({});
         const [isGeocoding, setIsGeocoding] = useState(false);

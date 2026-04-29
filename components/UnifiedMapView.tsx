@@ -212,8 +212,8 @@ const getBearing = (lat1: number, lng1: number, lat2: number, lng2: number) => {
 
 const geocodeAddress = async (query: string): Promise<{ lat: number; lng: number } | null> => {
     if (!query) return null;
-    // Photon (Komoot) first — CORS-friendly. Nominatim is blocked on
-    // github.io with CORS + 429, so it's only a fallback now.
+    // Photon (Komoot) is CORS-friendly. Nominatim is blocked on github.io,
+    // so browser geocoding stops here instead of logging noisy CORS errors.
     try {
         const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`);
         if (res.ok) {
@@ -225,16 +225,10 @@ const geocodeAddress = async (query: string): Promise<{ lat: number; lng: number
                 if (isFinite(lat) && isFinite(lng)) return { lat, lng };
             }
         }
-    } catch { /* fall through to Nominatim */ }
-    try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-        if (!res.ok) return null;
-        const data = await res.json();
-        if (data?.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        return null;
     } catch {
         return null;
     }
+    return null;
 };
 
 // --- PREMIUM PIN MARKER ---
@@ -626,32 +620,37 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
             // AI restaurant recommendations — opt-in layer
             if (layerFlags.aiRestaurants) {
-                trip.aiRestaurants?.forEach(cat => cat.restaurants?.forEach(r => {
-                    const city = r.location?.split(',')?.[1]?.trim() || trip.destination;
-                    raw.push({
-                        id: r.id, type: 'restaurant', name: r.name, address: r.location,
-                        lat: r.lat, lng: r.lng, description: r.description, city,
-                        rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
-                        cuisine: r.cuisine, recommendationSource: r.recommendationSource,
-                        priceRange: r.priceRange || r.price || r.priceLevel,
-                        imageUrl: r.imageUrl, notes: r.notes, googleMapsUrl: r.googleMapsUrl,
+                trip.aiRestaurants?.forEach(cat => {
+                    // Use category region/title as city — more reliable than parsing address string
+                    const city = (cat as any).region || cat.title || trip.destination;
+                    cat.restaurants?.forEach(r => {
+                        raw.push({
+                            id: r.id, type: 'restaurant', name: r.name, address: r.location,
+                            lat: r.lat, lng: r.lng, description: r.description, city,
+                            rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
+                            cuisine: r.cuisine, recommendationSource: r.recommendationSource,
+                            priceRange: r.priceRange || r.price || r.priceLevel,
+                            imageUrl: r.imageUrl, notes: r.notes, googleMapsUrl: r.googleMapsUrl,
+                        });
                     });
-                }));
+                });
             }
 
             // AI attraction recommendations — opt-in layer
             if (layerFlags.aiAttractions) {
-                trip.aiAttractions?.forEach(cat => cat.attractions?.forEach(a => {
-                    const city = a.location?.split(',')?.[1]?.trim() || trip.destination;
-                    raw.push({
-                        id: a.id, type: 'attraction', name: a.name, address: a.location,
-                        lat: a.lat, lng: a.lng, description: a.description, city,
-                        rating: typeof a.rating === 'number' ? a.rating : undefined,
-                        category: a.type || a.categoryTitle,
-                        recommendationSource: a.recommendationSource, priceRange: a.price,
-                        imageUrl: a.imageUrl, notes: a.notes, googleMapsUrl: a.googleMapsUrl,
+                trip.aiAttractions?.forEach(cat => {
+                    const city = (cat as any).region || cat.title || trip.destination;
+                    cat.attractions?.forEach(a => {
+                        raw.push({
+                            id: a.id, type: 'attraction', name: a.name, address: a.location,
+                            lat: a.lat, lng: a.lng, description: a.description, city,
+                            rating: typeof a.rating === 'number' ? a.rating : undefined,
+                            category: a.type || a.categoryTitle,
+                            recommendationSource: a.recommendationSource, priceRange: a.price,
+                            imageUrl: a.imageUrl, notes: a.notes, googleMapsUrl: a.googleMapsUrl,
+                        });
                     });
-                }));
+                });
             }
 
             // Shopping
@@ -693,7 +692,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 const batch = pending.slice(batchStart, batchStart + BATCH_SIZE);
                 const batchResults = await Promise.all(batch.map(async item => {
                     const cacheKey = item.address!;
-                    const q = item.type === 'airport' ? `${item.name} Airport` : cacheKey;
+                    let q = item.type === 'airport' ? `${item.name} Airport` : cacheKey;
+                    // Append city if not already present in the address — prevents geocoder from
+                    // resolving restaurant/attraction names to same-named places in other cities.
+                    if ((item.type === 'restaurant' || item.type === 'attraction') && item.city) {
+                        if (!q.toLowerCase().includes(item.city.toLowerCase())) {
+                            q = `${q}, ${item.city}`;
+                        }
+                    }
                     const coords = await geocodeAddress(q);
                     return { itemId: item.id, cacheKey, coords };
                 }));
@@ -1164,20 +1170,25 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
         const bounds = L.latLngBounds([]);
 
-        // Build a trip-region guard: any pin more than MAX_TRIP_RADIUS_KM from
-        // the nearest hotel anchor is almost certainly a geocoding error (AI
-        // restaurant whose name also exists in another continent).
-        const MAX_TRIP_RADIUS_KM = 2500;
+        // Build a trip-region guard: any pin too far from the nearest hotel
+        // anchor is almost certainly a geocoding error (AI restaurant whose name
+        // also exists in another city or continent).
+        // Radius is tight (500 km) when hotels provide city-accurate anchors,
+        // looser (1500 km) when falling back to destination centroid only.
         const hotelAnchors = (trip?.hotels || [])
             .filter(h => isValidCoordinate(h.lat, h.lng))
             .map(h => ({ lat: h.lat!, lng: h.lng! }));
+        const hasHotelAnchors = hotelAnchors.length > 0;
         // If no hotels have coords, fall back to the cached destination centroid
         // so the guard still fires on the first visit before geocoding completes.
-        if (hotelAnchors.length === 0 && trip?.destination) {
+        if (!hasHotelAnchors && trip?.destination) {
             const destKey = `dest:${trip.destination}`;
             const cached = geocodedCacheRef.current[destKey];
             if (cached) hotelAnchors.push(cached);
         }
+        // 500 km when city-accurate hotel anchors are available; 1500 km for
+        // destination centroid fallback (single country but multiple cities).
+        const MAX_TRIP_RADIUS_KM = hasHotelAnchors ? 500 : 1500;
         const isInTripRegion = (lat: number, lng: number): boolean => {
             if (hotelAnchors.length === 0) return true; // no anchor → can't validate
             return hotelAnchors.some(a => getDistanceKm(lat, lng, a.lat, a.lng) <= MAX_TRIP_RADIUS_KM);
@@ -1480,10 +1491,13 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
         if (bounds.isValid()) {
             if (activeCity === 'ALL' && trip?.destination && !items) {
-                const destCacheKey = `dest:${trip.destination}`;
+                // Prefer English destination for geocoding — Hebrew multi-city strings
+                // like "בנגקוק - פטאיה - קו צ'אנג" fail on both Photon and Nominatim.
+                const destQuery = trip.destinationEnglish || trip.destination;
+                const destCacheKey = `dest:${destQuery}`;
                 const destPromise = geocodedCache[destCacheKey]
                     ? Promise.resolve(geocodedCache[destCacheKey])
-                    : geocodeAddress(trip.destination).then(c => {
+                    : geocodeAddress(destQuery).then(c => {
                             if (c) {
                                 setGeocodedCache(prev => {
                                     const next = { ...prev, [destCacheKey]: c };
@@ -1495,6 +1509,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                       });
 
                 destPromise.then(destCoords => {
+                    // Guard: map may have unmounted before this async callback fires.
+                    if (!mapInstanceRef.current) return;
                     if (!destCoords) {
                         applyBounds(bounds);
                         return;
@@ -1525,7 +1541,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 applyBounds(bounds);
             }
         } else if (trip?.destination) {
-            geocodeAddress(trip.destination).then(c => c && map.setView([c.lat, c.lng], 8));
+            const destQuery = trip.destinationEnglish || trip.destination;
+            geocodeAddress(destQuery).then(c => {
+                if (!mapInstanceRef.current) return;
+                if (c) map.setView([c.lat, c.lng], 8);
+            });
         }
 
         [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));

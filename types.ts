@@ -279,6 +279,7 @@ export interface Attraction {
 export interface AttractionCategory {
   id: string;
   title: string;
+  region?: string;
   attractions: Attraction[];
 }
 
