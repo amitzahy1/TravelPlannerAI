@@ -54,9 +54,44 @@ const COUNTRY_BBOXES: Record<string, [number, number, number, number]> = {
   'peru':           [-81.3,-18.4, -68.7,   0.0],
 };
 
+// Maps Hebrew country names to their English equivalents in COUNTRY_BBOXES.
+// Needed because trip.destination is often in Hebrew (e.g. "תאילנד 26 ימים").
+const HEBREW_COUNTRY_ALIASES: Record<string, string> = {
+  'תאילנד': 'thailand', 'יפן': 'japan', 'ישראל': 'israel',
+  'צרפת': 'france', 'איטליה': 'italy', 'ספרד': 'spain',
+  'פורטוגל': 'portugal', 'גרמניה': 'germany', 'יוון': 'greece',
+  'טורקיה': 'turkey', 'ארצות הברית': 'united states',
+  'ארה"ב': 'usa', 'מקסיקו': 'mexico', 'אינדונזיה': 'indonesia',
+  'ויאטנם': 'vietnam', 'קמבודיה': 'cambodia', 'הודו': 'india',
+  'אוסטרליה': 'australia', 'בריטניה': 'united kingdom',
+  'אנגליה': 'united kingdom', 'שוויץ': 'switzerland',
+  'הולנד': 'netherlands', 'קרואטיה': 'croatia',
+  'מצרים': 'egypt', 'מרוקו': 'morocco', 'דרום קוריאה': 'south korea',
+  'סינגפור': 'singapore', 'מלזיה': 'malaysia', 'פיליפינים': 'philippines',
+  'איחוד האמירויות': 'uae', 'ברזיל': 'brazil', 'ארגנטינה': 'argentina',
+  'פרו': 'peru', 'באלי': 'bali', 'מלדיביים': 'maldives',
+};
+
+/**
+ * Translate a possibly-Hebrew country/destination hint to its English equivalent.
+ * Strips numeric suffixes (e.g. "26 ימים") so "תאילנד 26 ימים" → "Thailand".
+ */
+export const toEnglishCountryName = (hint: string): string => {
+  if (!hint) return hint;
+  const lower = hint.toLowerCase();
+  for (const [heb, en] of Object.entries(HEBREW_COUNTRY_ALIASES)) {
+    if (lower.includes(heb)) {
+      return en.charAt(0).toUpperCase() + en.slice(1);
+    }
+  }
+  // Strip numeric / day-count suffixes from English strings ("Thailand 26 Days" → "Thailand")
+  return hint.replace(/\s+\d[\d\s]*(days?|nights?|ימים?|לילות?)?.*$/i, '').trim();
+};
+
 export const getCountryBbox = (hint: string): [number, number, number, number] | null => {
   if (!hint) return null;
-  const lower = hint.toLowerCase();
+  // Translate Hebrew → English then do a case-insensitive substring match.
+  const lower = toEnglishCountryName(hint).toLowerCase();
   for (const [key, bbox] of Object.entries(COUNTRY_BBOXES)) {
     if (lower.includes(key)) return bbox;
   }

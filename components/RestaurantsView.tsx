@@ -512,6 +512,14 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     CRITICAL — "location" field MUST be in English (used by a geocoding API). Format: "Street or Neighbourhood, City". Example: "Silom Road, Bangkok".
 
+    CRITICAL — "recommendationSource" MUST be a SHORT platform/publication name only (max 40 chars).
+    Use one of: "Wongnai", "Michelin Guide", "TripAdvisor", "TimeOut", "Eater",
+    "YouTube (channel name)", "Tabelog", "OpenRice", "Asia's 50 Best", "Google",
+    "Local Favorite", "Top-Rated".
+    NEVER write descriptions ("Known for...", "Offers...", "Praised for...") in this field.
+    NEVER include the restaurant's own name in this field.
+    If no authoritative source applies, use "Local Favorite".
+
     OUTPUT JSON ONLY:
     { "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl" } ] } ] }
     `;
@@ -746,23 +754,46 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // wordings collapse; everything else (Wongnai, BK Magazine, regional
     // blogs the AI surfaces) is preserved verbatim so the filter mirrors
     // what the user sees on the cards.
+    // Normalise a raw recommendationSource string into one of ~8 canonical groups.
+    const normalizeSource = (raw: string): string => {
+        if (!raw) return '';
+        const low = raw.toLowerCase();
+        // Descriptions masquerading as sources — the AI sometimes puts full sentences here
+        if (/^(known for|praised for|offers|serves|recommended for|highly|experience|locals|family-friendly|ranked|ideal for|considered|regarded)/i.test(raw.trim())) return 'Other';
+        if (raw.length > 80) return 'Other';
+        if (low.includes('youtube')) return 'YouTube';
+        if (low.includes('wongnai')) return 'Wongnai';
+        if (low.includes('michelin') || low.includes('bib gourmand')) return 'Michelin Guide';
+        if (low.includes('50 best')) return "Asia's 50 Best";
+        if (low.includes('timeout') || low.includes('time out')) return 'TimeOut';
+        if (low.includes('eater')) return 'Eater';
+        if (low.includes('tripadvisor') || low.includes('trip advisor')) return 'TripAdvisor';
+        if (low.includes('gault')) return 'Gault & Millau';
+        if (low.includes('tabelog')) return 'Tabelog';
+        if (low.includes('openrice')) return 'OpenRice';
+        if (low.includes('google')) return 'Google';
+        if (low.includes('trip.com') || low.includes('hotels.com') || low.includes('agoda') || low.includes('tripfactory') || low.includes('bestprice')) return 'Travel Sites';
+        if (low.includes('official site') || low.includes('official website')) return 'Official Site';
+        // Known local media / blogs
+        if (low.includes('wanderlog') || low.includes('tatinta') || low.includes('traveling tum') ||
+            low.includes('ideal magazine') || low.includes('luxury society') || low.includes('feastography') ||
+            low.includes('pattaya') || low.includes('thailand magazine') || low.includes('asean now')) return 'Local Media';
+        // Anything that includes a restaurant/hotel name as source = unreliable provenance
+        if (/\b(restaurant|hotel|bar|tavern|lounge|cafe|kitchen|grill|bistro)\b/i.test(raw)) return 'Other';
+        return 'Other';
+    };
+
     const availableRaters = useMemo(() => {
         const sources = new Set<string>();
         allAiRestaurants.forEach(r => {
-            const raw = (r.recommendationSource || '').trim();
-            if (!raw) return;
-            const low = raw.toLowerCase();
-            let provider = raw;
-            if (low.includes('michelin') || low.includes('bib gourmand')) provider = 'Michelin Guide';
-            else if (low.includes('50 best')) provider = '50 Best';
-            else if (low.includes('timeout') || low.includes('time out')) provider = 'TimeOut';
-            else if (low.includes('eater')) provider = 'Eater';
-            else if (low.includes('tripadvisor') || low.includes('trip advisor')) provider = 'TripAdvisor';
-            else if (low.includes('google')) provider = 'Google';
-            else if (low.includes('gault')) provider = 'Gault & Millau';
-            sources.add(provider);
+            const group = normalizeSource((r.recommendationSource || '').trim());
+            if (group) sources.add(group);
         });
-        return Array.from(sources).sort();
+        // Deterministic order: quality sources first
+        const ORDER = ['Michelin Guide', "Asia's 50 Best", 'Wongnai', 'YouTube', 'TimeOut', 'Eater',
+                        'TripAdvisor', 'Tabelog', 'OpenRice', 'Google', 'Official Site',
+                        'Local Media', 'Travel Sites', 'Gault & Millau', 'Other'];
+        return ORDER.filter(s => sources.has(s));
     }, [allAiRestaurants]);
 
     // Unified Toggle Logic (Fixes Task 4)
@@ -893,24 +924,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         console.debug(`🍽️ [Restaurants] base=${afterBase} → scope=${afterScope} → city=${afterCity} (tripCities=${JSON.stringify(tripCities)}, selectedCity=${selectedCity})`);
 
         if (selectedRater !== 'all') {
-            // Map the canonical filter name back to the substrings that
-            // could appear in r.recommendationSource. Mirrors the
-            // consolidation in availableRaters above so the filter and
-            // the cards stay in lock-step.
-            const matchSource = (raw: string): boolean => {
-                const sourceLower = raw.toLowerCase();
-                switch (selectedRater) {
-                    case 'Michelin Guide': return sourceLower.includes('michelin') || sourceLower.includes('bib gourmand');
-                    case '50 Best':        return sourceLower.includes('50 best');
-                    case 'TimeOut':        return sourceLower.includes('timeout') || sourceLower.includes('time out');
-                    case 'Eater':          return sourceLower.includes('eater');
-                    case 'TripAdvisor':    return sourceLower.includes('tripadvisor') || sourceLower.includes('trip advisor');
-                    case 'Google':         return sourceLower.includes('google');
-                    case 'Gault & Millau': return sourceLower.includes('gault');
-                    default:               return sourceLower.includes(selectedRater.toLowerCase());
-                }
-            };
-            list = list.filter(r => !!r.recommendationSource && matchSource(r.recommendationSource));
+            list = list.filter(r => normalizeSource(r.recommendationSource || '') === selectedRater);
         }
 
         // Global dedupe by place name — collapses 4×Sorn into 1

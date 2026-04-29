@@ -9,7 +9,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
 import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
-import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl } from '../utils/geocodePlaces';
+import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl, toEnglishCountryName } from '../utils/geocodePlaces';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
@@ -538,7 +538,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // Country bbox from trip — passed alongside `items` by RestaurantsView /
         // AttractionsView so we can constrain Photon and reject wrong-country results.
         const tripBbox = trip ? getCountryBbox(trip.destinationEnglish || trip.destination || '') : null;
-        const countryName = trip?.destinationEnglish || trip?.destination || '';
+        // Always use an English country name for Photon — Hebrew strings like
+        // "תאילנד 26 ימים" confuse the geocoder and can return Georgia or Israel.
+        const countryName = toEnglishCountryName(trip?.destinationEnglish || trip?.destination || '');
 
         const cacheKey = `city:${controlledActiveCity}`;
         const cached = geocodedCacheRef.current[cacheKey];
