@@ -694,9 +694,13 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             : aiCategories.flatMap(c => c.attractions.map(a => ({ ...a, region: a.region || c.region, categoryTitle: a.categoryTitle || c.title })));
         sourceAttractions.forEach(a => {
             if (selectedCity !== 'all' && !attractionMatchesCity(a, selectedCity)) return;
+            const cityEn = selectedCity !== 'all'
+                ? (displayCityName(selectedCity, 'en') || selectedCity)
+                : (a.region ? displayCityName(a.region, 'en') : undefined);
             items.push({
                 id: a.id, type: 'attraction', name: a.name,
                 address: a.location, lat: a.lat, lng: a.lng,
+                city: cityEn,
                 description: a.description,
                 rating: typeof a.rating === 'number' ? a.rating : undefined,
                 category: a.type || a.categoryTitle,
@@ -812,7 +816,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     <UnifiedMapView
                         items={getMapItems()}
                         trip={trip}
-                        activeCity={selectedCity !== 'all' ? selectedCity : null}
+                        activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
                         title={activeTab === 'my_list' ? "מפת אטרקציות שלי" : "מפת המלצות"}
                     />
                 </div>

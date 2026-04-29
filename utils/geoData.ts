@@ -187,7 +187,7 @@ const CITY_HEBREW_NAMES: Record<string, string> = {
         'bangkok': 'בנגקוק',
         'koh chang': "קו צ'אנג",
         'ko chang': "קו צ'אנג",
-        'pattaya': 'פטאיה',
+        'pattaya': 'פטאייה',
         'phuket': 'פוקט',
         'ko samui': 'קו סאמוי',
         'koh samui': 'קו סאמוי',

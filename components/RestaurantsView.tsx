@@ -984,9 +984,14 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             // (filteredRestaurants already filtered by city, but my_list
             // hasn't yet — so apply here.)
             if (selectedCity !== 'all' && !restaurantMatchesCity(r, selectedCity)) return;
+            // city in English — appended to Photon query so geocoding lands in the right city
+            const cityEn = selectedCity !== 'all'
+                ? (displayCityName(selectedCity, 'en') || selectedCity)
+                : (r.region ? displayCityName(r.region, 'en') : undefined);
             items.push({
                 id: r.id, type: 'restaurant', name: r.name,
                 address: r.location, lat: r.lat, lng: r.lng,
+                city: cityEn,
                 description: r.description,
                 rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
                 cuisine: r.cuisine,
@@ -1170,7 +1175,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     <UnifiedMapView
                         items={getMapItems()}
                         trip={trip}
-                        activeCity={selectedCity !== 'all' ? selectedCity : null}
+                        activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
                         title={activeTab === 'my_list' ? `מפת מסעדות שלי` : 'מפת המלצות'}
                     />
                 </div>
