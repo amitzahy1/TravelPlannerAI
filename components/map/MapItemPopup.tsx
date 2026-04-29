@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { safeMapsUrl } from '../../utils/mapsUrl';
+import { getFoodImage, getAttractionImage } from '../../services/imageMapper';
+import { resolveRealPlaceImage } from '../../services/placeImageService';
 
 const TYPE_CONFIG = {
     hotel:      { color: '#0ea5e9', gradient: ['#0ea5e9', '#0284c7'] as [string, string], label: 'מלון' },
@@ -23,6 +25,7 @@ export interface PopupItem {
     imageUrl?: string;
     notes?: string;
     googleMapsUrl?: string;
+    source?: 'saved' | 'ai';
 }
 
 const parseDateLabel = (dateStr?: string): string => {
@@ -38,21 +41,65 @@ const parseDateLabel = (dateStr?: string): string => {
     return dateStr;
 };
 
-export const MapItemPopup: React.FC<{ item: PopupItem }> = ({ item }) => {
+interface Props {
+    item: PopupItem;
+    // When provided, render an "add to my list" CTA; the parent map view
+    // wires this to its existing handleToggleRec, so saving from the map
+    // matches saving from the list cards exactly.
+    onAddToList?: () => void;
+    isAdded?: boolean;
+}
+
+// Pick a stock image with the same helpers PlaceCard uses, then upgrade to a
+// real photo from Wikipedia when available. Hotels keep the gradient header
+// (no stock noise) so we only resolve images for restaurants/attractions.
+const useFallbackImage = (item: PopupItem): string | null => {
+    const initial = (() => {
+        if (item.imageUrl) return item.imageUrl;
+        if (item.type === 'restaurant') {
+            return getFoodImage(item.name, item.description || '', [item.cuisine || '', item.address || '']).url;
+        }
+        if (item.type === 'attraction') {
+            return getAttractionImage(item.name, item.description || '', [item.category || '', item.address || '']).url;
+        }
+        return null;
+    })();
+
+    const [imgSrc, setImgSrc] = useState<string | null>(initial);
+
+    useEffect(() => { setImgSrc(initial); }, [initial]);
+
+    useEffect(() => {
+        if (item.imageUrl) return; // already a real photo from the trip data
+        if (item.type !== 'restaurant' && item.type !== 'attraction') return;
+        let cancelled = false;
+        resolveRealPlaceImage(item.name, item.address || '', item.type).then(real => {
+            if (!cancelled && real) setImgSrc(real);
+        });
+        return () => { cancelled = true; };
+    }, [item.name, item.address, item.type, item.imageUrl]);
+
+    return imgSrc;
+};
+
+export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = false }) => {
     const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.hotel;
     const dateLabel = parseDateLabel(item.date);
     const mapsLink = safeMapsUrl(item.googleMapsUrl, item.name, item.address);
     const tagLabel = item.cuisine || item.category || cfg.label;
+    const imageUrl = useFallbackImage(item);
 
-    const headerStyle: React.CSSProperties = item.imageUrl
+    const headerStyle: React.CSSProperties = imageUrl
         ? {
-            backgroundImage: `linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.2) 55%,transparent 90%),url('${item.imageUrl}')`,
+            backgroundImage: `linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.2) 55%,transparent 90%),url('${imageUrl}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }
         : {
             background: `linear-gradient(135deg,${cfg.gradient[0]} 0%,${cfg.gradient[1]} 100%)`,
           };
+
+    const showAddButton = !!onAddToList && item.source === 'ai';
 
     return (
         <div style={{ fontFamily: "'Rubik','Inter',sans-serif", direction: 'rtl', textAlign: 'right', width: 272, padding: 0 }}>
@@ -130,15 +177,34 @@ export const MapItemPopup: React.FC<{ item: PopupItem }> = ({ item }) => {
                         📅 {dateLabel}
                     </div>
                 )}
-                <a
-                    href={mapsLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: '#2563eb', textDecoration: 'none', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '5px 10px', borderRadius: 8, marginTop: 8 }}
-                >
-                    🧭 ניווט ב-Google Maps
-                </a>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    <a
+                        href={mapsLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: '#2563eb', textDecoration: 'none', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '5px 10px', borderRadius: 8 }}
+                    >
+                        🧭 ניווט ב-Google Maps
+                    </a>
+                    {showAddButton && (
+                        <button
+                            onClick={e => { e.stopPropagation(); onAddToList!(); }}
+                            disabled={isAdded}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                fontSize: 11, fontWeight: 800,
+                                color: isAdded ? '#92400e' : '#fff',
+                                background: isAdded ? '#fef3c7' : '#0f172a',
+                                border: `1px solid ${isAdded ? '#fcd34d' : '#0f172a'}`,
+                                padding: '5px 10px', borderRadius: 8,
+                                cursor: isAdded ? 'default' : 'pointer',
+                            }}
+                        >
+                            {isAdded ? '✓ ברשימה שלי' : '＋ הוסף לרשימה שלי'}
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );

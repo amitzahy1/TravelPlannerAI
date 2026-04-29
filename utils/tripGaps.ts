@@ -19,6 +19,7 @@
 import { Trip } from '../types';
 import { getTripDays } from './tripDays';
 import { getTripCities, cityKey, locationMatchesCity } from './geoData';
+import { safeMapsUrl } from './mapsUrl';
 
 export type GapKind =
         | 'no_hotel_for_day'
@@ -106,11 +107,8 @@ export const getMissingDataPoints = (trip: Trip): MissingPoint[] => {
         const failedSavedR = (trip.restaurants || []).flatMap(c => c.restaurants || []).filter(r => r.geocodeFailed);
         const failedSavedA = (trip.attractions || []).flatMap(c => c.attractions || []).filter(a => a.geocodeFailed);
 
-        const buildSearchUrl = (place: { name?: string; location?: string; googleMapsUrl?: string }) => {
-                if (place.googleMapsUrl) return place.googleMapsUrl;
-                const q = encodeURIComponent([place.name, place.location].filter(Boolean).join(' '));
-                return `https://www.google.com/maps/search/?api=1&query=${q}`;
-        };
+        const buildSearchUrl = (place: { name?: string; location?: string; googleMapsUrl?: string }) =>
+                safeMapsUrl(place.googleMapsUrl, place.name || '', place.location);
 
         [...failedRestaurants, ...failedSavedR].forEach(r => {
                 out.push({

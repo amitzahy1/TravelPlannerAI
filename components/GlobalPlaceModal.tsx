@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X, Trophy } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
+import { safeMapsUrl } from '../utils/mapsUrl';
 
 
 interface GlobalPlaceModalProps {
@@ -118,22 +119,14 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                 return () => { cancelled = true; };
         }, [searchName, item.location, placeType, stockUrl]);
 
-        // Fix Navigation: Smart Query Construction
-        const cleanLocation = (item.location || '').replace(/\(.*\)/g, '').replace(/near/i, '').trim();
-        const cleanName = displayName.replace(/\(.*\)/g, '').trim();
-
-        let query = `${cleanName} ${cleanLocation}`;
-        // `type` is typed as food|attraction|restaurant; 'hotel' is just a
-        // runtime signal used by the smart-hotel entry point. Cast so
-        // TypeScript doesn't flag the always-false branch as dead.
-        if (item.isHotelRestaurant || (type as string) === 'hotel' || displayName.toLowerCase().includes('hotel')) {
-                query = `${cleanName}, ${cleanLocation}`;
-        } else {
-                const categorySuffix = type === 'food' || type === 'restaurant' ? 'Restaurant' : 'Tourist Attraction';
-                query = `${cleanName} ${cleanLocation} ${categorySuffix}`;
-        }
-
-        const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+        // Build the navigation address — append a category suffix for non-hotel
+        // entries so Google Maps disambiguates "Sorn" the K-pop singer from
+        // "Sorn" the Bangkok restaurant. safeMapsUrl handles parenthetical
+        // stripping and URL validation.
+        const isHotelLike = item.isHotelRestaurant || (type as string) === 'hotel' || displayName.toLowerCase().includes('hotel');
+        const categorySuffix = isHotelLike ? '' : (type === 'food' || type === 'restaurant' ? 'Restaurant' : 'Tourist Attraction');
+        const navAddress = [item.location, categorySuffix].filter(Boolean).join(' ');
+        const googleMapsUrl = safeMapsUrl(item.googleMapsUrl, displayName, navAddress);
 
         return createPortal(
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>

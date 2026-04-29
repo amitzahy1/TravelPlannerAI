@@ -18,6 +18,7 @@ import {
     LayoutGrid, List, Lightbulb
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
+import { safeMapsUrl } from '../utils/mapsUrl';
 // CALENDAR INTEGRATION REMOVED - No longer calling Google Calendar API
 // import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '../services/calendarService';
 // CALENDAR REMOVED: import { requestAccessToken } from '../services/googleAuthService';
@@ -342,7 +343,7 @@ export const ItineraryView: React.FC<{
             });
 
             trip.hotels?.forEach(hotel => {
-                const mapsUrl = hotel.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotel.name + " " + hotel.address)}`;
+                const mapsUrl = safeMapsUrl(hotel.googleMapsUrl, hotel.name, hotel.address);
 
                 addToDay(hotel.checkInDate, {
                     id: `hotel-in-${hotel.id}`,
@@ -1376,7 +1377,7 @@ export const ItineraryView: React.FC<{
                                                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
                                                             {event.location && (
                                                                 <a
-                                                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event.title} ${event.location}`)}`}
+                                                                    href={safeMapsUrl(undefined, event.title, event.location)}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     onClick={(e) => e.stopPropagation()}

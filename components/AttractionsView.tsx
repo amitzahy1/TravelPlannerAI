@@ -15,6 +15,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { cleanTextForMap } from '../utils/textUtils';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
+import { safeMapsUrl } from '../utils/mapsUrl';
 import { toast } from '../stores/useToastStore';
 
 
@@ -56,8 +57,7 @@ const AttractionRecommendationCard: React.FC<{
 }> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick }) => {
     const nameForMap = cleanTextForMap(rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
-    const mapsQuery = encodeURIComponent(`${nameForMap} ${locationForMap}`);
-    const mapsUrl = rec.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+    const mapsUrl = safeMapsUrl(rec.googleMapsUrl, nameForMap, locationForMap);
     const visuals = getAttractionVisuals(rec.type);
 
     return (
@@ -705,21 +705,25 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const getMapItems = () => {
         const items: any[] = [];
-        // Recommended-tab map mirrors the visible filtered list (scope + city +
-        // rater + dedupe). The old code flat-mapped every AI category, so the
-        // map showed pins the user had already filtered out.
-        const sourceAttractions: Attraction[] = activeTab === 'my_list'
-            ? attractionsData.flatMap(c => c.attractions.map(a => ({ ...a, region: a.region || c.region })))
-            : (filteredRecommendations as Attraction[]);
-        sourceAttractions.forEach(a => {
-            if (selectedCity !== 'all' && !attractionMatchesCity(a, selectedCity)) return;
-            const cityEn = selectedCity !== 'all'
+        // Map shows BOTH saved (solid purple) AND AI suggestions (lighter
+        // dashed purple) regardless of the active tab so the user can see
+        // suggestions in context with their saved picks.
+        const cityEnFor = (region?: string) =>
+            selectedCity !== 'all'
                 ? (displayCityName(selectedCity, 'en') || selectedCity)
-                : (a.region ? displayCityName(a.region, 'en') : undefined);
+                : (region ? displayCityName(region, 'en') : undefined);
+
+        const savedNameKeys = new Set<string>();
+        const savedFlat = attractionsData.flatMap(c =>
+            c.attractions.map(a => ({ ...a, region: a.region || c.region, categoryTitle: a.categoryTitle || c.title }))
+        );
+        savedFlat.forEach(a => {
+            if (selectedCity !== 'all' && !attractionMatchesCity(a, selectedCity)) return;
+            savedNameKeys.add(a.name.toLowerCase());
             items.push({
                 id: a.id, type: 'attraction', name: a.name,
                 address: a.location, lat: a.lat, lng: a.lng,
-                city: cityEn,
+                city: cityEnFor(a.region),
                 description: a.description,
                 rating: typeof a.rating === 'number' ? a.rating : undefined,
                 category: a.type || a.categoryTitle,
@@ -728,8 +732,33 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 imageUrl: a.imageUrl,
                 notes: a.notes,
                 googleMapsUrl: a.googleMapsUrl,
+                source: 'saved',
+                raw: a,
+                categoryTitle: a.categoryTitle,
             });
         });
+
+        (filteredRecommendations as Attraction[]).forEach(a => {
+            if (selectedCity !== 'all' && !attractionMatchesCity(a, selectedCity)) return;
+            if (savedNameKeys.has(a.name.toLowerCase())) return;
+            items.push({
+                id: `ai-${a.id}`, type: 'attraction', name: a.name,
+                address: a.location, lat: a.lat, lng: a.lng,
+                city: cityEnFor(a.region),
+                description: a.description,
+                rating: typeof a.rating === 'number' ? a.rating : undefined,
+                category: a.type || a.categoryTitle,
+                recommendationSource: a.recommendationSource,
+                priceRange: a.price,
+                imageUrl: a.imageUrl,
+                notes: a.notes,
+                googleMapsUrl: a.googleMapsUrl,
+                source: 'ai',
+                raw: a,
+                categoryTitle: a.categoryTitle || 'תכנון טיול',
+            });
+        });
+
         (trip.hotels || []).forEach(h => {
             const hCity = h.city || h.address || '';
             if (selectedCity !== 'all' && !locationMatchesCity(hCity, selectedCity)) return;
@@ -738,10 +767,16 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 id: `hotel-${h.id}`, type: 'hotel', name: h.name,
                 address: h.address, lat: h.lat, lng: h.lng,
                 description: h.city || h.address,
+                source: 'saved',
             });
         });
         return items;
     };
+
+    const savedAttractionNames = useMemo(
+        () => new Set(attractionsData.flatMap(c => c.attractions).map(a => a.name.toLowerCase())),
+        [attractionsData]
+    );
 
     return (
         <div className="space-y-4 animate-fade-in pb-10">
@@ -836,7 +871,13 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         items={getMapItems()}
                         trip={trip}
                         activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
-                        title={activeTab === 'my_list' ? "מפת אטרקציות שלי" : "מפת המלצות"}
+                        title="מפת אטרקציות"
+                        savedNames={savedAttractionNames}
+                        onAddToList={(item) => {
+                            const a = (item as any).raw as Attraction | undefined;
+                            if (!a) return;
+                            handleToggleRec(a, (item as any).categoryTitle || 'תכנון טיול');
+                        }}
                     />
                 </div>
             ) : (

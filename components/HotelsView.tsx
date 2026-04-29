@@ -11,6 +11,7 @@ import { generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
 import { toast } from '../stores/useToastStore';
+import { safeMapsUrl } from '../utils/mapsUrl';
 
 
 // Generic hotel fallback image
@@ -568,7 +569,7 @@ const HotelCard: React.FC<{
                             {/* Map + cancellation full text */}
                             <div className="flex items-center gap-2 flex-wrap">
                                 <a
-                                    href={primary.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${primary.name} ${primary.address || ''} ${tripDestination || ''}`)}`}
+                                    href={safeMapsUrl(primary.googleMapsUrl, primary.name, [primary.address, tripDestination].filter(Boolean).join(' '))}
                                     target="_blank" rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                                 >

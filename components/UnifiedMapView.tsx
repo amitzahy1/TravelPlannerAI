@@ -18,7 +18,7 @@ import { HoverPreviewCard } from './map/HoverPreviewCard';
 import { MapItemPopup } from './map/MapItemPopup';
 
 // --- Interfaces ---
-interface MapItem {
+export interface MapItem {
     id: string;
     type: 'hotel' | 'restaurant' | 'attraction' | 'airport';
     subType?: 'departure' | 'arrival';
@@ -43,6 +43,15 @@ interface MapItem {
     imageUrl?: string;
     notes?: string;
     googleMapsUrl?: string;
+    // Distinguishes a place the user has saved to their list ('saved', solid
+    // pin) from an AI suggestion ('ai', lighter dashed pin). Defaults to
+    // 'saved' when omitted so existing callers keep their look.
+    source?: 'saved' | 'ai';
+    // Original record so a popup-level "save" handler can pass the full
+    // place object back to the parent (which expects a Restaurant/Attraction
+    // shape, not a MapItem).
+    raw?: any;
+    categoryTitle?: string;
 }
 
 interface RouteStop {
@@ -95,6 +104,14 @@ interface UnifiedMapViewProps {
     // When set, the map smooth-flies to these coordinates. Set to a new
     // object reference each time a fly is desired (e.g. GPS locate).
     flyTo?: { lat: number; lng: number; zoom?: number } | null;
+    // Optional callback wired by RestaurantsView/AttractionsView so the map
+    // popup can save an AI suggestion to the user's list. The popup shows
+    // an "add to my list" CTA only when this callback is provided AND the
+    // item's source is 'ai'.
+    onAddToList?: (item: MapItem) => void;
+    // Lowercased name set used by the popup to detect when an AI suggestion
+    // is already saved (toggles the CTA into a "✓ saved" state).
+    savedNames?: Set<string>;
 }
 
 const STORAGE_KEY = 'travel_app_geo_cache_v6';
@@ -254,7 +271,11 @@ const geocodeAddress = async (
 
 // --- PREMIUM PIN MARKER ---
 
-const makePinIcon = (config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG], label?: string) => {
+const makePinIcon = (
+    config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG],
+    label?: string,
+    source: 'saved' | 'ai' = 'saved',
+) => {
     const [c1, c2] = config.gradient;
     // When a label is supplied we render a name pill above the pin so the
     // user can read every place's name at a glance without clicking. Long
@@ -262,13 +283,23 @@ const makePinIcon = (config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG], label
     const trimmed = label ? (label.length > 26 ? label.slice(0, 25) + '…' : label) : '';
     const labelHtml = trimmed ? `
         <div style="
-            background:white;border:1px solid ${c1}55;border-radius:8px;
-            padding:2px 8px;font-size:10px;font-weight:700;color:#0f172a;
+            background:${source === 'ai' ? '#ffffffd9' : 'white'};
+            border:1px ${source === 'ai' ? 'dashed' : 'solid'} ${c1}${source === 'ai' ? '88' : '55'};border-radius:8px;
+            padding:2px 8px;font-size:10px;font-weight:700;color:${source === 'ai' ? '#475569' : '#0f172a'};
             box-shadow:0 2px 6px rgba(15,23,42,0.18);white-space:nowrap;
             font-family:'Rubik','Inter',sans-serif;line-height:1.3;
             margin-bottom:3px;direction:rtl;
         ">${trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
     ` : '';
+    // AI suggestions render hollow: semi-transparent fill + dashed white
+    // border. Same hue as saved so the user still recognises the category.
+    const fill = source === 'ai'
+        ? `linear-gradient(135deg,${c1}66,${c2}66)`
+        : `linear-gradient(135deg,${c1},${c2})`;
+    const borderStyle = source === 'ai'
+        ? '2.5px dashed rgba(255,255,255,0.95)'
+        : '2.5px solid rgba(255,255,255,0.8)';
+    const iconColor = source === 'ai' ? `${c1}` : 'white';
     // The wrapper needs a known width for proper Leaflet anchoring. We use
     // `min-width:44px` (the pin width) so the icon centers on its lat/lng,
     // and `width:max-content` so the label can grow and wrap above.
@@ -278,18 +309,18 @@ const makePinIcon = (config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG], label
             <div style="
                 width:44px; height:44px; border-radius:50% 50% 50% 0%;
                 transform:rotate(-45deg);
-                background:linear-gradient(135deg,${c1},${c2});
-                box-shadow:0 6px 20px ${c1}60,0 2px 6px rgba(0,0,0,0.25);
+                background:${fill};
+                box-shadow:0 6px 20px ${c1}${source === 'ai' ? '40' : '60'},0 2px 6px rgba(0,0,0,0.25);
                 display:flex; align-items:center; justify-content:center;
-                border:2.5px solid rgba(255,255,255,0.8);
+                border:${borderStyle};
             ">
-                <div style="transform:rotate(45deg); color:white; display:flex; align-items:center; justify-content:center; width:22px; height:22px;">
+                <div style="transform:rotate(45deg); color:${iconColor}; display:flex; align-items:center; justify-content:center; width:22px; height:22px;">
                     ${config.svg}
                 </div>
             </div>
             <div style="
                 width:6px; height:10px; margin-top:-2px;
-                background:linear-gradient(to bottom,${c1},${c2});
+                background:linear-gradient(to bottom,${c1}${source === 'ai' ? 'aa' : ''},${c2}${source === 'ai' ? 'aa' : ''});
                 clip-path:polygon(50% 100%,0 0,100% 0);
             "></div>
         </div>
@@ -489,6 +520,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     walkingCircles = false,
     heatmap = false,
     flyTo = null,
+    onAddToList,
+    savedNames,
 }) => {
     // Default every layer flag to TRUE so the existing per-tab callers
     // (RestaurantsView / AttractionsView) keep working without passing
@@ -1289,7 +1322,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             if (item.type === 'airport') return;
             if (item.type !== 'hotel' && !isInTripRegion(item.lat!, item.lng!)) return;
             const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
-            const icon = makePinIcon(cfg, item.name);
+            // Hotels never render as "ai suggestions"; only restaurant/attraction items can.
+            const pinSource: 'saved' | 'ai' = item.type !== 'hotel' && item.source === 'ai' ? 'ai' : 'saved';
+            const icon = makePinIcon(cfg, item.name, pinSource);
 
             const targetLayer = item.type === 'hotel' ? routeLayer : markerLayer;
             const marker = L.marker([item.lat!, item.lng!], {
@@ -1300,10 +1335,29 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             // React portal popup — renders MapItemPopup synchronously via
             // flushSync so the DOM is populated before Leaflet opens the popup.
             marker.on('click', () => {
+                // Drilling into a hotel: zoom in so the user can see the
+                // restaurants/attractions surrounding it. Zoom 16 ≈ a 4-block
+                // radius, close enough to read nearby pins.
+                if (item.type === 'hotel' && isValidCoordinate(item.lat, item.lng)) {
+                    map.flyTo([item.lat!, item.lng!], 16, { duration: 1.0 });
+                }
                 const container = document.createElement('div');
                 const popupRoot = createRoot(container);
+                const isAlreadySaved = !!(item.source === 'ai' && savedNames?.has(item.name.toLowerCase()));
+                const handleAdd = onAddToList && item.source === 'ai'
+                    ? () => {
+                        onAddToList(item);
+                        marker.closePopup();
+                    }
+                    : undefined;
                 flushSync(() => {
-                    popupRoot.render(<MapItemPopup item={item} />);
+                    popupRoot.render(
+                        <MapItemPopup
+                            item={item}
+                            onAddToList={handleAdd}
+                            isAdded={isAlreadySaved}
+                        />
+                    );
                 });
                 marker.bindPopup(container, { className: 'tp-popup', maxWidth: 300 }).openPopup();
                 marker.once('popupclose', () => popupRoot.unmount());

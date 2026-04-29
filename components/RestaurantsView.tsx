@@ -68,6 +68,7 @@ import { cleanTextForMap } from '../utils/textUtils';
 import { getTripCities, locationMatchesCity, displayCityName } from '../utils/geoData';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
+import { safeMapsUrl } from '../utils/mapsUrl';
 
 
 // Sorting helper: Favorites first, then Rating
@@ -96,11 +97,9 @@ const RestaurantCard: React.FC<{
     onClick: () => void
 }> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick }) => {
 
-    // Strict English-Only Maps Query
     const nameForMap = cleanTextForMap(rec.nameEnglish || rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
-    const mapsQuery = encodeURIComponent(`${nameForMap} ${locationForMap}`);
-    const mapsUrl = rec.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+    const mapsUrl = safeMapsUrl(rec.googleMapsUrl, nameForMap, locationForMap);
 
     const visuals = getCuisineVisuals(rec.cuisine);
 
@@ -980,29 +979,27 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const getMapItems = () => {
         const items: any[] = [];
-        // Map visualises EXACTLY what the list view shows. For the
-        // recommended tab, filteredRestaurants already applies category
-        // + rater + city filters (and dedupes), so the map mirrors the
-        // list 1-for-1. The my_list tab has no per-card filters today so
-        // we still flatten the full saved list there, but the city
-        // filter still applies via the .filter below.
-        const sourceRestaurants = activeTab === 'my_list'
-            ? trip.restaurants.flatMap(cat => cat.restaurants)
-            : filteredRestaurants;
-        sourceRestaurants.forEach(r => {
-            // City filter — when the user picks a city we want the map to
-            // visualise only that city's pins so the bounds zoom in there.
-            // (filteredRestaurants already filtered by city, but my_list
-            // hasn't yet — so apply here.)
-            if (selectedCity !== 'all' && !restaurantMatchesCity(r, selectedCity)) return;
-            // city in English — appended to Photon query so geocoding lands in the right city
-            const cityEn = selectedCity !== 'all'
+        // Map shows BOTH saved restaurants (solid orange pin) AND AI
+        // suggestions (lighter dashed orange pin) regardless of the active
+        // tab. The user wants to see how the suggestions relate to the
+        // places they've already saved without flipping tabs.
+        const cityEnFor = (region?: string) =>
+            selectedCity !== 'all'
                 ? (displayCityName(selectedCity, 'en') || selectedCity)
-                : (r.region ? displayCityName(r.region, 'en') : undefined);
+                : (region ? displayCityName(region, 'en') : undefined);
+
+        // Saved layer
+        const savedNameKeys = new Set<string>();
+        const savedFlat = trip.restaurants.flatMap(cat =>
+            cat.restaurants.map(r => ({ ...r, categoryTitle: r.categoryTitle || cat.title }))
+        );
+        savedFlat.forEach(r => {
+            if (selectedCity !== 'all' && !restaurantMatchesCity(r, selectedCity)) return;
+            savedNameKeys.add(r.name.toLowerCase());
             items.push({
                 id: r.id, type: 'restaurant', name: r.name,
                 address: r.location, lat: r.lat, lng: r.lng,
-                city: cityEn,
+                city: cityEnFor(r.region),
                 description: r.description,
                 rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
                 cuisine: r.cuisine,
@@ -1011,8 +1008,36 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 imageUrl: r.imageUrl,
                 notes: r.notes,
                 googleMapsUrl: r.googleMapsUrl,
+                source: 'saved',
+                raw: r,
+                categoryTitle: r.categoryTitle,
             });
         });
+
+        // AI-suggestions layer — dedupe by name against saved so a place
+        // present in both lists doesn't get a hollow pin stacked on top
+        // of its solid saved pin.
+        filteredRestaurants.forEach(r => {
+            if (selectedCity !== 'all' && !restaurantMatchesCity(r, selectedCity)) return;
+            if (savedNameKeys.has(r.name.toLowerCase())) return;
+            items.push({
+                id: `ai-${r.id}`, type: 'restaurant', name: r.name,
+                address: r.location, lat: r.lat, lng: r.lng,
+                city: cityEnFor(r.region),
+                description: r.description,
+                rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
+                cuisine: r.cuisine,
+                recommendationSource: r.recommendationSource,
+                priceRange: r.priceRange || r.price || r.priceLevel,
+                imageUrl: r.imageUrl,
+                notes: r.notes,
+                googleMapsUrl: r.googleMapsUrl,
+                source: 'ai',
+                raw: r,
+                categoryTitle: r.categoryTitle || 'AI',
+            });
+        });
+
         // Always layer hotels on top so the user can see how their food
         // picks relate to where they're staying. UnifiedMapView geocodes
         // addresses lazily, so hotels without lat/lng still drop a pin.
@@ -1024,10 +1049,20 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 id: `hotel-${h.id}`, type: 'hotel', name: h.name,
                 address: h.address, lat: h.lat, lng: h.lng,
                 description: h.city || h.address,
+                source: 'saved',
             });
         });
         return items;
     };
+
+    // Lowercased name set of saved restaurants — passed to UnifiedMapView so
+    // the popup can show "✓ ברשימה שלי" instead of the add CTA when a
+    // suggestion is already saved (rare with the dedupe above, but possible
+    // when names match across categories).
+    const savedRestaurantNames = useMemo(
+        () => new Set(trip.restaurants.flatMap(c => c.restaurants).map(r => r.name.toLowerCase())),
+        [trip.restaurants]
+    );
 
     const handleUpdateRestaurant = (id: string, updates: Partial<Restaurant>) => {
         const newRestaurants = trip.restaurants.map(cat => ({
@@ -1187,7 +1222,13 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         items={getMapItems()}
                         trip={trip}
                         activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
-                        title={activeTab === 'my_list' ? `מפת מסעדות שלי` : 'מפת המלצות'}
+                        title="מפת מסעדות"
+                        savedNames={savedRestaurantNames}
+                        onAddToList={(item) => {
+                            const r = (item as any).raw as Restaurant | undefined;
+                            if (!r) return;
+                            handleToggleRec(r, (item as any).categoryTitle || 'AI');
+                        }}
                     />
                 </div>
             ) : (
