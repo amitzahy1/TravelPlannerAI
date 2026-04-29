@@ -21,7 +21,7 @@ interface Env {
         AUTH_SECRET: string;
 }
 
-const isOpenRouterModel = (modelId: string) => modelId.startsWith("openrouter/");
+const isOpenRouterModel = (modelId: string) => modelId.startsWith("openrouter:");
 
 const partToText = (part: any): string => {
         if (!part) return "";
@@ -56,6 +56,7 @@ const callOpenRouter = async (
                 throw new Error("Missing OPENROUTER_API_KEY");
         }
 
+        const actualModelId = modelId.replace(/^openrouter:/, "");
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
@@ -65,7 +66,7 @@ const callOpenRouter = async (
                         "X-Title": "Travel Planner Pro",
                 },
                 body: JSON.stringify({
-                        model: modelId,
+                        model: actualModelId,
                         messages: contentsToOpenRouterMessages(requestContent),
                         temperature: generationConfig?.temperature ?? 0.2,
                 }),

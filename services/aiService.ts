@@ -25,13 +25,13 @@ const GOOGLE_MODELS = {
     "gemini-3-flash-preview",                        // FALLBACK 1 — Gemini 3, fast + capable
     "gemini-2.5-flash",                              // FALLBACK 2 — stable, reliable quota
     "gemini-2.5-flash-lite",                         // FALLBACK 3 — highest quota tolerance
-    "meta-llama/llama-3.3-70b-instruct:free",        // FALLBACK 4 — OpenRouter free tier (non-Google)
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 4 — OpenRouter free tier (non-Google)
   ],
   // Tier 3: Used for FAST intent (chat, quick suggestions)
   FAST_CANDIDATES: [
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
-    "meta-llama/llama-3.3-70b-instruct:free",        // last resort if all Gemini quota gone
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // last resort if all Gemini quota gone
   ]
 };
 
@@ -211,9 +211,10 @@ const parseRetryDelayMs = (message: string, fallbackMs = 5000): number => {
 };
 
 const isTransientWorkerError = (status: number, message: string): boolean => {
+  // Permanent quota (limit:0, PerDay) must be checked first — even for 429
+  if (/PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay|limit:\s*0/i.test(message)) return false;
   if (status === 429) return true;
   if (status < 500) return false;
-  if (/PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay|limit:\s*0/i.test(message)) return false;
   return /503|Service Unavailable|high demand|temporar|retry/i.test(message);
 };
 
@@ -272,7 +273,9 @@ export const generateWithFallback = async (
       }
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+      // SEARCH with grounding can take longer than regular generation — give it 90s
+      const timeoutMs = intent === 'SEARCH' ? 90000 : 60000;
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       // SEARCH intent uses Google Search grounding on the Worker side.
       // Grounding is incompatible with structured JSON output (responseMimeType /
@@ -287,20 +290,23 @@ export const generateWithFallback = async (
             responseSchema: config.responseSchema || (intent === 'ANALYZE' ? TRIP_OUTPUT_SCHEMA : undefined),
           };
 
-      const response = await fetch(`${WORKER_URL}/api/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: adaptedContents,  // Send full structured content (multimodal support)
-          prompt: adaptedContents,    // Backward compat with old worker
-          Model: modelId,
-          intent,                     // Worker uses this to enable googleSearch tool for SEARCH
-          generationConfig,
-        })
-      });
-
-      clearTimeout(timeout);
+      let response: Response;
+      try {
+        response = await fetch(`${WORKER_URL}/api/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: adaptedContents,  // Send full structured content (multimodal support)
+            prompt: adaptedContents,    // Backward compat with old worker
+            Model: modelId,
+            intent,                     // Worker uses this to enable googleSearch tool for SEARCH
+            generationConfig,
+          })
+        });
+      } finally {
+        clearTimeout(timeout);  // always clear — prevents orphaned timers on network throws
+      }
 
       // Rate-limit / temporary provider outage — wait and retry same model once.
       if (response.status === 429 || !response.ok) {

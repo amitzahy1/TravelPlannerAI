@@ -878,13 +878,19 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 : [];
         }
 
+        const afterBase = list.length;
+
         // Trim to trip scope — catches stale data from old research runs
         if (tripCities.length > 0) list = list.filter(inTripScope);
+        const afterScope = list.length;
 
         // City Filter — language-agnostic via locationMatchesCity
         if (selectedCity !== 'all') {
             list = list.filter(r => restaurantMatchesCity(r, selectedCity));
         }
+        const afterCity = list.length;
+
+        console.debug(`🍽️ [Restaurants] base=${afterBase} → scope=${afterScope} → city=${afterCity} (tripCities=${JSON.stringify(tripCities)}, selectedCity=${selectedCity})`);
 
         if (selectedRater !== 'all') {
             // Map the canonical filter name back to the substrings that
