@@ -211,19 +211,27 @@ const getBearing = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 };
 
-const geocodeAddress = async (query: string): Promise<{ lat: number; lng: number } | null> => {
+const geocodeAddress = async (
+    query: string,
+    bbox?: [number, number, number, number] | null,
+): Promise<{ lat: number; lng: number } | null> => {
     if (!query) return null;
     // Photon (Komoot) is CORS-friendly. Nominatim is blocked on github.io,
     // so browser geocoding stops here instead of logging noisy CORS errors.
     try {
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`);
+        const bboxParam = bbox ? `&bbox=${bbox.join(',')}` : '';
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1${bboxParam}`);
         if (res.ok) {
             const data = await res.json();
             const coords = data?.features?.[0]?.geometry?.coordinates;
             if (Array.isArray(coords) && coords.length >= 2) {
                 const lng = parseFloat(coords[0]);
                 const lat = parseFloat(coords[1]);
-                if (isFinite(lat) && isFinite(lng)) return { lat, lng };
+                if (isFinite(lat) && isFinite(lng)) {
+                    // Reject results outside expected country bbox
+                    if (bbox && !coordInBbox(lat, lng, bbox)) return null;
+                    return { lat, lng };
+                }
             }
         }
     } catch {
@@ -689,8 +697,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         const cacheSnap = geocodedCacheRef.current;
         sorted.forEach(item => {
             if (!isValidCoordinate(item.lat, item.lng) && item.address && cacheSnap[item.address]) {
-                item.lat = cacheSnap[item.address].lat;
-                item.lng = cacheSnap[item.address].lng;
+                const cached = cacheSnap[item.address];
+                // Skip cached coords outside the trip's country — they were
+                // geocoded before bbox validation existed and will be re-resolved.
+                if (tripBbox && !coordInBbox(cached.lat, cached.lng, tripBbox)) return;
+                item.lat = cached.lat;
+                item.lng = cached.lng;
             }
         });
 
@@ -706,6 +718,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             setLoading(true);
             setGeocodeProgress({ done: 0, total: pending.length });
 
+            // Country bbox for this trip — constrains Photon queries and
+            // validates results so wrong-country coords never reach the map.
+            const tripBbox = trip ? getCountryBbox(trip.destinationEnglish || trip.destination || '') : null;
+
             const BATCH_SIZE = 5;
             for (let batchStart = 0; batchStart < pending.length; batchStart += BATCH_SIZE) {
                 const batch = pending.slice(batchStart, batchStart + BATCH_SIZE);
@@ -719,7 +735,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                             q = `${q}, ${item.city}`;
                         }
                     }
-                    const coords = await geocodeAddress(q);
+                    // Pass bbox only for non-airport items — airport coords come from our
+                    // IATA table and must not be constrained to a single-country bbox.
+                    const bbox = item.type !== 'airport' ? tripBbox : null;
+                    const coords = await geocodeAddress(q, bbox);
                     return { itemId: item.id, cacheKey, coords };
                 }));
 

@@ -798,7 +798,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             <span>מאתר {geocodingInFlight} מקומות נוספים על המפה...</span>
                         </div>
                     )}
-                    <UnifiedMapView items={getMapItems()} title={activeTab === 'my_list' ? "מפת אטרקציות שלי" : "מפת המלצות"} />
+                    <UnifiedMapView
+                        items={getMapItems()}
+                        trip={trip}
+                        activeCity={selectedCity !== 'all' ? selectedCity : null}
+                        title={activeTab === 'my_list' ? "מפת אטרקציות שלי" : "מפת המלצות"}
+                    />
                 </div>
             ) : (
                 <>

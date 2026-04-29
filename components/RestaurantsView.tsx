@@ -1153,7 +1153,12 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             </>
                         );
                     })()}
-                    <UnifiedMapView items={getMapItems()} title={activeTab === 'my_list' ? `מפת מסעדות שלי` : 'מפת המלצות'} />
+                    <UnifiedMapView
+                        items={getMapItems()}
+                        trip={trip}
+                        activeCity={selectedCity !== 'all' ? selectedCity : null}
+                        title={activeTab === 'my_list' ? `מפת מסעדות שלי` : 'מפת המלצות'}
+                    />
                 </div>
             ) : (
                 <>
