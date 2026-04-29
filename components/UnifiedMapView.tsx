@@ -9,6 +9,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
 import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
+import { getCountryBbox, coordInBbox } from '../utils/geocodePlaces';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
@@ -552,6 +553,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         if (!trip && !items) return;
         let raw: MapItem[] = [];
 
+        // Country bbox — used to reject coordinates that landed in the wrong
+        // country (e.g. Photon returning a Norwegian village for "Koh Chang").
+        const tripBbox = trip ? getCountryBbox(trip.destinationEnglish || trip.destination || '') : null;
+        const inCountry = (lat?: number, lng?: number) =>
+            !tripBbox || !isValidCoordinate(lat, lng) || coordInBbox(lat!, lng!, tripBbox);
+
         if (items) {
             raw = items;
         } else if (trip) {
@@ -658,6 +665,18 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             trip.shoppingItems?.forEach((_s: any) => {
             });
         }
+
+        // Strip coordinates that fall outside the trip's country bbox — prevents
+        // Photon mismatches (e.g. "Koh Chang" resolving to a Norwegian village)
+        // from warping the auto-fit viewport to show the whole world.
+        // Airport items use IATA-keyed coords from our own table — always keep them.
+        raw.forEach(item => {
+            if (item.type === 'airport') return;
+            if (!inCountry(item.lat, item.lng)) {
+                item.lat = undefined;
+                item.lng = undefined;
+            }
+        });
 
         // Assign chronological order
         const sorted = [...raw].sort((a, b) => getItemTimestamp(a) - getItemTimestamp(b));

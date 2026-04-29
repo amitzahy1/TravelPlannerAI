@@ -7,8 +7,8 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip, Restaurant, Attraction, HotelBooking } from '../types';
 import { Utensils, Ticket, MapPin, Hotel, Loader2 } from 'lucide-react';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
-import { geocodePlacesBatch } from '../utils/geocodePlaces';
-import { getTripCities, locationMatchesCity } from '../utils/geoData';
+import { geocodePlacesBatch, getCountryBbox, coordInBbox } from '../utils/geocodePlaces';
+import { getTripCities, locationMatchesCity, displayCityName } from '../utils/geoData';
 import { safeMapsUrl } from '../utils/mapsUrl';
 
 type Kind = 'food' | 'sights' | 'hotel';
@@ -98,6 +98,11 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
         // List of cities the trip touches — for the city filter.
         const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true }), [trip]);
 
+        // Country hint and bbox derived from the trip destination — used to
+        // bias geocoding queries and reject out-of-country coordinates.
+        const tripCountry = trip.destinationEnglish || trip.destination || '';
+        const tripBbox = useMemo(() => getCountryBbox(tripCountry), [tripCountry]);
+
         // Build the master place list (restaurants + attractions + hotels).
         // A place is "mappable" if it has its own lat/lng, OR was just geocoded
         // in this session (resolvedCoords). City filter is applied last.
@@ -134,11 +139,18 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                         });
                 });
 
-                // Resolve coords (own → resolved-in-session)
+                // Resolve coords (own → resolved-in-session).
+                // Reject any coordinate that falls outside the trip's country bbox —
+                // this prevents Norway/Israel/etc. mismatches from Photon.
+                const isInCountry = (lat?: number, lng?: number) =>
+                        !tripBbox || !isValidLatLng(lat, lng) || coordInBbox(lat!, lng!, tripBbox);
+
                 const withCoords = items.map(it => {
-                        if (isValidLatLng(it.lat, it.lng)) return it as MapPlace;
+                        if (isValidLatLng(it.lat, it.lng) && isInCountry(it.lat, it.lng))
+                                return it as MapPlace;
                         const r = resolvedCoords[it.id];
-                        if (r) return { ...it, lat: r.lat, lng: r.lng } as MapPlace;
+                        if (r && isInCountry(r.lat, r.lng))
+                                return { ...it, lat: r.lat, lng: r.lng } as MapPlace;
                         return null;
                 });
 
@@ -222,6 +234,7 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                                 location: p.location,
                                 googleMapsUrl: (p.raw as any).googleMapsUrl,
                                 address: (p as any).address,
+                                countryHint: tripCountry,
                         }));
                 if (needs.length === 0) return;
                 setIsGeocoding(true);
@@ -286,6 +299,45 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                         map.fitBounds(bounds, { padding: [50, 40], maxZoom: 14, animate: true });
                 }
         }, [mappable, selected]);
+
+        // City flyTo fallback — when a city is selected but mappable is empty
+        // (geocoding not yet complete), fly to a well-known city centre so the
+        // map isn't left showing the previous viewport or the whole world.
+        useEffect(() => {
+                const map = mapRef.current;
+                if (!map || selectedCity === 'all' || mappable.length > 0) return;
+                const cityEn = displayCityName(selectedCity, 'en').toLowerCase();
+                const CITY_CENTERS: Record<string, [number, number]> = {
+                        'bangkok':      [13.7563, 100.5018],
+                        'pattaya':      [12.9272, 100.8775],
+                        'koh chang':    [12.0844, 102.3130],
+                        'ko chang':     [12.0844, 102.3130],
+                        'phuket':       [ 7.8804,  98.3923],
+                        'chiang mai':   [18.7883,  98.9853],
+                        'krabi':        [ 8.0863,  98.9063],
+                        'koh samui':    [ 9.5317, 100.0614],
+                        'ko samui':     [ 9.5317, 100.0614],
+                        'hua hin':      [12.5684,  99.9577],
+                        'ayutthaya':    [14.3532, 100.5677],
+                        'tokyo':        [35.6762, 139.6503],
+                        'osaka':        [34.6937, 135.5023],
+                        'kyoto':        [35.0116, 135.7681],
+                        'paris':        [48.8566,   2.3522],
+                        'rome':         [41.9028,  12.4964],
+                        'barcelona':    [41.3851,   2.1734],
+                        'madrid':       [40.4168,  -3.7038],
+                        'amsterdam':    [52.3676,   4.9041],
+                        'london':       [51.5074,  -0.1278],
+                        'lisbon':       [38.7169,  -9.1399],
+                        'dubai':        [25.2048,  55.2708],
+                        'singapore':    [ 1.3521, 103.8198],
+                        'bali':         [-8.3405, 115.0920],
+                        'new york':     [40.7128, -74.0060],
+                        'los angeles':  [34.0522,-118.2437],
+                };
+                const coords = CITY_CENTERS[cityEn];
+                if (coords) map.flyTo(coords, 12, { animate: true, duration: 0.8 });
+        }, [selectedCity, mappable.length]);
 
         const handleAddRestaurant = (r: Restaurant) => {
                 const exists = trip.restaurants.some(c => c.restaurants.some(x => x.name === r.name));
