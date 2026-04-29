@@ -102,10 +102,10 @@ export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = fal
     const showAddButton = !!onAddToList && item.source === 'ai';
 
     return (
-        <div style={{ fontFamily: "'Rubik','Inter',sans-serif", direction: 'rtl', textAlign: 'right', width: 272, padding: 0 }}>
+        <div style={{ fontFamily: "'Rubik','Inter',sans-serif", direction: 'rtl', textAlign: 'right', width: 220, padding: 0 }}>
 
             {/* Image / gradient header */}
-            <div style={{ position: 'relative', width: '100%', height: 168, overflow: 'hidden', flexShrink: 0, ...headerStyle }}>
+            <div style={{ position: 'relative', width: '100%', height: 110, overflow: 'hidden', flexShrink: 0, ...headerStyle }}>
 
                 {/* Category chip — top right */}
                 {tagLabel && (
@@ -134,12 +134,12 @@ export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = fal
                 )}
 
                 {/* Bottom overlay: name + address + rating + source */}
-                <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <h3 dir="ltr" style={{ margin: 0, fontSize: 16, fontWeight: 900, color: '#fff', lineHeight: 1.2, textAlign: 'left', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
+                <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <h3 dir="ltr" style={{ margin: 0, fontSize: 13, fontWeight: 900, color: '#fff', lineHeight: 1.2, textAlign: 'left', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
                         {item.name}
                     </h3>
                     {item.address && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#cbd5e1', fontWeight: 600, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: '#cbd5e1', fontWeight: 600, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
                             📍&nbsp;<span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.address}</span>
                         </div>
                     )}
@@ -161,47 +161,47 @@ export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = fal
             </div>
 
             {/* Body */}
-            <div style={{ padding: '10px 12px' }}>
+            <div style={{ padding: '8px 10px' }}>
                 {item.description && (
-                    <div style={{ fontSize: 11, color: '#475569', marginTop: 8, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {item.description}
                     </div>
                 )}
                 {item.notes && (
-                    <div style={{ fontSize: 11, color: '#475569', background: '#fffaeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 10px', marginTop: 8, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 10, color: '#475569', background: '#fffaeb', border: '1px solid #fde68a', borderRadius: 6, padding: '5px 8px', marginTop: 6, lineHeight: 1.4 }}>
                         📝 {item.notes}
                     </div>
                 )}
                 {dateLabel && (
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginTop: 8 }}>
+                    <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, marginTop: 6 }}>
                         📅 {dateLabel}
                     </div>
                 )}
-                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
                     <a
                         href={mapsLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: '#2563eb', textDecoration: 'none', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '5px 10px', borderRadius: 8 }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 800, color: '#2563eb', textDecoration: 'none', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '4px 8px', borderRadius: 6 }}
                     >
-                        🧭 ניווט ב-Google Maps
+                        🧭 ניווט
                     </a>
                     {showAddButton && (
                         <button
                             onClick={e => { e.stopPropagation(); onAddToList!(); }}
                             disabled={isAdded}
                             style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                fontSize: 11, fontWeight: 800,
+                                display: 'inline-flex', alignItems: 'center', gap: 3,
+                                fontSize: 10, fontWeight: 800,
                                 color: isAdded ? '#92400e' : '#fff',
                                 background: isAdded ? '#fef3c7' : '#0f172a',
                                 border: `1px solid ${isAdded ? '#fcd34d' : '#0f172a'}`,
-                                padding: '5px 10px', borderRadius: 8,
+                                padding: '4px 8px', borderRadius: 6,
                                 cursor: isAdded ? 'default' : 'pointer',
                             }}
                         >
-                            {isAdded ? '✓ ברשימה שלי' : '＋ הוסף לרשימה שלי'}
+                            {isAdded ? '✓ נשמר' : '＋ הוסף לרשימה'}
                         </button>
                     )}
                 </div>

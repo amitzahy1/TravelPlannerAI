@@ -1359,7 +1359,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         />
                     );
                 });
-                marker.bindPopup(container, { className: 'tp-popup', maxWidth: 300 }).openPopup();
+                marker.bindPopup(container, { className: 'tp-popup', maxWidth: 240, minWidth: 220 }).openPopup();
                 marker.once('popupclose', () => popupRoot.unmount());
             });
 
