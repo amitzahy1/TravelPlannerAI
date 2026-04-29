@@ -11,6 +11,7 @@ import { PlaceCard } from './PlaceCard';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
 import { ConfirmModal } from './ConfirmModal';
 import { stripChainRestaurants } from '../utils/chainRestaurants';
+import { toast } from '../stores/useToastStore';
 
 // Extended interface for internal use
 interface ExtendedRestaurant extends Restaurant {
@@ -66,6 +67,7 @@ const getCuisineVisuals = (cuisine: string = '') => {
 import { cleanTextForMap } from '../utils/textUtils';
 import { getTripCities, locationMatchesCity, displayCityName } from '../utils/geoData';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
+import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
 
 
 // Sorting helper: Favorites first, then Rating
@@ -215,9 +217,22 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 const data = JSON.parse(textContent || '{}');
                 if (data.results) {
                     // Filter out closed businesses
-                    const validResults = data.results
+                    const operationalResults = data.results
                         .filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL')
                         .map((r: any, i: number) => ({ ...r, id: `search-res-${i}`, categoryTitle: 'תוצאות חיפוש' }));
+
+                    // Trip-scope filter — keep AI from sneaking out-of-country
+                    // results past the destination context. Drops are surfaced
+                    // as a toast so the user knows; they can refine the query
+                    // if the drop count looks wrong.
+                    const inScope = operationalResults.filter((r: any) => isPlaceInTripScope(trip, { location: r.location, region: r.region }));
+                    const droppedCount = operationalResults.length - inScope.length;
+                    const validResults = inScope.length > 0 ? inScope : operationalResults;
+                    if (droppedCount > 0 && inScope.length > 0) {
+                        toast.warning(`סוננו ${droppedCount} תוצאות מחוץ לטיול`);
+                    } else if (droppedCount > 0 && inScope.length === 0) {
+                        toast.info(`כל התוצאות מחוץ לטיול — מציג בכל זאת`);
+                    }
                     setSearchResults(validResults);
 
                     // Save custom category (Task 3)
@@ -822,13 +837,15 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             }
         } else {
             // ADD Logic
-            // FIX: Restore correct region/city logic. Do not use Category Title (e.g. "Italian") as region.
-            // Try to extract city from location (e.g. "Rothschild 12, Tel Aviv" -> "Tel Aviv")
-            const locationParts = restaurant.location ? restaurant.location.split(',') : [];
-            const cityFromLocation = locationParts.length > 1 ? locationParts[locationParts.length - 1].trim() : restaurant.location;
-
-            // Priority: Extracted City -> Selected City Filter -> Trip Destination
-            const intendedRegion = cityFromLocation || (selectedCity !== 'all' ? selectedCity : trip.destination);
+            // resolvePlaceCity matches the location/region against actual trip
+            // cities (Hebrew/English aware) and only falls back to selectedCity
+            // /destination when no real match is found. Avoids saving
+            // neighborhood names like "Sukhumvit" as the region.
+            const intendedRegion = resolvePlaceCity(
+                { name: restaurant.name, location: restaurant.location, region: restaurant.region },
+                trip,
+                selectedCity,
+            );
 
             // Find category matching the Category Title (e.g. "Italian" or "Search Results")
             let targetCatIndex = newRestaurants.findIndex(c => c.title === catTitle);
@@ -857,17 +874,11 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         });
     };
 
-    // In-trip-scope check — used to strip legacy/hallucinated restaurants
-    // that aren't in any trip city. locationMatchesCity handles Hebrew/English
-    // AND country-level filters (so 'תאילנד' matches 'Sukhumvit, Bangkok').
+    // In-trip-scope check — delegates to the shared isPlaceInTripScope so
+    // AttractionsView, UnifiedMapView, and tripGaps share one definition.
     const inTripScope = useMemo(() => {
-        return (r: any) => {
-            const loc = r.location || '';
-            const region = r.region || '';
-            if (!loc && !region) return true; // no location → give benefit of the doubt
-            return tripCities.some(c => restaurantMatchesCity({ location: loc, region }, c));
-        };
-    }, [tripCities]);
+        return (r: any) => isPlaceInTripScope(trip, { location: r.location, region: r.region });
+    }, [trip]);
 
     // Dedupe helper: same place appearing in multiple categories (e.g. Sorn
     // in 'Authentic Local Food' + 'Luxury & Michelin' + 'תאילנדי') should show

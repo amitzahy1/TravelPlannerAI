@@ -10,6 +10,7 @@ import { Trip } from '../types';
 import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
 import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl, toEnglishCountryName } from '../utils/geocodePlaces';
+import { isPlaceInTripScope, getTripCountryBbox } from '../utils/tripScope';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
@@ -537,7 +538,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
         // Country bbox from trip — passed alongside `items` by RestaurantsView /
         // AttractionsView so we can constrain Photon and reject wrong-country results.
-        const tripBbox = trip ? getCountryBbox(trip.destinationEnglish || trip.destination || '') : null;
+        const tripBbox = trip
+            ? (getTripCountryBbox(trip) || getCountryBbox(trip.destinationEnglish || trip.destination || ''))
+            : null;
         // Always use an English country name for Photon — Hebrew strings like
         // "תאילנד 26 ימים" confuse the geocoder and can return Georgia or Israel.
         const countryName = toEnglishCountryName(trip?.destinationEnglish || trip?.destination || '');
@@ -589,7 +592,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
         // Country bbox — used to reject coordinates that landed in the wrong
         // country (e.g. Photon returning a Norwegian village for "Koh Chang").
-        const tripBbox = trip ? getCountryBbox(trip.destinationEnglish || trip.destination || '') : null;
+        // Use the trip-scope helper so multi-city destinations like
+        // "Bangkok - Pattaya - Koh Chang" still resolve a country.
+        const tripBbox = trip
+            ? (getTripCountryBbox(trip) || getCountryBbox(trip.destinationEnglish || trip.destination || ''))
+            : null;
         const inCountry = (lat?: number, lng?: number) =>
             !tripBbox || !isValidCoordinate(lat, lng) || coordInBbox(lat!, lng!, tripBbox);
 
@@ -659,12 +666,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 }));
             }
 
-            // AI restaurant recommendations — opt-in layer
+            // AI restaurant recommendations — opt-in layer.
+            // Filter out items not in trip scope so legacy/hallucinated AI data
+            // (Banff, Paris on a Thailand trip) doesn't pollute the map or
+            // get fed into geocoding lookups.
             if (layerFlags.aiRestaurants) {
                 trip.aiRestaurants?.forEach(cat => {
-                    // Use category region/title as city — more reliable than parsing address string
                     const city = (cat as any).region || cat.title || trip.destination;
                     cat.restaurants?.forEach(r => {
+                        if (!isPlaceInTripScope(trip, { location: r.location, region: r.region || city })) return;
                         raw.push({
                             id: r.id, type: 'restaurant', name: r.name, address: r.location,
                             lat: r.lat, lng: r.lng, description: r.description, city,
@@ -677,11 +687,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 });
             }
 
-            // AI attraction recommendations — opt-in layer
+            // AI attraction recommendations — opt-in layer (same scope filter).
             if (layerFlags.aiAttractions) {
                 trip.aiAttractions?.forEach(cat => {
                     const city = (cat as any).region || cat.title || trip.destination;
                     cat.attractions?.forEach(a => {
+                        if (!isPlaceInTripScope(trip, { location: a.location, region: a.region || city, description: a.description })) return;
                         raw.push({
                             id: a.id, type: 'attraction', name: a.name, address: a.location,
                             lat: a.lat, lng: a.lng, description: a.description, city,
@@ -746,7 +757,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
             // Country bbox for this trip — constrains Photon queries and
             // validates results so wrong-country coords never reach the map.
-            const tripBbox = trip ? getCountryBbox(trip.destinationEnglish || trip.destination || '') : null;
+            const tripBbox = trip
+                ? (getTripCountryBbox(trip) || getCountryBbox(trip.destinationEnglish || trip.destination || ''))
+                : null;
 
             const BATCH_SIZE = 5;
             for (let batchStart = 0; batchStart < pending.length; batchStart += BATCH_SIZE) {

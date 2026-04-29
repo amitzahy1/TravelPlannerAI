@@ -14,6 +14,7 @@ import { generateWithFallback } from './aiService';
 import { saveSingleTrip } from './storageService';
 import { displayCityName, getTripCities } from '../utils/geoData';
 import { stripChainRestaurants } from '../utils/chainRestaurants';
+import { verifyPlacesBatch, applyVerificationResult } from '../utils/placeVerification';
 import { toast } from '../stores/useToastStore';
 
 // Per-trip lock — prevents firing a second background research run for a
@@ -240,6 +241,32 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
                                 })),
                         }));
 
+                        // Verify + geocode this city's restaurants BEFORE the merge.
+                        // Photon-based, free; mutates each item in place with lat/lng,
+                        // osmId, verificationStatus, verifiedAt. Failed items get
+                        // geocodeFailed: true so the Data Health panel can count them.
+                        const flatRestaurants = processed.flatMap((c: any) => c.restaurants || []);
+                        await verifyPlacesBatch(
+                                flatRestaurants.map((r: any) => ({
+                                        id: r.id,
+                                        name: r.name,
+                                        location: r.location,
+                                        googleMapsUrl: r.googleMapsUrl,
+                                        countryHint: cityEn,
+                                })),
+                                trip,
+                                (id, result) => {
+                                        const target = flatRestaurants.find((r: any) => r.id === id);
+                                        if (target) applyVerificationResult(target, result);
+                                },
+                                {
+                                        onFail: (id) => {
+                                                const target = flatRestaurants.find((r: any) => r.id === id);
+                                                if (target) target.geocodeFailed = true;
+                                        },
+                                },
+                        );
+
                         processed.forEach((newCat: any) => {
                                 const existingIdx = accumulated.findIndex(c => c.title === newCat.title);
                                 if (existingIdx !== -1) {
@@ -303,6 +330,29 @@ const researchAttractionsForTrip = async (
                                         categoryTitle: c.title,
                                 })),
                         }));
+
+                        // Same verification step as the restaurants path.
+                        const flatAttractions = processed.flatMap((c: any) => c.attractions || []);
+                        await verifyPlacesBatch(
+                                flatAttractions.map((a: any) => ({
+                                        id: a.id,
+                                        name: a.name,
+                                        location: a.location,
+                                        googleMapsUrl: a.googleMapsUrl,
+                                        countryHint: cityEn,
+                                })),
+                                trip,
+                                (id, result) => {
+                                        const target = flatAttractions.find((a: any) => a.id === id);
+                                        if (target) applyVerificationResult(target, result);
+                                },
+                                {
+                                        onFail: (id) => {
+                                                const target = flatAttractions.find((a: any) => a.id === id);
+                                                if (target) target.geocodeFailed = true;
+                                        },
+                                },
+                        );
 
                         processed.forEach((newCat: any) => {
                                 const existingIdx = accumulated.findIndex(c => c.title === newCat.title);

@@ -6,7 +6,7 @@
 
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, ArrowLeft, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ExternalLink, X } from 'lucide-react';
 import { MissingPoint } from '../../utils/tripGaps';
 
 interface MissingDataSheetProps {
@@ -20,6 +20,7 @@ const KIND_META: Record<MissingPoint['kind'], { color: string; emoji: string; gr
         no_hotel_for_day: { color: '#0ea5e9', emoji: '🏨', group: 'מלונות חסרים' },
         no_transport_to_hotel: { color: '#6366f1', emoji: '🚖', group: 'תחבורה משדה התעופה' },
         unresolved_geocode: { color: '#f59e0b', emoji: '📍', group: 'מקומות לא נמצאו במפה' },
+        ambiguous_location: { color: '#eab308', emoji: '⚠️', group: 'מיקומים לא מאומתים' },
         no_research_for_city: { color: '#8b5cf6', emoji: '🔍', group: 'ערים בלי מחקר AI' },
 };
 
@@ -85,20 +86,34 @@ export const MissingDataSheet: React.FC<MissingDataSheetProps> = ({ isOpen, onCl
                                                                 </div>
                                                                 <div className="space-y-1.5">
                                                                         {items.map(p => (
-                                                                                <button
+                                                                                <div
                                                                                         key={p.id}
-                                                                                        onClick={() => { onNavigate(p.deepLinkTab); onClose(); }}
-                                                                                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-white hover:shadow-md hover:border-slate-200 transition-all border border-transparent text-right"
+                                                                                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-slate-200"
                                                                                 >
                                                                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${meta.color}18` }}>
                                                                                                 <span style={{ color: meta.color }}>{meta.emoji}</span>
                                                                                         </div>
-                                                                                        <div className="flex-1 min-w-0">
+                                                                                        <button
+                                                                                                onClick={() => { onNavigate(p.deepLinkTab); onClose(); }}
+                                                                                                className="flex-1 min-w-0 text-right"
+                                                                                        >
                                                                                                 <div className="text-sm font-bold text-slate-800 truncate">{p.label}</div>
                                                                                                 <div className="text-[10px] text-slate-500 mt-0.5">{p.suggestedAction}</div>
-                                                                                        </div>
+                                                                                        </button>
+                                                                                        {p.externalUrl && (
+                                                                                                <a
+                                                                                                        href={p.externalUrl}
+                                                                                                        target="_blank"
+                                                                                                        rel="noopener noreferrer"
+                                                                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                                                                                        title="פתח ב-Google Maps"
+                                                                                                        onClick={e => e.stopPropagation()}
+                                                                                                >
+                                                                                                        <ExternalLink className="w-4 h-4" />
+                                                                                                </a>
+                                                                                        )}
                                                                                         <ArrowLeft className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                                                                                </button>
+                                                                                </div>
                                                                         ))}
                                                                 </div>
                                                         </div>

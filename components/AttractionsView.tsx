@@ -14,6 +14,8 @@ import { ConfirmModal } from './ConfirmModal';
 
 import { cleanTextForMap } from '../utils/textUtils';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
+import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
+import { toast } from '../stores/useToastStore';
 
 
 // Enhanced Visuals with Gradients for Attractions
@@ -160,7 +162,18 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
             const data = JSON.parse(response.text || '{}');
             if (data.results) {
-                const valid = data.results.filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search - attr - ${i} `, categoryTitle: 'תוצאות חיפוש' }));
+                const operational = data.results.filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search - attr - ${i} `, categoryTitle: 'תוצאות חיפוש' }));
+                // Trip-scope filter — same logic as RestaurantsView. Drops are
+                // toast-flagged; if every result is out of scope we show them
+                // anyway since the user explicitly searched for it.
+                const inScope = operational.filter((r: any) => isPlaceInTripScope(trip, { location: r.location, region: r.region, description: r.description }));
+                const droppedCount = operational.length - inScope.length;
+                const valid = inScope.length > 0 ? inScope : operational;
+                if (droppedCount > 0 && inScope.length > 0) {
+                    toast.warning(`סוננו ${droppedCount} תוצאות מחוץ לטיול`);
+                } else if (droppedCount > 0 && inScope.length === 0) {
+                    toast.info(`כל התוצאות מחוץ לטיול — מציג בכל זאת`);
+                }
                 setSearchResults(valid);
                 if (textQuery.trim()) {
                     const current = trip.customAttractionCategories || [];
@@ -525,7 +538,13 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             newAttractions[existingCatIndex].attractions.splice(existingAttrIndex, 1);
             if (newAttractions[existingCatIndex].attractions.length === 0) newAttractions.splice(existingCatIndex, 1);
         } else {
-            const region = attraction.location?.split(',')[0] || 'Unknown City';
+            // resolvePlaceCity matches against trip cities first; falls back to
+            // selectedCity / trip.destination so we never save "Unknown City".
+            const region = resolvePlaceCity(
+                { name: attraction.name, location: attraction.location, region: attraction.region, description: attraction.description },
+                trip,
+                selectedCity,
+            );
             let targetIdx = newAttractions.findIndex(c => c.title === catTitle);
             if (targetIdx === -1) { newAttractions.push({ id: `cat - attr - ${Date.now()} `, title: catTitle, attractions: [] }); targetIdx = newAttractions.length - 1; }
             newAttractions[targetIdx].attractions.push({ ...attraction, id: `added - ${Date.now()} `, region: region });
@@ -535,18 +554,15 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     };
 
     // Keep only attractions that belong to any city/country the user is visiting.
-    // Guards against legacy / hallucinated data (Banff Canada, Eiffel Tower etc.
-    // showing up on a Thailand trip) regardless of which city filter is active.
+    // Delegates to the shared isPlaceInTripScope so RestaurantsView, UnifiedMapView,
+    // and tripGaps stay in sync; tripCities is read transitively by getTripCities.
     const inTripScope = useMemo(() => {
-        return (a: any) => {
-                const loc = a.location || '';
-                const region = a.region || '';
-                if (!loc && !region) return true; // no location info → give benefit of the doubt
-                return tripCities.some(c =>
-                        attractionMatchesCity({ location: loc, region, description: a.description || '' }, c)
-                );
-        };
-    }, [tripCities]);
+        return (a: any) => isPlaceInTripScope(trip, {
+            location: a.location,
+            region: a.region,
+            description: a.description,
+        });
+    }, [trip]);
 
     // Dedupe: an attraction may appear in multiple categories (e.g. a
     // dolphinarium in 'חופים ומים' + 'למשפחות וילדים'). Show it once; keep
@@ -689,9 +705,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const getMapItems = () => {
         const items: any[] = [];
+        // Recommended-tab map mirrors the visible filtered list (scope + city +
+        // rater + dedupe). The old code flat-mapped every AI category, so the
+        // map showed pins the user had already filtered out.
         const sourceAttractions: Attraction[] = activeTab === 'my_list'
             ? attractionsData.flatMap(c => c.attractions.map(a => ({ ...a, region: a.region || c.region })))
-            : aiCategories.flatMap(c => c.attractions.map(a => ({ ...a, region: a.region || c.region, categoryTitle: a.categoryTitle || c.title })));
+            : (filteredRecommendations as Attraction[]);
         sourceAttractions.forEach(a => {
             if (selectedCity !== 'all' && !attractionMatchesCity(a, selectedCity)) return;
             const cityEn = selectedCity !== 'all'
