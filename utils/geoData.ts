@@ -264,6 +264,25 @@ const CITY_HEBREW_NAMES: Record<string, string> = {
 const HEBREW_TO_ENGLISH_KEY: Record<string, string> = Object.entries(CITY_HEBREW_NAMES)
         .reduce((acc, [en, he]) => { acc[he] = en; return acc; }, {} as Record<string, string>);
 
+// Simple Levenshtein distance for short strings (city names are ≤ ~20 chars).
+// Used to collapse Hebrew transliteration variants like "פטאיה" / "פטאייה".
+const levenshtein = (a: string, b: string): number => {
+        if (a === b) return 0;
+        if (!a.length) return b.length;
+        if (!b.length) return a.length;
+        const row: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
+        for (let i = 1; i <= a.length; i++) {
+                let prev = i;
+                for (let j = 1; j <= b.length; j++) {
+                        const val = a[i - 1] === b[j - 1] ? row[j - 1] : 1 + Math.min(row[j - 1], row[j], prev);
+                        row[j - 1] = prev;
+                        prev = val;
+                }
+                row[b.length] = prev;
+        }
+        return row[b.length];
+};
+
 /**
  * Normalise a city name to a canonical key (lowercase English) when we know it,
  * else to its cleaned form. Use this to detect that 'Bangkok' and 'בנגקוק' are
@@ -304,6 +323,22 @@ export const cityKey = (name: string): string => {
         // Try a relaxed match: normalise both sides of the lookup table
         for (const [hebrew, en] of Object.entries(HEBREW_TO_ENGLISH_KEY)) {
                 if (normalizeCityRaw(hebrew) === cleaned) return en;
+        }
+        // Fuzzy Hebrew match: an unrecognised Hebrew string that differs from a
+        // known Hebrew city name by ≤ 1 char (≤ 2 for longer names) is almost
+        // certainly a transliteration variant (e.g. "פטאיה" vs "פטאייה").
+        // Collapse it to the known canonical English key instead of returning
+        // a unique Hebrew key that would create a duplicate city entry.
+        if (/[֐-׿]/.test(cleaned) && cleaned.length >= 4) {
+                const maxDist = cleaned.length >= 6 ? 2 : 1;
+                let bestEn = '';
+                let bestDist = maxDist + 1;
+                for (const [hebrew, en] of Object.entries(HEBREW_TO_ENGLISH_KEY)) {
+                        const norm = normalizeCityRaw(hebrew);
+                        const dist = levenshtein(cleaned, norm);
+                        if (dist < bestDist) { bestDist = dist; bestEn = en; }
+                }
+                if (bestEn) return bestEn;
         }
         // Unknown — use lowercase cleaned as the key
         return lower;
@@ -519,7 +554,15 @@ export const getTripCities = (
                 const key = cityKey(raw);
                 if (!key || seenKeys.has(key)) return;
                 seenKeys.add(key);
-                output.push(displayCityName(raw, lang));
+                // Prefer display name from the canonical key when the raw input is an
+                // unrecognised Hebrew variant (displayCityName would pass it through as-is).
+                // Example: raw="פטאיה" → key="pattaya" → display="Pattaya" rather than "פטאיה".
+                let display = displayCityName(raw, lang);
+                if (lang === 'en' && /[֐-׿]/.test(display)) {
+                        // Still Hebrew after lookup — use titlecased canonical key instead
+                        display = key.replace(/\b\w/g, c => c.toUpperCase());
+                }
+                output.push(display);
         };
 
         // Pre-compute the set of hotel city KEYS so we can filter flight-only

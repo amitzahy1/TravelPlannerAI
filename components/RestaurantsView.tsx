@@ -186,7 +186,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     // Exclude flight-only cities (layovers like AUH) — they're not travel destinations
     // the user actually stays in, so they shouldn't pollute the food-research scope.
-    const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true }), [trip]);
+    const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true, lang: 'en' }), [trip]);
 
     // --- Search Logic ---
     const handleTextSearch = async () => {
@@ -1319,7 +1319,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                                 for ONE clear button to run research. City-specific
                                                 options are secondary links below. */}
                                             <button
-                                                onClick={researchAllCities}
+                                                onClick={() => researchAllCities()}
                                                 disabled={isResearchingAll}
                                                 className="bg-gradient-to-r from-orange-600 to-amber-600 text-white px-8 py-3 rounded-2xl text-base font-black shadow-lg shadow-orange-200 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-60"
                                             >

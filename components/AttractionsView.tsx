@@ -136,7 +136,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     // Exclude flight-only cities (layovers like AUH) — they're not travel destinations
     // the user actually visits, so they shouldn't pollute the attraction-research scope.
-    const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true }), [trip]);
+    const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true, lang: 'en' }), [trip]);
 
     // --- AI Logic ---
     const handleTextSearch = async () => {
@@ -961,7 +961,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                                 trip cities at once (user's main complaint: wanted a big
                                                 clear button). City-specific buttons offered as secondary. */}
                                             <button
-                                                onClick={researchAllCities}
+                                                onClick={() => researchAllCities()}
                                                 disabled={isResearchingAll}
                                                 className="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-8 py-3 rounded-2xl text-base font-black shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-60"
                                             >

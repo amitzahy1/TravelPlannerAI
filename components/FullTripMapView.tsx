@@ -47,7 +47,7 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
         const [shortcutsOpen, setShortcutsOpen] = useState(false);
         const shortcutsRef = useRef<HTMLDivElement>(null);
 
-        const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true, lang: 'he' }), [trip]);
+        const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true, lang: 'en' }), [trip]);
         const missingPoints = useMemo(() => getMissingDataPoints(trip), [trip]);
 
         const counts = useMemo(() => ({
