@@ -9,7 +9,15 @@
   <title>Travel Planner AI</title>
   <script>
     (function () {
-      var V = 'tp-13';
+      var CANONICAL_ORIGIN = 'https://amitzahy1.github.io';
+      var CANONICAL_PATH = '/TravelPlannerAI/';
+      var normalizedOrigin = location.origin.replace(/\.+$/, '');
+      if (normalizedOrigin === CANONICAL_ORIGIN && !location.pathname.startsWith(CANONICAL_PATH)) {
+        location.replace(CANONICAL_ORIGIN + CANONICAL_PATH + location.hash);
+        return;
+      }
+
+      var V = 'tp-14';
       var isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
       if (!isLocal && localStorage.getItem('sw-ver') !== V && 'serviceWorker' in navigator) {
         localStorage.setItem('sw-ver', V);
