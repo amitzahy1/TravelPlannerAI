@@ -843,7 +843,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                     <>
                                         <button onClick={() => setIsShareModalOpen(true)} className="flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-bold border border-emerald-200 hover:bg-emerald-100 transition-all">
                                             <Share2 className="w-4 h-4" />
-                                            <span className="hidden md:inline">شاتوف</span>
+                                            <span className="hidden md:inline">שיתוף</span>
                                         </button>
                                         <button onClick={() => exportTripPDF(activeTrip)} className="flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-bold border border-indigo-200 hover:bg-indigo-100 transition-all">
                                             <FileText className="w-4 h-4" />
@@ -1015,9 +1015,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                         {activeTab === 'ai' && (
                             <div className="space-y-6 animate-fade-in">
                                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                    <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-7">
+                                    <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-7">
                                         <div className="flex items-center gap-4">
-                                            <div className="bg-white/10 p-3 rounded-lg">
+                                            <div className="bg-white/20 p-3 rounded-lg">
                                                 <Terminal className="w-6 h-6 text-white" />
                                             </div>
                                             <div>
@@ -1055,11 +1055,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         )}
                                     </div>
                                 </div>
-                                <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-8 text-white text-center">
-                                    <Sparkles className="w-14 h-14 mx-auto mb-4 text-amber-300" />
+                                <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl p-8 text-white text-center">
+                                    <Sparkles className="w-14 h-14 mx-auto mb-4 text-yellow-300" />
                                     <h3 className="text-2xl font-black mb-2">Magic Import — קבצים</h3>
-                                    <p className="text-slate-300 mb-6">גרור PDF וה-AI יחלץ את הנתונים</p>
-                                    <div className="bg-white/5 rounded-lg p-6">
+                                    <p className="text-purple-100 mb-6">גרור PDF וה-AI יחלץ את הנתונים</p>
+                                    <div className="bg-white/10 rounded-lg p-6">
                                         <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />
                                     </div>
                                 </div>
