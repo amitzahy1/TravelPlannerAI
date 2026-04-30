@@ -727,29 +727,53 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         applyMergedData(hotels, pendingApplyData.flights);
     };
 
-    return (
-        <div className="w-full h-full bg-gradient-to-br from-white via-slate-50 to-slate-100 relative flex flex-col md:flex-row animate-scale-in rounded-2xl overflow-hidden border border-slate-300/40 shadow-xl" onClick={(e) => e.stopPropagation()}>
 
-            {/* ✅ Mobile Back Bar — sticky top bar so user can always go back */}
-            <div className="md:hidden sticky top-0 z-50 bg-white border-b border-slate-100 shadow-sm flex items-center justify-between px-4 py-3">
-                <button
-                    onClick={onClose}
-                    className="flex items-center gap-2 text-blue-600 font-bold text-sm hover:bg-blue-50 px-3 py-2 rounded-xl transition-all active:scale-95"
-                >
-                    <ArrowRight className="w-4 h-4" />
-                    <span>חזרה לטיול</span>
-                </button>
-                <span className="font-black text-slate-800">ניהול טיול</span>
-                <div className="w-20" /> {/* spacer for centering */}
+    return (
+        <div className="w-full h-full bg-white relative flex flex-col md:flex-row animate-scale-in rounded-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+
+            {/* MOBILE OVERLAY */}
+            {isSidebarOpen && (
+                <div className="fixed inset-0 bg-slate-900/50 z-[105] md:hidden backdrop-blur-sm transition-opacity" onClick={() => setIsSidebarOpen(false)} />
+            )}
+
+            {/* SIDEBAR - TRIPS LIST */}
+            <div className={`fixed inset-y-0 right-0 z-[110] w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-96 md:shadow-none md:z-auto md:border-l border-slate-200/50 flex flex-col flex-shrink-0 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="px-6 py-8 border-b border-slate-200/50 flex justify-between items-center md:block">
+                    <div className="flex justify-between items-center w-full">
+                        <h2 className="text-3xl font-black bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">טיולים שלי</h2>
+                        <button onClick={() => window.location.reload()} className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all hover:shadow-sm" title="סינכרון"><Loader2 className="w-5 h-5" /></button>
+                    </div>
+                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-5 space-y-2.5">
+                    {trips.map(t => (
+                        <div key={t.id} className="relative group">
+                            <button onClick={() => setActiveTripId(t.id)} className={`w-full text-right p-4 pr-4 pl-12 rounded-xl transition-all font-bold flex items-center justify-between text-sm border-2 ${activeTripId === t.id ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-slate-900 border-blue-300 shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200 hover:border-slate-300'}`}>
+                                <span className="min-w-0 flex flex-col gap-1.5">
+                                    <span className="truncate font-bold">{t.name}</span>
+                                    <span className={`truncate text-xs font-medium ${activeTripId === t.id ? 'text-slate-600' : 'text-slate-500'}`}>{t.destination || t.dates || '—'}</span>
+                                </span>
+                                {activeTripId === t.id && <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-md"></div>}
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); const isOwner = !t.isShared || t.sharing?.role === 'owner'; isOwner ? handleDeleteTrip(e, t.id) : setTripToLeave(t.id); }} className={`absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-20 ${(!t.isShared || t.sharing?.role === 'owner') ? 'text-slate-300 hover:text-red-500 hover:bg-red-50' : 'text-slate-300 hover:text-orange-500 hover:bg-orange-50'}`} title={(!t.isShared || t.sharing?.role === 'owner') ? "מחק" : "צא"}>
+                                {(!t.isShared || t.sharing?.role === 'owner') ? <Trash2 className="w-4 h-4" /> : <LogOut className="w-4 h-4" />}
+                            </button>
+                        </div>
+                    ))}
+                    <button onClick={() => onSave(trips)} disabled={isSaving} className={`w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all ${isSaving ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'}`}>
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        <span className="text-sm">{isSaving ? 'שומר...' : 'שמור שינויים'}</span>
+                    </button>
+                </div>
             </div>
 
-            {/* Hotel Conflict Resolution Modal */}
+            {/* MODALS */}
             {hotelConflicts.length > 0 && (
                 <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col" dir="rtl">
                         <div className="p-5 border-b border-slate-100">
                             <h2 className="text-lg font-black text-slate-800">נמצאו מלונות דומים</h2>
-                            <p className="text-sm text-slate-500 mt-1">בחר מה לעשות עם כל מלון שנמצא כבר ברשימה</p>
+                            <p className="text-sm text-slate-500 mt-1">בחר מה לעשות עם כל מלון</p>
                         </div>
                         <div className="overflow-y-auto flex-1 p-5 space-y-5">
                             {hotelConflicts.map((conflict, i) => (
@@ -762,329 +786,127 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         <div className="bg-white rounded-lg p-3 border border-slate-200">
                                             <div className="font-bold text-slate-600 mb-1">קיים</div>
                                             <div className="text-slate-700">{conflict.existing.checkInDate} → {conflict.existing.checkOutDate}</div>
-                                            {conflict.existing.confirmationCode && <div className="text-slate-400 mt-1">אישור: {conflict.existing.confirmationCode}</div>}
                                         </div>
                                         <div className="bg-white rounded-lg p-3 border border-blue-200">
                                             <div className="font-bold text-blue-600 mb-1">חדש</div>
                                             <div className="text-slate-700">{conflict.incoming.checkInDate} → {conflict.incoming.checkOutDate}</div>
-                                            {conflict.incoming.confirmationCode && <div className="text-slate-400 mt-1">אישור: {conflict.incoming.confirmationCode}</div>}
                                         </div>
                                     </div>
                                     <div className="flex gap-2 flex-wrap">
                                         {(['keep', 'replace', 'both'] as const).map(opt => (
-                                            <button
-                                                key={opt}
-                                                onClick={() => setConflictResolutions(r => ({ ...r, [i]: opt }))}
-                                                className={`flex-1 text-xs font-bold py-2 px-3 rounded-lg border transition-all ${conflictResolutions[i] === opt ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`}
-                                            >
-                                                {opt === 'keep' ? 'שמור קיים' : opt === 'replace' ? 'החלף בחדש' : 'שמור שניהם'}
+                                            <button key={opt} onClick={() => setConflictResolutions(r => ({ ...r, [i]: opt }))} className={`flex-1 text-xs font-bold py-2 px-3 rounded-lg border transition-all ${conflictResolutions[i] === opt ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}>
+                                                {opt === 'keep' ? 'שמור קיים' : opt === 'replace' ? 'החלף' : 'שניהם'}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="p-5 border-t border-slate-100 flex gap-3 justify-end">
-                            <button
-                                onClick={() => { setHotelConflicts([]); setConflictResolutions({}); setPendingApplyData(null); }}
-                                className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all"
-                            >
-                                ביטול
-                            </button>
-                            <button
-                                onClick={handleResolveConflicts}
-                                disabled={hotelConflicts.some((_, i) => !conflictResolutions[i])}
-                                className="px-5 py-2 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                אשר והוסף
-                            </button>
+                        <div className="p-5 border-t border-slate-100 flex gap-3">
+                            <button onClick={() => { setHotelConflicts([]); setConflictResolutions({}); }} className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl">ביטול</button>
+                            <button onClick={handleResolveConflicts} disabled={hotelConflicts.some((_, i) => !conflictResolutions[i])} className="flex-1 px-5 py-2 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-50">אשר</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            <ConfirmModal
-                isOpen={!!tripToDelete}
-                title="מחיקת טיול"
-                message="האם אתה בטוח שברצונך למחוק את הטיול? פעולה זו הינה בלתי הפיכה."
-                confirmText="מחק טיול"
-                isDangerous={true}
-                onConfirm={confirmDeleteTrip}
-                onClose={() => setTripToDelete(null)}
-            />
-            <ConfirmModal
-                isOpen={!!hotelToDelete}
-                title="מחיקת מלון"
-                message="האם להסיר מלון זה מהרשימה?"
-                confirmText="הסר"
-                isDangerous={true}
-                onConfirm={confirmDeleteHotel}
-                onClose={() => setHotelToDelete(null)}
-            />
-            <ConfirmModal
-                isOpen={isDuplicateCleanupOpen}
-                title="ניקוי כפילויות"
-                message={`נשמור את הטיול "${activeTrip?.name || ''}" שנבחר עכשיו ונמחק רק עותקים פרטיים כפולים מאותו שם, יעד ותאריכים. טיולים משותפים לא יימחקו אוטומטית.`}
-                confirmText={isCleaningDuplicates ? 'מנקה...' : 'נקה כפילויות'}
-                isDangerous={true}
-                onConfirm={confirmDuplicateCleanup}
-                onClose={() => !isCleaningDuplicates && setIsDuplicateCleanupOpen(false)}
-            />
-            {/* Leave Shared Trip Confirmation */}
-            <ConfirmModal
-                isOpen={!!tripToLeave}
-                title="יציאה מטיול משותף"
-                message="האם אתה בטוח שברצונך לעזוב את הטיול המשותף? לא תוכל לראות ולערוך את הטיול יותר."
-                confirmText="עזוב טיול"
-                isDangerous={true}
-                onConfirm={async () => {
-                    if (tripToLeave) {
-                        await onLeaveTrip(tripToLeave);
-                        // Update local state 
-                        const newTrips = trips.filter(t => t.id !== tripToLeave);
-                        setTrips(newTrips);
-                        if (activeTripId === tripToLeave && newTrips.length > 0) {
-                            setActiveTripId(newTrips[0].id);
-                        }
-                        setTripToLeave(null);
-                    }
-                }}
-                onClose={() => setTripToLeave(null)}
-            />
+            <ConfirmModal isOpen={!!tripToDelete} title="מחיקת טיול" message="האם בטוח?" confirmText="מחק" isDangerous={true} onConfirm={confirmDeleteTrip} onClose={() => setTripToDelete(null)} />
+            <ConfirmModal isOpen={!!hotelToDelete} title="מחיקת מלון" message="האם להסיר?" confirmText="הסר" isDangerous={true} onConfirm={confirmDeleteHotel} onClose={() => setHotelToDelete(null)} />
+            <ConfirmModal isOpen={isDuplicateCleanupOpen} title="ניקוי כפילויות" message={`נשמור את "${activeTrip?.name || ''}"`} confirmText={isCleaningDuplicates ? 'מנקה...' : 'נקה'} isDangerous={true} onConfirm={confirmDuplicateCleanup} onClose={() => !isCleaningDuplicates && setIsDuplicateCleanupOpen(false)} />
+            <ConfirmModal isOpen={!!tripToLeave} title="יציאה מטיול" message="עזוב?" confirmText="עזוב" isDangerous={true} onConfirm={async () => { if (tripToLeave) { await onLeaveTrip(tripToLeave); const newTrips = trips.filter(t => t.id !== tripToLeave); setTrips(newTrips); if (activeTripId === tripToLeave && newTrips.length > 0) { setActiveTripId(newTrips[0].id); } setTripToLeave(null); } }} onClose={() => setTripToLeave(null)} />
 
-
-            {/* MOBILE OVERLAY BACKDROP */}
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-slate-900/50 z-[105] md:hidden backdrop-blur-sm transition-opacity"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
-
-            {/* SIDEBAR (List of Trips) - Drawer on Mobile, Column on Desktop */}
-            <div className={`
-                    fixed inset-y-0 right-0 z-[110] w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out
-                    md:relative md:translate-x-0 md:w-96 md:shadow-none md:z-auto md:border-l border-slate-200/50 flex flex-col flex-shrink-0
-                    ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
-                `}>
-                <div className="px-6 py-8 border-b border-slate-200/50 flex justify-between items-center md:block">
-                    <div className="flex justify-between items-center w-full">
-                        <div>
-                            <h2 className="text-3xl font-black bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">טיולים שלי</h2>
-                            <p className="text-sm text-slate-500 font-medium hidden md:block mt-2">ערוך וניהל את הטיולים שלך</p>
-                        </div>
-                        <button onClick={() => window.location.reload()} className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all hover:shadow-sm" title="סינכרון נתונים">
-                            <Loader2 className="w-5 h-5" />
-                        </button>
-                    </div>
-                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-5 space-y-2.5 bg-white">
-                    {trips.map(t => (
-                        <div key={t.id} className="relative group">
-                            <button
-                                onClick={() => setActiveTripId(t.id)}
-                                className={`w-full text-right p-4 pr-4 pl-12 rounded-lg transition-all font-bold flex items-center justify-between text-sm border-2 ${activeTripId === t.id
-                                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-slate-900 border-blue-300 shadow-md'
-                                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200 hover:border-slate-300 hover:shadow-sm'
-                                    }`}
-                            >
-                                <span className="min-w-0 flex flex-col gap-1.5">
-                                    <span className="truncate font-bold">{t.name}</span>
-                                    <span className={`truncate text-xs font-medium ${activeTripId === t.id ? 'text-slate-600' : 'text-slate-500'}`}>{t.destination || t.dates || '—'}</span>
-                                </span>
-                                {activeTripId === t.id && <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 shadow-md"></div>}
+            {/* MAIN CONTENT */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                
+                {/* HEADER */}
+                <div className="bg-white border-b border-slate-200/50 flex-shrink-0 shadow-sm">
+                    <div className="px-4 md:px-8 py-4 md:py-6">
+                        {/* Mobile Header */}
+                        <div className="md:hidden flex items-center justify-between mb-4">
+                            <button onClick={onClose} className="flex items-center gap-2 text-blue-600 font-bold text-sm px-3 py-2 rounded-xl">
+                                <ArrowRight className="w-4 h-4" />
+                                חזרה
                             </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const isOwner = !t.isShared || t.sharing?.role === 'owner';
-                                    // Use confirmation modal for both delete and leave
-                                    if (isOwner) {
-                                        handleDeleteTrip(e, t.id);
-                                    } else {
-                                        setTripToLeave(t.id); // NEW: Show confirmation instead of direct call
-                                    }
-                                }}
-                                className={`absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-20 ${(!t.isShared || t.sharing?.role === 'owner')
-
-                                    ? 'text-slate-300 hover:text-red-500 hover:bg-red-50'
-                                    : 'text-slate-300 hover:text-orange-500 hover:bg-orange-50'
-                                    }`}
-                                title={(!t.isShared || t.sharing?.role === 'owner') ? "מחק טיול" : "צא מהטיול"}
-                            >
-                                {(!t.isShared || t.sharing?.role === 'owner') ? <Trash2 className="w-4 h-4" /> : <LogOut className="w-4 h-4" />}
+                            <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-400 hover:text-slate-600">
+                                <Menu className="w-6 h-6" />
                             </button>
                         </div>
-                    ))}
-                    <button
-                        onClick={() => onSave(trips)}
-                        disabled={isSaving}
-                        className={`w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-bold text-white transition-all duration-200 ${isSaving ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg shadow-blue-600/20 active:scale-95'}`}
-                    >
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        <span className="text-sm">{isSaving ? 'שומר...' : 'שמור שינויים'}</span>
-                    </button>
-                </div>
-            </div>
 
-            {/* Main Content Area */}
-            <div className="flex-grow flex flex-col md:flex-row overflow-auto md:overflow-hidden bg-[#f8fafc]">
+                        {/* Trip Name & Buttons */}
+                        <div className="flex items-start justify-between gap-4 mb-6">
+                            <div className="min-w-0">
+                                <h1 className="text-3xl md:text-4xl font-black text-slate-900">{activeTrip?.name || 'ניהול טיול'}</h1>
+                                <p className="text-slate-500 mt-1 font-medium text-sm">{activeTrip?.destination && activeTrip?.dates ? `${activeTrip.destination} • ${activeTrip.dates}` : activeTrip?.destination || '—'}</p>
+                            </div>
+                            <div className="flex-shrink-0 flex flex-col gap-2 md:gap-3 md:flex-row">
+                                {activeTrip && (
+                                    <>
+                                        <button onClick={() => setIsShareModalOpen(true)} className="flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-bold border border-emerald-200 hover:bg-emerald-100 transition-all">
+                                            <Share2 className="w-4 h-4" />
+                                            <span className="hidden md:inline">شاتوف</span>
+                                        </button>
+                                        <button onClick={() => exportTripPDF(activeTrip)} className="flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-bold border border-indigo-200 hover:bg-indigo-100 transition-all">
+                                            <FileText className="w-4 h-4" />
+                                            <span className="hidden md:inline">PDF</span>
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
 
-                {/* Sidebar Navigation — Desktop Only */}
-                <div className={
-                    `w-64 bg-slate-950 text-white border-l border-slate-900 flex-shrink-0 flex-col hidden md:flex`
-                }>
-                    <div className="p-5">
-                        <div className="mb-5 px-2">
-                            <div className="text-xs font-black text-slate-400 uppercase tracking-widest">Control Center</div>
-                            <div className="mt-1 text-lg font-black text-white truncate">{activeTrip?.name || 'ניהול טיול'}</div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <button
-                                onClick={() => setActiveTab('overview')}
-                                className={`w-full text-right px-4 py-3 rounded-2xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'overview' ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <Layout className="w-5 h-5" /> פרטים כלליים
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('logistics')}
-                                className={`w-full text-right px-4 py-3 rounded-2xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'logistics' ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <Plane className="w-5 h-5" /> מלונות וטיסות
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('ai')}
-                                className={`w-full text-right px-4 py-3 rounded-2xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'ai' ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <Sparkles className="w-5 h-5" /> Magic Import
-                            </button>
-                            {auth.currentUser?.email === 'amitzahy1@gmail.com' && (
-                                <button
-                                    onClick={() => setActiveTab('health')}
-                                    className={`w-full text-right px-4 py-3 rounded-2xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'health' ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
-                                >
-                                    <CheckCircle className="w-5 h-5" /> בריאות נתונים
-                                </button>
-                            )}
-                            <button
-                                onClick={() => setActiveTab('logs')}
-                                className={`w-full text-right px-4 py-3 rounded-2xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'logs' ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                <Terminal className="w-5 h-5" /> System Logs
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Trip List in Sidebar */}
-                    <div className="mt-auto p-4 border-t border-white/10">
-                        <div className="flex items-center justify-between mb-2 px-2">
-                            <span className="text-xs font-bold text-slate-400 uppercase">הטיולים שלי</span>
-                            <button onClick={() => setIsWizardOpen(true)} className="p-1 hover:bg-white/10 text-slate-300 rounded-lg transition-colors"><Plus className="w-4 h-4" /></button>
-                        </div>
-                        <div className="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
-                            {trips.map(t => (
-                                <button
-                                    key={t.id}
-                                    onClick={() => { setActiveTripId(t.id); onSwitchTrip(t.id); }}
-                                    className={`w-full text-right px-3 py-2 rounded-xl text-sm font-bold truncate transition-colors ${activeTripId === t.id ? 'bg-white text-slate-950' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
-                                >
-                                    {t.name}
-                                </button>
-                            ))}
+                        {/* TAB NAVIGATION */}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 md:mx-0 px-4 md:px-0 scrollbar-hide">
+                            {[
+                                { id: 'overview' as const, label: 'פרטים כלליים', icon: Layout },
+                                { id: 'logistics' as const, label: 'טיסות ומלונות', icon: Plane },
+                                { id: 'ai' as const, label: 'Magic Import', icon: Sparkles },
+                                ...(auth.currentUser?.email === 'amitzahy1@gmail.com' ? [{ id: 'health' as const, label: 'בריאות נתונים', icon: CheckCircle }] : []),
+                                ...(auth.currentUser?.email === 'amitzahy1@gmail.com' ? [{ id: 'logs' as const, label: 'System Logs', icon: Terminal }] : []),
+                            ].map(tab => {
+                                const Icon = tab.icon;
+                                return (
+                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-blue-50 text-blue-700 border-2 border-blue-300' : 'bg-white text-slate-600 border-2 border-slate-200 hover:border-slate-300'}`}>
+                                        <Icon className="w-4 h-4" />
+                                        <span>{tab.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
 
-                {/* Content Panel */}
-                <div className="flex-1 overflow-y-auto p-6 md:p-10 relative scroll-smooth decoration-slice bg-white">
-                    {/* Mobile Tab Switcher — replaces hidden sidebar on small screens */}
-                    <div className="md:hidden flex items-center gap-2.5 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-                        {[
-                            { id: 'overview', label: 'פרטים כלליים', emoji: '📋' },
-                            { id: 'logistics', label: 'טיסות ומלונות', emoji: '✈️' },
-                            { id: 'ai', label: 'Magic Import', emoji: '✨' },
-                            ...(auth.currentUser?.email === 'amitzahy1@gmail.com' ? [{ id: 'health', label: 'בריאות', emoji: '❤️' }] : []),
-                            { id: 'logs', label: 'לוגים', emoji: '🖥️' },
-                        ].map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === tab.id
-                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
-                                    : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
-                                    }`}
-                            >
-                                <span>{tab.emoji}</span>
-                                <span>{tab.label}</span>
-                            </button>
-                        ))}
-                    </div>
+                {/* CONTENT AREA */}
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50">
                     <div className="max-w-5xl mx-auto pb-20">
-                        {/* TAB: OVERVIEW */}
                         {activeTab === 'overview' && (
                             <div className="space-y-6 animate-fade-in">
-                                {/* Trip Metadata Card */}
                                 <div className="bg-white p-7 md:p-8 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
                                     <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 mb-8">
                                         <div className="min-w-0">
                                             <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                                                <span className="bg-gradient-to-br from-blue-100 to-indigo-100 p-2.5 rounded-lg text-blue-600"><Layout className="w-5 h-5" /></span> פרטים כלליים
+                                                <span className="bg-blue-100 p-2.5 rounded-lg text-blue-600"><Layout className="w-5 h-5" /></span> פרטים כלליים
                                             </h3>
-                                            <p className="text-base text-slate-600 mt-2 font-medium">עדכן את שם הטיול, יעדים ותאריכים</p>
+                                            <p className="text-base text-slate-600 mt-2 font-medium">עדכן פרטים בסיסיים של הטיול</p>
                                         </div>
-                                        <div className="flex flex-wrap items-center gap-3">
-                                            <button
-                                                onClick={() => setIsShareModalOpen(true)}
-                                                className="flex items-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-bold border border-emerald-200 hover:bg-emerald-100 hover:shadow-md transition-all duration-200"
-                                            >
-                                                <Share2 className="w-4 h-4" />
-                                                <span>שיתוף</span>
-                                            </button>
-                                            {activeTrip && (
-                                            <button
-                                                onClick={() => exportTripPDF(activeTrip)}
-                                                className="flex items-center gap-2 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-bold border border-indigo-200 hover:bg-indigo-100 hover:shadow-md transition-all duration-200"
-                                            >
-                                                <FileText className="w-4 h-4" />
-                                                <span>ייצא PDF</span>
-                                            </button>
-                                            )}
-                                            {activeTrip && onCleanupDuplicates && (
-                                            <button
-                                                onClick={() => setIsDuplicateCleanupOpen(true)}
-                                                disabled={isCleaningDuplicates}
-                                                className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 rounded-2xl text-sm font-black border border-amber-100 hover:bg-amber-100 transition-colors disabled:opacity-50"
-                                            >
+                                        {activeTrip && onCleanupDuplicates && (
+                                            <button onClick={() => setIsDuplicateCleanupOpen(true)} disabled={isCleaningDuplicates} className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 rounded-xl text-sm font-bold border border-amber-200 hover:bg-amber-100">
                                                 {isCleaningDuplicates ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                                                <span>נקה כפילויות</span>
+                                                נקה כפילויות
                                             </button>
-                                            )}
-                                        </div>
+                                        )}
                                     </div>
-
                                     <div className="space-y-5">
-                                        {/* Name Input */}
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">שם הטיול</label>
-                                            <input
-                                                className="w-full text-2xl font-black text-slate-800 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all placeholder:text-slate-300"
-                                                value={activeTrip.name}
-                                                onChange={(e) => handleUpdateTrip({ name: e.target.value })}
-                                                placeholder='לדוגמה: "טיול יפן 2026"'
-                                            />
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">שם הטיול</label>
+                                            <input className="w-full text-2xl font-black text-slate-800 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-xl px-4 py-3 outline-none transition-all" value={activeTrip.name} onChange={(e) => handleUpdateTrip({ name: e.target.value })} placeholder='טיול יפן 2026' />
                                         </div>
-
-                                        {/* Destination & Dates Grid */}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {/* Destination Builder */}
                                             <div>
-                                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">מסלול (ערים)</label>
-                                                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">מסלול (ערים)</label>
+                                                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 focus-within:border-blue-500 transition-all">
                                                     <div className="flex flex-wrap gap-2 mb-2">
                                                         {routeCities.map((city, idx) => (
-                                                            <div key={idx} className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm text-sm font-bold text-slate-700 animate-scale-in">
+                                                            <div key={idx} className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200 text-sm font-bold text-slate-700">
                                                                 <span>{city}</span>
                                                                 <button onClick={() => removeCity(idx)} className="text-slate-400 hover:text-red-500"><X className="w-3 h-3" /></button>
                                                             </div>
@@ -1092,364 +914,97 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <MapPin className="w-4 h-4 text-slate-400" />
-                                                        <input
-                                                            className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-slate-700 placeholder:text-slate-400"
-                                                            value={newCityInput}
-                                                            onChange={(e) => setNewCityInput(e.target.value)}
-                                                            onKeyDown={(e) => e.key === 'Enter' && addCity()}
-                                                            placeholder="הוסף עיר..."
-                                                        />
-                                                        <button onClick={addCity} className="bg-slate-200 hover:bg-slate-300 text-slate-600 p-1 rounded-md transition-colors"><Plus className="w-4 h-4" /></button>
+                                                        <input className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-slate-700 placeholder:text-slate-400" value={newCityInput} onChange={(e) => setNewCityInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addCity()} placeholder="הוסף עיר..." />
+                                                        <button onClick={addCity} className="bg-slate-200 hover:bg-slate-300 p-1 rounded-md transition-colors"><Plus className="w-4 h-4" /></button>
                                                     </div>
                                                 </div>
-
-                                                {/* Suggested Cities (Task Fix) */}
-                                                {(() => {
-                                                    const detected = getTripCities(activeTrip);
-                                                    const suggestions = detected.filter(c => !routeCities.some(rc => rc.toLowerCase() === c.toLowerCase()));
-                                                    if (suggestions.length === 0) return null;
-
-                                                    return (
-                                                        <div className="mt-2 animate-fade-in">
-                                                            <span className="text-2xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">זוהו מהטיול:</span>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {suggestions.map((s, i) => (
-                                                                    <button
-                                                                        key={i}
-                                                                        onClick={() => {
-                                                                            const newRoute = [...routeCities, s];
-                                                                            setRouteCities(newRoute);
-                                                                            handleUpdateTrip({ destination: newRoute.join(' - ') });
-                                                                        }}
-                                                                        className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold border border-blue-100 hover:bg-blue-100 transition-colors"
-                                                                    >
-                                                                        <Sparkles className="w-3 h-3" />
-                                                                        {s}
-                                                                        <Plus className="w-3 h-3 ml-1 opacity-50" />
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })()}
+                                                {(() => { const detected = getTripCities(activeTrip); const suggestions = detected.filter(c => !routeCities.some(rc => rc.toLowerCase() === c.toLowerCase())); return suggestions.length > 0 ? (<div className="mt-2 flex flex-wrap gap-2">{suggestions.map((s, i) => (<button key={i} onClick={() => { const newRoute = [...routeCities, s]; setRouteCities(newRoute); handleUpdateTrip({ destination: newRoute.join(' - ') }); }} className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold border border-blue-100"><Sparkles className="w-3 h-3" /> {s}</button>))}</div>) : null; })()}
                                             </div>
-
-                                            {/* Date Range Parser */}
                                             <div>
-                                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">תאריכים</label>
-                                                <div className="bg-slate-50 p-1 rounded-xl border border-slate-200 flex items-center justify-between relative group">
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">תאריכים</label>
+                                                <div className="bg-slate-50 p-1 rounded-xl border border-slate-200 flex gap-1">
                                                     <div className="flex-1 p-2 border-l border-slate-200">
                                                         <span className="text-2xs font-bold text-slate-400 block mb-1">התחלה</span>
-                                                        <DateInput
-                                                            value={startDate}
-                                                            onChange={(val) => handleDateChange('start', val)}
-                                                            className="w-full text-sm outline-none bg-transparent font-bold text-slate-800"
-                                                            placeholder="dd/mm/yyyy"
-                                                        />
+                                                        <DateInput value={startDate} onChange={(val) => handleDateChange('start', val)} className="w-full text-sm bg-transparent font-bold" />
                                                     </div>
                                                     <div className="flex-1 p-2">
                                                         <span className="text-2xs font-bold text-slate-400 block mb-1">סיום</span>
-                                                        <DateInput
-                                                            value={endDate}
-                                                            onChange={(val) => handleDateChange('end', val)}
-                                                            className="w-full text-sm outline-none bg-transparent font-bold text-slate-800"
-                                                            placeholder="dd/mm/yyyy"
-                                                        />
+                                                        <DateInput value={endDate} onChange={(val) => handleDateChange('end', val)} className="w-full text-sm bg-transparent font-bold" />
                                                     </div>
                                                 </div>
-                                                {/* Result Preview */}
                                                 <div className="mt-2 text-center">
-                                                    <span className="inline-block px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg border border-purple-100">
-                                                        {activeTrip.dates || "---"}
-                                                    </span>
+                                                    <span className="inline-block px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg border border-purple-100">{activeTrip.dates || "---"}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        )}
 
-                                {/* Map View Toggle */}
-                                <div className="flex justify-start mb-2">
-                                    <button
-                                        onClick={() => setShowMap(!showMap)}
-                                        className="text-sm font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 border border-blue-100"
-                                    >
-                                        <MapPin className="w-4 h-4" />
-                                        {showMap ? 'הסתר מפה' : 'הצג מפה בוועדה'}
-                                    </button>
-                                </div>
-
-                                {/* Map View - Conditional */}
-                                {showMap && (
-                                    <div className="bg-white p-1 rounded-2xl shadow-sm border border-slate-200 animate-fade-in">
-                                        <UnifiedMapView trip={activeTrip} height="400px" />
-                                    </div>
-                                )}
-
-                                {/* Danger Zone */}
-                                {(!activeTrip?.isShared || activeTrip.sharing?.role === 'owner') && (
-                                    <div className="md:col-span-12 mt-4">
-                                        <div className="p-4 bg-red-50/50 border border-red-100 rounded-2xl opacity-60 hover:opacity-100 transition-opacity flex justify-between items-center group">
-                                            <div className="text-xs text-red-800 font-medium px-2">אזור מסוכן</div>
-                                            <button
-                                                onClick={(e) => handleDeleteTrip(e, activeTrip?.id || '')}
-                                                className="px-4 py-2 bg-white text-red-500 font-bold text-xs rounded-lg border border-red-100 hover:bg-red-50 hover:border-red-200 transition-all flex items-center gap-2 shadow-sm"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" /> מחיקת טיול לצמיתות
+                        {activeTab === 'logistics' && (
+                            <div className="space-y-6 animate-fade-in">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200">
+                                        <div className="flex justify-between items-center mb-7">
+                                            <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                                                <span className="bg-blue-100 p-2.5 rounded-lg text-blue-600"><Plane className="w-5 h-5" /></span> טיסות
+                                            </h3>
+                                            <button onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', fromCode: '', toCode: '', fromCity: '', toCity: '', date: '', departureTime: '', arrivalTime: '', airline: '', duration: '' }] } })} className="text-xs font-bold bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 border border-blue-200 flex items-center gap-1.5">
+                                                <Plus className="w-4 h-4" /> הוסף
                                             </button>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-
-
-                        {/* TAB: DATA HEALTH - Admin Only */}
-                        {activeTab === 'health' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (
-                            <DataHealthPanel
-                                trip={activeTrip || null}
-                                onUpdateTrip={(updated) => {
-                                    setTrips(prev => prev.map(t => t.id === updated.id ? updated : t));
-                                    onSave(trips.map(t => t.id === updated.id ? updated : t));
-                                }}
-                            />
-                        )}
-
-                        {/* TAB: SYSTEM LOGS - Admin Only */}
-                        {activeTab === 'logs' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (
-                            <div className="animate-fade-in">
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
-                                    <h3 className="text-lg font-black text-slate-800 mb-2">לוגים של מערכת (Debug)</h3>
-                                    <p className="text-sm text-slate-500 mb-4">צפה בתהליכים שרצים ברקע, כולל קליטת מיילים ועיבוד AI.</p>
-                                    <SystemLogs />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* TAB: LOGISTICS */}
-                        {activeTab === 'logistics' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in items-start">
-
-                                {/* Flights - Column 1 */}
-                                <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow h-full">
-                                    <div className="flex justify-between items-center mb-7">
-                                        <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                                            <span className="bg-gradient-to-br from-sky-100 to-blue-100 p-2.5 rounded-lg text-sky-600"><Plane className="w-5 h-5" /></span> טיסות
-                                        </h3>
-                                        <button
-                                            onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', fromCode: '', toCode: '', fromCity: '', toCity: '', date: '', departureTime: '', arrivalTime: '', airline: '', duration: '' }] } })}
-                                            className="text-xs font-bold bg-sky-50 text-sky-600 px-4 py-2 rounded-lg hover:bg-sky-100 hover:shadow-md transition-all duration-200 flex items-center gap-1.5 border border-sky-200"
-                                        >
-                                            <Plus className="w-4 h-4" /> הוסף טיסה
-                                        </button>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="space-y-6">
-                                            {(activeTrip?.flights?.segments || []).map((seg, idx) => {
-                                                const currentDate = seg.date ? seg.date.split('T')[0] : '';
-
-                                                const getTime = (iso: string) => {
-                                                    if (!iso) return '';
-                                                    if (iso.includes('T')) return iso.split('T')[1].substring(0, 5);
-                                                    return iso;
-                                                };
-
-                                                const updateTime = (field: 'departureTime' | 'arrivalTime', newTime: string) => {
-                                                    // Use existing date or today if missing
-                                                    const baseDate = seg.date?.split('T')[0] || new Date().toISOString().split('T')[0];
-                                                    const newIso = `${baseDate}T${newTime}:00`;
-                                                    handleUpdateFlightSegment(idx, field, newIso);
-                                                };
-
-                                                return (
-                                                    <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group hover:shadow-md transition-shadow mb-4">
-                                                        {/* Delete Button */}
-                                                        <button
-                                                            onClick={() => handleDeleteFlightSegment(idx)}
-                                                            className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-50 rounded-full"
-                                                            title="מחק טיסה"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-
-                                                        <div className="space-y-3">
-                                                            {/* Airline Name - Text-like Input */}
-                                                            <div className="relative pr-1">
-                                                                <label className="text-2xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">חברת תעופה</label>
-                                                                <input
-                                                                    className="w-full font-black text-lg text-slate-800 bg-transparent border-b border-transparent focus:border-slate-300 outline-none placeholder:text-slate-300 transition-colors"
-                                                                    value={seg.airline || ''}
-                                                                    onChange={(e) => handleUpdateFlightSegment(idx, 'airline', e.target.value)}
-                                                                    placeholder="שם חברת התעופה..."
-                                                                />
-                                                            </div>
-
-                                                            {/* Route & Flight Number - Boxed Row */}
-                                                            <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                                                                {/* From */}
-                                                                <div className="flex-1 min-w-0">
-                                                                    <label className="text-2xs font-bold text-slate-400 block text-center mb-1">מאיפה</label>
-                                                                    <div className="relative">
-                                                                        <input
-                                                                            value={seg.fromCode || ''}
-                                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'fromCode', e.target.value)}
-                                                                            className="w-full text-center font-black text-xl uppercase bg-transparent outline-none tracking-wider text-slate-700 placeholder:text-slate-200"
-                                                                            placeholder="TLV"
-                                                                        />
-                                                                        {/* City Hint */}
-                                                                        <div className="text-2xs text-slate-400 font-medium text-center truncate mt-1">{seg.fromCity || '-'}</div>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Arrow */}
-                                                                <div className="flex flex-col items-center justify-center text-slate-300">
-                                                                    <Plane className="w-5 h-5 transform rotate-180" />
-                                                                </div>
-
-                                                                {/* To */}
-                                                                <div className="flex-1 min-w-0">
-                                                                    <label className="text-2xs font-bold text-slate-400 block text-center mb-1">לאן</label>
-                                                                    <div className="relative">
-                                                                        <input
-                                                                            value={seg.toCode || ''}
-                                                                            onChange={(e) => handleUpdateFlightSegment(idx, 'toCode', e.target.value)}
-                                                                            className="w-full text-center font-black text-xl uppercase bg-transparent outline-none tracking-wider text-slate-700 placeholder:text-slate-200"
-                                                                            placeholder="JFK"
-                                                                        />
-                                                                        {/* City Hint */}
-                                                                        <div className="text-2xs text-slate-400 font-medium text-center truncate mt-1">{seg.toCity || '-'}</div>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Divider */}
-                                                                <div className="w-px h-8 bg-slate-100 mx-1 hidden sm:block"></div>
-
-                                                                {/* Flight No */}
-                                                                <div className="w-20 hidden sm:block">
-                                                                    <label className="text-2xs font-bold text-slate-400 block mb-1 text-center">מס' טיסה</label>
-                                                                    <input
-                                                                        value={seg.flightNumber || ''}
-                                                                        onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)}
-                                                                        className="w-full text-center font-mono text-sm font-bold bg-slate-50 rounded-md py-1 border border-slate-100 focus:border-blue-300 outline-none uppercase text-slate-600"
-                                                                        placeholder="LY001"
-                                                                    />
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Mobile Flight Number (Visible only on mobile) */}
-                                                            <div className="sm:hidden">
-                                                                <input
-                                                                    value={seg.flightNumber || ''}
-                                                                    onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)}
-                                                                    className="w-full text-center font-mono text-sm font-bold bg-white rounded-md py-2 border border-slate-100 focus:border-blue-300 outline-none uppercase text-slate-600 placeholder:text-slate-300"
-                                                                    placeholder="מספר טיסה (LY001)"
-                                                                />
-                                                            </div>
-
-                                                            {/* Times - Grid */}
-                                                            <div className="grid grid-cols-3 gap-3">
-                                                                <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm relative transition-colors focus-within:border-blue-300">
-                                                                    <label className="text-2xs font-bold text-slate-400 block mb-1">תאריך</label>
-                                                                    <input
-                                                                        type="date"
-                                                                        className="w-full text-xs font-bold outline-none bg-transparent text-slate-700"
-                                                                        value={currentDate}
-                                                                        onChange={(e) => handleUpdateFlightSegment(idx, 'date', e.target.value)}
-                                                                    />
-                                                                </div>
-                                                                <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm transition-colors focus-within:border-blue-300">
-                                                                    <label className="text-2xs font-bold text-slate-400 block mb-1">המראה</label>
-                                                                    <input
-                                                                        type="time"
-                                                                        className="w-full text-xs font-bold font-mono outline-none bg-transparent text-slate-700"
-                                                                        value={getTime(seg.departureTime as string)}
-                                                                        onChange={(e) => updateTime('departureTime', e.target.value)}
-                                                                    />
-                                                                </div>
-                                                                <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm transition-colors focus-within:border-blue-300">
-                                                                    <label className="text-2xs font-bold text-slate-400 block mb-1">נחיתה</label>
-                                                                    <input
-                                                                        type="time"
-                                                                        className="w-full text-xs font-bold font-mono outline-none bg-transparent text-slate-700"
-                                                                        value={getTime(seg.arrivalTime as string)}
-                                                                        onChange={(e) => updateTime('arrivalTime', e.target.value)}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                            {(!activeTrip?.flights?.segments?.length) && (
-                                                <div className="text-center py-12 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100">
-                                                    <Plane className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                                                    <div className="text-slate-400 text-sm font-medium">אין טיסות ברשימה</div>
-                                                    <button
-                                                        onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', fromCode: '', toCode: '', fromCity: '', toCity: '', date: '', departureTime: '', arrivalTime: '', airline: '', duration: '' }] } })}
-                                                        className="mt-4 text-sm font-bold text-blue-500 hover:text-blue-600 hover:underline"
-                                                    >
-                                                        צור טיסה ראשונה
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Hotels - Column 2 */}
-                                <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow h-full">
-                                    <div className="flex justify-between items-center mb-7">
-                                        <div className="flex items-center gap-3">
-                                            <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                                                <span className="bg-gradient-to-br from-indigo-100 to-purple-100 p-2.5 rounded-lg text-indigo-600"><Hotel className="w-5 h-5" /></span> מלונות
-                                            </h3>
-                                            {isSaving && <span className="text-xs font-bold text-purple-600 animate-pulse bg-purple-50 px-3 py-1 rounded-full">Enriching...</span>}
-                                        </div>
-                                        <button
-                                            onClick={() => activeTrip && handleUpdateTrip({ hotels: [...activeTrip.hotels, { id: `h-${Date.now()}`, name: 'מלון חדש', address: '', checkInDate: '', checkOutDate: '', nights: 0 }] })}
-                                            className="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-100 hover:shadow-md transition-all duration-200 flex items-center gap-1.5 border border-indigo-200"
-                                        >
-                                            <Plus className="w-4 h-4" /> הוסף מלון
-                                        </button>
-                                    </div>
-                                    <div className="space-y-4">
-                                        {(activeTrip?.hotels || []).map((h, idx) => (
-                                            <div key={h.id || idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group hover:shadow-md transition-shadow">
-                                                <button onClick={() => handleDeleteHotel(h.id)} className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
-                                                <div className="space-y-3">
-                                                    <input
-                                                        className="w-full font-bold text-slate-800 bg-transparent border-b border-transparent focus:border-slate-300 outline-none placeholder:font-normal"
-                                                        value={h.name}
-                                                        onChange={(e) => handleUpdateHotel(h.id, 'name', e.target.value)}
-                                                        placeholder="שם המלון..."
-                                                    />
-                                                    <div className="flex items-center gap-2 text-slate-500 text-sm bg-white p-2 rounded-lg border border-slate-100">
-                                                        <MapPin className="w-3.5 h-3.5 shrink-0" />
-                                                        <input
-                                                            className="flex-1 bg-transparent border-none outline-none text-xs w-full"
-                                                            value={h.address}
-                                                            onChange={(e) => handleUpdateHotel(h.id, 'address', e.target.value)}
-                                                            placeholder="כתובת מלאה (לחיפוש ע״י AI)"
-                                                        />
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm">
-                                                            <label className="text-2xs font-bold text-slate-400 block mb-1">Check-in</label>
-                                                            <DateInput className="w-full text-xs font-bold outline-none" value={h.checkInDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkInDate', iso)} />
-                                                        </div>
-                                                        <div className="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm">
-                                                            <label className="text-2xs font-bold text-slate-400 block mb-1">Check-out</label>
-                                                            <DateInput className="w-full text-xs font-bold outline-none" value={h.checkOutDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkOutDate', iso)} />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                        {(activeTrip?.flights?.segments || []).length === 0 ? (
+                                            <div className="text-center py-12">
+                                                <Plane className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                                                <div className="text-slate-400 text-sm">אין טיסות ברשימה</div>
                                             </div>
-                                        ))}
-                                        {(!activeTrip?.hotels?.length) && (
-                                            <div className="text-center py-12 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100">
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {(activeTrip?.flights?.segments || []).map((seg, idx) => (
+                                                    <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                        <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                                                            <input className="bg-white px-2 py-1 rounded border border-slate-100 font-mono font-bold uppercase" value={seg.flightNumber || ''} onChange={(e) => handleUpdateFlightSegment(idx, 'flightNumber', e.target.value)} placeholder="LY001" />
+                                                            <input type="date" className="bg-white px-2 py-1 rounded border border-slate-100 font-bold" value={seg.date || ''} onChange={(e) => handleUpdateFlightSegment(idx, 'date', e.target.value)} />
+                                                        </div>
+                                                        <div className="text-sm font-bold text-slate-700">{seg.fromCity || seg.fromCode} → {seg.toCity || seg.toCode}</div>
+                                                        <div className="text-xs text-slate-500 mt-1">{seg.departureTime} - {seg.arrivalTime}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200">
+                                        <div className="flex justify-between items-center mb-7">
+                                            <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                                                <span className="bg-indigo-100 p-2.5 rounded-lg text-indigo-600"><Hotel className="w-5 h-5" /></span> מלונות
+                                            </h3>
+                                            <button onClick={() => activeTrip && handleUpdateTrip({ hotels: [...activeTrip.hotels, { id: `h-${Date.now()}`, name: 'מלון חדש', address: '', checkInDate: '', checkOutDate: '', nights: 0 }] })} className="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-100 border border-indigo-200 flex items-center gap-1.5">
+                                                <Plus className="w-4 h-4" /> הוסף
+                                            </button>
+                                        </div>
+                                        {(activeTrip?.hotels || []).length === 0 ? (
+                                            <div className="text-center py-12">
                                                 <Hotel className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                                                <div className="text-slate-400 text-sm font-medium">אין מלונות ברשימה</div>
+                                                <div className="text-slate-400 text-sm">אין מלונות ברשימה</div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {(activeTrip?.hotels || []).map((h, idx) => (
+                                                    <div key={h.id || idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative group">
+                                                        <button onClick={() => handleDeleteHotel(h.id)} className="absolute top-2 left-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"><Trash2 className="w-4 h-4" /></button>
+                                                        <input className="w-full font-bold text-slate-800 bg-transparent border-b border-transparent focus:border-slate-300 outline-none mb-2" value={h.name} onChange={(e) => handleUpdateHotel(h.id, 'name', e.target.value)} placeholder="שם המלון..." />
+                                                        <div className="flex items-center gap-2 text-slate-500 text-sm bg-white p-2 rounded-lg border border-slate-100 mb-2">
+                                                            <MapPin className="w-3.5 h-3.5" />
+                                                            <input className="flex-1 bg-transparent border-none outline-none text-xs" value={h.address} onChange={(e) => handleUpdateHotel(h.id, 'address', e.target.value)} placeholder="כתובת..." />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                                            <DateInput className="w-full font-bold" value={h.checkInDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkInDate', iso)} />
+                                                            <DateInput className="w-full font-bold" value={h.checkOutDate} onChange={(iso) => handleUpdateHotel(h.id, 'checkOutDate', iso)} />
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         )}
                                     </div>
@@ -1457,186 +1012,74 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             </div>
                         )}
 
-                        {/* TAB: AI MAGIC */}
                         {activeTab === 'ai' && (
                             <div className="space-y-6 animate-fade-in">
-
-                                {/* FREE TEXT TRIP PLAN IMPORTER */}
-                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-7">
+                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-7">
                                         <div className="flex items-center gap-4">
                                             <div className="bg-white/10 p-3 rounded-lg">
                                                 <Terminal className="w-6 h-6 text-white" />
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-black text-white">יבוא מטקסט חופשי</h3>
-                                                <p className="text-slate-300 text-sm font-medium mt-1">הדבק את תוכנית הטיול — ה-AI יסדר הכל בשביל עבודה</p>
+                                                <p className="text-slate-300 text-sm mt-1">הדבק תוכנית טיול וה-AI יארגן הכל</p>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="p-7 space-y-4">
-                                        <textarea
-                                            className="w-full h-48 p-4 bg-slate-50 rounded-lg border border-slate-200 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 resize-none font-medium text-slate-800 text-sm leading-relaxed transition-all placeholder:text-slate-400 placeholder:font-normal"
-                                            placeholder={`לדוגמה:\n\n✈️ נחיתה בבנגקוק: 7 באוגוסט, 11:50\n\n📍 פטאייה | Holiday Inn Pattaya\nתאריכים: 7 עד 13 באוגוסט (6 לילות)\n2 Bedroom Family Suite\nהגעה: 3 ואנים סגורים משדה התעופה\n\n📍 קו צ'אנג | KC Grande Resort\nתאריכים: 13 עד 18 באוגוסט (5 לילות)`}
-                                            value={freeText}
-                                            onChange={e => setFreeText(e.target.value)}
-                                        />
-
-                                        <button
-                                            onClick={handleFreeTextImport}
-                                            disabled={!freeText.trim() || isFreeTextProcessing}
-                                            className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-bold text-sm shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                        >
-                                            {isFreeTextProcessing ? (
-                                                <><Loader2 className="w-4 h-4 animate-spin" /> ניתוח...</>
-                                            ) : (
-                                                <><Sparkles className="w-4 h-4" /> נתח וייבא</>
-                                            )}
+                                        <textarea className="w-full h-48 p-4 bg-slate-50 rounded-lg border border-slate-200 focus:border-indigo-400 outline-none resize-none text-sm" placeholder="הדבק כאן..." value={freeText} onChange={e => setFreeText(e.target.value)} />
+                                        <button onClick={handleFreeTextImport} disabled={!freeText.trim() || isFreeTextProcessing} className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                                            {isFreeTextProcessing ? <><Loader2 className="w-4 h-4 animate-spin" /> ניתוח...</> : <><Sparkles className="w-4 h-4" /> נתח וייבא</>}
                                         </button>
-
-                                        {/* Results Preview */}
                                         {freeTextResult && (
-                                            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-4">
-                                                <div className="flex items-start gap-3">
-                                                    <div className="bg-emerald-100 p-2 rounded-xl flex-shrink-0">
-                                                        <CheckCircle className="w-5 h-5 text-emerald-600" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold text-emerald-900 text-sm">ה-AI זיהה:</div>
-                                                        <div className="text-emerald-700 text-xs mt-0.5">{freeTextResult.summary}</div>
-                                                    </div>
+                                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
+                                                <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
+                                                    <CheckCircle className="w-5 h-5" /> ה-AI זיהה: {freeTextResult.summary}
                                                 </div>
-
-                                                {/* Hotels preview */}
                                                 {freeTextResult.hotels.length > 0 && (
                                                     <div className="space-y-2">
-                                                        <div className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                                                            <Hotel className="w-3.5 h-3.5" /> מלונות ({freeTextResult.hotels.length})
-                                                        </div>
+                                                        <div className="text-xs font-bold text-slate-600">מלונות ({freeTextResult.hotels.length})</div>
                                                         {freeTextResult.hotels.map((h, i) => (
-                                                            <div key={i} className="bg-white rounded-xl p-3 border border-emerald-100">
-                                                                <div className="font-bold text-slate-800 text-sm">{h.name}</div>
-                                                                <div className="text-xs text-slate-500 mt-0.5">
-                                                                    {h.checkInDate?.split('-').reverse().join('/')} → {h.checkOutDate?.split('-').reverse().join('/')}
-                                                                    {h.nights ? ` · ${h.nights} לילות` : ''}
-                                                                </div>
-                                                                {(h.rooms || []).map((r: HotelRoom, ri) => (
-                                                                    <div key={ri} className="mt-1.5 text-2xs bg-indigo-50 text-indigo-700 rounded-lg px-2 py-1 flex items-center gap-1.5">
-                                                                        <BedDouble className="w-3 h-3" />
-                                                                        {r.roomType || 'Standard Room'} · {r.adults} מבוגרים{r.children > 0 ? ` + ${r.children} ילדים` : ''}
-                                                                    </div>
-                                                                ))}
+                                                            <div key={i} className="bg-white rounded-lg p-2 border border-emerald-100 text-xs">
+                                                                <div className="font-bold">{h.name}</div>
+                                                                <div className="text-slate-500">{h.checkInDate} → {h.checkOutDate}</div>
                                                             </div>
                                                         ))}
                                                     </div>
                                                 )}
-
-                                                {/* Flights preview */}
-                                                {freeTextResult.flights.length > 0 && (
-                                                    <div className="space-y-2">
-                                                        <div className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                                                            <Plane className="w-3.5 h-3.5" /> טיסות ({freeTextResult.flights.length})
-                                                        </div>
-                                                        {freeTextResult.flights.map((f, i) => (
-                                                            <div key={i} className="bg-white rounded-xl p-3 border border-emerald-100 text-xs text-slate-700">
-                                                                <span className="font-bold">{f.fromCity || f.fromCode} → {f.toCity || f.toCode}</span>
-                                                                <span className="text-slate-400 mr-2">{f.date} {f.arrivalTime !== '00:00' ? `· ${f.arrivalTime}` : ''}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-
                                                 <div className="flex gap-2">
-                                                    <button
-                                                        onClick={handleFreeTextApply}
-                                                        className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors"
-                                                    >
-                                                        הוסף לטיול
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setFreeTextResult(null)}
-                                                        className="px-4 py-3 bg-white text-slate-500 rounded-xl font-bold text-sm border border-slate-200 hover:bg-slate-50 transition-colors"
-                                                    >
-                                                        ביטול
-                                                    </button>
+                                                    <button onClick={handleFreeTextApply} className="flex-1 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm">הוסף</button>
+                                                    <button onClick={() => setFreeTextResult(null)} className="px-4 py-2 bg-white text-slate-500 rounded-lg font-bold border">ביטול</button>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
                                 </div>
-
-                                {/* Magic Drop Zone (Files/PDFs) */}
-                                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl p-8 text-white text-center shadow-lg">
+                                <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-8 text-white text-center">
                                     <Sparkles className="w-14 h-14 mx-auto mb-4 text-amber-300" />
                                     <h3 className="text-2xl font-black mb-2">Magic Import — קבצים</h3>
-                                    <p className="text-slate-300 mb-8 font-medium">גרור קבצי PDF של טיסות, מלונות או כרטיסים וה-AI יארגן הכל</p>
-                                    <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10">
+                                    <p className="text-slate-300 mb-6">גרור PDF וה-AI יחלץ את הנתונים</p>
+                                    <div className="bg-white/5 rounded-lg p-6">
                                         <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />
                                     </div>
                                 </div>
                             </div>
                         )}
 
+                        {activeTab === 'health' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (
+                            <DataHealthPanel trip={activeTrip} />
+                        )}
+
+                        {activeTab === 'logs' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (
+                            <SystemLogs />
+                        )}
                     </div>
                 </div>
             </div>
 
+            {isShareModalOpen && <ShareModal trip={activeTrip} onClose={() => setIsShareModalOpen(false)} onUpdateTrip={(updatedTrip) => { const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t); setTrips(newTrips); onSave(newTrips); }} />}
 
-            {/* Modals */}
-            {
-                isShareModalOpen && (
-                    <ShareModal
-                        trip={activeTrip}
-                        onClose={() => setIsShareModalOpen(false)}
-                        onUpdateTrip={(updatedTrip) => {
-                            const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t);
-                            setTrips(newTrips);
-                            onSave(newTrips);
-                        }}
-                    />
-                )
-            }
-
-            {/* New Magical Wizard for Trip Creation */}
-            {
-                isWizardOpen && (
-                    <MagicalWizard
-                        isOpen={true}
-                        onClose={() => setIsWizardOpen(false)}
-                        onComplete={(wizardData) => {
-                            // Transform wizard data to Trip object
-                            const newTrip: Trip = {
-                                id: crypto.randomUUID(),
-                                name: wizardData.destination ? `Trip to ${wizardData.destination}` : "New Adventure",
-                                destination: wizardData.destination || "",
-                                dates: wizardData.startDate ? `${wizardData.startDate} - ${wizardData.endDate}` : "",
-                                coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
-                                flights: wizardData.flights || { passengers: [], pnr: "", segments: [] },
-                                hotels: wizardData.hotels || [],
-                                restaurants: [],
-                                attractions: [],
-                                itinerary: [],
-                                documents: [],
-                                secureNotes: [],
-                                isShared: false,
-                                ...(wizardData.cities && wizardData.cities.length > 0 ? {
-                                    itinerary: [{
-                                        id: crypto.randomUUID(),
-                                        day: 1,
-                                        date: wizardData.startDate || new Date().toISOString(),
-                                        title: `Day 1 in ${wizardData.cities[0]}`,
-                                        activities: []
-                                    }]
-                                } : {})
-                            };
-
-                            handleCreateTrip(newTrip);
-                        }}
-                    />
-                )
-            }
-        </div >
-
+            {isWizardOpen && <MagicalWizard isOpen={true} onClose={() => setIsWizardOpen(false)} onComplete={(wizardData) => { const newTrip: Trip = { id: crypto.randomUUID(), name: wizardData.destination ? `Trip to ${wizardData.destination}` : "New Adventure", destination: wizardData.destination || "", dates: wizardData.startDate ? `${wizardData.startDate} - ${wizardData.endDate}` : "", coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80", flights: wizardData.flights || { passengers: [], pnr: "", segments: [] }, hotels: wizardData.hotels || [], restaurants: [], attractions: [], itinerary: [], documents: [], secureNotes: [], isShared: false }; handleCreateTrip(newTrip); }} />}
+        </div>
     );
 };
-// Removed Legacy TripWizard Component
