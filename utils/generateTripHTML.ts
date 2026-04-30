@@ -678,6 +678,381 @@ body {
   .calendar-section { break-inside: avoid; page-break-inside: avoid; }
   .cal-cell { break-inside: avoid; }
 }
+
+/* ═══ PREMIUM PDF OVERRIDES ═══ */
+@page {
+  size: A4;
+  margin: 10mm;
+}
+:root {
+  --ink: #101828;
+  --soft-ink: #344054;
+  --paper: #f3f6fb;
+  --mist: #eef4ff;
+  --panel: #ffffff;
+  --stroke: #d8e1ee;
+  --brand: #155eef;
+  --brand-dark: #0b2f6b;
+  --cyan: #06aed4;
+  --mint: #12b76a;
+  --sun: #f79009;
+}
+body {
+  background:
+    radial-gradient(circle at top right, rgba(21, 94, 239, .14), transparent 30vw),
+    linear-gradient(180deg, #f8fbff 0%, var(--paper) 100%);
+  color: var(--ink);
+  font-size: 13px;
+}
+.page {
+  max-width: 1180px;
+  padding: 22px;
+}
+.hero {
+  min-height: 360px;
+  border-radius: 22px;
+  margin-bottom: 18px;
+  box-shadow: 0 24px 70px rgba(16, 24, 40, .18);
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(115deg, rgba(9, 22, 52, .92) 0%, rgba(9, 22, 52, .72) 42%, rgba(9, 22, 52, .22) 100%),
+    radial-gradient(circle at 18% 18%, rgba(6, 174, 212, .42), transparent 32%);
+  z-index: 1;
+}
+.hero::after {
+  background: linear-gradient(180deg, transparent, rgba(9, 22, 52, .72));
+  z-index: 1;
+}
+.hero-c {
+  min-height: 360px;
+  align-items: stretch;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 34px;
+}
+.hero-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+}
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.22);
+  color: rgba(255,255,255,.94);
+  font-size: 12px;
+  font-weight: 800;
+}
+.doc-label {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  color: var(--brand-dark);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.hero-main {
+  max-width: 760px;
+}
+.hero-kicker {
+  margin-bottom: 10px;
+  color: rgba(255,255,255,.78);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  font-size: clamp(38px, 5.5vw, 72px);
+  letter-spacing: 0;
+  line-height: .98;
+  max-width: 780px;
+  text-wrap: balance;
+}
+.hero-meta {
+  margin-top: 16px;
+  font-size: 17px;
+  font-weight: 700;
+}
+.hero-dates {
+  margin-top: 8px;
+  color: rgba(255,255,255,.86);
+  font-size: 14px;
+  font-weight: 700;
+}
+.hero-chips {
+  gap: 8px;
+}
+.chip {
+  background: rgba(255,255,255,.94);
+  color: var(--brand-dark);
+  border: 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  padding: 8px 13px;
+}
+.stats {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: -44px 22px 22px;
+  position: relative;
+  z-index: 4;
+}
+.stat {
+  border: 1px solid rgba(216, 225, 238, .9);
+  border-radius: 16px;
+  padding: 16px 12px;
+  box-shadow: 0 14px 40px rgba(16, 24, 40, .12);
+}
+.stat-v {
+  color: var(--brand);
+  font-size: 30px;
+}
+.stat-l {
+  color: var(--soft-ink);
+  letter-spacing: .05em;
+}
+.overview,
+.calendar-section,
+.days-section {
+  margin-top: 18px;
+}
+.overview,
+.calendar-section {
+  padding: 18px;
+  background: rgba(255,255,255,.92);
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+  box-shadow: 0 10px 28px rgba(16, 24, 40, .06);
+}
+.ov-title {
+  margin-bottom: 14px;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ov-count {
+  background: var(--mist);
+}
+.ov-flights-grid,
+.ov-hotels-grid {
+  gap: 12px;
+}
+.ov-flight {
+  background:
+    radial-gradient(circle at top left, rgba(6, 174, 212, .45), transparent 42%),
+    linear-gradient(135deg, #0b2f6b 0%, #155eef 100%);
+  border-radius: 16px;
+  padding: 15px;
+}
+.ovf-top {
+  margin-bottom: 12px;
+}
+.ovf-code {
+  font-size: 26px;
+}
+.ovf-time {
+  font-size: 14px;
+}
+.ovf-line {
+  font-size: 20px;
+}
+.ov-hotel {
+  border: 1px solid var(--stroke);
+  border-right: 5px solid var(--mint);
+  border-radius: 16px;
+  padding: 16px;
+}
+.ovh-name {
+  font-size: 17px;
+}
+.ovh-addr {
+  font-size: 12px;
+}
+.calendar-section {
+  margin-top: 18px;
+}
+.calendar-grid {
+  gap: 5px;
+}
+.cal-header {
+  border-radius: 10px;
+  padding: 10px 4px;
+}
+.cal-cell {
+  min-height: 118px;
+  border-radius: 10px;
+  padding: 7px;
+  background: #fbfdff;
+}
+.cal-cell.cal-padding {
+  background: #f5f8fc;
+}
+.cal-chip {
+  border-radius: 8px;
+  padding: 4px 7px;
+}
+.days-section {
+  padding: 18px;
+  background: rgba(255,255,255,.7);
+  border: 1px solid var(--stroke);
+  border-radius: 18px;
+}
+.days-grid {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+.day-card {
+  border-radius: 18px;
+  border: 1px solid var(--stroke);
+  box-shadow: 0 10px 28px rgba(16, 24, 40, .06);
+}
+.day-head {
+  padding: 14px;
+  background: linear-gradient(135deg, #f7fbff, #eef4ff);
+}
+.day-num {
+  border-radius: 14px;
+  min-width: 52px;
+  padding: 7px 9px;
+}
+.day-num .dn {
+  font-size: 22px;
+}
+.day-title {
+  font-size: 16px;
+  white-space: normal;
+}
+.day-events {
+  padding: 12px;
+  gap: 7px;
+}
+.evt {
+  border-radius: 12px;
+  padding: 9px 10px;
+  font-size: 13px;
+}
+.evt-t {
+  min-width: 42px;
+}
+.evt-i {
+  font-size: 16px;
+}
+.evt-title {
+  white-space: normal;
+}
+.footer {
+  margin-top: 20px;
+  border-top: 1px solid var(--stroke);
+}
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body {
+    background:
+      radial-gradient(circle at top right, rgba(21, 94, 239, .14), transparent 30vw),
+      linear-gradient(180deg, #f8fbff 0%, var(--paper) 100%);
+    font-size: 13px;
+  }
+  .page {
+    max-width: 1180px;
+    padding: 22px;
+  }
+  .hero {
+    min-height: 360px;
+    border-radius: 22px;
+    margin: 0 0 18px;
+    box-shadow: none;
+  }
+  .hero-c {
+    min-height: 360px;
+    padding: 34px;
+  }
+  .hero h1 {
+    font-size: 56px;
+  }
+  .hero-meta {
+    font-size: 17px;
+  }
+  .stats {
+    margin: -44px 22px 22px;
+    gap: 10px;
+  }
+  .stat {
+    padding: 16px 12px;
+    box-shadow: none;
+  }
+  .stat-v {
+    font-size: 30px;
+  }
+  .overview,
+  .calendar-section,
+  .days-section {
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: none;
+  }
+  .ov-title {
+    font-size: 18px;
+  }
+  .cal-cell {
+    min-height: 118px;
+    padding: 7px;
+  }
+  .cal-chip {
+    font-size: 10px;
+    padding: 4px 7px;
+    border-radius: 8px;
+  }
+  .days-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+  }
+  .day-card {
+    border-radius: 18px;
+    box-shadow: none;
+  }
+  .day-head {
+    padding: 14px;
+  }
+  .day-title {
+    font-size: 16px;
+  }
+  .day-events {
+    padding: 12px;
+    gap: 7px;
+  }
+  .evt {
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+  .footer {
+    padding-top: 24px;
+  }
+  .day-card,
+  .ov-flight,
+  .ov-hotel,
+  .stat,
+  .calendar-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
 `;
 
 // ── Calendar section (Google-Calendar-style monthly grid) ──────
@@ -870,6 +1245,7 @@ export const generateTripHTML = (trip: Trip): string => {
   const hotelCount = trip.hotels?.length || 0;
   const itineraryActivityCount = trip.itinerary?.reduce((s, d) => s + (d.activities?.length || 0), 0) || 0;
   const dayCount = timeline.length;
+  const tripDates = trip.dates || (timeline.length ? `${fmtShort(timeline[0].date)} - ${fmtShort(timeline[timeline.length - 1].date)}` : '');
 
   const dayCards = timeline.map((d, i) => renderDayCard(d, i, timeline.length)).join('');
 
@@ -887,9 +1263,15 @@ export const generateTripHTML = (trip: Trip): string => {
 
   <header class="hero" style="background-image:url('${cover}')">
     <div class="hero-c">
-      <div>
+      <div class="hero-topline">
+        <div class="brand-mark">✈ Travel Planner Pro</div>
+        <div class="doc-label">Trip PDF</div>
+      </div>
+      <div class="hero-main">
+        <div class="hero-kicker">מסמך מסע אישי</div>
         <h1>${esc(trip.name)}</h1>
         <div class="hero-meta">📍 ${esc(trip.destination || '')}</div>
+        ${tripDates ? `<div class="hero-dates">📅 ${esc(tripDates)}</div>` : ''}
       </div>
       <div class="hero-chips">
         ${dayCount > 0 ? `<span class="chip">📅 ${dayCount} ימים</span>` : ''}
@@ -906,10 +1288,9 @@ export const generateTripHTML = (trip: Trip): string => {
     <div class="stat"><div class="stat-v">${itineraryActivityCount}</div><div class="stat-l">פעילויות</div></div>
   </div>
 
-  ${renderCalendarSection(trip, timeline)}
-
   ${renderFlightsOverview(trip)}
   ${renderHotelsOverview(trip)}
+  ${renderCalendarSection(trip, timeline)}
 
   <section class="days-section">
     <h2 class="ov-title">📆 יום-יום <span class="ov-count">${dayCount}</span></h2>
