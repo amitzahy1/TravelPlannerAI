@@ -10,7 +10,8 @@
   <script>
     (function () {
       var V = 'tp-13';
-      if (localStorage.getItem('sw-ver') !== V && 'serviceWorker' in navigator) {
+      var isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+      if (!isLocal && localStorage.getItem('sw-ver') !== V && 'serviceWorker' in navigator) {
         localStorage.setItem('sw-ver', V);
         navigator.serviceWorker.getRegistrations()
           .then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })
@@ -20,8 +21,11 @@
       }
     })();
   </script>
-  <script type="module" crossorigin src="./assets/index-B_RXc1lJ.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-522vuneB.css">
+  <script type="module" crossorigin src="./assets/index-ewD9S3-1.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/framer-COmKckl1.js">
+  <link rel="modulepreload" crossorigin href="./assets/firebase-BHhIxRB0.js">
+  <link rel="modulepreload" crossorigin href="./assets/map-C2wn3rKq.js">
+  <link rel="stylesheet" crossorigin href="./assets/index-BrblJPda.css">
 <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
 
 <body>
