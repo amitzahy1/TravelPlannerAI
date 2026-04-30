@@ -122,7 +122,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [freeText, setFreeText] = useState('');
     const [isFreeTextProcessing, setIsFreeTextProcessing] = useState(false);
     const [freeTextResult, setFreeTextResult] = useState<{ hotels: HotelBooking[], flights: FlightSegment[], summary: string } | null>(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Start expanded on desktop
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
     const [tripToDelete, setTripToDelete] = useState<string | null>(null);
     const [tripToLeave, setTripToLeave] = useState<string | null>(null); // NEW: For shared trip leave confirmation
     const [isDuplicateCleanupOpen, setIsDuplicateCleanupOpen] = useState(false);
@@ -728,7 +728,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     };
 
     return (
-        <div className="w-full h-full bg-gradient-to-b from-slate-50 via-white to-slate-50 relative flex flex-col md:flex-row animate-scale-in rounded-[1.75rem] overflow-hidden border border-slate-200/60 shadow-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="w-full h-full bg-gradient-to-br from-white via-slate-50 to-slate-100 relative flex flex-col md:flex-row animate-scale-in rounded-2xl overflow-hidden border border-slate-300/40 shadow-xl" onClick={(e) => e.stopPropagation()}>
 
             {/* ✅ Mobile Back Bar — sticky top bar so user can always go back */}
             <div className="md:hidden sticky top-0 z-50 bg-white border-b border-slate-100 shadow-sm flex items-center justify-between px-4 py-3">
@@ -863,38 +863,38 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
             {/* SIDEBAR (List of Trips) - Drawer on Mobile, Column on Desktop */}
             <div className={`
-                    fixed inset-y-0 right-0 z-[110] w-72 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out
-                    md:relative md:translate-x-0 md:w-[300px] md:shadow-none md:z-auto md:border-l border-slate-200/50 flex flex-col flex-shrink-0
+                    fixed inset-y-0 right-0 z-[110] w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out
+                    md:relative md:translate-x-0 md:w-96 md:shadow-none md:z-auto md:border-l border-slate-200/50 flex flex-col flex-shrink-0
                     ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
                 `}>
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center md:block bg-white">
+                <div className="px-6 py-8 border-b border-slate-200/50 flex justify-between items-center md:block">
                     <div className="flex justify-between items-center w-full">
                         <div>
-                            <h2 className="text-2xl font-black text-slate-900">הטיולים שלי</h2>
-                            <p className="text-xs text-slate-400 font-bold hidden md:block mt-2 tracking-wide">ניהול ועריכת טיולים</p>
+                            <h2 className="text-3xl font-black bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">טיולים שלי</h2>
+                            <p className="text-sm text-slate-500 font-medium hidden md:block mt-2">ערוך וניהל את הטיולים שלך</p>
                         </div>
-                        <button onClick={() => window.location.reload()} className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-200" title="רענן נתונים">
-                            <Loader2 className="w-4 h-4" />
+                        <button onClick={() => window.location.reload()} className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all hover:shadow-sm" title="סינכרון נתונים">
+                            <Loader2 className="w-5 h-5" />
                         </button>
                     </div>
-                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 text-slate-300 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+                    <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
+                <div className="flex-1 overflow-y-auto p-5 space-y-2.5 bg-white">
                     {trips.map(t => (
                         <div key={t.id} className="relative group">
                             <button
                                 onClick={() => setActiveTripId(t.id)}
-                                className={`w-full text-right p-4 pr-4 pl-11 rounded-xl transition-all font-bold flex items-center justify-between text-sm border ${activeTripId === t.id
-                                    ? 'bg-slate-900 text-white border-slate-800 shadow-lg shadow-slate-900/20'
-                                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200 hover:border-slate-300'
+                                className={`w-full text-right p-4 pr-4 pl-12 rounded-lg transition-all font-bold flex items-center justify-between text-sm border-2 ${activeTripId === t.id
+                                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-slate-900 border-blue-300 shadow-md'
+                                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200 hover:border-slate-300 hover:shadow-sm'
                                     }`}
                             >
                                 <span className="min-w-0 flex flex-col gap-1.5">
-                                    <span className="truncate font-bold tracking-tight">{t.name}</span>
-                                    <span className={`truncate text-[11px] font-semibold ${activeTripId === t.id ? 'text-slate-300' : 'text-slate-500'}`}>{t.destination || t.dates || '—'}</span>
+                                    <span className="truncate font-bold">{t.name}</span>
+                                    <span className={`truncate text-xs font-medium ${activeTripId === t.id ? 'text-slate-600' : 'text-slate-500'}`}>{t.destination || t.dates || '—'}</span>
                                 </span>
-                                {activeTripId === t.id && <div className="w-2 h-2 rounded-full bg-blue-400 shadow-md shadow-blue-400/50"></div>}
+                                {activeTripId === t.id && <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 shadow-md"></div>}
                             </button>
                             <button
                                 onClick={(e) => {
@@ -921,56 +921,56 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                     <button
                         onClick={() => onSave(trips)}
                         disabled={isSaving}
-                        className={`w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-all duration-200 ${isSaving ? 'bg-slate-300 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 hover:shadow-lg shadow-slate-900/20 active:scale-95'}`}
+                        className={`w-full mt-6 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-bold text-white transition-all duration-200 ${isSaving ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg shadow-blue-600/20 active:scale-95'}`}
                     >
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        <span>{isSaving ? 'שומר...' : 'שמור שינויים'}</span>
+                        <span className="text-sm">{isSaving ? 'שומר...' : 'שמור שינויים'}</span>
                     </button>
                 </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-grow flex flex-col md:flex-row overflow-auto md:overflow-hidden bg-white">
+            <div className="flex-grow flex flex-col md:flex-row overflow-auto md:overflow-hidden bg-[#f8fafc]">
 
                 {/* Sidebar Navigation — Desktop Only */}
                 <div className={
-                    `w-72 bg-slate-900 text-white border-l border-slate-800 flex-shrink-0 flex-col hidden md:flex`
+                    `w-64 bg-slate-950 text-white border-l border-slate-900 flex-shrink-0 flex-col hidden md:flex`
                 }>
-                    <div className="p-6">
-                        <div className="mb-8 px-2">
-                            <div className="text-xs font-black text-slate-400 uppercase tracking-widest letter-spacing">סעיף בקרה</div>
-                            <div className="mt-2 text-xl font-black text-white truncate">{activeTrip?.name || 'ניהול טיול'}</div>
+                    <div className="p-5">
+                        <div className="mb-5 px-2">
+                            <div className="text-xs font-black text-slate-400 uppercase tracking-widest">Control Center</div>
+                            <div className="mt-1 text-lg font-black text-white truncate">{activeTrip?.name || 'ניהול טיול'}</div>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             <button
                                 onClick={() => setActiveTab('overview')}
-                                className={`w-full text-right px-4 py-3 rounded-lg font-bold flex items-center gap-3 transition-all duration-200 ${activeTab === 'overview' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'}`}
+                                className={`w-full text-right px-4 py-3 rounded-2xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'overview' ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
                             >
                                 <Layout className="w-5 h-5" /> פרטים כלליים
                             </button>
                             <button
                                 onClick={() => setActiveTab('logistics')}
-                                className={`w-full text-right px-4 py-3 rounded-lg font-bold flex items-center gap-3 transition-all duration-200 ${activeTab === 'logistics' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'}`}
+                                className={`w-full text-right px-4 py-3 rounded-2xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'logistics' ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
                             >
                                 <Plane className="w-5 h-5" /> מלונות וטיסות
                             </button>
                             <button
                                 onClick={() => setActiveTab('ai')}
-                                className={`w-full text-right px-4 py-3 rounded-lg font-bold flex items-center gap-3 transition-all duration-200 ${activeTab === 'ai' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'}`}
+                                className={`w-full text-right px-4 py-3 rounded-2xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'ai' ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
                             >
                                 <Sparkles className="w-5 h-5" /> Magic Import
                             </button>
                             {auth.currentUser?.email === 'amitzahy1@gmail.com' && (
                                 <button
                                     onClick={() => setActiveTab('health')}
-                                    className={`w-full text-right px-4 py-3 rounded-lg font-bold flex items-center gap-3 transition-all duration-200 ${activeTab === 'health' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'}`}
+                                    className={`w-full text-right px-4 py-3 rounded-2xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'health' ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
                                 >
                                     <CheckCircle className="w-5 h-5" /> בריאות נתונים
                                 </button>
                             )}
                             <button
                                 onClick={() => setActiveTab('logs')}
-                                className={`w-full text-right px-4 py-3 rounded-lg font-bold flex items-center gap-3 transition-all duration-200 ${activeTab === 'logs' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'}`}
+                                className={`w-full text-right px-4 py-3 rounded-2xl font-bold flex items-center gap-3 transition-colors ${activeTab === 'logs' ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
                             >
                                 <Terminal className="w-5 h-5" /> System Logs
                             </button>
@@ -978,17 +978,17 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                     </div>
 
                     {/* Trip List in Sidebar */}
-                    <div className="mt-auto p-6 border-t border-slate-800">
-                        <div className="flex items-center justify-between mb-3 px-2">
-                            <span className="text-xs font-black text-slate-400 uppercase tracking-wider">טיולים אחרים</span>
-                            <button onClick={() => setIsWizardOpen(true)} className="p-1.5 hover:bg-slate-800 text-slate-300 rounded-lg transition-colors hover:text-white"><Plus className="w-4 h-4" /></button>
+                    <div className="mt-auto p-4 border-t border-white/10">
+                        <div className="flex items-center justify-between mb-2 px-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase">הטיולים שלי</span>
+                            <button onClick={() => setIsWizardOpen(true)} className="p-1 hover:bg-white/10 text-slate-300 rounded-lg transition-colors"><Plus className="w-4 h-4" /></button>
                         </div>
-                        <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
-                            {trips.filter(t => t.id !== activeTripId).map(t => (
+                        <div className="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
+                            {trips.map(t => (
                                 <button
                                     key={t.id}
                                     onClick={() => { setActiveTripId(t.id); onSwitchTrip(t.id); }}
-                                    className={`w-full text-right px-3 py-2.5 rounded-lg text-sm font-bold truncate transition-colors ${activeTripId === t.id ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+                                    className={`w-full text-right px-3 py-2 rounded-xl text-sm font-bold truncate transition-colors ${activeTripId === t.id ? 'bg-white text-slate-950' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
                                 >
                                     {t.name}
                                 </button>
@@ -1000,7 +1000,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                 {/* Content Panel */}
                 <div className="flex-1 overflow-y-auto p-6 md:p-10 relative scroll-smooth decoration-slice bg-white">
                     {/* Mobile Tab Switcher — replaces hidden sidebar on small screens */}
-                    <div className="md:hidden flex items-center gap-2 mb-5 overflow-x-auto pb-1 scrollbar-hide">
+                    <div className="md:hidden flex items-center gap-2.5 mb-6 overflow-x-auto pb-2 scrollbar-hide">
                         {[
                             { id: 'overview', label: 'פרטים כלליים', emoji: '📋' },
                             { id: 'logistics', label: 'טיסות ומלונות', emoji: '✈️' },
@@ -1011,9 +1011,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id
-                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                    : 'bg-white text-slate-600 border border-slate-200'
+                                className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === tab.id
+                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                                    : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
                                     }`}
                             >
                                 <span>{tab.emoji}</span>
@@ -1026,18 +1026,18 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                         {activeTab === 'overview' && (
                             <div className="space-y-6 animate-fade-in">
                                 {/* Trip Metadata Card */}
-                                <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-                                    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-8">
+                                <div className="bg-white p-7 md:p-8 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+                                    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 mb-8">
                                         <div className="min-w-0">
                                             <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                                                <span className="bg-slate-100 p-2 rounded-lg text-slate-700"><Layout className="w-5 h-5" /></span> פרטים כלליים
+                                                <span className="bg-gradient-to-br from-blue-100 to-indigo-100 p-2.5 rounded-lg text-blue-600"><Layout className="w-5 h-5" /></span> פרטים כלליים
                                             </h3>
-                                            <p className="text-sm text-slate-500 mt-2 font-medium">נהל את שם הטיול, יעדים ותאריכים</p>
+                                            <p className="text-base text-slate-600 mt-2 font-medium">עדכן את שם הטיול, יעדים ותאריכים</p>
                                         </div>
                                         <div className="flex flex-wrap items-center gap-3">
                                             <button
                                                 onClick={() => setIsShareModalOpen(true)}
-                                                className="flex items-center gap-2 px-5 py-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-bold border border-emerald-200 hover:bg-emerald-100 hover:shadow-md transition-all duration-200"
+                                                className="flex items-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-bold border border-emerald-200 hover:bg-emerald-100 hover:shadow-md transition-all duration-200"
                                             >
                                                 <Share2 className="w-4 h-4" />
                                                 <span>שיתוף</span>
@@ -1045,7 +1045,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             {activeTrip && (
                                             <button
                                                 onClick={() => exportTripPDF(activeTrip)}
-                                                className="flex items-center gap-2 px-5 py-3 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold border border-slate-200 hover:bg-slate-200 hover:shadow-md transition-all duration-200"
+                                                className="flex items-center gap-2 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-bold border border-indigo-200 hover:bg-indigo-100 hover:shadow-md transition-all duration-200"
                                             >
                                                 <FileText className="w-4 h-4" />
                                                 <span>ייצא PDF</span>
@@ -1232,14 +1232,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in items-start">
 
                                 {/* Flights - Column 1 */}
-                                <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow h-full">
+                                <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow h-full">
                                     <div className="flex justify-between items-center mb-7">
                                         <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                                            <span className="bg-sky-100 p-2 rounded-lg text-sky-600"><Plane className="w-5 h-5" /></span> טיסות
+                                            <span className="bg-gradient-to-br from-sky-100 to-blue-100 p-2.5 rounded-lg text-sky-600"><Plane className="w-5 h-5" /></span> טיסות
                                         </h3>
                                         <button
                                             onClick={() => activeTrip && handleUpdateTrip({ flights: { ...activeTrip.flights, segments: [...(activeTrip.flights?.segments || []), { flightNumber: '', fromCode: '', toCode: '', fromCity: '', toCity: '', date: '', departureTime: '', arrivalTime: '', airline: '', duration: '' }] } })}
-                                            className="text-xs font-bold bg-sky-50 text-sky-600 px-4 py-2 rounded-lg hover:bg-sky-100 hover:shadow-md transition-all duration-200 flex items-center gap-1 border border-sky-200"
+                                            className="text-xs font-bold bg-sky-50 text-sky-600 px-4 py-2 rounded-lg hover:bg-sky-100 hover:shadow-md transition-all duration-200 flex items-center gap-1.5 border border-sky-200"
                                         >
                                             <Plus className="w-4 h-4" /> הוסף טיסה
                                         </button>
@@ -1398,17 +1398,17 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                 </div>
 
                                 {/* Hotels - Column 2 */}
-                                <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow h-full">
+                                <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow h-full">
                                     <div className="flex justify-between items-center mb-7">
                                         <div className="flex items-center gap-3">
                                             <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                                                <span className="bg-indigo-100 p-2 rounded-lg text-indigo-600"><Hotel className="w-5 h-5" /></span> מלונות
+                                                <span className="bg-gradient-to-br from-indigo-100 to-purple-100 p-2.5 rounded-lg text-indigo-600"><Hotel className="w-5 h-5" /></span> מלונות
                                             </h3>
-                                            {isSaving && <span className="text-2xs font-bold text-purple-600 animate-pulse bg-purple-50 px-3 py-1 rounded-full">Enriching...</span>}
+                                            {isSaving && <span className="text-xs font-bold text-purple-600 animate-pulse bg-purple-50 px-3 py-1 rounded-full">Enriching...</span>}
                                         </div>
                                         <button
                                             onClick={() => activeTrip && handleUpdateTrip({ hotels: [...activeTrip.hotels, { id: `h-${Date.now()}`, name: 'מלון חדש', address: '', checkInDate: '', checkOutDate: '', nights: 0 }] })}
-                                            className="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-100 hover:shadow-md transition-all duration-200 flex items-center gap-1 border border-indigo-200"
+                                            className="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-100 hover:shadow-md transition-all duration-200 flex items-center gap-1.5 border border-indigo-200"
                                         >
                                             <Plus className="w-4 h-4" /> הוסף מלון
                                         </button>
@@ -1462,21 +1462,21 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             <div className="space-y-6 animate-fade-in">
 
                                 {/* FREE TEXT TRIP PLAN IMPORTER */}
-                                <div className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-6">
+                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-7">
                                         <div className="flex items-center gap-4">
                                             <div className="bg-white/10 p-3 rounded-lg">
                                                 <Terminal className="w-6 h-6 text-white" />
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-black text-white">יבוא מטקסט חופשי</h3>
-                                                <p className="text-slate-300 text-sm font-medium mt-1">כתוב או הדבק את תוכנית הטיול — ה-AI יזהה כל דבר אוטומטית</p>
+                                                <p className="text-slate-300 text-sm font-medium mt-1">הדבק את תוכנית הטיול — ה-AI יסדר הכל בשביל עבודה</p>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="p-6 space-y-4">
+                                    <div className="p-7 space-y-4">
                                         <textarea
-                                            className="w-full h-48 p-4 bg-slate-50 rounded-lg border border-slate-200 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 resize-none font-medium text-slate-800 text-sm leading-relaxed transition-all placeholder:text-slate-400 placeholder:font-normal"
+                                            className="w-full h-48 p-4 bg-slate-50 rounded-lg border border-slate-200 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 resize-none font-medium text-slate-800 text-sm leading-relaxed transition-all placeholder:text-slate-400 placeholder:font-normal"
                                             placeholder={`לדוגמה:\n\n✈️ נחיתה בבנגקוק: 7 באוגוסט, 11:50\n\n📍 פטאייה | Holiday Inn Pattaya\nתאריכים: 7 עד 13 באוגוסט (6 לילות)\n2 Bedroom Family Suite\nהגעה: 3 ואנים סגורים משדה התעופה\n\n📍 קו צ'אנג | KC Grande Resort\nתאריכים: 13 עד 18 באוגוסט (5 לילות)`}
                                             value={freeText}
                                             onChange={e => setFreeText(e.target.value)}
@@ -1485,10 +1485,10 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         <button
                                             onClick={handleFreeTextImport}
                                             disabled={!freeText.trim() || isFreeTextProcessing}
-                                            className="w-full py-3.5 bg-slate-900 text-white rounded-lg font-bold text-sm shadow-lg hover:bg-slate-800 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                                            className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-bold text-sm shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                         >
                                             {isFreeTextProcessing ? (
-                                                <><Loader2 className="w-4 h-4 animate-spin" /> ניתוח טקסט...</>
+                                                <><Loader2 className="w-4 h-4 animate-spin" /> ניתוח...</>
                                             ) : (
                                                 <><Sparkles className="w-4 h-4" /> נתח וייבא</>
                                             )}
@@ -1567,9 +1567,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
                                 {/* Magic Drop Zone (Files/PDFs) */}
                                 <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl p-8 text-white text-center shadow-lg">
-                                    <Sparkles className="w-12 h-12 mx-auto mb-4 text-amber-300" />
+                                    <Sparkles className="w-14 h-14 mx-auto mb-4 text-amber-300" />
                                     <h3 className="text-2xl font-black mb-2">Magic Import — קבצים</h3>
-                                    <p className="text-slate-300 mb-6 font-medium">גרור לכאן קבצי PDF של טיסות, מלונות או כרטיסים וה-AI יסדר אותם.</p>
+                                    <p className="text-slate-300 mb-8 font-medium">גרור קבצי PDF של טיסות, מלונות או כרטיסים וה-AI יארגן הכל</p>
                                     <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10">
                                         <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />
                                     </div>
