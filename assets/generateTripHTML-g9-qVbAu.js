@@ -1,9 +1,9 @@
-const g=t=>t?t.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):"",Q=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"],Y=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"],W=["ינו׳","פבר׳","מרץ","אפר׳","מאי","יוני","יולי","אוג׳","ספט׳","אוק׳","נוב׳","דצמ׳"],A=t=>{if(!t)return"";if(/^\d{1,2}:\d{2}$/.test(t))return t;if(t.includes("T"))return t.split("T")[1].substring(0,5);try{const o=new Date(t);return isNaN(o.getTime())?t:o.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",hour12:!1})}catch{return t}},y=t=>{try{return(typeof t=="string"?new Date(t):t).toISOString().split("T")[0]}catch{return""}},j=(t,o)=>{const s=new Date(t);return s.setDate(s.getDate()+o),s},q=(t,o)=>{try{return Math.max(0,Math.ceil((new Date(o).getTime()-new Date(t).getTime())/864e5))}catch{return 0}},B=t=>`${t.getDate()} ${W[t.getMonth()]}`,X=t=>{var w,$,O,z,_,I,u,S;const o=[],s=e=>e&&!isNaN(new Date(e).getTime())&&o.push(new Date(e).getTime());if(($=(w=t.flights)==null?void 0:w.segments)==null||$.forEach(e=>s(e.date)),(O=t.hotels)==null||O.forEach(e=>{s(e.checkInDate),s(e.checkOutDate)}),(z=t.itinerary)==null||z.forEach(e=>s(e.date)),t.dates&&o.length===0&&t.dates.split(/[-–]/).forEach(e=>s(e.trim())),o.length===0)return[];const n=new Date(Math.min(...o));n.setHours(12,0,0,0);const d=new Date(Math.max(...o));d.setHours(12,0,0,0);const f={},T=Math.round((d.getTime()-n.getTime())/864e5)+1;for(let e=0;e<T;e++){const r=j(n,e),c=y(r);f[c]={date:r,iso:c,dayNum:r.getDate(),month:Y[r.getMonth()],dow:Q[r.getDay()],events:[]}}const l=(e,r)=>{f[e]&&f[e].events.push(r)};return(I=(_=t.flights)==null?void 0:_.segments)==null||I.forEach((e,r)=>{var m;const c=y(e.date);l(c,{id:`f-${r}-d`,type:"flight_dep",time:A(e.departureTime)||"—",title:`טיסה ל-${e.toCity||e.toCode}`,subtitle:`${e.airline||""} ${e.flightNumber||""}`.trim(),icon:"✈️",flightData:e});let h=c;const x=A(e.departureTime),v=A(e.arrivalTime);if((m=e.arrivalTime)!=null&&m.includes("T"))h=y(e.arrivalTime);else if(x&&v&&v<x){const N=new Date(e.date);N.setDate(N.getDate()+1),h=y(N)}l(h,{id:`f-${r}-a`,type:"flight_arr",time:v||"—",title:`נחיתה ב-${e.toCity||e.toCode}`,subtitle:e.duration?`${e.duration}`:"",icon:"🛬",flightData:e})}),(u=t.hotels)==null||u.forEach((e,r)=>{const c=y(e.checkInDate),h=y(e.checkOutDate),x=q(e.checkInDate,e.checkOutDate);l(c,{id:`h-${r}-i`,type:"hotel_in",time:"15:00",title:"צ׳ק-אין",subtitle:e.name,icon:"🏨",hotelData:e,nightsCount:x}),l(h,{id:`h-${r}-o`,type:"hotel_out",time:"11:00",title:"צ׳ק-אאוט",subtitle:e.name,icon:"👋",hotelData:e})}),(S=t.itinerary)==null||S.forEach((e,r)=>{var h;const c=y(e.date);f[c]&&(e.title&&e.title!=="טיול חופשי"&&e.title!=="יום טיסה"&&(f[c].title=e.title),(h=e.activities)==null||h.forEach((x,v)=>{const m=x.match(/^(\d{1,2}:\d{2})(?:-\d{1,2}:\d{2})?\s*(.*)/),N=m?m[1]:"",a=m?m[2]:x,i=/הסעה|נסיעה|טרנספר|transfer|מונית|taxi/i.test(a),p=a.match(/\((.*?)\)$/),D=p?a.replace(/\s*\(.*?\)$/,"").trim():a,k=p?p[1]:"";l(c,{id:`a-${r}-${v}`,type:i?"transfer":"activity",time:N,title:D,subtitle:k,icon:i?"🚕":"📍"})}),e.notes&&l(c,{id:`n-${r}`,type:"activity",time:"",title:"הערה",details:e.notes,icon:"📝"}))}),Object.values(f).forEach(e=>{var h;const r=y(e.date),c=(h=t.hotels)==null?void 0:h.find(x=>r>y(x.checkInDate)&&r<y(x.checkOutDate));c&&(e.events.length===0&&(e.title=`נופש ב-${c.name}`),e.events.unshift({id:`s-${r}`,type:"hotel_stay",time:"",title:c.name,subtitle:"יום חופשי במלון",icon:"🛏️",hotelData:c}))}),Object.values(f).sort((e,r)=>e.date.getTime()-r.date.getTime()).map((e,r,c)=>{var h,x;if(e.events.sort((v,m)=>!v.time&&!m.time?0:v.time?m.time?v.time.localeCompare(m.time):-1:1),!e.title){const v=e.events.find(m=>m.type==="flight_dep");v?e.title=`טיסה ל-${((h=v.flightData)==null?void 0:h.toCity)||((x=v.flightData)==null?void 0:x.toCode)||""}`:e.events.length===0?e.title="יום חופשי":e.title=r===0?"יום ראשון":r===c.length-1?"יום אחרון":"יום פעילות"}return e})},ee=t=>{const o=t.time?`<span class="evt-t">${t.time}</span>`:'<span class="evt-t evt-t-empty"></span>';let s=`evt evt-${t.type}`,n=`<span class="evt-i">${t.icon}</span><span class="evt-x"><span class="evt-title">${g(t.title)}</span>`;return t.subtitle&&(n+=`<span class="evt-sub">${g(t.subtitle)}</span>`),t.details&&(n+=`<span class="evt-sub">${g(t.details)}</span>`),n+="</span>",`<div class="${s}">${o}${n}</div>`},te=(t,o,s)=>{const n=o===0,d=o===s-1,f=n?"first":d?"last":"",T=t.events.length===0?'<div class="empty">☀️ יום פנוי</div>':t.events.map(ee).join("");return`
-    <article class="day-card ${f}">
+const g=t=>t?t.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):"",Q=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"],Y=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"],q=["ינו׳","פבר׳","מרץ","אפר׳","מאי","יוני","יולי","אוג׳","ספט׳","אוק׳","נוב׳","דצמ׳"],P=t=>{if(!t)return"";if(/^\d{1,2}:\d{2}$/.test(t))return t;if(t.includes("T"))return t.split("T")[1].substring(0,5);try{const o=new Date(t);return isNaN(o.getTime())?t:o.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",hour12:!1})}catch{return t}},D=t=>{try{return(typeof t=="string"?new Date(t):t).toISOString().split("T")[0]}catch{return""}},A=(t,o)=>{const s=new Date(t);return s.setDate(s.getDate()+o),s},V=(t,o)=>{try{return Math.max(0,Math.ceil((new Date(o).getTime()-new Date(t).getTime())/864e5))}catch{return 0}},B=t=>`${t.getDate()} ${q[t.getMonth()]}`,X=t=>{var x,v,O,z,S,I,w,L;const o=[],s=e=>e&&!isNaN(new Date(e).getTime())&&o.push(new Date(e).getTime());if((v=(x=t.flights)==null?void 0:x.segments)==null||v.forEach(e=>s(e.date)),(O=t.hotels)==null||O.forEach(e=>{s(e.checkInDate),s(e.checkOutDate)}),(z=t.itinerary)==null||z.forEach(e=>s(e.date)),t.dates&&o.length===0&&t.dates.split(/[-–]/).forEach(e=>s(e.trim())),o.length===0)return[];const r=new Date(Math.min(...o));r.setHours(12,0,0,0);const n=new Date(Math.max(...o));n.setHours(12,0,0,0);const c={},y=Math.round((n.getTime()-r.getTime())/864e5)+1;for(let e=0;e<y;e++){const l=A(r,e),p=D(l);c[p]={date:l,iso:p,dayNum:l.getDate(),month:Y[l.getMonth()],dow:Q[l.getDay()],events:[]}}const d=(e,l)=>{c[e]&&c[e].events.push(l)};return(I=(S=t.flights)==null?void 0:S.segments)==null||I.forEach((e,l)=>{var m;const p=D(e.date);d(p,{id:`f-${l}-d`,type:"flight_dep",time:P(e.departureTime)||"—",title:`טיסה ל-${e.toCity||e.toCode}`,subtitle:`${e.airline||""} ${e.flightNumber||""}`.trim(),icon:"✈️",flightData:e});let h=p;const u=P(e.departureTime),b=P(e.arrivalTime);if((m=e.arrivalTime)!=null&&m.includes("T"))h=D(e.arrivalTime);else if(u&&b&&b<u){const N=new Date(e.date);N.setDate(N.getDate()+1),h=D(N)}d(h,{id:`f-${l}-a`,type:"flight_arr",time:b||"—",title:`נחיתה ב-${e.toCity||e.toCode}`,subtitle:e.duration?`${e.duration}`:"",icon:"🛬",flightData:e})}),(w=t.hotels)==null||w.forEach((e,l)=>{const p=D(e.checkInDate),h=D(e.checkOutDate),u=V(e.checkInDate,e.checkOutDate);d(p,{id:`h-${l}-i`,type:"hotel_in",time:"15:00",title:"צ׳ק-אין",subtitle:e.name,icon:"🏨",hotelData:e,nightsCount:u}),d(h,{id:`h-${l}-o`,type:"hotel_out",time:"11:00",title:"צ׳ק-אאוט",subtitle:e.name,icon:"👋",hotelData:e})}),(L=t.itinerary)==null||L.forEach((e,l)=>{var h;const p=D(e.date);c[p]&&(e.title&&e.title!=="טיול חופשי"&&e.title!=="יום טיסה"&&(c[p].title=e.title),(h=e.activities)==null||h.forEach((u,b)=>{const m=u.match(/^(\d{1,2}:\d{2})(?:-\d{1,2}:\d{2})?\s*(.*)/),N=m?m[1]:"",a=m?m[2]:u,i=/הסעה|נסיעה|טרנספר|transfer|מונית|taxi/i.test(a),f=a.match(/\((.*?)\)$/),k=f?a.replace(/\s*\(.*?\)$/,"").trim():a,T=f?f[1]:"";d(p,{id:`a-${l}-${b}`,type:i?"transfer":"activity",time:N,title:k,subtitle:T,icon:i?"🚕":"📍"})}),e.notes&&d(p,{id:`n-${l}`,type:"activity",time:"",title:"הערה",details:e.notes,icon:"📝"}))}),Object.values(c).forEach(e=>{var h;const l=D(e.date),p=(h=t.hotels)==null?void 0:h.find(u=>l>D(u.checkInDate)&&l<D(u.checkOutDate));p&&(e.events.length===0&&(e.title=`נופש ב-${p.name}`),e.events.unshift({id:`s-${l}`,type:"hotel_stay",time:"",title:p.name,subtitle:"יום חופשי במלון",icon:"🛏️",hotelData:p}))}),Object.values(c).sort((e,l)=>e.date.getTime()-l.date.getTime()).map((e,l,p)=>{var h,u;if(e.events.sort((b,m)=>!b.time&&!m.time?0:b.time?m.time?b.time.localeCompare(m.time):-1:1),!e.title){const b=e.events.find(m=>m.type==="flight_dep");b?e.title=`טיסה ל-${((h=b.flightData)==null?void 0:h.toCity)||((u=b.flightData)==null?void 0:u.toCode)||""}`:e.events.length===0?e.title="יום חופשי":e.title=l===0?"יום ראשון":l===p.length-1?"יום אחרון":"יום פעילות"}return e})},ee=t=>{const o=t.time?`<span class="evt-t">${t.time}</span>`:'<span class="evt-t evt-t-empty"></span>';let s=`evt evt-${t.type}`,r=`<span class="evt-i">${t.icon}</span><span class="evt-x"><span class="evt-title">${g(t.title)}</span>`;return t.subtitle&&(r+=`<span class="evt-sub">${g(t.subtitle)}</span>`),t.details&&(r+=`<span class="evt-sub">${g(t.details)}</span>`),r+="</span>",`<div class="${s}">${o}${r}</div>`},te=(t,o,s)=>{const r=o===0,n=o===s-1,c=r?"first":n?"last":"",y=t.events.length===0?'<div class="empty">☀️ יום פנוי</div>':t.events.map(ee).join("");return`
+    <article class="day-card ${c}">
       <header class="day-head">
         <div class="day-num">
           <span class="dn">${t.dayNum}</span>
-          <span class="dm">${W[t.date.getMonth()]}</span>
+          <span class="dm">${q[t.date.getMonth()]}</span>
         </div>
         <div class="day-info">
           <span class="day-dow">יום ${t.dow}</span>
@@ -11,27 +11,27 @@ const g=t=>t?t.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").r
         </div>
         <span class="day-idx">${o+1}/${s}</span>
       </header>
-      <div class="day-events">${T}</div>
+      <div class="day-events">${y}</div>
     </article>
-  `},ae=t=>{var n;const o=((n=t.flights)==null?void 0:n.segments)||[];if(o.length===0)return"";const s=o.map(d=>{const f=A(d.departureTime),T=A(d.arrivalTime);return`
+  `},ae=t=>{var r;const o=((r=t.flights)==null?void 0:r.segments)||[];if(o.length===0)return"";const s=o.map(n=>{const c=P(n.departureTime),y=P(n.arrivalTime);return`
       <div class="ov-flight">
         <div class="ovf-top">
-          <span class="ovf-date">${d.date?B(new Date(d.date)):""}</span>
-          <span class="ovf-num">${g(d.flightNumber||"")}</span>
+          <span class="ovf-date">${n.date?B(new Date(n.date)):""}</span>
+          <span class="ovf-num">${g(n.flightNumber||"")}</span>
         </div>
         <div class="ovf-route">
           <div class="ovf-side">
-            <div class="ovf-code">${g(d.fromCode||"")}</div>
-            <div class="ovf-time">${f}</div>
+            <div class="ovf-code">${g(n.fromCode||"")}</div>
+            <div class="ovf-time">${c}</div>
           </div>
           <div class="ovf-arrow">
-            <div class="ovf-airline">${g(d.airline||"")}</div>
+            <div class="ovf-airline">${g(n.airline||"")}</div>
             <div class="ovf-line">✈</div>
-            ${d.duration?`<div class="ovf-dur">${g(d.duration)}</div>`:""}
+            ${n.duration?`<div class="ovf-dur">${g(n.duration)}</div>`:""}
           </div>
           <div class="ovf-side">
-            <div class="ovf-code">${g(d.toCode||"")}</div>
-            <div class="ovf-time">${T}</div>
+            <div class="ovf-code">${g(n.toCode||"")}</div>
+            <div class="ovf-time">${y}</div>
           </div>
         </div>
       </div>
@@ -40,14 +40,14 @@ const g=t=>t?t.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").r
       <h2 class="ov-title">✈️ טיסות <span class="ov-count">${o.length}</span></h2>
       <div class="ov-flights-grid">${s}</div>
     </section>
-  `},ie=t=>{const o=t.hotels||[];if(o.length===0)return"";const s=o.map(n=>{var w;const d=q(n.checkInDate,n.checkOutDate),f=n.checkInDate?B(new Date(n.checkInDate)):"",T=n.checkOutDate?B(new Date(n.checkOutDate)):"",l=((w=n.rooms)==null?void 0:w.length)||0;return`
+  `},ie=t=>{const o=t.hotels||[];if(o.length===0)return"";const s=o.map(r=>{var x;const n=V(r.checkInDate,r.checkOutDate),c=r.checkInDate?B(new Date(r.checkInDate)):"",y=r.checkOutDate?B(new Date(r.checkOutDate)):"",d=((x=r.rooms)==null?void 0:x.length)||0;return`
       <div class="ov-hotel">
-        <div class="ovh-name">${g(n.name)}</div>
-        ${n.address?`<div class="ovh-addr">📍 ${g(n.address)}</div>`:""}
+        <div class="ovh-name">${g(r.name)}</div>
+        ${r.address?`<div class="ovh-addr">📍 ${g(r.address)}</div>`:""}
         <div class="ovh-meta">
-          <span class="ovh-dates">${f} → ${T}</span>
-          ${d>0?`<span class="ovh-nights">${d} לילות</span>`:""}
-          ${l>0?`<span class="ovh-rooms">${l} חדרים</span>`:""}
+          <span class="ovh-dates">${c} → ${y}</span>
+          ${n>0?`<span class="ovh-nights">${n} לילות</span>`:""}
+          ${d>0?`<span class="ovh-rooms">${d} חדרים</span>`:""}
         </div>
       </div>
     `}).join("");return`
@@ -437,14 +437,14 @@ body {
   .calendar-section { break-inside: avoid; page-break-inside: avoid; }
   .cal-cell { break-inside: avoid; }
 }
-`,ne=["יום א׳","יום ב׳","יום ג׳","יום ד׳","יום ה׳","יום ו׳","שבת"],U=[{bg:"#ccfbf1",fg:"#115e59"},{bg:"#fce7f3",fg:"#9d174d"},{bg:"#fef3c7",fg:"#854d0e"},{bg:"#dbeafe",fg:"#1e40af"},{bg:"#ede9fe",fg:"#5b21b6"},{bg:"#fed7aa",fg:"#9a3412"},{bg:"#dcfce7",fg:"#166534"},{bg:"#fee2e2",fg:"#991b1b"}],K=[{bg:"#e0f2fe",fg:"#0c4a6e"},{bg:"#f3e8ff",fg:"#581c87"},{bg:"#ffedd5",fg:"#7c2d12"},{bg:"#dcfce7",fg:"#14532d"},{bg:"#fef9c3",fg:"#713f12"},{bg:"#cffafe",fg:"#155e75"},{bg:"#fae8ff",fg:"#701a75"}],re=(t,o)=>{var m,N;if(o.length===0)return"";const s=new Date(o[0].date);s.setHours(12,0,0,0);const n=new Date(o[o.length-1].date);n.setHours(12,0,0,0);const d=y(new Date),f=j(s,-1),T=j(n,1),l=new Date(f);l.setDate(l.getDate()-l.getDay());const w=new Date(T);w.setDate(w.getDate()+(6-w.getDay()));const $={};let O=0;(t.hotels||[]).forEach(a=>{const i=(a.name||"").trim().toLowerCase();!i||$[i]||($[i]=U[O%U.length],O++)});const z={};let _=0;const I=a=>{const i=(a||"").trim().toLowerCase();!i||z[i]||(z[i]=K[_%K.length],_++)};(N=(m=t.flights)==null?void 0:m.segments)==null||N.forEach(a=>{a.toCity&&I(a.toCity)}),(t.hotels||[]).forEach(a=>{a.city&&I(a.city)});const u={};o.forEach(a=>{u[a.iso]||(u[a.iso]=[]),a.events.forEach(i=>{var L,R,P,F,b;let p="activity";i.type==="flight_dep"||i.type==="flight_arr"?p="flight":i.type==="hotel_in"||i.type==="hotel_out"||i.type==="hotel_stay"?p="hotel":i.type==="food"?p="food":i.type==="transfer"&&(p="transfer");const D=i.title;let k,E=`${p}::${D}`,M,H;if(p==="hotel"){const C=(((L=i.hotelData)==null?void 0:L.name)||"").trim().toLowerCase();C&&$[C]&&(k=$[C]),E=`hotel::${C}`,M=((R=i.hotelData)==null?void 0:R.city)||"",H=((P=i.hotelData)==null?void 0:P.name)||""}else if(p==="flight"){const C=(((F=i.flightData)==null?void 0:F.toCity)||((b=i.flightData)==null?void 0:b.fromCity)||"").trim().toLowerCase();C&&z[C]&&(k=z[C]),E=`flight::${C}`}u[a.iso].push({kind:p,label:D,runKey:E,color:k,hotelCity:M,hotelName:H})})});const S={},e=Math.round((w.getTime()-l.getTime())/864e5)+1,r=[];for(let a=0;a<e;a++)r.push(y(j(l,a)));for(let a=0;a<r.length;a++){const i=r[a],p=u[i]||[];S[i]=p.map(D=>{const k=a>0?u[r[a-1]]:void 0,E=a<r.length-1?u[r[a+1]]:void 0,M=!!(k!=null&&k.some(R=>R.runKey===D.runKey)),H=!!(E!=null&&E.some(R=>R.runKey===D.runKey));let L="single";return M&&H?L="mid":H?L="start":M&&(L="end"),{...D,runPos:L}})}const c=[];for(let a=0;a<e;a++){const i=j(l,a),p=y(i),D=i>=s&&i<=n,k=i.getDay(),E=S[p]||[],M=E.slice(0,4),H=E.length-M.length,L=M.map(b=>{const C=b.color?` style="background:${b.color.bg};color:${b.color.fg}"`:"",V=b.runPos==="single"?"":` cal-chip-run-${b.runPos}`,G=b.runPos==="mid"||b.runPos==="end",Z=g(b.label),J=G?" cal-chip-run-cont":"";return`<span class="cal-chip cal-chip-${b.kind}${V}${J}"${C} title="${g(b.label)}">${Z}</span>`}).join(""),R=H>0?`<span class="cal-more">+${H} נוסף</span>`:"",P=`cal-num${k===5?" cal-num-fri":""}${k===6?" cal-num-sat":""}`,F=`cal-cell${D?"":" cal-padding"}${p===d?" cal-today":""}`;c.push(`<div class="${F}"><span class="${P}">${i.getDate()}</span>${L}${R}</div>`)}const h=ne.map((a,i)=>`<div class="${`cal-header${i===5?" cal-header-fri":""}${i===6?" cal-header-sat":""}`}">${a}</div>`).join(""),x=s.getMonth()===n.getMonth()&&s.getFullYear()===n.getFullYear()?`${Y[s.getMonth()]} ${s.getFullYear()}`:`${Y[s.getMonth()]}–${Y[n.getMonth()]} ${n.getFullYear()}`,v=Object.keys($).length>0?`<div class="cal-legend">
+`,ne=["יום א׳","יום ב׳","יום ג׳","יום ד׳","יום ה׳","יום ו׳","שבת"],W=[{bg:"#ccfbf1",fg:"#115e59"},{bg:"#fce7f3",fg:"#9d174d"},{bg:"#fef3c7",fg:"#854d0e"},{bg:"#dbeafe",fg:"#1e40af"},{bg:"#ede9fe",fg:"#5b21b6"},{bg:"#fed7aa",fg:"#9a3412"},{bg:"#dcfce7",fg:"#166534"},{bg:"#fee2e2",fg:"#991b1b"}],K=[{bg:"#e0f2fe",fg:"#0c4a6e"},{bg:"#f3e8ff",fg:"#581c87"},{bg:"#ffedd5",fg:"#7c2d12"},{bg:"#dcfce7",fg:"#14532d"},{bg:"#fef9c3",fg:"#713f12"},{bg:"#cffafe",fg:"#155e75"},{bg:"#fae8ff",fg:"#701a75"}],re=(t,o)=>{var m,N;if(o.length===0)return"";const s=new Date(o[0].date);s.setHours(12,0,0,0);const r=new Date(o[o.length-1].date);r.setHours(12,0,0,0);const n=D(new Date),c=A(s,-1),y=A(r,1),d=new Date(c);d.setDate(d.getDate()-d.getDay());const x=new Date(y);x.setDate(x.getDate()+(6-x.getDay()));const v={};let O=0;(t.hotels||[]).forEach(a=>{const i=(a.name||"").trim().toLowerCase();!i||v[i]||(v[i]=W[O%W.length],O++)});const z={};let S=0;const I=a=>{const i=(a||"").trim().toLowerCase();!i||z[i]||(z[i]=K[S%K.length],S++)};(N=(m=t.flights)==null?void 0:m.segments)==null||N.forEach(a=>{a.toCity&&I(a.toCity)}),(t.hotels||[]).forEach(a=>{a.city&&I(a.city)});const w={};o.forEach(a=>{w[a.iso]||(w[a.iso]=[]),a.events.forEach(i=>{var _,j,R,F,$;let f="activity";i.type==="flight_dep"||i.type==="flight_arr"?f="flight":i.type==="hotel_in"||i.type==="hotel_out"||i.type==="hotel_stay"?f="hotel":i.type==="food"?f="food":i.type==="transfer"&&(f="transfer");const k=i.title;let T,E=`${f}::${k}`,H,M;if(f==="hotel"){const C=(((_=i.hotelData)==null?void 0:_.name)||"").trim().toLowerCase();C&&v[C]&&(T=v[C]),E=`hotel::${C}`,H=((j=i.hotelData)==null?void 0:j.city)||"",M=((R=i.hotelData)==null?void 0:R.name)||""}else if(f==="flight"){const C=(((F=i.flightData)==null?void 0:F.toCity)||(($=i.flightData)==null?void 0:$.fromCity)||"").trim().toLowerCase();C&&z[C]&&(T=z[C]),E=`flight::${C}`}w[a.iso].push({kind:f,label:k,runKey:E,color:T,hotelCity:H,hotelName:M})})});const L={},e=Math.round((x.getTime()-d.getTime())/864e5)+1,l=[];for(let a=0;a<e;a++)l.push(D(A(d,a)));for(let a=0;a<l.length;a++){const i=l[a],f=w[i]||[];L[i]=f.map(k=>{const T=a>0?w[l[a-1]]:void 0,E=a<l.length-1?w[l[a+1]]:void 0,H=!!(T!=null&&T.some(j=>j.runKey===k.runKey)),M=!!(E!=null&&E.some(j=>j.runKey===k.runKey));let _="single";return H&&M?_="mid":M?_="start":H&&(_="end"),{...k,runPos:_}})}const p=[];for(let a=0;a<e;a++){const i=A(d,a),f=D(i),k=i>=s&&i<=r,T=i.getDay(),E=L[f]||[],H=E.slice(0,4),M=E.length-H.length,_=H.map($=>{const C=$.color?` style="background:${$.color.bg};color:${$.color.fg}"`:"",G=$.runPos==="single"?"":` cal-chip-run-${$.runPos}`,U=$.runPos==="mid"||$.runPos==="end",Z=g($.label),J=U?" cal-chip-run-cont":"";return`<span class="cal-chip cal-chip-${$.kind}${G}${J}"${C} title="${g($.label)}">${Z}</span>`}).join(""),j=M>0?`<span class="cal-more">+${M} נוסף</span>`:"",R=`cal-num${T===5?" cal-num-fri":""}${T===6?" cal-num-sat":""}`,F=`cal-cell${k?"":" cal-padding"}${f===n?" cal-today":""}`;p.push(`<div class="${F}"><span class="${R}">${i.getDate()}</span>${_}${j}</div>`)}const h=ne.map((a,i)=>`<div class="${`cal-header${i===5?" cal-header-fri":""}${i===6?" cal-header-sat":""}`}">${a}</div>`).join(""),u=s.getMonth()===r.getMonth()&&s.getFullYear()===r.getFullYear()?`${Y[s.getMonth()]} ${s.getFullYear()}`:`${Y[s.getMonth()]}–${Y[r.getMonth()]} ${r.getFullYear()}`,b=Object.keys(v).length>0?`<div class="cal-legend">
         <span class="cal-legend-title">מלונות</span>
-        ${(t.hotels||[]).filter((a,i,p)=>p.findIndex(D=>(D.name||"").toLowerCase()===(a.name||"").toLowerCase())===i).map(a=>{const i=$[(a.name||"").toLowerCase()];return i?`<span class="cal-legend-chip" style="background:${i.bg};color:${i.fg}">${g(a.name||"")}</span>`:""}).join("")}
+        ${(t.hotels||[]).filter((a,i,f)=>f.findIndex(k=>(k.name||"").toLowerCase()===(a.name||"").toLowerCase())===i).map(a=>{const i=v[(a.name||"").toLowerCase()];return i?`<span class="cal-legend-chip" style="background:${i.bg};color:${i.fg}">${g(a.name||"")}</span>`:""}).join("")}
       </div>`:"";return`<section class="calendar-section">
-    <h2 class="ov-title">📅 לוח הטיול — ${g(x)}</h2>
-    <div class="calendar-grid">${h}${c.join("")}</div>
-    ${v}
-  </section>`},se=t=>{var $,O,z,_;const o=X(t),s=t.coverImage||"https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1600&q=80",n=new Date().toLocaleDateString("he-IL"),d=((O=($=t.flights)==null?void 0:$.segments)==null?void 0:O.length)||0,f=((z=t.hotels)==null?void 0:z.length)||0,T=((_=t.itinerary)==null?void 0:_.reduce((I,u)=>{var S;return I+(((S=u.activities)==null?void 0:S.length)||0)},0))||0,l=o.length,w=o.map((I,u)=>te(I,u,o.length)).join("");return`<!DOCTYPE html>
+    <h2 class="ov-title">📅 לוח הטיול — ${g(u)}</h2>
+    <div class="calendar-grid">${h}${p.join("")}</div>
+    ${b}
+  </section>`},se=t=>{var v,O,z,S;const o=X(t),s=t.coverImage||"https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1600&q=80",r=new Date().toLocaleDateString("he-IL"),n=((O=(v=t.flights)==null?void 0:v.segments)==null?void 0:O.length)||0,c=((z=t.hotels)==null?void 0:z.length)||0,y=((S=t.itinerary)==null?void 0:S.reduce((I,w)=>{var L;return I+(((L=w.activities)==null?void 0:L.length)||0)},0))||0,d=o.length,x=o.map((I,w)=>te(I,w,o.length)).join("");return`<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -463,18 +463,18 @@ body {
         <div class="hero-meta">📍 ${g(t.destination||"")}</div>
       </div>
       <div class="hero-chips">
-        ${l>0?`<span class="chip">📅 ${l} ימים</span>`:""}
-        ${d>0?`<span class="chip">✈️ ${d} טיסות</span>`:""}
-        ${f>0?`<span class="chip">🏨 ${f} מלונות</span>`:""}
+        ${d>0?`<span class="chip">📅 ${d} ימים</span>`:""}
+        ${n>0?`<span class="chip">✈️ ${n} טיסות</span>`:""}
+        ${c>0?`<span class="chip">🏨 ${c} מלונות</span>`:""}
       </div>
     </div>
   </header>
 
   <div class="stats">
-    <div class="stat"><div class="stat-v">${l}</div><div class="stat-l">ימים</div></div>
-    <div class="stat"><div class="stat-v">${d}</div><div class="stat-l">טיסות</div></div>
-    <div class="stat"><div class="stat-v">${f}</div><div class="stat-l">מלונות</div></div>
-    <div class="stat"><div class="stat-v">${T}</div><div class="stat-l">פעילויות</div></div>
+    <div class="stat"><div class="stat-v">${d}</div><div class="stat-l">ימים</div></div>
+    <div class="stat"><div class="stat-v">${n}</div><div class="stat-l">טיסות</div></div>
+    <div class="stat"><div class="stat-v">${c}</div><div class="stat-l">מלונות</div></div>
+    <div class="stat"><div class="stat-v">${y}</div><div class="stat-l">פעילויות</div></div>
   </div>
 
   ${re(t,o)}
@@ -483,15 +483,15 @@ body {
   ${ie(t)}
 
   <section class="days-section">
-    <h2 class="ov-title">📆 יום-יום <span class="ov-count">${l}</span></h2>
-    <div class="days-grid">${w}</div>
+    <h2 class="ov-title">📆 יום-יום <span class="ov-count">${d}</span></h2>
+    <div class="days-grid">${x}</div>
   </section>
 
   <div class="footer">
     <div class="footer-logo">✈ Travel Planner Pro</div>
-    נוצר ב-${n}
+    נוצר ב-${r}
   </div>
 
 </div>
 </body>
-</html>`},de=t=>{const o=se(t),s=new Blob([o],{type:"text/html;charset=utf-8"}),n=URL.createObjectURL(s),d=document.createElement("a");d.href=n,d.download=`${t.name.replace(/[^a-zA-Z0-9֐-׿ ]/g,"").trim()||"trip"} — סיכום מסע.html`,document.body.appendChild(d),d.click(),document.body.removeChild(d),URL.revokeObjectURL(n)};export{de as d};
+</html>`},le=t=>{var c,y,d;const o=se(t),s=`${t.name.replace(/[^a-zA-Z0-9֐-׿ ]/g,"").trim()||"trip"} - סיכום מסע`,r=o.replace(/<title>.*?<\/title>/,`<title>${g(s)}</title>`),n=document.createElement("iframe");n.title=s,n.style.position="fixed",n.style.left="-10000px",n.style.top="0",n.style.width="1px",n.style.height="1px",n.style.opacity="0",document.body.appendChild(n),n.onload=()=>{setTimeout(()=>{var x,v;(x=n.contentWindow)==null||x.focus(),(v=n.contentWindow)==null||v.print(),setTimeout(()=>n.remove(),6e4)},300)},(c=n.contentDocument)==null||c.open(),(y=n.contentDocument)==null||y.write(r),(d=n.contentDocument)==null||d.close()};export{le as e};
