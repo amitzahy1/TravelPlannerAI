@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import { TripCountdown } from './shared';
 import { pickTripCover } from '../utils/destinationCover';
-import { downloadTripHTML } from '../utils/generateTripHTML';
+import { exportTripPDF } from '../utils/generateTripHTML';
 import { downloadTripIcal } from '../utils/generateTripIcal';
 import { FileText as FileTextIcon, CalendarDays as CalendarDaysIcon } from 'lucide-react';
 import { resolveLocationName, extractRobustCity, cleanCityName } from '../utils/geoData'; // Imported from new DB
@@ -866,13 +866,13 @@ export const ItineraryView: React.FC<{
                                 <span dir="ltr">{formatHeroDates(trip.dates)}</span>
                             </div>
                             <button
-                                onClick={() => downloadTripHTML(trip)}
+                                onClick={() => exportTripPDF(trip)}
                                 aria-label="ייצא סיכום טיול"
-                                title="ייצא סיכום"
+                                title="ייצא PDF"
                                 className="h-9 px-2.5 sm:px-3 bg-white/90 hover:bg-white backdrop-blur-md rounded-full text-slate-900 text-2xs sm:text-xs font-bold flex items-center gap-1.5 shadow-popover transition-colors"
                             >
                                 <FileTextIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                                <span className="hidden sm:inline">ייצא סיכום</span>
+                                <span className="hidden sm:inline">ייצא PDF</span>
                             </button>
                             {/* Hero is intentionally lean now — countdown
                                  lives in the floating corner above; iCal +

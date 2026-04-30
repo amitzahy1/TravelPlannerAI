@@ -7,7 +7,7 @@ import { toast } from '../stores/useToastStore';
 import { getTripCities } from '../utils/geoData'; // Imported from new DB
 import { MagicDropZone } from './MagicDropZone';
 import { ShareModal } from './ShareModal';
-import { downloadTripHTML } from '../utils/generateTripHTML';
+import { exportTripPDF } from '../utils/generateTripHTML';
 import { SystemLogs } from './SystemLogs';
 
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
@@ -30,6 +30,7 @@ interface TripSettingsModalProps {
     onSwitchTrip: (id: string) => void;
     onDeleteTrip: (tripId: string) => void;
     onLeaveTrip: (tripId: string) => void;
+    onCleanupDuplicates?: (preferredTripId: string) => Promise<{ deletedCount: number; deletedTripIds?: string[]; keptTripId?: string }>;
     onClose: () => void;
 }
 
@@ -99,7 +100,7 @@ const DateInput: React.FC<{
     );
 };
 
-export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripId, onSave, onSwitchTrip, onDeleteTrip, onLeaveTrip, onClose }) => {
+export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripId, onSave, onSwitchTrip, onDeleteTrip, onLeaveTrip, onCleanupDuplicates, onClose }) => {
     // Unique Trips only (Sanity check)
     const uniqueTrips = useMemo(() => {
         const seen = new Set();
@@ -124,6 +125,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
     const [tripToDelete, setTripToDelete] = useState<string | null>(null);
     const [tripToLeave, setTripToLeave] = useState<string | null>(null); // NEW: For shared trip leave confirmation
+    const [isDuplicateCleanupOpen, setIsDuplicateCleanupOpen] = useState(false);
+    const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
     const [hotelToDelete, setHotelToDelete] = useState<string | null>(null); // For Admin hotel deletion
     const [hotelConflicts, setHotelConflicts] = useState<{ existing: HotelBooking, incoming: HotelBooking }[]>([]);
     const [conflictResolutions, setConflictResolutions] = useState<Record<number, 'keep' | 'replace' | 'both'>>({});
@@ -270,6 +273,25 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         const newHotels = activeTrip.hotels.filter(h => h.id !== hotelToDelete);
         handleUpdateTrip({ hotels: newHotels });
         setHotelToDelete(null);
+    };
+
+    const confirmDuplicateCleanup = async () => {
+        if (!activeTrip || !onCleanupDuplicates) return;
+
+        setIsCleaningDuplicates(true);
+        try {
+            const result = await onCleanupDuplicates(activeTrip.id);
+            setTrips(prev => prev.filter(trip => !result.deletedTripIds?.includes(trip.id)));
+            setActiveTripId(result.keptTripId || activeTrip.id);
+            if (result.keptTripId) onSwitchTrip(result.keptTripId);
+            toast.success(result.deletedCount > 0 ? `נמחקו ${result.deletedCount} כפילויות. הטיול שנבחר נשמר.` : 'לא נמצאו כפילויות למחיקה.');
+        } catch (error) {
+            console.error('Duplicate cleanup failed:', error);
+            toast.error('ניקוי הכפילויות נכשל. נסה שוב.');
+        } finally {
+            setIsCleaningDuplicates(false);
+            setIsDuplicateCleanupOpen(false);
+        }
     };
 
 
@@ -799,6 +821,15 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                 onConfirm={confirmDeleteHotel}
                 onClose={() => setHotelToDelete(null)}
             />
+            <ConfirmModal
+                isOpen={isDuplicateCleanupOpen}
+                title="ניקוי כפילויות"
+                message={`נשמור את הטיול "${activeTrip?.name || ''}" שנבחר עכשיו ונמחק רק עותקים פרטיים כפולים מאותו שם, יעד ותאריכים. טיולים משותפים לא יימחקו אוטומטית.`}
+                confirmText={isCleaningDuplicates ? 'מנקה...' : 'נקה כפילויות'}
+                isDangerous={true}
+                onConfirm={confirmDuplicateCleanup}
+                onClose={() => !isCleaningDuplicates && setIsDuplicateCleanupOpen(false)}
+            />
             {/* Leave Shared Trip Confirmation */}
             <ConfirmModal
                 isOpen={!!tripToLeave}
@@ -1004,14 +1035,24 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             <Share2 className="w-4 h-4" />
                                             <span>שיתוף והרשאות</span>
                                         </button>
-                                        {/* Export HTML Button */}
+                                        {/* Export PDF Button */}
                                         {activeTrip && (
                                             <button
-                                                onClick={() => downloadTripHTML(activeTrip)}
+                                                onClick={() => exportTripPDF(activeTrip)}
                                                 className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold border border-blue-100 hover:bg-blue-100 transition-colors"
                                             >
                                                 <FileText className="w-4 h-4" />
-                                                <span>ייצא סיכום</span>
+                                                <span>ייצא PDF</span>
+                                            </button>
+                                        )}
+                                        {activeTrip && onCleanupDuplicates && (
+                                            <button
+                                                onClick={() => setIsDuplicateCleanupOpen(true)}
+                                                disabled={isCleaningDuplicates}
+                                                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-sm font-bold border border-amber-100 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                                            >
+                                                {isCleaningDuplicates ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                                <span>נקה כפילויות</span>
                                             </button>
                                         )}
                                     </div>

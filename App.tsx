@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { AnimatePresence } from 'framer-motion';
 import { queryClient } from './services/queryClient';
 import { LayoutFixed as Layout } from './components/LayoutFixed';
-import { saveTrips, saveSingleTrip } from './services/storageService';
+import { cleanupDuplicateStoredTrips, saveTrips, saveSingleTrip } from './services/storageService';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Trip } from './types';
 import { LandingPage } from './components/LandingPage';
@@ -32,6 +32,13 @@ import { MagicalWizard } from './components/onboarding/MagicalWizard';
 import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
 
+const getJoinShareIdFromHash = () => {
+  const hash = window.location.hash;
+  if (!hash.startsWith('#/join/')) return null;
+  const shareId = hash.replace('#/join/', '').split('?')[0].trim();
+  return shareId || null;
+};
+
 // ...
 
 // Main App Logic
@@ -50,19 +57,23 @@ const AppContent: React.FC = () => {
   // Local UI State
   const [currentTab, setCurrentTab] = useState('itinerary');
   // showAdmin removed - using 'trips' tab instead
-  const [joinShareId, setJoinShareId] = useState<string | null>(null);
+  const [joinShareId, setJoinShareId] = useState<string | null>(() => getJoinShareIdFromHash());
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Deep Link Handling
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.startsWith('#/join/')) {
-      const shareId = hash.replace('#/join/', '');
+    const handleHashChange = () => {
+      const shareId = getJoinShareIdFromHash();
       if (shareId) {
         console.log("🔗 Detected Join Link:", shareId);
         setJoinShareId(shareId);
+        setShowOnboarding(false);
       }
-    }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   // Sync Active Trip Persistence
@@ -86,7 +97,8 @@ const AppContent: React.FC = () => {
 
   // Auto-Open Onboarding
   useEffect(() => {
-    if (!isLoading && !authLoading && trips.length === 0 && !joinShareId) {
+    const hasJoinLink = !!joinShareId || !!getJoinShareIdFromHash();
+    if (!isLoading && !authLoading && trips.length === 0 && !hasJoinLink) {
       setShowOnboarding(true);
     }
   }, [isLoading, authLoading, trips.length, joinShareId]);
@@ -300,6 +312,16 @@ const AppContent: React.FC = () => {
                 leaveTripMutation.mutate({ tripId: id, shareId: tripToLeave.sharing.shareId });
               }
             }}
+            onCleanupDuplicates={async (preferredTripId) => {
+              if (!user?.uid) return { deletedCount: 0 };
+              const plan = await cleanupDuplicateStoredTrips(user.uid, user.email || undefined, preferredTripId);
+              await queryClient.invalidateQueries({ queryKey: ['trips'] });
+              return {
+                deletedCount: plan.deletePrivateTripIds.length,
+                deletedTripIds: plan.deletePrivateTripIds,
+                keptTripId: plan.keepTripIds[0],
+              };
+            }}
             onClose={() => setCurrentTab('itinerary')} // Close goes back to main
           />
         </React.Suspense>
@@ -415,4 +437,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-

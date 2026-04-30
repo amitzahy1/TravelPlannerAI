@@ -1,8 +1,179 @@
 import { Trip } from '../types';
 import { INITIAL_DATA } from '../constants';
-import { getUserTrips, getTripsByEmail, saveTrip, saveAllTrips, deleteTrip as firestoreDeleteTrip, deleteSharedTripRef, userHasTrips, getUserSharedTrips, getSharedTrip, updateSharedTrip, leaveSharedTrip } from './firestoreService';
+import { getUserTrips, getTripsByEmail, saveTrip, deleteTrip as firestoreDeleteTrip, deleteSharedTripRef, getUserSharedTrips, getSharedTrip, updateSharedTrip, leaveSharedTrip } from './firestoreService';
 
 const STORAGE_KEY = 'travel_app_data_v1';
+
+const normalizeTripText = (value?: string) => (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+const getTripUpdatedMillis = (trip: Trip): number => {
+  const raw = (trip as any).updatedAt || trip.sharing?.updatedAt || (trip as any).createdAt || trip.sharing?.createdAt;
+  if (!raw) return 0;
+  if (typeof raw.toMillis === 'function') return raw.toMillis();
+  if (typeof raw.seconds === 'number') return raw.seconds * 1000;
+  const parsed = raw instanceof Date ? raw.getTime() : new Date(raw).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getTripContentKey = (trip: Trip): string => (
+  [
+    normalizeTripText(trip.name),
+    normalizeTripText(trip.destination),
+    normalizeTripText(trip.dates),
+  ].join('|')
+);
+
+const isEmptyTripContentKey = (key: string) => key === '||';
+
+const getTripCompletenessScore = (trip: Trip): number => {
+  const countArray = (value?: unknown[]) => Array.isArray(value) ? value.length : 0;
+  return [
+    trip.name,
+    trip.destination,
+    trip.dates,
+    trip.coverImage,
+    trip.flights?.pnr,
+  ].filter(Boolean).length
+    + countArray(trip.flights?.segments) * 4
+    + countArray(trip.hotels) * 4
+    + countArray(trip.itinerary) * 3
+    + countArray(trip.restaurants) * 2
+    + countArray(trip.attractions) * 2
+    + countArray(trip.documents)
+    + countArray(trip.aiRestaurants)
+    + countArray(trip.aiAttractions);
+};
+
+const choosePreferredTrip = (current: Trip, incoming: Trip): Trip => {
+  if (!!incoming.isShared !== !!current.isShared) {
+    return incoming.isShared ? incoming : current;
+  }
+
+  return getTripUpdatedMillis(incoming) >= getTripUpdatedMillis(current) ? incoming : current;
+};
+
+export const dedupeTrips = (trips: Trip[]): Trip[] => {
+  const byId = new Map<string, Trip>();
+  trips.forEach((trip) => {
+    const existing = byId.get(trip.id);
+    byId.set(trip.id, existing ? choosePreferredTrip(existing, trip) : trip);
+  });
+
+  const byContent = new Map<string, Trip>();
+  Array.from(byId.values()).forEach((trip) => {
+    const key = getTripContentKey(trip);
+    if (isEmptyTripContentKey(key)) {
+      byContent.set(`id:${trip.id}`, trip);
+      return;
+    }
+
+    const existing = byContent.get(key);
+    byContent.set(key, existing ? choosePreferredTrip(existing, trip) : trip);
+  });
+
+  return Array.from(byContent.values()).sort((a, b) => getTripUpdatedMillis(b) - getTripUpdatedMillis(a));
+};
+
+export interface DuplicateTripCleanupPlan {
+  keepTripIds: string[];
+  deletePrivateTripIds: string[];
+  groups: Array<{
+    key: string;
+    keepTripId: string;
+    deletePrivateTripIds: string[];
+    tripIds: string[];
+  }>;
+}
+
+const chooseCleanupKeeper = (group: Trip[], preferredTripId?: string): Trip => {
+  const preferred = preferredTripId ? group.find(trip => trip.id === preferredTripId) : undefined;
+  if (preferred) return preferred;
+
+  const shared = group.find(trip => trip.isShared);
+  if (shared) return shared;
+
+  return [...group].sort((a, b) => {
+    const scoreDelta = getTripCompletenessScore(b) - getTripCompletenessScore(a);
+    if (scoreDelta !== 0) return scoreDelta;
+    return getTripUpdatedMillis(b) - getTripUpdatedMillis(a);
+  })[0];
+};
+
+export const planDuplicateTripCleanup = (trips: Trip[], preferredTripId?: string): DuplicateTripCleanupPlan => {
+  const groupsByKey = new Map<string, Trip[]>();
+
+  trips.forEach((trip) => {
+    const key = getTripContentKey(trip);
+    const groupKey = isEmptyTripContentKey(key) ? `id:${trip.id}` : key;
+    groupsByKey.set(groupKey, [...(groupsByKey.get(groupKey) || []), trip]);
+  });
+
+  const groups = Array.from(groupsByKey.entries())
+    .filter(([, group]) => group.length > 1)
+    .map(([key, group]) => {
+      const keeper = chooseCleanupKeeper(group, preferredTripId);
+      const deletePrivateTripIds = group
+        .filter(trip => !trip.isShared && trip.id !== keeper.id)
+        .map(trip => trip.id);
+
+      return {
+        key,
+        keepTripId: keeper.id,
+        deletePrivateTripIds,
+        tripIds: group.map(trip => trip.id),
+      };
+    })
+    .filter(group => group.deletePrivateTripIds.length > 0);
+
+  return {
+    keepTripIds: groups.map(group => group.keepTripId),
+    deletePrivateTripIds: Array.from(new Set(groups.flatMap(group => group.deletePrivateTripIds))),
+    groups,
+  };
+};
+
+export const cleanupDuplicateStoredTrips = async (
+  userId: string,
+  userEmail?: string,
+  preferredTripId?: string,
+): Promise<DuplicateTripCleanupPlan> => {
+  const privateTrips = await getUserTrips(userId);
+  const sharedRefs = await getUserSharedTrips(userId);
+  const sharedTrips = (await Promise.all(sharedRefs.map(async (ref) => {
+    const trip = await getSharedTrip(ref.sharedTripId);
+    if (!trip) return null;
+    return {
+      ...trip,
+      id: ref.sharedTripId,
+      isShared: true,
+      sharing: {
+        shareId: ref.sharedTripId,
+        role: ref.role,
+        owner: 'fetched',
+        collaborators: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        updatedBy: 'system',
+      },
+    } as Trip;
+  }))).filter((trip): trip is Trip => trip !== null);
+
+  const plan = planDuplicateTripCleanup([...privateTrips, ...sharedTrips], preferredTripId);
+  await Promise.all(plan.deletePrivateTripIds.map(tripId => firestoreDeleteTrip(userId, tripId)));
+
+  if (userEmail) {
+    const emailTrips = await getTripsByEmail(userEmail);
+    const unreachableDuplicates = planDuplicateTripCleanup([...emailTrips, ...sharedTrips], preferredTripId)
+      .deletePrivateTripIds
+      .filter(tripId => !plan.deletePrivateTripIds.includes(tripId));
+
+    if (unreachableDuplicates.length > 0) {
+      console.warn('⚠️ [StorageService] Duplicate trips found outside the current user path; skipped safe deletion:', unreachableDuplicates);
+    }
+  }
+
+  return plan;
+};
 
 /**
  * Load trips from localStorage (fallback for unauthenticated users)
@@ -133,7 +304,7 @@ export const loadTrips = async (userId?: string, userEmail?: string): Promise<Tr
     console.log(`🔥 [StorageService] Loaded ${sharedTrips.length} valid shared trips`);
 
     // 3. Merge & Return
-    const allTrips = [...privateTrips, ...sharedTrips];
+    const allTrips = dedupeTrips([...privateTrips, ...sharedTrips]);
     console.log(`🔥 [StorageService] Total trips to return: ${allTrips.length}`);
     return allTrips;
   } catch (error) {
@@ -147,17 +318,19 @@ export const loadTrips = async (userId?: string, userEmail?: string): Promise<Tr
  * Save all trips - uses Firestore if userId provided, otherwise localStorage
  */
 export const saveTrips = async (trips: Trip[], userId?: string): Promise<void> => {
+  const uniqueTrips = dedupeTrips(trips);
+
   if (!userId) {
-    saveTripsToLocal(trips);
+    saveTripsToLocal(uniqueTrips);
     return;
   }
 
   try {
-    await saveAllTrips(userId, trips);
+    await Promise.all(uniqueTrips.map(trip => saveSingleTrip(trip, userId)));
   } catch (error) {
     console.error('Error saving trips to Firestore:', error);
     // Fallback to local storage on error
-    saveTripsToLocal(trips);
+    saveTripsToLocal(uniqueTrips);
   }
 };
 

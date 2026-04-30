@@ -938,3 +938,31 @@ export const downloadTripHTML = (trip: Trip): void => {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
+
+export const exportTripPDF = (trip: Trip): void => {
+  const html = generateTripHTML(trip);
+  const safeTitle = `${trip.name.replace(/[^a-zA-Z0-9֐-׿ ]/g, '').trim() || 'trip'} - סיכום מסע`;
+  const printableHtml = html.replace(/<title>.*?<\/title>/, `<title>${esc(safeTitle)}</title>`);
+
+  const iframe = document.createElement('iframe');
+  iframe.title = safeTitle;
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-10000px';
+  iframe.style.top = '0';
+  iframe.style.width = '1px';
+  iframe.style.height = '1px';
+  iframe.style.opacity = '0';
+  document.body.appendChild(iframe);
+
+  iframe.onload = () => {
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => iframe.remove(), 60000);
+    }, 300);
+  };
+
+  iframe.contentDocument?.open();
+  iframe.contentDocument?.write(printableHtml);
+  iframe.contentDocument?.close();
+};
