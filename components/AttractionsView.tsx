@@ -291,19 +291,20 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // of leaving it silently undefined) so the map view can surface a count
     // of items that couldn't be located.
     const geocodeAndPersistAttractions = (cats: AttractionCategory[]) => {
-        type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number; countryHint?: string };
+        type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number; countryHint?: string; cityHint?: string };
         const flat: Item[] = [];
         const baseCountryHint = (trip.destinationEnglish || trip.destination)?.split(/[-,]/)[0]?.trim() || '';
         cats.forEach(c => {
             const categoryRegion = c.region || '';
-            c.attractions.forEach(a => flat.push({
-                id: a.id, name: a.name, location: a.location,
-                googleMapsUrl: a.googleMapsUrl, lat: a.lat, lng: a.lng,
-                countryHint: [
-                    displayCityName(a.region || categoryRegion, 'en') || a.region || categoryRegion,
-                    baseCountryHint
-                ].filter(Boolean).join(', '),
-            }));
+            c.attractions.forEach(a => {
+                const cityEn = displayCityName(a.region || categoryRegion, 'en') || a.region || categoryRegion;
+                flat.push({
+                    id: a.id, name: a.name, location: a.location,
+                    googleMapsUrl: a.googleMapsUrl, lat: a.lat, lng: a.lng,
+                    cityHint: cityEn || undefined,
+                    countryHint: [cityEn, baseCountryHint].filter(Boolean).join(', '),
+                });
+            });
         });
         const pendingItems = flat.filter(i => typeof i.lat !== 'number' || typeof i.lng !== 'number');
         if (pendingItems.length === 0) return;

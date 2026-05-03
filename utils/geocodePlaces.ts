@@ -103,6 +103,106 @@ export const coordInBbox = (lat: number, lng: number, bbox: [number, number, num
   return lat >= minLat && lat <= maxLat && lng >= minLon && lng <= maxLon;
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// Per-CITY bbox — solves the chain-restaurant bug where a place tagged
+// "Snow Wish Mango Sticky Rice, Pattaya, Thailand" resolves to the
+// Bangkok branch because both cities share the Thailand bbox.
+//
+// Strategy: lazy-cache. First call for a city, geocode its centroid via
+// Photon biased by the country bbox, build a ±0.18° square around it,
+// persist to localStorage. Subsequent calls are free.
+// ─────────────────────────────────────────────────────────────────────────
+
+const CITY_BBOX_KEY = 'tp:cityBbox:v1';
+const CITY_BBOX_TTL_MS = 90 * 24 * 3600 * 1000; // 90 days
+// Default half-width of the city box in degrees latitude (~20 km).
+const DEFAULT_CITY_HALF = 0.18;
+// Wider override for big metros that have legitimate places far from the centroid.
+const CITY_HALF_OVERRIDE: Record<string, number> = {
+        bangkok: 0.30,
+        tokyo: 0.30,
+        seoul: 0.28,
+        beijing: 0.30,
+        shanghai: 0.30,
+        london: 0.30,
+        paris: 0.25,
+        'new york': 0.30,
+        'mexico city': 0.30,
+};
+
+interface CityBboxEntry { centroid: { lat: number; lng: number }; bbox: [number, number, number, number]; t: number }
+type CityBboxCache = Record<string, CityBboxEntry>;
+
+const readCityBboxCache = (): CityBboxCache => {
+        try {
+                if (typeof localStorage === 'undefined') return {};
+                return JSON.parse(localStorage.getItem(CITY_BBOX_KEY) || '{}');
+        } catch { return {}; }
+};
+let cityBboxMem: CityBboxCache | null = null;
+const cityBboxCache = (): CityBboxCache => (cityBboxMem ??= readCityBboxCache());
+const persistCityBbox = () => {
+        try {
+                if (typeof localStorage === 'undefined' || !cityBboxMem) return;
+                localStorage.setItem(CITY_BBOX_KEY, JSON.stringify(cityBboxMem));
+        } catch { /* quota */ }
+};
+const cityBboxKey = (cityName: string, countryHint?: string): string =>
+        `${(cityName || '').trim().toLowerCase()}|${(countryHint || '').trim().toLowerCase()}`;
+
+const buildBboxAroundCentroid = (
+        cityName: string,
+        centroid: { lat: number; lng: number },
+): [number, number, number, number] => {
+        const half = CITY_HALF_OVERRIDE[cityName.trim().toLowerCase()] ?? DEFAULT_CITY_HALF;
+        const minLat = centroid.lat - half;
+        const maxLat = centroid.lat + half;
+        // Compensate for longitude shrinking with latitude so the box stays roughly square.
+        const lngHalf = half / Math.max(0.2, Math.cos(centroid.lat * Math.PI / 180));
+        const minLng = centroid.lng - lngHalf;
+        const maxLng = centroid.lng + lngHalf;
+        return [minLng, minLat, maxLng, maxLat];
+};
+
+/**
+ * Returns a city-level bbox suitable for biasing Photon and validating
+ * geocoded results. Lazy-resolves the city centroid via one Photon call
+ * and caches it in localStorage. Returns null only if Photon can't find
+ * the city at all.
+ */
+export const getCityBbox = async (
+        cityName: string,
+        countryHint?: string,
+): Promise<[number, number, number, number] | null> => {
+        if (!cityName || !cityName.trim()) return null;
+        const key = cityBboxKey(cityName, countryHint);
+        const cache = cityBboxCache();
+        const hit = cache[key];
+        if (hit && Date.now() - hit.t < CITY_BBOX_TTL_MS) return hit.bbox;
+
+        const countryBbox = countryHint ? getCountryBbox(countryHint) : null;
+        const query = countryHint ? `${cityName.trim()}, ${countryHint.trim()}` : cityName.trim();
+        const centroid = await photonGeocode(query, countryBbox || undefined);
+        if (!centroid) return null;
+        const bbox = buildBboxAroundCentroid(cityName, centroid);
+        cache[key] = { centroid, bbox, t: Date.now() };
+        persistCityBbox();
+        return bbox;
+};
+
+/** Synchronous lookup for cached city bbox — returns null if not yet resolved. */
+export const getCityBboxSync = (
+        cityName: string,
+        countryHint?: string,
+): [number, number, number, number] | null => {
+        if (!cityName || !cityName.trim()) return null;
+        const key = cityBboxKey(cityName, countryHint);
+        const hit = cityBboxCache()[key];
+        if (!hit) return null;
+        if (Date.now() - hit.t >= CITY_BBOX_TTL_MS) return null;
+        return hit.bbox;
+};
+
 interface CacheEntry { coords: { lat: number; lng: number }; t: number }
 type Cache = Record<string, CacheEntry>;
 
@@ -234,6 +334,12 @@ export interface GeocodableInput {
         // the location alone is ambiguous (e.g. "Pattaya" matches a tiny
         // village in Israel; "Pattaya, Thailand" finds the right place).
         countryHint?: string;
+        // City hint — when supplied, Photon is biased to the CITY bbox
+        // (not just the country) and results outside that city are rejected.
+        // Critical for chain places where the same name resolves to a
+        // different city's branch (e.g. "Snow Wish Mango Sticky Rice"
+        // resolving to the Bangkok branch when the AI tagged it as Pattaya).
+        cityHint?: string;
 }
 
 /**
@@ -245,11 +351,21 @@ export interface GeocodableInput {
 export const geocodePlace = async (input: GeocodableInput): Promise<{ lat: number; lng: number } | null> => {
         const c = cache();
         const k = cacheKey(input.name, input.location || input.address || '');
-        const bbox = getCountryBbox(input.countryHint || '');
+        const countryBbox = getCountryBbox(input.countryHint || '');
+        // City bbox: tighter than country, prevents chain branches in other cities.
+        // Resolved lazily on first use per (city, country) and persisted to localStorage.
+        const cityBbox = input.cityHint
+                ? await getCityBbox(input.cityHint, input.countryHint)
+                : null;
+        // Effective bbox = city when available, otherwise country.
+        const bbox = cityBbox || countryBbox;
+
         const hit = c[k];
         if (hit && Date.now() - hit.t < CACHE_TTL_MS) {
-                // Reject cached coords that landed in the wrong country — they were
-                // saved before bbox validation existed and will be re-geocoded now.
+                // Reject cached coords that landed outside the trip's expected bbox.
+                // The check now uses the tighter city bbox when available — so a
+                // stale cache entry from a previous country-bbox-only run gets
+                // re-geocoded under the new tighter constraint.
                 if (bbox && !coordInBbox(hit.coords.lat, hit.coords.lng, bbox)) {
                         delete c[k];
                 } else {
@@ -266,33 +382,40 @@ export const geocodePlace = async (input: GeocodableInput): Promise<{ lat: numbe
                 }
         }
 
-        // Build query variants: with bbox (primary) then without (fallback).
-        // The bbox is passed to Photon so it only returns results inside the
-        // trip's country — prevents "Koh Chang restaurant in Norway" mismatches.
+        // Build query variants. With cityHint, prefer "Name, City, Country" first
+        // so Photon's relevance ranking is biased toward the right city.
         const baseQuery = [input.name, input.location || input.address].filter(Boolean).join(', ');
+        const withCity = input.cityHint ? `${input.name}, ${input.cityHint}${input.countryHint ? `, ${input.countryHint}` : ''}` : null;
         const withHint = input.countryHint ? `${baseQuery}, ${input.countryHint}` : null;
 
-        const attempts: Array<{ query: string; useBbox: boolean }> = [
-                ...(withHint ? [{ query: withHint, useBbox: !!bbox }] : []),
-                { query: baseQuery, useBbox: !!bbox },
-                // Last-resort: repeat without bbox in case the name is genuinely
-                // ambiguous (e.g. the place has a non-Thai-sounding name but IS in Thailand)
-                ...(bbox && withHint ? [{ query: withHint, useBbox: false }] : []),
+        const attempts: Array<{ query: string; useBbox: 'city' | 'country' | 'none' }> = [
+                // 1. City-tagged query, biased + validated by city bbox.
+                ...(withCity && cityBbox ? [{ query: withCity, useBbox: 'city' as const }] : []),
+                // 2. Country-tagged query with country bbox.
+                ...(withHint ? [{ query: withHint, useBbox: countryBbox ? 'country' as const : 'none' as const }] : []),
+                // 3. Base query with country bbox.
+                { query: baseQuery, useBbox: countryBbox ? 'country' as const : 'none' as const },
+                // 4. Last-resort without bbox in case the name is genuinely ambiguous.
+                ...(bbox && withHint ? [{ query: withHint, useBbox: 'none' as const }] : []),
         ];
 
         for (const { query, useBbox } of attempts) {
-                const result = await geocodeFallbackChain(query, useBbox ? bbox! : undefined);
+                const biasBbox = useBbox === 'city' ? cityBbox : useBbox === 'country' ? countryBbox : null;
+                const result = await geocodeFallbackChain(query, biasBbox || undefined);
                 if (!result) continue;
-                // Hard reject: result outside expected country bbox.
+                // Hard reject: result outside the effective bbox (city if we have
+                // one, otherwise country). Prevents chain restaurants from
+                // resolving to a sibling city's branch.
                 if (bbox && !coordInBbox(result.lat, result.lng, bbox)) continue;
                 c[k] = { coords: result, t: Date.now() };
                 persist();
                 return result;
         }
 
-        // Fallback: location-only query pinned to the right city.
+        // Fallback: location-only query pinned to the right city/country.
         if (input.location || input.address) {
-                const locParts = [input.location || input.address, input.countryHint].filter(Boolean) as string[];
+                const locParts = [input.location || input.address, input.cityHint, input.countryHint]
+                        .filter(Boolean) as string[];
                 const locOnly = await geocodeFallbackChain(locParts.join(', '), bbox ?? undefined);
                 if (locOnly && (!bbox || coordInBbox(locOnly.lat, locOnly.lng, bbox))) {
                         return locOnly;

@@ -182,6 +182,7 @@ export interface HotelBooking {
   lng?: number;
   // New AI Field
   locationVibe?: string; // Short AI description of the neighborhood
+  locationVibeCheckedAt?: number; // epoch ms — TTL gate so the vibe doesn't re-fetch on every click
   // New Parsing Fields
   breakfastIncluded?: boolean; // Legacy boolean
   cancellationPolicy?: string;

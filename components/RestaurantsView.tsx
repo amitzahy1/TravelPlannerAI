@@ -366,7 +366,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // trip we captured when research started. The flush merges into the
     // LATEST trip and only touches aiRestaurants.
     const geocodeAndPersistRestaurants = (cats: RestaurantCategory[]) => {
-        type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number; countryHint?: string };
+        type Item = { id: string; name: string; location?: string; googleMapsUrl?: string; lat?: number; lng?: number; countryHint?: string; cityHint?: string };
         const flat: Item[] = [];
         // City-qualified countryHint: "Bangkok, Thailand" not just "Thailand" —
         // prevents the geocoder from resolving ambiguous addresses (e.g. a street
@@ -374,14 +374,17 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         const baseCountryHint = (trip.destinationEnglish || trip.destination)?.split(/[-,]/)[0]?.trim() || '';
         cats.forEach(c => {
             const categoryRegion = c.region || '';
-            c.restaurants.forEach(r => flat.push({
-                id: r.id, name: r.name, location: r.location,
-                googleMapsUrl: r.googleMapsUrl, lat: r.lat, lng: r.lng,
-                countryHint: [
-                    displayCityName(r.region || categoryRegion, 'en') || r.region || categoryRegion,
-                    baseCountryHint
-                ].filter(Boolean).join(', '),
-            }));
+            c.restaurants.forEach(r => {
+                const cityEn = displayCityName(r.region || categoryRegion, 'en') || r.region || categoryRegion;
+                flat.push({
+                    id: r.id, name: r.name, location: r.location,
+                    googleMapsUrl: r.googleMapsUrl, lat: r.lat, lng: r.lng,
+                    // City hint biases Photon to the per-city bbox so a chain
+                    // restaurant tagged "Pattaya" doesn't resolve to its Bangkok branch.
+                    cityHint: cityEn || undefined,
+                    countryHint: [cityEn, baseCountryHint].filter(Boolean).join(', '),
+                });
+            });
         });
         const pendingItems = flat.filter(i => typeof i.lat !== 'number' || typeof i.lng !== 'number');
         if (pendingItems.length === 0) return;
