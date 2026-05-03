@@ -13,6 +13,8 @@ import { GlobalPlaceModal } from './GlobalPlaceModal';
 import { ConfirmModal } from './ConfirmModal';
 import { Tabs } from './ui/Tabs';
 import { SkeletonCardGrid } from './ui/Skeleton';
+import { canEditTrip, isViewerOnly } from '../utils/tripPermissions';
+import { getLocalAI, setLocalAI } from '../utils/localTripAI';
 
 import { cleanTextForMap } from '../utils/textUtils';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
@@ -90,8 +92,26 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const tripRef = useRef(trip);
     useEffect(() => { tripRef.current = trip; }, [trip]);
 
-    // AI State
-    const [aiCategories, setAiCategories] = useState<AttractionCategory[]>(trip.aiAttractions || []);
+    // Permission gate — viewers run AI but their results stay local-only.
+    const viewerMode = isViewerOnly(trip);
+    const userCanEdit = canEditTrip(trip);
+
+    // AI State — for viewers, hydrate from local-AI store on top of shared.
+    const [aiCategories, setAiCategories] = useState<AttractionCategory[]>(() => {
+        const shared = trip.aiAttractions || [];
+        if (!viewerMode) return shared;
+        const local = getLocalAI(trip.id).aiAttractions;
+        return local && local.length > 0 ? local : shared;
+    });
+
+    const persistAiAttractions = (next: AttractionCategory[]) => {
+        const latest = tripRef.current;
+        if (userCanEdit) {
+            onUpdateTrip({ ...latest, aiAttractions: next });
+        } else {
+            setLocalAI(latest.id, { aiAttractions: next });
+        }
+    };
     const [loadingRecs, setLoadingRecs] = useState(false);
     const [recError, setRecError] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -118,7 +138,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // Wipe cached AI attractions — user starts fresh research manually
     const handleResetResearch = () => {
         setAiCategories([]);
-        onUpdateTrip({ ...tripRef.current, aiAttractions: [] });
+        persistAiAttractions([]);
         setSelectedCategory('all');
         setSelectedRater('all');
         setConfirmReset(false);
@@ -268,8 +288,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             }
 
             setAiCategories(accumulatedCategories);
-            const latestTrip = tripRef.current;
-            onUpdateTrip({ ...latestTrip, aiAttractions: accumulatedCategories });
+            persistAiAttractions(accumulatedCategories);
             setSelectedCity('all');
             // Upstream geocoding so the map view doesn't lazy-resolve 200+
             // attractions on first open.
@@ -329,9 +348,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 }),
             }));
             setAiCategories(next);
-            // ⚠️ Use the freshest trip — NOT the closure-captured one.
-            const latestTrip = tripRef.current;
-            onUpdateTrip({ ...latestTrip, aiAttractions: next });
+            persistAiAttractions(next);
             pendingFlush = 0;
         };
 
@@ -525,8 +542,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                     setAiCategories(merged);
                     setSelectedCategory('all');
-                    const latestTrip = tripRef.current;
-                    onUpdateTrip({ ...latestTrip, aiAttractions: merged });
+                    persistAiAttractions(merged);
                 } else {
                     console.warn("⚠️ [AI Warning] Response was valid JSON but contained no attraction results.", rawData);
                     setRecError('לא נמצאו אטרקציות עבור יעד זה.');
@@ -819,6 +835,16 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {searchResults.map(res => <AttractionRecommendationCard key={res.id} rec={res} tripDestination={trip.destination} isAdded={addedIds.has(res.id) || trip.attractions.some(c => c.attractions.some(a => a.name === res.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(res)} />)}
                     </div>
+                </div>
+            )}
+
+            {/* Viewer-mode notice — for collaborators joined via the viewer link. */}
+            {viewerMode && (
+                <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] font-bold text-slate-600">
+                    <span className="flex items-center gap-1.5">
+                        <span>🔒</span>
+                        <span>תוצאות פרטיות — נשמרות רק במכשיר שלך</span>
+                    </span>
                 </div>
             )}
 

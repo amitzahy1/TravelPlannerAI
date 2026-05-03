@@ -13,6 +13,8 @@ import { PlaceCard } from './PlaceCard';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
 import { ConfirmModal } from './ConfirmModal';
 import { stripChainRestaurants } from '../utils/chainRestaurants';
+import { canEditTrip, isViewerOnly } from '../utils/tripPermissions';
+import { getLocalAI, setLocalAI, clearLocalAI, hasLocalAI } from '../utils/localTripAI';
 import { toast } from '../stores/useToastStore';
 
 // Extended interface for internal use
@@ -139,8 +141,31 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const tripRef = useRef(trip);
     useEffect(() => { tripRef.current = trip; }, [trip]);
 
-    // AI State
-    const [aiCategories, setAiCategories] = useState<RestaurantCategory[]>(trip.aiRestaurants || []);
+    // Permission gate — viewers run AI but their results stay local-only
+    // (in browser localStorage scoped by trip.id). Editors / owners write
+    // through to the shared trip as before.
+    const viewerMode = isViewerOnly(trip);
+    const userCanEdit = canEditTrip(trip);
+
+    // Centralised AI-persistence helper. Editors → shared Firestore trip.
+    // Viewers → browser localStorage. Same call signature for callers.
+    const persistAiRestaurants = (next: RestaurantCategory[]) => {
+        const latest = tripRef.current;
+        if (userCanEdit) {
+            onUpdateTrip({ ...latest, aiRestaurants: next });
+        } else {
+            setLocalAI(latest.id, { aiRestaurants: next });
+        }
+    };
+
+    // AI State — for viewers, hydrate from localStorage on top of the shared
+    // trip's aiRestaurants so the viewer sees both layers.
+    const [aiCategories, setAiCategories] = useState<RestaurantCategory[]>(() => {
+        const shared = trip.aiRestaurants || [];
+        if (!viewerMode) return shared;
+        const local = getLocalAI(trip.id).aiRestaurants;
+        return local && local.length > 0 ? local : shared;
+    });
     const [loadingRecs, setLoadingRecs] = useState(false);
     const [recError, setRecError] = useState('');
     // showCitySelector removed
@@ -168,7 +193,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // Wipe cached AI restaurants — user starts fresh research manually
     const handleResetResearch = () => {
         setAiCategories([]);
-        onUpdateTrip({ ...tripRef.current, aiRestaurants: [] });
+        persistAiRestaurants([]);
         setSelectedCategory('all');
         setSelectedRater('all');
         setConfirmReset(false);
@@ -339,8 +364,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             }
 
             setAiCategories(accumulatedCategories);
-            const latestTrip = tripRef.current;
-            onUpdateTrip({ ...latestTrip, aiRestaurants: accumulatedCategories });
+            persistAiRestaurants(accumulatedCategories);
             setSelectedCity('all');
             // Upstream geocoding — fill in lat/lng for every newly-fetched
             // restaurant in the background so the map view doesn't have to
@@ -409,9 +433,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 }),
             }));
             setAiCategories(next);
-            // ⚠️ Use the freshest trip — NOT the closure-captured one.
-            const latestTrip = tripRef.current;
-            onUpdateTrip({ ...latestTrip, aiRestaurants: next });
+            persistAiRestaurants(next);
             pendingFlush = 0;
         };
 
@@ -722,8 +744,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                     setAiCategories(merged);
                     setSelectedCategory('all');
-                    const latestTrip = tripRef.current;
-                    onUpdateTrip({ ...latestTrip, aiRestaurants: merged });
+                    persistAiRestaurants(merged);
                 } else {
                     console.warn("⚠️ [AI Warning] Response was valid JSON but contained no results.", rawData);
                     setRecError('לא נמצאו המלצות מסעדות עבור יעד זה. המודל לא הצליח לאתר תוצאות איכותיות.');
@@ -1163,6 +1184,28 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         ))}
                     </div>
                     <div className="border-b border-slate-200 my-4"></div>
+                </div>
+            )}
+
+            {/* Viewer-mode notice — for collaborators joined via the viewer
+                 link. Lets them know AI results stay on this device only. */}
+            {viewerMode && (
+                <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] font-bold text-slate-600">
+                    <span className="flex items-center gap-1.5">
+                        <span>🔒</span>
+                        <span>תוצאות פרטיות — נשמרות רק במכשיר שלך</span>
+                    </span>
+                    {hasLocalAI(trip.id) && (
+                        <button
+                            onClick={() => {
+                                clearLocalAI(trip.id);
+                                setAiCategories(trip.aiRestaurants || []);
+                            }}
+                            className="text-slate-500 hover:text-slate-800 underline underline-offset-2"
+                        >
+                            נקה תוצאות פרטיות
+                        </button>
+                    )}
                 </div>
             )}
 

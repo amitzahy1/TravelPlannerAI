@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Trip } from '../types';
 import { createSharedTrip, ensureSharedTripInvite } from '../services/firestoreService';
-import { X, Link, Copy, Check, Users, Shield, Globe, Plus } from 'lucide-react';
+import { X, Link, Copy, Check, Users, Shield, Globe, Plus, Pencil, Eye } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
 import { buildBrowserJoinTripUrl } from '../utils/shareUrl';
 
@@ -13,7 +13,7 @@ interface ShareModalProps {
 
 export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateTrip }) => {
         const [loading, setLoading] = useState(false);
-        const [copied, setCopied] = useState(false);
+        const [copiedRole, setCopiedRole] = useState<'editor' | 'viewer' | null>(null);
         const [inviteEmail, setInviteEmail] = useState('');
         const [successMessage, setSuccessMessage] = useState('');
         const [error, setError] = useState('');
@@ -22,9 +22,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
         const user = auth.currentUser;
         const isShared = trip.isShared && trip.sharing?.shareId;
 
-        const shareUrl = isShared
+        const baseUrl = isShared
                 ? buildBrowserJoinTripUrl(trip.sharing?.shareId || '')
                 : '';
+        // Append the role query param. Editor link is the legacy default
+        // (matches previously-shared links); viewer is the new read-only mode.
+        const editorUrl = baseUrl ? `${baseUrl}?role=editor` : '';
+        const viewerUrl = baseUrl ? `${baseUrl}?role=viewer` : '';
 
         // [SELF-HEALING] Fix broken links for existing shared trips
         React.useEffect(() => {
@@ -70,11 +74,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
                 }
         };
 
-        const handleCopy = () => {
-                if (!shareUrl) return;
-                navigator.clipboard.writeText(shareUrl);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
+        const handleCopyRole = (role: 'editor' | 'viewer') => {
+                const url = role === 'viewer' ? viewerUrl : editorUrl;
+                if (!url) return;
+                navigator.clipboard.writeText(url);
+                setCopiedRole(role);
+                setTimeout(() => setCopiedRole(null), 2000);
         };
 
         return (
@@ -129,20 +134,53 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
                                                         </button>
                                                 </div>
                                         ) : (
-                                                <div className="space-y-6 animate-fade-in">
-                                                        <div className="bg-slate-50 border border-slate-100 p-2 rounded-2xl flex items-center gap-3">
-                                                                <div className="bg-white flex-grow p-4 rounded-xl text-left text-sm text-slate-500 font-mono truncate border border-slate-50 select-all tracking-wide">
-                                                                        {shareUrl}
+                                                <div className="space-y-4 animate-fade-in" dir="rtl">
+                                                        {/* Editor link card */}
+                                                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-right">
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                        <div className="bg-white p-2 rounded-xl border border-blue-200">
+                                                                                <Pencil className="w-4 h-4 text-blue-600" />
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0">
+                                                                                <div className="text-sm font-black text-blue-900">קישור עריכה</div>
+                                                                                <div className="text-[11px] text-blue-700/80 leading-tight">מי שיקבל יוכל להוסיף ולערוך פריטים</div>
+                                                                        </div>
                                                                 </div>
-                                                                <button
-                                                                        onClick={handleCopy}
-                                                                        className={`p-4 rounded-xl font-bold transition-all flex items-center justify-center ${copied
-                                                                                ? 'bg-green-500 text-white shadow-md'
-                                                                                : 'bg-slate-900 text-white hover:bg-slate-800 shadow-md'
-                                                                                }`}
-                                                                >
-                                                                        {copied ? <Check className="w-6 h-6" /> : <Copy className="w-6 h-6" />}
-                                                                </button>
+                                                                <div className="bg-white rounded-xl border border-blue-100 flex items-center gap-2 p-1.5">
+                                                                        <div className="flex-1 min-w-0 px-2 py-1 text-xs text-slate-500 font-mono truncate select-all" dir="ltr">{editorUrl}</div>
+                                                                        <button
+                                                                                onClick={() => handleCopyRole('editor')}
+                                                                                className={`flex-shrink-0 px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1 ${copiedRole === 'editor'
+                                                                                        ? 'bg-emerald-500 text-white'
+                                                                                        : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                                                                        >
+                                                                                {copiedRole === 'editor' ? <><Check className="w-3.5 h-3.5" /> הועתק</> : <><Copy className="w-3.5 h-3.5" /> העתק</>}
+                                                                        </button>
+                                                                </div>
+                                                        </div>
+
+                                                        {/* Viewer link card */}
+                                                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-right">
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                        <div className="bg-white p-2 rounded-xl border border-slate-200">
+                                                                                <Eye className="w-4 h-4 text-slate-600" />
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0">
+                                                                                <div className="text-sm font-black text-slate-800">קישור צפייה</div>
+                                                                                <div className="text-[11px] text-slate-500 leading-tight">מי שיקבל יוכל לעיין בלבד — לא יערוך</div>
+                                                                        </div>
+                                                                </div>
+                                                                <div className="bg-white rounded-xl border border-slate-200 flex items-center gap-2 p-1.5">
+                                                                        <div className="flex-1 min-w-0 px-2 py-1 text-xs text-slate-500 font-mono truncate select-all" dir="ltr">{viewerUrl}</div>
+                                                                        <button
+                                                                                onClick={() => handleCopyRole('viewer')}
+                                                                                className={`flex-shrink-0 px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1 ${copiedRole === 'viewer'
+                                                                                        ? 'bg-emerald-500 text-white'
+                                                                                        : 'bg-slate-700 text-white hover:bg-slate-800'}`}
+                                                                        >
+                                                                                {copiedRole === 'viewer' ? <><Check className="w-3.5 h-3.5" /> הועתק</> : <><Copy className="w-3.5 h-3.5" /> העתק</>}
+                                                                        </button>
+                                                                </div>
                                                         </div>
 
                                                         {/* Refresh / Fix Link UI */}
@@ -160,21 +198,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
                                                                                 {loading ? '⌛ מעבד...' : '♻️ חידוש לינק (במקרה של שגיאה)'}
                                                                         </button>
                                                                 )}
-                                                        </div>
-
-                                                        <div className="flex items-center justify-center gap-8 mt-4">
-                                                                <div className="flex flex-col items-center gap-2">
-                                                                        <div className="bg-emerald-50 p-3 rounded-2xl text-emerald-600 border border-emerald-100"><Shield className="w-6 h-6" /></div>
-                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">מאובטח</span>
-                                                                </div>
-                                                                <div className="flex flex-col items-center gap-2">
-                                                                        <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600 border border-indigo-100"><Globe className="w-6 h-6" /></div>
-                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">סנכרון מלא</span>
-                                                                </div>
-                                                                <div className="flex flex-col items-center gap-2">
-                                                                        <div className="bg-orange-50 p-3 rounded-2xl text-orange-600 border border-orange-100"><Users className="w-6 h-6" /></div>
-                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">עריכה משותפת</span>
-                                                                </div>
                                                         </div>
                                                 </div>
                                         )}

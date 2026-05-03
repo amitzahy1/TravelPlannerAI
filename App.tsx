@@ -33,11 +33,22 @@ import { InviteeWelcome } from './components/onboarding/InviteeWelcome';
 import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
 
-const getJoinShareIdFromHash = () => {
+const getJoinShareIdFromHash = (): { shareId: string; role: 'editor' | 'viewer' } | null => {
   const hash = window.location.hash;
   if (!hash.startsWith('#/join/')) return null;
-  const shareId = hash.replace('#/join/', '').split('?')[0].trim();
-  return shareId || null;
+  const tail = hash.replace('#/join/', '');
+  const [shareIdRaw, qs] = tail.split('?');
+  const shareId = (shareIdRaw || '').trim();
+  if (!shareId) return null;
+  // Parse ?role=editor / ?role=viewer (defaults to 'editor' for legacy links)
+  let role: 'editor' | 'viewer' = 'editor';
+  if (qs) {
+    const params = new URLSearchParams(qs);
+    const r = (params.get('role') || '').toLowerCase();
+    if (r === 'viewer') role = 'viewer';
+    else if (r === 'editor') role = 'editor';
+  }
+  return { shareId, role };
 };
 
 // ...
@@ -58,7 +69,7 @@ const AppContent: React.FC = () => {
   // Local UI State
   const [currentTab, setCurrentTab] = useState('itinerary');
   // showAdmin removed - using 'trips' tab instead
-  const [joinShareId, setJoinShareId] = useState<string | null>(() => getJoinShareIdFromHash());
+  const [joinShareId, setJoinShareId] = useState<{ shareId: string; role: 'editor' | 'viewer' } | null>(() => getJoinShareIdFromHash());
   const [showOnboarding, setShowOnboarding] = useState(false);
   // Once-per-shareId welcome carousel for invitees who just joined a shared trip.
   const [welcomeForShareId, setWelcomeForShareId] = useState<string | null>(null);
@@ -403,13 +414,14 @@ const AppContent: React.FC = () => {
 
       {joinShareId && (
         <JoinTripModal
-          shareId={joinShareId}
+          shareId={joinShareId.shareId}
+          role={joinShareId.role}
           onClose={() => {
             setJoinShareId(null);
             window.history.replaceState(null, '', window.location.pathname);
           }}
           onJoinSuccess={(newTrip) => {
-            const justJoinedShareId = joinShareId;
+            const justJoinedShareId = joinShareId.shareId;
             setJoinShareId(null);
             saveSingleTrip(newTrip, user?.uid).then(() => {
               setActiveTripId(newTrip.id);

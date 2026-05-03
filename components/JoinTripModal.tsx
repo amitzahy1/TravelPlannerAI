@@ -6,11 +6,12 @@ import { Globe, Users, Shield, Check, X, Plane, AlertTriangle } from 'lucide-rea
 
 interface JoinTripModalProps {
         shareId: string;
+        role?: 'editor' | 'viewer';
         onClose: () => void;
         onJoinSuccess: (trip: Trip) => void;
 }
 
-export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, onClose, onJoinSuccess }) => {
+export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, role = 'editor', onClose, onJoinSuccess }) => {
         const [loading, setLoading] = useState(true);
         const [error, setError] = useState<string | null>(null);
         const [tripPreview, setTripPreview] = useState<TripInvite | null>(null);
@@ -45,7 +46,7 @@ export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, onClose, 
                 setJoining(true);
                 try {
                         // Use the shareId from props, not the trip internal ID!
-                        const joinedTrip = await joinSharedTrip(user.uid, shareId, user.email || 'Unknown User');
+                        const joinedTrip = await joinSharedTrip(user.uid, shareId, user.email || 'Unknown User', role);
                         onJoinSuccess(joinedTrip);
                         // The parent component should handle saving/updating current user state
                 } catch (err: any) {
@@ -117,10 +118,23 @@ export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, onClose, 
                                                 </div>
                                         </div>
 
-                                        <div className="text-center mb-8">
+                                        <div className="text-center mb-6">
                                                 <p className="text-slate-600 font-medium">
-                                                        You've been invited to join <span className="font-black text-slate-800">{tripPreview.tripName}</span>.
-                                                        Accepting will add this trip to your dashboard.
+                                                        הוזמנת להצטרף לטיול <span className="font-black text-slate-800">{tripPreview.tripName}</span>.
+                                                </p>
+                                        </div>
+
+                                        <div className={`mb-6 p-4 rounded-2xl border text-center ${role === 'viewer' ? 'bg-slate-50 border-slate-200' : 'bg-blue-50 border-blue-100'}`}>
+                                                <div className="flex items-center justify-center gap-2 mb-1">
+                                                        <span className="text-lg">{role === 'viewer' ? '👀' : '✏️'}</span>
+                                                        <span className={`text-sm font-black ${role === 'viewer' ? 'text-slate-700' : 'text-blue-700'}`}>
+                                                                {role === 'viewer' ? 'הזמנת צפייה' : 'הזמנת עריכה'}
+                                                        </span>
+                                                </div>
+                                                <p className="text-xs text-slate-500 leading-relaxed">
+                                                        {role === 'viewer'
+                                                                ? 'תוכל לעיין בכל מה שהבונה תכנן ולעשות מחקר אישי. שינויים שלך יישמרו רק במכשיר הזה.'
+                                                                : 'תוכל להוסיף ולערוך פריטים בטיול. השינויים שלך יראו לכל המשתתפים.'}
                                                 </p>
                                         </div>
 
