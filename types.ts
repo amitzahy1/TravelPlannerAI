@@ -380,12 +380,16 @@ export interface SharedTripMetadata {
   createdAt: Date;
   updatedAt: Date;
   updatedBy: string;          // userId of last editor
-  role?: 'owner' | 'collaborator'; // UI helper field
+  role?: TripRole; // UI helper field
 }
+
+// 'collaborator' is a legacy synonym for 'editor' kept for back-compat with
+// already-joined trips. New joins set 'editor' or 'viewer' explicitly.
+export type TripRole = 'owner' | 'editor' | 'viewer' | 'collaborator';
 
 export interface UserTripRef {
   sharedTripId: string;
-  role: 'owner' | 'collaborator';
+  role: TripRole;
   joinedAt: Date;
   tripName: string;           // cached trip name for display
 }

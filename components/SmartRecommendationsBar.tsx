@@ -5,23 +5,31 @@ import {
         Lightbulb, Utensils, MapPin, Hotel, Car, X, Calendar, Star, ChevronLeft, ChevronRight, Sparkles, AlertTriangle, Clock, ChevronDown
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
+import {
+        computeRecommendations,
+        type Recommendation,
+        type RecommendationType,
+} from '../utils/tripRecommendations';
+import { dismissRec, getDismissedRecs } from '../utils/dismissedRecommendations';
 
-// Grouped recommendation type
-interface GroupedRecommendation {
-        id: string;
-        type: 'restaurants' | 'attractions' | 'hotel_missing' | 'transfer' | 'data_warning'
-                | 'food_research_missing' | 'attractions_research_missing';
-        title: string;
-        subtitle: string;
+// Visual decoration for each recommendation type. Mirrors the previous
+// inline icon/color/bgColor fields on the old GroupedRecommendation shape.
+const TYPE_VISUALS: Record<RecommendationType, { icon: any; color: string; bgColor: string }> = {
+        data_warning: { icon: AlertTriangle, color: 'text-amber-600', bgColor: 'bg-amber-100 border-amber-300' },
+        restaurants: { icon: Utensils, color: 'text-orange-600', bgColor: 'bg-orange-50 border-orange-200' },
+        attractions: { icon: MapPin, color: 'text-emerald-600', bgColor: 'bg-emerald-50 border-emerald-200' },
+        hotel_missing: { icon: Hotel, color: 'text-indigo-600', bgColor: 'bg-indigo-50 border-indigo-200' },
+        transfer: { icon: Car, color: 'text-slate-700', bgColor: 'bg-slate-50 border-slate-200' },
+        food_research_missing: { icon: Utensils, color: 'text-orange-700', bgColor: 'bg-orange-50 border-orange-200' },
+        attractions_research_missing: { icon: MapPin, color: 'text-emerald-700', bgColor: 'bg-emerald-50 border-emerald-200' },
+};
+
+// Decorated recommendation — adds the visual fields the chip/popup expect.
+type DecoratedRec = Recommendation & {
         icon: any;
         color: string;
         bgColor: string;
-        items?: (Restaurant | Attraction)[];
-        suggestedDates?: string[];
-        warningDetails?: string[];
-        // For recommendations that just navigate (no popup)
-        navigateTo?: 'restaurants' | 'attractions' | 'flights' | 'hotels';
-}
+};
 
 interface Props {
         trip: Trip;
@@ -32,6 +40,9 @@ interface Props {
         onScheduleFavorite: (item: Restaurant | Attraction | { name: string, id: string }, dateIso: string, type: 'food' | 'attraction' | 'transfer' | 'hotel_missing') => void;
         // Optional: Navigate to Hotels/Flights tab
         onSwitchTab?: (tab: string) => void;
+        // Notify parent when a chip was dismissed so it can refresh its
+        // own count badge without re-mounting this component.
+        onRecommendationsChanged?: () => void;
 }
 
 export const SmartRecommendationsBar: React.FC<Props> = ({
@@ -40,203 +51,37 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
         favoriteAttractions,
         timeline,
         onScheduleFavorite,
-        onSwitchTab
+        onSwitchTab,
+        onRecommendationsChanged,
 }) => {
-        const [selectedRec, setSelectedRec] = useState<GroupedRecommendation | null>(null);
+        const [selectedRec, setSelectedRec] = useState<DecoratedRec | null>(null);
         const [scrollIndex, setScrollIndex] = useState(0);
         const [itemToSchedule, setItemToSchedule] = useState<{ item: Restaurant | Attraction | { name: string, id: string }, type: 'food' | 'attraction' | 'transfer' | 'hotel_missing' } | null>(null);
+        // Bumped on dismiss so the recommendations memo re-evaluates the
+        // localStorage dismiss list — there's no React state for the list itself.
+        const [dismissTick, setDismissTick] = useState(0);
 
         // Mobile Collapsible State
         const [isCollapsed, setIsCollapsed] = useState(true);
 
-        const recommendations = useMemo(() => {
-                // ... (existing logic) ...
+        const handleDismiss = (recId: string) => {
+                dismissRec(trip.id, recId);
+                setDismissTick(v => v + 1);
+                onRecommendationsChanged?.();
+        };
 
-                const recs: GroupedRecommendation[] = [];
-
-                // Get cities from timeline for matching
-                const citiesByDate = new Map<string, string>();
-                timeline.forEach(day => {
-                        if (day.locationContext) {
-                                citiesByDate.set(day.dateIso, day.locationContext.toLowerCase());
-                        }
-                });
-
-                // 1. Group unscheduled favorite restaurants
-                const unscheduledRestaurants = favoriteRestaurants.filter(r => !r.reservationDate);
-                if (unscheduledRestaurants.length > 0) {
-                        // Find matching dates for all restaurants
-                        const allMatchingDates = new Set<string>();
-                        unscheduledRestaurants.forEach(restaurant => {
-                                const resLocation = (restaurant.location || restaurant.region || '').toLowerCase();
-                                Array.from(citiesByDate.entries()).forEach(([date, city]) => {
-                                        if (resLocation.includes(city) || city.includes(resLocation.split(',')[0])) {
-                                                allMatchingDates.add(date);
-                                        }
-                                });
-                        });
-
-                        recs.push({
-                                id: 'group-restaurants',
-                                type: 'restaurants',
-                                title: `מסעדות מועדפות`,
-                                subtitle: `🍽️ ${unscheduledRestaurants.length} מסעדות ששמרת - לא נקבעו`,
-                                icon: Utensils,
-                                color: 'text-orange-600',
-                                bgColor: 'bg-orange-50 border-orange-200',
-                                items: unscheduledRestaurants,
-                                suggestedDates: allMatchingDates.size > 0 ? Array.from(allMatchingDates) : timeline.map(d => d.dateIso)
-                        });
-                }
-
-                // 2. Group unscheduled favorite attractions
-                const unscheduledAttractions = favoriteAttractions.filter(a => !a.scheduledDate);
-                if (unscheduledAttractions.length > 0) {
-                        const allMatchingDates = new Set<string>();
-                        unscheduledAttractions.forEach(attraction => {
-                                const attrLocation = (attraction.location || attraction.region || '').toLowerCase();
-                                Array.from(citiesByDate.entries()).forEach(([date, city]) => {
-                                        if (attrLocation.includes(city) || city.includes(attrLocation.split(',')[0])) {
-                                                allMatchingDates.add(date);
-                                        }
-                                });
-                        });
-
-                        recs.push({
-                                id: 'group-attractions',
-                                type: 'attractions',
-                                title: `אטרקציות מועדפות`,
-                                subtitle: `📍 ${unscheduledAttractions.length} אטרקציות ששמרת - לא נקבעו`,
-                                icon: MapPin,
-                                color: 'text-emerald-600',
-                                bgColor: 'bg-emerald-50 border-emerald-200',
-                                items: unscheduledAttractions,
-                                suggestedDates: allMatchingDates.size > 0 ? Array.from(allMatchingDates) : timeline.map(d => d.dateIso)
-                        });
-                }
-
-                // 3. Check for missing hotels on certain dates
-                const datesWithHotel = new Set<string>();
-                trip.hotels?.forEach(hotel => {
-                        const start = new Date(hotel.checkInDate);
-                        const end = new Date(hotel.checkOutDate);
-                        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-                                const current = new Date(start);
-                                while (current < end) {
-                                        datesWithHotel.add(current.toISOString().split('T')[0]);
-                                        current.setDate(current.getDate() + 1);
-                                }
-                        }
-                });
-
-                const datesWithoutHotel = timeline
-                        .filter(day => !datesWithHotel.has(day.dateIso))
-                        .filter((_, i, arr) => i > 0 && i < arr.length - 1);
-
-                if (datesWithoutHotel.length > 0) {
-                        recs.push({
-                                id: 'rec-hotel-missing',
-                                type: 'hotel_missing',
-                                title: `חסר מלון`,
-                                subtitle: `🏨 ${datesWithoutHotel.length} לילות ללא מלון רשום`,
-                                icon: Hotel,
-                                color: 'text-indigo-600',
-                                bgColor: 'bg-indigo-50 border-indigo-200',
-                                suggestedDates: datesWithoutHotel.map(d => d.dateIso)
-                        });
-                }
-
-                // 4. Suggest airport transfers on flight days
-                const flightDays = trip.flights?.segments?.map(seg => {
-                        const date = seg.date || (seg.departureTime && seg.departureTime.split('T')[0]);
-                        return date;
-                }).filter(Boolean) || [];
-
-                if (flightDays.length > 0) {
-                        const hasTransfer = trip.itinerary?.some(day =>
-                                day.activities.some(act =>
-                                        act.toLowerCase().includes('הסעה') ||
-                                        act.toLowerCase().includes('transfer') ||
-                                        act.toLowerCase().includes('taxi')
-                                )
-                        );
-
-                        if (!hasTransfer) {
-                                recs.push({
-                                        id: 'rec-transfer',
-                                        type: 'transfer',
-                                        title: 'הסעה לשדה תעופה',
-                                        subtitle: `🚗 כדאי לתכנן הסעה ליום טיסה`,
-                                        icon: Car,
-                                        color: 'text-slate-600',
-                                        bgColor: 'bg-slate-50 border-slate-200',
-                                        suggestedDates: flightDays as string[]
-                                });
-                        }
-                }
-
-                // 4b. AI market research not yet done — suggest it
-                if (!trip.aiRestaurants || trip.aiRestaurants.length === 0) {
-                        recs.push({
-                                id: 'rec-food-research',
-                                type: 'food_research_missing',
-                                title: 'מחקר אוכל (AI)',
-                                subtitle: `🍽️ עדיין לא עשית מחקר שוק למסעדות — תן ל-AI להציע`,
-                                icon: Utensils,
-                                color: 'text-orange-700',
-                                bgColor: 'bg-orange-50 border-orange-200',
-                                navigateTo: 'restaurants',
-                        });
-                }
-
-                if (!trip.aiAttractions || trip.aiAttractions.length === 0) {
-                        recs.push({
-                                id: 'rec-attractions-research',
-                                type: 'attractions_research_missing',
-                                title: 'מחקר אטרקציות (AI)',
-                                subtitle: `📍 עדיין לא עשית מחקר שוק לאטרקציות — תן ל-AI להציע`,
-                                icon: MapPin,
-                                color: 'text-emerald-700',
-                                bgColor: 'bg-emerald-50 border-emerald-200',
-                                navigateTo: 'attractions',
-                        });
-                }
-
-                // 5. DATA WARNINGS - Check for incomplete flight/hotel data
-                const dataWarnings: string[] = [];
-
-                // Check flights for missing times
-                trip.flights?.segments?.forEach((seg, i) => {
-                        if (!seg.departureTime || seg.departureTime === '00:00' || !seg.arrivalTime) {
-                                dataWarnings.push(`טיסה ${i + 1}: חסרים זמני המראה/נחיתה`);
-                        }
-                        if (!seg.date) {
-                                dataWarnings.push(`טיסה ${i + 1}: חסר תאריך`);
-                        }
-                });
-
-                // Check hotels for missing dates
-                trip.hotels?.forEach((hotel, i) => {
-                        if (!hotel.checkInDate || !hotel.checkOutDate) {
-                                dataWarnings.push(`מלון ${hotel.name || i + 1}: חסרים תאריכי צ'ק-אין/אאוט`);
-                        }
-                });
-
-                if (dataWarnings.length > 0) {
-                        recs.unshift({
-                                id: 'data-warnings',
-                                type: 'data_warning',
-                                title: `תקן פרטים חסרים`,
-                                subtitle: `⚠️ ${dataWarnings.length} פרטים דורשים תיקון`,
-                                icon: AlertTriangle,
-                                color: 'text-amber-600',
-                                bgColor: 'bg-amber-100 border-amber-300',
-                                warningDetails: dataWarnings
-                        });
-                }
-
-                return recs;
-        }, [trip, favoriteRestaurants, favoriteAttractions, timeline]);
+        // Recommendations come from the shared util — single source of truth
+        // shared with the Itinerary "המלצות לשיפור" badge so the count and
+        // the chips never drift out of sync. dismissTick re-runs the memo
+        // when an item is dismissed so the localStorage filter takes effect.
+        const recommendations = useMemo<DecoratedRec[]>(() => {
+                void dismissTick;
+                const all = computeRecommendations(trip, timeline, favoriteRestaurants, favoriteAttractions);
+                const dismissed = new Set(getDismissedRecs(trip.id));
+                return all
+                        .filter(r => !dismissed.has(r.id))
+                        .map(r => ({ ...r, ...TYPE_VISUALS[r.type] }));
+        }, [trip, favoriteRestaurants, favoriteAttractions, timeline, dismissTick]);
 
         // Don't render if no recommendations
         if (recommendations.length === 0) return null;
@@ -251,7 +96,7 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
         };
 
 
-        const getItemCount = (rec: GroupedRecommendation): string => {
+        const getItemCount = (rec: DecoratedRec): string => {
                 if (rec.items && rec.items.length > 0) {
                         return `(${rec.items.length})`;
                 }
@@ -300,26 +145,40 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                                         {/* Recommendation Chips - Scrollable on Mobile */}
                                         <div className="flex-1 flex gap-2 overflow-x-auto scrollbar-hide pb-1 md:pb-0">
                                                 {recommendations.map((rec, i) => ( // Show ALL on mobile scroll, pagination on desktop
-                                                        <button
+                                                        <div
                                                                 key={rec.id}
-                                                                onClick={() => {
-                                                                        if (rec.navigateTo && onSwitchTab) {
-                                                                                onSwitchTab(rec.navigateTo);
-                                                                        } else {
-                                                                                setSelectedRec(rec);
-                                                                        }
-                                                                }}
-                                                                className={`flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-xl md:rounded-full border text-xs font-medium transition-all hover:scale-105 hover:shadow-md whitespace-nowrap flex-shrink-0 ${rec.bgColor} ${rec.color} ${i >= scrollIndex && i < scrollIndex + 4 ? 'block' : 'md:hidden' // Only pagination logic on desktop
-                                                                        } ${/* Always show all in mobile scroll view */ 'block'}`}
+                                                                className={`group/chip relative inline-flex items-stretch flex-shrink-0 ${i >= scrollIndex && i < scrollIndex + 4 ? 'block' : 'md:hidden'}`}
                                                         >
-                                                                <rec.icon className="w-3.5 h-3.5" />
-                                                                <span className="max-w-[160px] truncate">{rec.title}</span>
-                                                                {rec.items && rec.items.length > 0 && (
-                                                                        <span className="bg-white/60 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
-                                                                                {rec.items.length}
+                                                                <button
+                                                                        onClick={() => {
+                                                                                if (rec.navigateTo && onSwitchTab) {
+                                                                                        onSwitchTab(rec.navigateTo);
+                                                                                } else {
+                                                                                        setSelectedRec(rec);
+                                                                                }
+                                                                        }}
+                                                                        className={`flex items-center gap-1.5 ps-3 pe-2 py-2 md:py-1.5 rounded-xl md:rounded-full border text-xs font-medium transition-all hover:scale-105 hover:shadow-md whitespace-nowrap ${rec.bgColor} ${rec.color}`}
+                                                                >
+                                                                        <rec.icon className="w-3.5 h-3.5" />
+                                                                        <span className="max-w-[180px] truncate">{rec.title}</span>
+                                                                        {rec.actionCount > 1 && (
+                                                                                <span className="bg-white/70 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+                                                                                        {rec.actionCount}
+                                                                                </span>
+                                                                        )}
+                                                                        <span
+                                                                                role="button"
+                                                                                tabIndex={0}
+                                                                                aria-label="הסר המלצה"
+                                                                                title="הסר מההמלצות"
+                                                                                onClick={(e) => { e.stopPropagation(); handleDismiss(rec.id); }}
+                                                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); handleDismiss(rec.id); } }}
+                                                                                className="ms-1 inline-flex items-center justify-center w-5 h-5 rounded-full text-current/70 hover:text-current hover:bg-white/60 transition-colors"
+                                                                        >
+                                                                                <X className="w-3 h-3" />
                                                                         </span>
-                                                                )}
-                                                        </button>
+                                                                </button>
+                                                        </div>
                                                 ))}
                                         </div>
 

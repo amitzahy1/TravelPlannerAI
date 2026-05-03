@@ -4,6 +4,9 @@ import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan, TimelineEvent, TimelineEventType } from '../types';
 import { TripCountdown } from './shared';
 import { pickTripCover } from '../utils/destinationCover';
+import { CoverPickerModal } from './CoverPickerModal';
+import { computeRecommendations, countRecommendationActions } from '../utils/tripRecommendations';
+import { getDismissedRecs } from '../utils/dismissedRecommendations';
 import { exportTripPDF } from '../utils/generateTripHTML';
 import { downloadTripIcal } from '../utils/generateTripIcal';
 import { FileText as FileTextIcon, CalendarDays as CalendarDaysIcon } from 'lucide-react';
@@ -102,6 +105,7 @@ export const ItineraryView: React.FC<{
     // the new TripContextBar pill below the hero — saves a row that was
     // permanently consumed before.
     const [showRecommendations, setShowRecommendations] = useState(false);
+    const [coverPickerOpen, setCoverPickerOpen] = useState(false);
     const [scheduleItem, setScheduleItem] = useState<{ item: any, type: 'food' | 'attraction' } | null>(null); // For the scheduler
     const [viewMode, setViewMode] = useState<'expanded' | 'compact'>('expanded');
 
@@ -155,6 +159,21 @@ export const ItineraryView: React.FC<{
         );
         return items;
     }, [trip.attractions]);
+
+    // Single source of truth for the "המלצות לשיפור" count + panel.
+    // Was previously a dumb sum of AI categories + favorites (showed "20"
+    // when only 2 actionable items existed). Now matches the panel.
+    const [recsRefresh, setRecsRefresh] = useState(0); // bumped when items dismissed
+    const visibleRecommendations = useMemo(() => {
+        void recsRefresh;
+        const all = computeRecommendations(trip, timeline, favoriteRestaurants, favoriteAttractions);
+        const dismissed = new Set(getDismissedRecs(trip.id));
+        return all.filter(r => !dismissed.has(r.id));
+    }, [trip, timeline, favoriteRestaurants, favoriteAttractions, recsRefresh]);
+    const recommendationActionCount = useMemo(
+        () => countRecommendationActions(visibleRecommendations),
+        [visibleRecommendations],
+    );
 
     // Generate context-aware day title based on events (Task 6)
     // Updated: Use locationContext (city) instead of "מלון"
@@ -703,8 +722,7 @@ export const ItineraryView: React.FC<{
     };
 
     const handleChangeCover = () => {
-        const url = prompt("הכנס קישור לתמונה חדשה:");
-        if (url) onUpdateTrip({ ...trip, coverImage: url });
+        setCoverPickerOpen(true);
     };
 
 
@@ -1083,9 +1101,11 @@ export const ItineraryView: React.FC<{
                 >
                     <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
                     <span>המלצות לשיפור</span>
-                    <span className="bg-amber-200 text-amber-900 text-[10px] font-black px-1.5 rounded-md">
-                        {(trip.aiRestaurants?.length || 0) + (trip.aiAttractions?.length || 0) + favoriteRestaurants.length + favoriteAttractions.length}
-                    </span>
+                    {recommendationActionCount > 0 && (
+                        <span className="bg-amber-200 text-amber-900 text-[10px] font-black px-1.5 rounded-md">
+                            {recommendationActionCount}
+                        </span>
+                    )}
                 </button>
                 <button
                     onClick={() => setViewMode(viewMode === 'expanded' ? 'compact' : 'expanded')}
@@ -1107,6 +1127,7 @@ export const ItineraryView: React.FC<{
                     timeline={timeline}
                     onScheduleFavorite={handleScheduleFavorite}
                     onSwitchTab={onSwitchTab}
+                    onRecommendationsChanged={() => setRecsRefresh(v => v + 1)}
                 />
             )}
 
@@ -1660,6 +1681,13 @@ export const ItineraryView: React.FC<{
                 )
             }
 
+            <CoverPickerModal
+                isOpen={coverPickerOpen}
+                onClose={() => setCoverPickerOpen(false)}
+                destination={trip.destination || ''}
+                currentCover={trip.coverImage}
+                onPick={(url) => onUpdateTrip({ ...trip, coverImage: url })}
+            />
 
         </div >
     );

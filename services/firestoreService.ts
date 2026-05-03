@@ -300,12 +300,18 @@ export const getSharedTripInvite = async (shareId: string): Promise<TripInvite |
 };
 
 /**
- * Join a shared trip (Magic Link Model)
+ * Join a shared trip (Magic Link Model). The `role` parameter selects:
+ *   - 'editor' — added to the shared trip's `collaborators[]` and granted
+ *     write access (the existing legacy behavior).
+ *   - 'viewer' — read-only. NOT added to `collaborators[]` so Firestore
+ *     security rules block any write attempts. Can still read the shared
+ *     doc and run AI research locally (results stored in browser localStorage).
  */
 export const joinSharedTrip = async (
   userId: string,
   shareId: string,
-  userEmail?: string
+  userEmail?: string,
+  role: 'editor' | 'viewer' = 'editor'
 ): Promise<Trip> => {
   try {
     const user = auth.currentUser;
@@ -322,29 +328,32 @@ export const joinSharedTrip = async (
     const { originalTripId } = inviteSnap.data();
     const tripRef = doc(db, "shared-trips", originalTripId);
 
-    // 2. Add User to Collaborators
-    // CRITICAL: We MUST send the shareId in the updateDoc to satisfy security rules:
-    // "request.resource.data.shareId == resource.data.shareId"
-    try {
-      await updateDoc(tripRef, {
-        collaborators: arrayUnion(user.uid),
-        shareId: shareId, // REQUIRED PROOF
-        updatedAt: Timestamp.now()
-      });
-    } catch (err: any) {
-      console.error("Join updateDoc failed:", err);
-      if (err.code === 'permission-denied') {
-        throw new Error("אין הרשאה להצטרף. ייתכן שהבעלים ביטל את השיתוף או שמדובר בקישור שיתוף ישן מאוד.");
+    // 2. Add User to Collaborators (EDITOR ONLY).
+    // Viewers must NOT be added — that's what gives them read-only status
+    // at the Firestore-rules level. They can read the public/shared doc
+    // because of the existing read rule, but writes will be rejected.
+    if (role === 'editor') {
+      try {
+        await updateDoc(tripRef, {
+          collaborators: arrayUnion(user.uid),
+          shareId: shareId, // REQUIRED PROOF (security rule check)
+          updatedAt: Timestamp.now()
+        });
+      } catch (err: any) {
+        console.error("Join updateDoc failed:", err);
+        if (err.code === 'permission-denied') {
+          throw new Error("אין הרשאה להצטרף. ייתכן שהבעלים ביטל את השיתוף או שמדובר בקישור שיתוף ישן מאוד.");
+        }
+        throw err;
       }
-      throw err;
     }
 
-    // 3. Create User Reference
+    // 3. Create User Reference (records the role for the UI)
     await setDoc(doc(db, "users", user.uid, "shared-trip-refs", originalTripId), {
       sharedTripId: originalTripId,
       tripId: originalTripId,
       joinedAt: new Date().toISOString(),
-      role: 'collaborator',
+      role: role, // 'editor' or 'viewer' — drives all UI gating downstream
       tripName: inviteSnap.data().tripName || 'Shared Trip'
     });
 
