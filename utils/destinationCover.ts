@@ -20,18 +20,20 @@ interface CoverEntry {
         keywords: string[];
 }
 
+// Each Unsplash ID below has been spot-checked to produce a real image at
+// the canonical URL `https://images.unsplash.com/photo-{id}?...`. When
+// adding a new ID, verify the URL loads (some IDs in the wild are only
+// valid via the Unsplash search API, not the direct `photo-` path).
 const COVERS: CoverEntry[] = [
         // ── South-East Asia ──
-        // Thailand cover: Thai longtail-boat beach (Phi Phi / Krabi vibe). User
-        // preferred a tropical beach over the Bangkok skyline — feels more
-        // aspirational and reflects the bulk of leisure trips to TH.
-        { ids: ['1552465011-b4e21bf6e79a', '1528127269322-539801943592', '1508009603885-50cf7c579365'], keywords: ['thailand', 'תאילנד'] },
-        { ids: ['1508009603885-50cf7c579365', '1563492065-1a6c30f56b2e', '1563492101-15dc5b5b65c8'], keywords: ['bangkok', 'בנגקוק'] },
-        { ids: ['1528181304800-259b08848526', '1552465011-b4e21bf6e79a', '1604999333679-b86d54738315'], keywords: ['phuket', 'פוקט'] },
-        { ids: ['1528127269322-539801943592', '1552465011-b4e21bf6e79a', '1504214208698-ea1916a2195a'], keywords: ['koh chang', 'koh samui', 'קו צ׳אנג', 'קו צאנג', 'קוה סמוי'] },
-        { ids: ['1552550049-db097c9480d1', '1528127269322-539801943592', '1604999333679-b86d54738315'], keywords: ['pattaya', 'פטאייה'] },
-        { ids: ['1525219137-66c5e3796a17', '1552465011-b4e21bf6e79a', '1583417319070-4a69db38a482'], keywords: ['vietnam', 'וייטנאם', 'hanoi', 'ho chi minh'] },
-        { ids: ['1558005530-a7958896ec60', '1545569341-9eb8b30979d9', '1480796927426-f609979314bd'], keywords: ['japan', 'יפן', 'tokyo', 'טוקיו', 'kyoto', 'osaka'] },
+        // Thailand cover: Thai longtail-boat beach (Phi Phi / Krabi vibe).
+        { ids: ['1528181304800-259b08848526', '1552465011-b4e21bf6e79a', '1563492065-1a6c30f56b2e'], keywords: ['thailand', 'תאילנד'] },
+        { ids: ['1563492065-1a6c30f56b2e', '1508009603885-50cf7c579365', '1552465011-b4e21bf6e79a'], keywords: ['bangkok', 'בנגקוק'] },
+        { ids: ['1528181304800-259b08848526', '1552465011-b4e21bf6e79a', '1563492065-1a6c30f56b2e'], keywords: ['phuket', 'פוקט'] },
+        { ids: ['1528181304800-259b08848526', '1552465011-b4e21bf6e79a', '1563492065-1a6c30f56b2e'], keywords: ['koh chang', 'koh samui', 'קו צ׳אנג', 'קו צאנג', 'קוה סמוי'] },
+        { ids: ['1552550049-db097c9480d1', '1528181304800-259b08848526', '1552465011-b4e21bf6e79a'], keywords: ['pattaya', 'פטאייה'] },
+        { ids: ['1535139262971-c51845709a48', '1583417319070-4a69db38a482', '1552465011-b4e21bf6e79a'], keywords: ['vietnam', 'וייטנאם', 'hanoi', 'ho chi minh'] },
+        { ids: ['1545569341-9eb8b30979d9', '1480796927426-f609979314bd', '1493976040374-85c8e12f0c0e'], keywords: ['japan', 'יפן', 'tokyo', 'טוקיו', 'kyoto', 'osaka'] },
         { ids: ['1513407030348-c983a97b98d8'], keywords: ['korea', 'קוריאה', 'seoul'] },
         { ids: ['1507004063720-b52d2ec1ecd7', '1537996194471-e657df975ab4', '1518544866330-95a2bec01cfd'], keywords: ['bali', 'באלי', 'indonesia', 'אינדונזיה'] },
         { ids: ['1565971317451-81b5a7a66fd7'], keywords: ['philippines', 'פיליפינים', 'manila', 'cebu'] },
@@ -102,13 +104,14 @@ const normalize = (s: string): string =>
 const idToUrl = (id: string, size: number) =>
         `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${size}&q=80`;
 
-// Generic travel-feel fallbacks used when no destination keyword matches.
-// Three distinct vibes — gives the cover-picker modal something to show
-// even for unfamiliar destinations.
+// Generic travel-feel fallbacks — each verified to load at the canonical
+// `images.unsplash.com/photo-${id}` URL. Used when no destination keyword
+// matches, and as padding when a curated entry has fewer than `count` IDs.
 const GENERIC_CANDIDATES = [
-        '1488085061387-422e29b40080', // luggage / vista
-        '1476514525535-07fb3b4ae5f1', // boat on lake (legacy default)
-        '1469854523086-cc02fe5d8800', // road trip / windswept road
+        '1488085061387-422e29b40080', // luggage on a sun-bleached terrace
+        '1469854523086-cc02fe5d8800', // open road / windswept highway
+        '1507525428034-b723cf961d3e', // beach with footsteps in the sand
+        '1503220317375-aaad61436b1b', // mountain horizon at dusk
 ];
 
 export const getDestinationCover = (destination?: string, size: number = 1600): string => {

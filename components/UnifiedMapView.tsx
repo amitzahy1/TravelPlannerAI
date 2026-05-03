@@ -14,7 +14,6 @@ import { isPlaceInTripScope, getTripCountryBbox, getTripCountries, getTripCountr
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
-import { HoverPreviewCard } from './map/HoverPreviewCard';
 import { MapItemPopup } from './map/MapItemPopup';
 
 // --- Interfaces ---
@@ -616,8 +615,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     const [activeCity, setActiveCity] = useState<string | 'ALL'>('ALL');
     const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
     const [activeStop, setActiveStop] = useState<number | null>(null);
-    const [hoveredItem, setHoveredItem] = useState<MapItem | null>(null);
-    const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+    // Zoom-gated visibility (Issue 2 polish): at low/regional zoom levels
+    // only the trip backbone (hotels + flights + route polyline) is shown.
+    // Restaurants and attractions appear as the user zooms in, so the
+    // first-glance picture is clean and the trip route reads instantly.
+    const [mapZoom, setMapZoom] = useState<number>(8);
 
     // Sync externally-controlled city → internal state. When
     // `controlledActiveCity` is `undefined` the component manages its own
@@ -1507,6 +1509,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         routeLayerRef.current = L.layerGroup().addTo(map);
         mapInstanceRef.current = map;
 
+        // Track zoom so the marker render can hide restaurants/attractions
+        // when the user is looking at a regional/country view. Once they
+        // zoom in to the city level, the rest of the trip details fill in.
+        setMapZoom(map.getZoom());
+        map.on('zoomend', () => setMapZoom(map.getZoom()));
+
         setTimeout(() => map.invalidateSize(), 200);
         const ro = new ResizeObserver(() => map.invalidateSize());
         ro.observe(mapContainerRef.current);
@@ -1607,12 +1615,22 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             return hotelAnchors.some(a => getDistanceKm(lat, lng, a.lat, a.lng) <= MAX_TRIP_RADIUS_KM);
         };
 
+        // ZOOM-GATED VISIBILITY: at low/regional zoom (<=10) the map shows
+        // only the trip backbone — hotels, flights, route polyline. Saved
+        // and AI restaurants/attractions reveal once the user zooms in to
+        // the city level. Keeps the first-glance picture clean and makes
+        // the trip route read instantly.
+        const PLACES_REVEAL_ZOOM = 11;
+        const showPlaces = mapZoom >= PLACES_REVEAL_ZOOM || activeCity !== 'ALL';
+
         // Plot non-airport items with premium pins. Hotels are routed to
         // the unclustered route layer so they're always individually
         // visible as a reference point — even at low zoom where dense
         // clusters of restaurants/attractions would otherwise hide them.
         visibleItems.forEach(item => {
             if (item.type === 'airport') return;
+            // Hide restaurants/attractions at low zoom unless a city filter is active.
+            if (!showPlaces && (item.type === 'restaurant' || item.type === 'attraction')) return;
             if (item.type !== 'hotel' && !isInTripRegion(item.lat!, item.lng!)) return;
             const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
             // Hotels never render as "ai suggestions"; only restaurant/attraction items can.
@@ -1656,20 +1674,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 marker.once('popupclose', () => popupRoot.unmount());
             });
 
-            // Hover preview (desktop) — set React state from the Leaflet
-            // event so a card renders in the map container's coordinate space.
-            marker
-                .on('mouseover', (e: L.LeafletMouseEvent) => {
-                    setHoveredItem(item);
-                    setHoverPos({ x: e.containerPoint.x, y: e.containerPoint.y });
-                })
-                .on('mousemove', (e: L.LeafletMouseEvent) => {
-                    setHoverPos({ x: e.containerPoint.x, y: e.containerPoint.y });
-                })
-                .on('mouseout', () => {
-                    setHoveredItem(null);
-                    setHoverPos(null);
-                });
+            // Hover preview removed (Issue 2): one-popup-only on click —
+            // double-popup ghosting is gone, mobile and desktop align.
 
             // Heatmap: draw a soft glow circle under AI items so dense areas
             // appear "hotter". Circles are added to markerLayer so they clear
@@ -1997,7 +2003,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         }
 
         [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
-    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles]);
+    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles, mapZoom]);
 
 
     // Fly to a GPS-located position and show a "you are here" marker.
@@ -2068,6 +2074,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 </div>
             )}
 
+            {/* Zoom-in hint — appears at low zoom on the ALL view, telling
+                 the user that restaurants/attractions appear when they zoom in. */}
+            {mapZoom < 11 && activeCity === 'ALL' && (mapItems.some(i => i.type === 'restaurant' || i.type === 'attraction')) && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur px-3 py-1.5 rounded-full shadow-md border border-slate-200 flex items-center gap-1.5 pointer-events-none">
+                    <span className="text-[11px] font-bold text-slate-600">🔍 התקרב כדי לראות מסעדות ואטרקציות</span>
+                </div>
+            )}
+
             {/* Loading indicator */}
             {loading && (
                 <div className="absolute bottom-28 left-4 z-[1000] bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-gray-100 flex items-center gap-2">
@@ -2078,28 +2092,6 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
             {/* Map */}
             <div ref={mapContainerRef} style={{ height, width: '100%' }} className="z-10 bg-slate-50" />
-
-            {/* Hover preview card — shown on desktop when cursor is over a pin.
-                 Positioned relative to the map container using containerPoint. */}
-            {hoveredItem && hoverPos && (
-                <div
-                    className="absolute z-[2000]"
-                    style={{
-                        left: hoverPos.x,
-                        top: hoverPos.y - 16,
-                        transform: 'translate(-50%, -100%)',
-                    }}
-                >
-                    <HoverPreviewCard
-                        type={hoveredItem.type}
-                        name={hoveredItem.name}
-                        rating={hoveredItem.rating}
-                        cuisine={hoveredItem.cuisine}
-                        category={hoveredItem.category}
-                        priceRange={hoveredItem.priceRange}
-                    />
-                </div>
-            )}
 
             {/* Bottom Timeline Strip — mobile: vertical list inside a
                  collapsible drawer. Desktop: horizontal strip as before.
