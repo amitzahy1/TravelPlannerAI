@@ -398,34 +398,62 @@ const makePinIcon = (
 };
 
 // --- ROUTE STOP PILL ---
-const makeStopPill = (num: number, name: string, emoji: string, color: string) => {
+const makeStopPill = (
+    num: number,
+    name: string,
+    emoji: string,
+    color: string,
+    role: 'start' | 'end' | 'middle' = 'middle',
+) => {
     // Trim names so stacked pins don't all grow long and collide.
     const display = name.length > 26 ? name.slice(0, 23) + '…' : name;
-    const html = `
+    // Role ribbon — appears above stop #1 and the final stop so the user
+    // sees the trip's beginning + end at a glance.
+    const ribbonText = role === 'start' ? 'התחלה' : role === 'end' ? 'סיום' : '';
+    const ribbonBg = role === 'start' ? '#10b981' : role === 'end' ? '#0f172a' : '';
+    const ribbonHtml = ribbonText ? `
         <div style="
-            display:inline-flex; align-items:center; gap:5px;
-            background:white;
-            border-radius:999px;
-            padding:3px 10px 3px 3px;
-            box-shadow:0 3px 10px rgba(15,23,42,0.18),0 1px 3px rgba(15,23,42,0.08);
-            border:1px solid rgba(255,255,255,0.9);
-            white-space:nowrap;
+            background:${ribbonBg};color:#fff;font-size:9px;font-weight:900;
+            text-transform:uppercase;letter-spacing:0.4px;
+            padding:2px 8px;border-radius:999px;margin-bottom:3px;
+            box-shadow:0 2px 6px rgba(15,23,42,0.25);
             font-family:'Rubik','Inter',sans-serif;
-            position:relative;
-            max-width:220px;
-        ">
+            display:inline-block;
+        ">${ribbonText}</div>
+    ` : '';
+    const ringStyle = role === 'start'
+        ? 'box-shadow:0 0 0 3px #10b981,0 3px 10px rgba(15,23,42,0.18);'
+        : role === 'end'
+            ? 'box-shadow:0 0 0 3px #0f172a,0 3px 10px rgba(15,23,42,0.18);'
+            : 'box-shadow:0 3px 10px rgba(15,23,42,0.18),0 1px 3px rgba(15,23,42,0.08);';
+    const html = `
+        <div style="display:inline-flex;flex-direction:column;align-items:flex-start;">
+            ${ribbonHtml}
             <div style="
-                width:22px; height:22px; border-radius:50%;
-                background:linear-gradient(135deg,${color},${color}cc);
-                color:white; font-weight:900; font-size:11px;
-                display:flex; align-items:center; justify-content:center;
-                box-shadow:0 2px 6px ${color}50;
-                flex-shrink:0;
-            ">${num}</div>
-            <span style="font-size:11px; font-weight:700; color:#1e293b; letter-spacing:0.1px;">${emoji} ${display}</span>
+                display:inline-flex; align-items:center; gap:5px;
+                background:white;
+                border-radius:999px;
+                padding:3px 10px 3px 3px;
+                ${ringStyle}
+                border:1px solid rgba(255,255,255,0.9);
+                white-space:nowrap;
+                font-family:'Rubik','Inter',sans-serif;
+                position:relative;
+                max-width:220px;
+            ">
+                <div style="
+                    width:22px; height:22px; border-radius:50%;
+                    background:linear-gradient(135deg,${color},${color}cc);
+                    color:white; font-weight:900; font-size:11px;
+                    display:flex; align-items:center; justify-content:center;
+                    box-shadow:0 2px 6px ${color}50;
+                    flex-shrink:0;
+                ">${num}</div>
+                <span style="font-size:11px; font-weight:700; color:#1e293b; letter-spacing:0.1px;">${emoji} ${display}</span>
+            </div>
         </div>
     `;
-    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [-8, 11] });
+    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [-8, role === 'middle' ? 11 : 24] });
 };
 
 // --- ROUTE INFO BADGE (travel time/distance/mode between stops) ---
@@ -1635,7 +1663,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
             // Hotels never render as "ai suggestions"; only restaurant/attraction items can.
             const pinSource: 'saved' | 'ai' = item.type !== 'hotel' && item.source === 'ai' ? 'ai' : 'saved';
-            const icon = makePinIcon(cfg, item.name, pinSource);
+            // Hide name labels at low zoom — only the icon remains so the
+            // first-glance picture stays clean. Names appear once the user
+            // zooms in past the city level.
+            const showLabel = mapZoom >= PLACES_REVEAL_ZOOM || activeCity !== 'ALL';
+            const icon = makePinIcon(cfg, showLabel ? item.name : undefined, pinSource);
 
             const targetLayer = item.type === 'hotel' ? routeLayer : markerLayer;
             const marker = L.marker([item.lat!, item.lng!], {
@@ -1855,7 +1887,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                             duration: fmtHours(sub.durationHours),
                             hasTransportData: true,
                         };
-                        const badgeIcon = makeRouteBadge(subDist, subTransport, subColor);
+                        // Hide transport badges at low zoom — declutters the
+                        // first-glance view; the polyline + numbered stops are
+                        // enough to communicate the route.
+                        const badgeIcon = (mapZoom >= 9) ? makeRouteBadge(subDist, subTransport, subColor) : null;
                         drawSubSegment(subPath, subColor, badgeIcon, 0.5);
                         bounds.extend([sub.from.lat, sub.from.lng]);
                         bounds.extend([sub.to.lat, sub.to.lng]);
@@ -1901,20 +1936,31 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         ? (MODE_COLORS[transport.mode as keyof typeof MODE_COLORS]?.line || lineColor)
                         : NEUTRAL_GRAY;
                     const stagger = 0.45 + (i % 3) * 0.05;
-                    const badgeIcon = dist >= 5 ? makeRouteBadge(dist, transport, modeColor) : null;
+                    // Hide transport badges at low zoom (matches the multi-segment branch above).
+                    const badgeIcon = (dist >= 5 && mapZoom >= 9) ? makeRouteBadge(dist, transport, modeColor) : null;
                     drawSubSegment(pathPoints, modeColor, badgeIcon, stagger);
                     bounds.extend([start.coords.lat, start.coords.lng]);
                     bounds.extend([end.coords.lat, end.coords.lng]);
                 }
             }
 
-            // Route stop pills — apply region guard so layover stops that
-            // slipped through the isFlightOnly filter don't appear in Europe.
-            validStops.forEach((stop, idx) => {
+            // Route stop pills — pre-filter by the region guard so the
+            // numbering reflects what's actually visible. Without this the
+            // first visible pin could be "#5" because "#1-4" were dropped
+            // out-of-region — confusing for users who expect "where do I
+            // start" to be "1".
+            const visibleStops = validStops.filter(s =>
+                !!s.coords && isInTripRegion(s.coords.lat, s.coords.lng)
+            );
+            visibleStops.forEach((stop, idx) => {
                 if (!stop.coords) return;
-                if (!isInTripRegion(stop.coords.lat, stop.coords.lng)) return;
                 const color = STOP_COLORS[idx % STOP_COLORS.length];
-                const icon = makeStopPill(idx + 1, stop.displayName || stop.name, stop.emoji || '📍', color);
+                const role: 'start' | 'end' | 'middle' = idx === 0
+                    ? 'start'
+                    : idx === visibleStops.length - 1
+                        ? 'end'
+                        : 'middle';
+                const icon = makeStopPill(idx + 1, stop.displayName || stop.name, stop.emoji || '📍', color, role);
 
                 L.marker([stop.coords.lat, stop.coords.lng], { icon, zIndexOffset: 2000 })
                     .addTo(routeLayer);
