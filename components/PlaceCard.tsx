@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, MapIcon, Trophy, Plus, Navigation } from 'lucide-react';
+import { Star, MapIcon, Trophy, Plus, Navigation, AlertTriangle } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
 
@@ -41,7 +41,8 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         onAdd,
         onClick,
         recommendationSource,
-        isHotelRestaurant
+        isHotelRestaurant,
+        verification_needed,
 }) => {
         // 1. Get Context-Aware Visual (Isolated Paths)
         const tags = [cuisine || attractionType || '', location];
@@ -112,9 +113,20 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                  the START — matches reading order for English labels
                                  like "FINE DINING 💎" / "MICHELIN GUIDE". */}
                         <div className="absolute top-2 inset-x-2 flex items-start justify-between gap-1.5 z-30 pointer-events-none">
-                                <span dir="ltr" className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[9px] font-black text-white uppercase tracking-wide truncate max-w-[78%] flex-1 text-center">
-                                        {visualLabel}
-                                </span>
+                                <div className="flex items-center gap-1 min-w-0 flex-1">
+                                        <span dir="ltr" className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[9px] font-black text-white uppercase tracking-wide truncate text-center">
+                                                {visualLabel}
+                                        </span>
+                                        {verification_needed && (
+                                                <span
+                                                        title="כדאי לוודא שעות פתיחה / זמינות לפני הביקור"
+                                                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md backdrop-blur-md bg-amber-500/85 border border-amber-300/70 text-[8.5px] font-black text-white uppercase tracking-wide flex-shrink-0"
+                                                >
+                                                        <AlertTriangle className="w-2.5 h-2.5" />
+                                                        <span>בדוק</span>
+                                                </span>
+                                        )}
+                                </div>
                                 <div className="flex gap-1 pointer-events-auto flex-shrink-0">
                                         <a
                                                 href={mapsUrl}

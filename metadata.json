@@ -1,5 +1,5 @@
 {
-  "name": "Travel Planner Pro",
-  "description": "A comprehensive travel management app featuring itinerary tracking, flight details, and curated restaurant guides based on user documents.",
+  "name": "WeTravel",
+  "description": "Plan trips together. Build a shared itinerary your whole group can follow — flights, hotels, food, attractions, all on one map.",
   "requestFramePermissions": []
 }

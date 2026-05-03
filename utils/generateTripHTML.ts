@@ -675,8 +675,46 @@ body {
   .cal-more { font-size: 8px; }
 }
 @media print {
-  .calendar-section { break-inside: avoid; page-break-inside: avoid; }
-  .cal-cell { break-inside: avoid; }
+  /* A6 — calendar must always fit on ONE landscape page, regardless of trip
+     length. We give it a dedicated @page (landscape A4), force a hard
+     page-break before AND after, and clamp the calendar to the page height
+     so cells autofit instead of overflowing. */
+  @page calendar { size: A4 landscape; margin: 6mm; }
+  .calendar-section {
+    page: calendar;
+    page-break-before: always;
+    page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    height: 195mm;            /* A4 landscape height (210mm) − 2× 6mm margin − header room */
+    max-height: 195mm;
+    box-shadow: none;
+    border: none;
+    padding: 4mm 4mm 6mm;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .calendar-section .ov-title { margin: 0 0 6px; font-size: 14px; }
+  .calendar-section .calendar-grid {
+    flex: 1 1 auto;
+    grid-auto-rows: 1fr;       /* every week-row gets equal share of remaining height */
+    gap: 2px;
+    min-height: 0;             /* lets flex children shrink */
+  }
+  .cal-cell {
+    break-inside: avoid;
+    min-height: 0;             /* override the 110px default — let flex distribute */
+    height: 100%;
+    padding: 2px 3px 3px;
+    border-radius: 3px;
+  }
+  .cal-num { font-size: 10px; padding: 0; }
+  .cal-chip { font-size: 8px; padding: 1px 4px; line-height: 1.2; }
+  .cal-more { font-size: 7.5px; }
+  .cal-header { font-size: 9px; padding: 4px 2px; }
+  .cal-legend { margin-top: 6px; padding: 4px 8px; gap: 4px; flex: 0 0 auto; }
+  .cal-legend-title, .cal-legend-chip { font-size: 8.5px; }
 }
 
 /* ═══ PREMIUM PDF OVERRIDES ═══ */
@@ -1264,7 +1302,7 @@ export const generateTripHTML = (trip: Trip): string => {
   <header class="hero" style="background-image:url('${cover}')">
     <div class="hero-c">
       <div class="hero-topline">
-        <div class="brand-mark">✈ Travel Planner Pro</div>
+        <div class="brand-mark">✈ WeTravel</div>
         <div class="doc-label">Trip PDF</div>
       </div>
       <div class="hero-main">
@@ -1298,7 +1336,7 @@ export const generateTripHTML = (trip: Trip): string => {
   </section>
 
   <div class="footer">
-    <div class="footer-logo">✈ Travel Planner Pro</div>
+    <div class="footer-logo">✈ WeTravel</div>
     נוצר ב-${genDate}
   </div>
 

@@ -76,8 +76,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                         <Plane className="w-6 h-6 md:w-8 md:h-8" />
                                 </div>
                                 <div className="flex flex-col">
-                                        <span className="font-black text-2xl md:text-3xl leading-none text-white tracking-tighter drop-shadow-xl">Travel Planner AI</span>
-                                        <span className="text-[10px] md:text-[12px] font-bold text-sky-300 uppercase tracking-[0.2em] leading-none mt-1.5 drop-shadow-sm opacity-90">מהדורת פרימיום</span>
+                                        <span className="font-black text-2xl md:text-3xl leading-none text-white tracking-tighter drop-shadow-xl">WeTravel</span>
+                                        <span className="text-[10px] md:text-[12px] font-bold text-sky-300 uppercase tracking-[0.2em] leading-none mt-1.5 drop-shadow-sm opacity-90">Plan together</span>
                                 </div>
                         </div>
 

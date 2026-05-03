@@ -29,6 +29,7 @@ import { Toaster } from './components/ui/Toaster';
 import { toast } from './stores/useToastStore';
 import { runBackgroundResearch } from './services/backgroundResearch';
 import { MagicalWizard } from './components/onboarding/MagicalWizard';
+import { InviteeWelcome } from './components/onboarding/InviteeWelcome';
 import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
 
@@ -59,6 +60,9 @@ const AppContent: React.FC = () => {
   // showAdmin removed - using 'trips' tab instead
   const [joinShareId, setJoinShareId] = useState<string | null>(() => getJoinShareIdFromHash());
   const [showOnboarding, setShowOnboarding] = useState(false);
+  // Once-per-shareId welcome carousel for invitees who just joined a shared trip.
+  const [welcomeForShareId, setWelcomeForShareId] = useState<string | null>(null);
+  const [welcomeForTrip, setWelcomeForTrip] = useState<Trip | null>(null);
 
   // Deep Link Handling
   useEffect(() => {
@@ -405,12 +409,37 @@ const AppContent: React.FC = () => {
             window.history.replaceState(null, '', window.location.pathname);
           }}
           onJoinSuccess={(newTrip) => {
+            const justJoinedShareId = joinShareId;
             setJoinShareId(null);
             saveSingleTrip(newTrip, user?.uid).then(() => {
               setActiveTripId(newTrip.id);
-              queryClient.invalidateQueries({ queryKey: ['trips'] }); // Refresh list
+              queryClient.invalidateQueries({ queryKey: ['trips'] });
             });
             window.history.replaceState(null, '', window.location.pathname);
+            // First-open invitee carousel — once per shareId per device.
+            try {
+              const seenKey = `seenInviteeWelcome:${justJoinedShareId}`;
+              if (justJoinedShareId && !localStorage.getItem(seenKey)) {
+                setWelcomeForShareId(justJoinedShareId);
+                setWelcomeForTrip(newTrip);
+              }
+            } catch {
+              // localStorage may be unavailable in private mode — show carousel anyway.
+              setWelcomeForShareId(justJoinedShareId);
+              setWelcomeForTrip(newTrip);
+            }
+          }}
+        />
+      )}
+
+      {welcomeForShareId && welcomeForTrip && (
+        <InviteeWelcome
+          trip={welcomeForTrip}
+          ownerName={welcomeForTrip.sharing?.owner ? undefined : undefined}
+          onDismiss={() => {
+            try { localStorage.setItem(`seenInviteeWelcome:${welcomeForShareId}`, '1'); } catch { /* noop */ }
+            setWelcomeForShareId(null);
+            setWelcomeForTrip(null);
           }}
         />
       )}

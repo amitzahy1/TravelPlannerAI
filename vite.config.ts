@@ -33,9 +33,9 @@ export default defineConfig(({ mode }) => {
           globIgnores: ['**/*.html'],
         },
         manifest: {
-          name: 'Travel Planner Pro',
-          short_name: 'TravelPro',
-          description: 'AI-Powered Travel Itinerary Planner',
+          name: 'WeTravel',
+          short_name: 'WeTravel',
+          description: 'Plan trips together — shared itinerary, hotels, flights, food, attractions, all on one map.',
           theme_color: '#2563eb',
           background_color: '#f7f9fc',
           display: 'standalone',

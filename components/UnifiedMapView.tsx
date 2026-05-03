@@ -10,7 +10,7 @@ import { Trip } from '../types';
 import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
 import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl, toEnglishCountryName } from '../utils/geocodePlaces';
-import { isPlaceInTripScope, getTripCountryBbox } from '../utils/tripScope';
+import { isPlaceInTripScope, getTripCountryBbox, getTripCountries, getTripCountryBboxes, placeInTripCountries, getCountryForHotel } from '../utils/tripScope';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
@@ -744,17 +744,68 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             });
         }
 
-        // Strip coordinates that fall outside the trip's country bbox — prevents
-        // Photon mismatches (e.g. "Koh Chang" resolving to a Norwegian village)
-        // from warping the auto-fit viewport to show the whole world.
-        // Airport items use IATA-keyed coords from our own table — always keep them.
-        raw.forEach(item => {
-            if (item.type === 'airport') return;
-            if (!inCountry(item.lat, item.lng)) {
-                item.lat = undefined;
-                item.lng = undefined;
+        // STRICT TRIP-COUNTRY WHITELIST (A7.2): drop ENTIRE items that don't
+        // belong to the trip's countries. The previous behavior only stripped
+        // lat/lng, which left ghost pins floating to the wrong country once
+        // they re-geocoded. Now: out-of-country items don't reach the map at
+        // all. Permissive when the trip-country set is empty (brand-new trip).
+        const tripCountriesForFilter = getTripCountries(trip || ({} as Trip));
+        let droppedOutOfCountry = 0;
+        if (tripCountriesForFilter.size > 0 && trip) {
+            const filtered: MapItem[] = [];
+            for (const item of raw) {
+                if (item.type === 'airport') {
+                    // Airport items: filter by city → country lookup.
+                    const cityCountry = item.city
+                        ? (() => {
+                              try {
+                                  const { getCountryForCity } = require('../utils/geoData');
+                                  return getCountryForCity?.(item.city) || null;
+                              } catch { return null; }
+                          })()
+                        : null;
+                    if (cityCountry && !tripCountriesForFilter.has(cityCountry)) {
+                        droppedOutOfCountry += 1;
+                        continue;
+                    }
+                    filtered.push(item);
+                    continue;
+                }
+                // Hotels / restaurants / attractions: use the strict predicate.
+                const ok = placeInTripCountries(trip, {
+                    lat: item.lat,
+                    lng: item.lng,
+                    location: item.address,
+                    region: item.city,
+                });
+                if (!ok) {
+                    droppedOutOfCountry += 1;
+                    // Also strip cached coords so a later re-geocode can retry
+                    // with the new bbox constraint.
+                    continue;
+                }
+                // Even when kept: if cached coords disagree with bbox, clear
+                // them so the geocoder gets another shot.
+                if (isValidCoordinate(item.lat, item.lng) && !inCountry(item.lat, item.lng)) {
+                    item.lat = undefined;
+                    item.lng = undefined;
+                }
+                filtered.push(item);
             }
-        });
+            raw = filtered;
+        } else {
+            // Legacy permissive path: keep items, just strip wrong-country coords.
+            raw.forEach(item => {
+                if (item.type === 'airport') return;
+                if (!inCountry(item.lat, item.lng)) {
+                    item.lat = undefined;
+                    item.lng = undefined;
+                }
+            });
+        }
+        if (droppedOutOfCountry > 0) {
+            console.info(`[Map] Dropped ${droppedOutOfCountry} items outside trip countries`);
+        }
 
         // Assign chronological order
         const sorted = [...raw].sort((a, b) => getItemTimestamp(a) - getItemTimestamp(b));
@@ -886,26 +937,43 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 (parseTripDate(a.date)?.getTime() || 0) - (parseTripDate(b.date)?.getTime() || 0)
             );
 
-            // Identify the home city — typically both the first departure and
-            // the last arrival. Any stop matching this key is dropped from
-            // the numbered route (flight origin + return).
-            const firstFromKey = segs[0]?.fromCity ? cityKey(segs[0].fromCity) : '';
-            const lastToKey = segs.length > 0 && segs[segs.length - 1].toCity
-                ? cityKey(segs[segs.length - 1].toCity!)
-                : '';
-            const homeKeys = new Set<string>();
-            if (firstFromKey) homeKeys.add(firstFromKey);
-            // Only treat last-arrival as home if it matches the first-origin —
-            // otherwise a one-way trip (TLV→Tokyo no return) would lose Tokyo.
-            if (lastToKey && lastToKey === firstFromKey) homeKeys.add(lastToKey);
+            // STRICT TRIP-COUNTRY WHITELIST (A7.2): a flight stop is included
+            // ONLY if its destination city resolves to a country that's in
+            // the trip's country set. The trip's country set is derived from
+            // hotels + the explicit destination string — flight origins do
+            // NOT auto-qualify. This implicitly drops the home airport (TLV)
+            // and any return leg without needing a hardcoded home-airport list.
+            const tripCountriesSet = getTripCountries(trip);
+
+            const flightCityCountry = (city: string): string | null => {
+                // Try city-name lookup against geoData; if that fails, drop
+                // through to a permissive `null` (handled below).
+                try {
+                    const { getCountryForCity } = require('../utils/geoData');
+                    return getCountryForCity?.(city) || null;
+                } catch {
+                    return null;
+                }
+            };
 
             if (segs.length > 0) {
                 segs.forEach(seg => {
                     if (!seg.toCity) return;
                     const ts = parseTripDate(seg.date)?.getTime() || 0;
                     const k = cityKey(seg.toCity);
-                    // Skip home-base arrivals (return flight to TLV).
-                    if (homeKeys.has(k)) return;
+
+                    // Drop the flight stop if its country is not in the trip set.
+                    // Permissive when the trip country set is empty (brand-new
+                    // trip with no hotels yet) so we don't show a blank map.
+                    if (tripCountriesSet.size > 0) {
+                        const flightCountry = flightCityCountry(seg.toCity);
+                        if (flightCountry && !tripCountriesSet.has(flightCountry)) return;
+                        // If we can't resolve the country at all, keep the stop
+                        // ONLY if there's a hotel in the same city — that's a
+                        // strong signal the stop is part of the trip.
+                        if (!flightCountry && !hotelCityKeys.has(k)) return;
+                    }
+
                     candidates.push({
                         name: seg.toCity,
                         displayName: seg.toCity,
@@ -924,11 +992,37 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             // We add 15 hours to the sortTs so that when a hotel's check-in
             // date matches a same-day flight arrival, the flight arrival
             // sorts FIRST (matches the real sequence: land → check in).
-            (trip.hotels || []).forEach(h => {
+            //
+            // A7.1 — Hotels with missing/unparseable checkInDate get pushed
+            // to the END of the sort instead of falling to ts=0 (which
+            // sorted them BEFORE every dated stop and broke the route order).
+            // Strict whitelist (A7.2): drop hotels whose country is not in
+            // the trip set.
+            const hotels = (trip.hotels || []).filter(h => {
+                if (tripCountriesSet.size === 0) return true;
+                const country = getCountryForHotel(h);
+                if (!country) return true; // permissive on unparseable hotels
+                return tripCountriesSet.has(country);
+            });
+            const lastDatedHotelTs = hotels.reduce((max, h) => {
+                const t = parseTripDate(h.checkInDate || '')?.getTime() || 0;
+                return t > max ? t : max;
+            }, 0);
+            let undatedSeq = 0;
+            hotels.forEach(h => {
                 const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
                 if (!city) return;
                 const baseTs = parseTripDate(h.checkInDate || '')?.getTime() || 0;
-                const ts = baseTs ? baseTs + 15 * 3600 * 1000 : 0; // 15:00 = standard check-in
+                let ts: number;
+                if (baseTs) {
+                    ts = baseTs + 15 * 3600 * 1000; // 15:00 = standard check-in
+                } else {
+                    // Push undated hotels to the very end of the chronological list
+                    // so they don't crash to position #1.
+                    undatedSeq += 1;
+                    ts = (lastDatedHotelTs || Date.now()) + undatedSeq * 24 * 3600 * 1000;
+                    console.warn(`[Map] Hotel "${h.name}" has no parseable checkInDate — placing at end of route`);
+                }
                 candidates.push({
                     name: city,
                     displayName: h.name || city,
@@ -1587,7 +1681,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     // Per-mode polyline colour — flight=blue, ferry=cyan,
                     // drive=slate, train=violet, bus=amber. Falls back to
                     // the per-stop colour for unknown modes.
-                    const modeColor = MODE_COLORS[transport.mode as keyof typeof MODE_COLORS]?.line || lineColor;
+                    //
+                    // A7.3 — when the transport mode is unconfirmed (no AI
+                    // classification, no flight evidence) we render a NEUTRAL
+                    // GRAY dashed line instead of a confident colored line.
+                    // This signals "this is a connection — figure out the
+                    // real transport later" rather than implying a road
+                    // exists between the two points (which would falsely
+                    // suggest a driveable route across water).
+                    const isConfidentMode = transport.hasTransportData
+                        || transport.mode === 'flight';
+                    const NEUTRAL_GRAY = '#94a3b8'; // slate-400 — soft, non-shouting
+                    const modeColor = isConfidentMode
+                        ? (MODE_COLORS[transport.mode as keyof typeof MODE_COLORS]?.line || lineColor)
+                        : NEUTRAL_GRAY;
                     const stagger = 0.45 + (i % 3) * 0.05;
                     const badgeIcon = dist >= 5 ? makeRouteBadge(dist, transport, modeColor) : null;
                     drawSubSegment(pathPoints, modeColor, badgeIcon, stagger);

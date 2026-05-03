@@ -8,7 +8,7 @@
  * import from any view, hook, or service.
  */
 
-import type { Trip, Restaurant, Attraction } from '../types';
+import type { Trip, Restaurant, Attraction, HotelBooking } from '../types';
 import {
     getTripCities,
     locationMatchesCity,
@@ -16,7 +16,7 @@ import {
     cityKey,
     displayCityName,
 } from './geoData';
-import { getCountryBbox, toEnglishCountryName } from './geocodePlaces';
+import { getCountryBbox, coordInBbox, toEnglishCountryName } from './geocodePlaces';
 
 export interface ScopedPlace {
     name?: string;
@@ -209,3 +209,154 @@ export const attractionInTripScope = (trip: Trip, a: Attraction): boolean =>
  * display formatting.
  */
 export { displayCityName };
+
+// ─────────────────────────────────────────────────────────────────────────
+// Strict trip-country whitelist (used by the full-map view).
+// A trip "country" is the set of countries the user is actually visiting,
+// derived from hotels + the destination string. The map shows only items
+// inside this set — origin/return airports, layovers, and out-of-country
+// AI suggestions all get filtered out by a single predicate.
+// ─────────────────────────────────────────────────────────────────────────
+
+const HEBREW_TO_ENGLISH_COUNTRY_PARSE = (raw: string): string | null => {
+    if (!raw) return null;
+    const candidate = toEnglishCountryName(raw);
+    if (getCountryBbox(candidate)) {
+        return candidate.replace(/\b\w/g, c => c.toUpperCase());
+    }
+    return null;
+};
+
+/** Parse a country out of a hotel address (last comma segment), with Hebrew alias support. */
+const countryFromHotelAddress = (address?: string): string | null => {
+    if (!address) return null;
+    const parts = address.split(',').map(s => s.trim()).filter(Boolean);
+    for (let i = parts.length - 1; i >= 0; i--) {
+        const c = HEBREW_TO_ENGLISH_COUNTRY_PARSE(parts[i]);
+        if (c) return c;
+    }
+    return null;
+};
+
+/** Resolve the country for a hotel (verifiedCountry → address → city lookup). */
+export const getCountryForHotel = (hotel: HotelBooking): string | null => {
+    const v = (hotel as any).verifiedCountry as string | undefined;
+    if (v) {
+        const c = HEBREW_TO_ENGLISH_COUNTRY_PARSE(v);
+        if (c) return c;
+    }
+    const fromAddress = countryFromHotelAddress(hotel.address);
+    if (fromAddress) return fromAddress;
+    if (hotel.city) {
+        const fromCity = getCountryForCity(hotel.city);
+        if (fromCity) return fromCity;
+    }
+    return null;
+};
+
+/** Split a multi-country destination string ("Thailand - Vietnam") into individual country names. */
+const splitDestinationIntoCountries = (raw: string): string[] => {
+    if (!raw) return [];
+    return raw
+        .split(/[-–—,&]/)
+        .map(s => s.trim())
+        .map(s => HEBREW_TO_ENGLISH_COUNTRY_PARSE(s))
+        .filter((c): c is string => !!c);
+};
+
+/**
+ * The trip-country whitelist. A country is in the set if (a) any hotel is
+ * located there, or (b) it's part of the explicit destination string.
+ * Flight origin/destination countries do NOT auto-qualify — that's the
+ * whole point of this strict whitelist.
+ */
+export const getTripCountries = (trip: Trip): Set<string> => {
+    const set = new Set<string>();
+
+    // Hotels — primary source of truth.
+    (trip.hotels || []).forEach(h => {
+        const c = getCountryForHotel(h);
+        if (c) set.add(c);
+    });
+
+    // Explicit destination string (handles multi-country trips).
+    const destStr = trip.destinationEnglish || trip.destination || '';
+    splitDestinationIntoCountries(destStr).forEach(c => set.add(c));
+
+    return set;
+};
+
+/**
+ * Array of bboxes, one per trip country. The map can iterate to test if a
+ * lat/lng falls inside any of them.
+ */
+export const getTripCountryBboxes = (trip: Trip): Array<[number, number, number, number]> => {
+    const out: Array<[number, number, number, number]> = [];
+    for (const country of getTripCountries(trip)) {
+        const bbox = getCountryBbox(country);
+        if (bbox) out.push(bbox);
+    }
+    return out;
+};
+
+/** Does this lat/lng fall inside any of the trip's country bboxes? */
+export const coordInTripCountries = (lat: number, lng: number, trip: Trip): boolean => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+    const bboxes = getTripCountryBboxes(trip);
+    if (bboxes.length === 0) return true; // permissive when trip has no resolvable country yet
+    return bboxes.some(b => coordInBbox(lat, lng, b));
+};
+
+/**
+ * The single predicate used everywhere on the map. Order of checks:
+ *  1. If we have `verifiedCountry` on the item, compare it to the trip set.
+ *  2. If we have lat/lng, check it against the union of country bboxes.
+ *  3. Fall back to the existing trip-scope (city-name) check.
+ *  4. Default to TRUE (don't false-positive drop incomplete data).
+ *
+ * This is permissive on missing data and strict on conflicting data —
+ * exactly what we want.
+ */
+export const placeInTripCountries = (
+    trip: Trip,
+    item: {
+        lat?: number;
+        lng?: number;
+        verifiedCountry?: string;
+        location?: string;
+        region?: string;
+        description?: string;
+        address?: string;
+    },
+): boolean => {
+    const tripCountries = getTripCountries(trip);
+    if (tripCountries.size === 0) return true; // brand-new trip — be permissive
+
+    // 1. verifiedCountry trump card.
+    if (item.verifiedCountry) {
+        const c = HEBREW_TO_ENGLISH_COUNTRY_PARSE(item.verifiedCountry);
+        if (c) return tripCountries.has(c);
+    }
+
+    // 2. Coordinate check.
+    if (Number.isFinite(item.lat) && Number.isFinite(item.lng)) {
+        const inBbox = coordInTripCountries(item.lat as number, item.lng as number, trip);
+        if (inBbox) return true;
+        // Coords disagree with the trip — but only drop if we have ZERO supporting evidence
+        // from text fields (some places have wrong cached coords from old sessions).
+        const fromAddress = countryFromHotelAddress(item.address || item.location || '');
+        if (fromAddress && tripCountries.has(fromAddress)) return true;
+        return false;
+    }
+
+    // 3. Address / location text → country.
+    const fromAddress = countryFromHotelAddress(item.address || item.location || '');
+    if (fromAddress) return tripCountries.has(fromAddress);
+
+    // 4. Fall back to the per-city scope check (existing behavior).
+    return isPlaceInTripScope(trip, {
+        location: item.location,
+        region: item.region,
+        description: item.description,
+    });
+};

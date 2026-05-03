@@ -126,12 +126,7 @@ const RestaurantCard: React.FC<{
 };
 
 export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
-    // Smart default: if the user has no saved restaurants, land them directly on
-    // the research tab so they see the CTA without an extra click. Power users
-    // with their own saved list still land on 'my_list'.
-    const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>(
-        (trip.restaurants?.length || 0) === 0 ? 'recommended' : 'my_list'
-    );
+    const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>('recommended');
     console.log("RestaurantView Loaded - v2 Clean Design - Smart Intent Active");
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
@@ -151,7 +146,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // UX State
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedRater, setSelectedRater] = useState<string>('all');
-    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
     const [isResearchingAll, setIsResearchingAll] = useState(false);
     const [researchProgress, setResearchProgress] = useState({ current: 0, total: 0 });
 
@@ -299,12 +294,14 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             region: city,
                             // Frontend safety-net (Round 10): even with the prompt's hard
                             // exclusion list, the model occasionally slips chains through.
-                            restaurants: stripChainRestaurants(c.restaurants || []).map((r: any, j: number) => ({
-                                ...r,
-                                region: r.region || city,
-                                id: `ai-rec-${city}-${index}-${Math.random().toString(36).substr(2, 5)}-${j}`,
-                                categoryTitle: c.title
-                            }))
+                            restaurants: stripChainRestaurants(c.restaurants || [])
+                                .filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL')
+                                .map((r: any, j: number) => ({
+                                    ...r,
+                                    region: r.region || city,
+                                    id: `ai-rec-${city}-${index}-${Math.random().toString(36).substr(2, 5)}-${j}`,
+                                    categoryTitle: c.title
+                                }))
                         }));
 
                         // Merge logic: append new categories/restaurants
@@ -439,6 +436,19 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     spots with recent widespread press. Include iconic street food and
     hole-in-the-wall legends locals actually eat at.
 
+    **PART 0: OPERATIONAL VERIFICATION — HARD RULE (READ FIRST)**
+    Every place you return MUST currently be operating. Set a
+    "business_status" field on every restaurant: one of "OPERATIONAL",
+    "CLOSED_TEMPORARILY", or "CLOSED_PERMANENTLY".
+    - DO NOT include any place marked "permanently closed" or
+      "temporarily closed" on Google Maps.
+    - If you are not >85% confident the place is still open as of the
+      current month, OMIT it entirely. Do not guess.
+    - If the chef who made it famous has left, the venue has changed
+      ownership, or the location moved without keeping quality, treat
+      it as effectively closed and omit it.
+    - When in doubt, leave it out. Empty category > closed listing.
+
     **PART 1: QUOTA & SCOPE**
     - For EACH of the 10 categories below, return 3-5 real restaurants
       (aim for 5 in a major food city). Return an empty array ONLY if
@@ -535,7 +545,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     If no authoritative source applies, use "Local Favorite".
 
     OUTPUT JSON ONLY:
-    { "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl" } ] } ] }
+    { "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl", "business_status", "verification_needed" } ] } ] }
+    "business_status" is REQUIRED — must be "OPERATIONAL" for any place you return.
+    Set "verification_needed" to true ONLY if you're sharing the place
+    but want the user to double-check hours/status before going.
     `;
 
     const fetchRecommendations = async (forceRefresh = false, specificCity: string) => {

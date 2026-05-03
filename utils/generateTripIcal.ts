@@ -141,7 +141,7 @@ export const generateTripIcal = (trip: Trip): string => {
         const body = [
                 'BEGIN:VCALENDAR',
                 'VERSION:2.0',
-                'PRODID:-//Travel Planner Pro//2026//EN',
+                'PRODID:-//WeTravel//2026//EN',
                 'CALSCALE:GREGORIAN',
                 'METHOD:PUBLISH',
                 fold(`X-WR-CALNAME:${esc(trip.name || 'Trip')}`),

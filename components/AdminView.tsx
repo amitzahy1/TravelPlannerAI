@@ -119,6 +119,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'health' | 'logs'>('overview');
+    const [logisticsTab, setLogisticsTab] = useState<'flights' | 'hotels'>('flights');
     const [freeText, setFreeText] = useState('');
     const [isFreeTextProcessing, setIsFreeTextProcessing] = useState(false);
     const [freeTextResult, setFreeTextResult] = useState<{ hotels: HotelBooking[], flights: FlightSegment[], summary: string } | null>(null);
@@ -419,7 +420,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         const icsContent: string[] = [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
-            'PRODID:-//Travel Planner Pro//EN',
+            'PRODID:-//WeTravel//EN',
             'CALSCALE:GREGORIAN',
             'METHOD:PUBLISH'
         ];
@@ -944,8 +945,35 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
                         {activeTab === 'logistics' && (
                             <div className="space-y-6 animate-fade-in">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200">
+                                <div className="flex border-b border-slate-200">
+                                    <button
+                                        onClick={() => setLogisticsTab('flights')}
+                                        className={`px-6 py-3.5 font-bold text-sm transition-colors border-b-2 ${
+                                            logisticsTab === 'flights'
+                                                ? 'text-blue-600 border-blue-600'
+                                                : 'text-slate-500 border-transparent hover:text-slate-700'
+                                        }`}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <Plane className="w-4 h-4" /> טיסות
+                                        </span>
+                                    </button>
+                                    <button
+                                        onClick={() => setLogisticsTab('hotels')}
+                                        className={`px-6 py-3.5 font-bold text-sm transition-colors border-b-2 ${
+                                            logisticsTab === 'hotels'
+                                                ? 'text-indigo-600 border-indigo-600'
+                                                : 'text-slate-500 border-transparent hover:text-slate-700'
+                                        }`}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <Hotel className="w-4 h-4" /> מלונות
+                                        </span>
+                                    </button>
+                                </div>
+
+                                {logisticsTab === 'flights' && (
+                                    <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200 animate-fade-in">
                                         <div className="flex justify-between items-center mb-7">
                                             <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
                                                 <span className="bg-blue-100 p-2.5 rounded-lg text-blue-600"><Plane className="w-5 h-5" /></span> טיסות
@@ -974,8 +1002,10 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             </div>
                                         )}
                                     </div>
+                                )}
 
-                                    <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200">
+                                {logisticsTab === 'hotels' && (
+                                    <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200 animate-fade-in">
                                         <div className="flex justify-between items-center mb-7">
                                             <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
                                                 <span className="bg-indigo-100 p-2.5 rounded-lg text-indigo-600"><Hotel className="w-5 h-5" /></span> מלונות
@@ -1008,7 +1038,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             </div>
                                         )}
                                     </div>
-                                </div>
+                                )}
                             </div>
                         )}
 

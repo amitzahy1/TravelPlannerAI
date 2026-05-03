@@ -103,9 +103,7 @@ export const ItineraryView: React.FC<{
     // permanently consumed before.
     const [showRecommendations, setShowRecommendations] = useState(false);
     const [scheduleItem, setScheduleItem] = useState<{ item: any, type: 'food' | 'attraction' } | null>(null); // For the scheduler
-    const [viewMode, setViewMode] = useState<'expanded' | 'compact'>(() =>
-        typeof window !== 'undefined' && window.innerWidth < 768 ? 'compact' : 'expanded'
-    ); // Mobile defaults to compact
+    const [viewMode, setViewMode] = useState<'expanded' | 'compact'>('expanded');
 
     // Scroll the day card matching today's date into view on mount, but only
     // when the trip is actually in progress (start ≤ today ≤ end). Uses an

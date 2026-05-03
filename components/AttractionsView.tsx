@@ -80,14 +80,7 @@ const AttractionRecommendationCard: React.FC<{
 };
 
 export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
-    // Smart default: land fresh users on the research tab so the CTA is one
-    // click away; power users with saved attractions stay on their list.
-    const savedAttractionsCount = (trip.attractions || []).reduce(
-        (acc, c) => acc + (c.attractions?.length || 0), 0
-    );
-    const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>(
-        savedAttractionsCount === 0 ? 'recommended' : 'my_list'
-    );
+    const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>('recommended');
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
     // Always-fresh trip ref so background geocoder doesn't clobber user
@@ -101,7 +94,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [recError, setRecError] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [selectedRater, setSelectedRater] = useState<string>('all');
-    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
     const [isResearchingAll, setIsResearchingAll] = useState(false);
     const [researchProgress, setResearchProgress] = useState({ current: 0, total: 0 });
 
@@ -229,12 +222,14 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             ...c,
                             id: c.id || `ai-cat-${city}-${index}-${Date.now()}`,
                             region: city,
-                            attractions: (c.attractions || []).map((a: any, j: number) => ({
-                                ...a,
-                                region: a.region || city,
-                                id: `ai-attr-${city}-${index}-${Math.random().toString(36).substr(2, 5)}-${j}`,
-                                categoryTitle: c.title
-                            }))
+                            attractions: (c.attractions || [])
+                                .filter((a: any) => !a.business_status || a.business_status === 'OPERATIONAL')
+                                .map((a: any, j: number) => ({
+                                    ...a,
+                                    region: a.region || city,
+                                    id: `ai-attr-${city}-${index}-${Math.random().toString(36).substr(2, 5)}-${j}`,
+                                    categoryTitle: c.title
+                                }))
                         }));
 
                         // Merge logic: append new categories/restaurants
@@ -363,6 +358,19 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     — INCLUDING famous tourist spots. Don't skip a place because it's touristy
     — tourists actually want to visit famous places. Don't invent places.
 
+    **PART 0: OPERATIONAL VERIFICATION — HARD RULE (READ FIRST)**
+    Every attraction you return MUST currently be open / operating. Set a
+    "business_status" field on every attraction: one of "OPERATIONAL",
+    "CLOSED_TEMPORARILY", or "CLOSED_PERMANENTLY".
+    - DO NOT include any attraction marked "permanently closed" or
+      "temporarily closed" on Google Maps.
+    - If you are not >85% confident the attraction is still open as of
+      the current month, OMIT it entirely. Do not guess.
+    - Seasonal attractions (e.g. closed for monsoon, closed in winter)
+      are fine to include — but set verification_needed: true on them
+      so the user knows to double-check seasonal hours.
+    - When in doubt, leave it out. Empty category > closed listing.
+
     **PART 1: QUOTA & SCOPE**
     - For EACH of the 10 categories below, return 3-5 real attractions (aim for 5).
     - Return an empty array for a category ONLY if the city genuinely has no such
@@ -430,7 +438,11 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     OUTPUT JSON ONLY:
     { "categories": [ { "id", "title", "attractions": [ { "name", "description",
-    "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl" } ] } ] }
+    "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl",
+    "business_status", "verification_needed" } ] } ] }
+    "business_status" is REQUIRED — must be "OPERATIONAL" for any attraction you return.
+    Set "verification_needed" to true ONLY when the place has seasonal hours,
+    is undergoing renovation, or any reason the user should double-check before going.
     `;
 
     const fetchRecommendations = async (forceRefresh = false, specificCity?: string) => {

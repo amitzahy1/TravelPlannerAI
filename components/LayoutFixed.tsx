@@ -31,16 +31,13 @@ interface LayoutProps {
         onDeleteTrip?: (tripId: string) => void;
 }
 
-// Content nav tabs (excluding trip management). R6 — split "גילויים"
-// back into separate "אוכל" + "אטרקציות" tabs per user request, each with
-// its own map/list toggle and tabs.
 const contentNavItems = [
         { id: 'itinerary', label: 'ראשי', icon: Home },
+        { id: 'hotels', label: 'מלונות', icon: Hotel },
+        { id: 'flights', label: 'העברות', icon: Plane },
         { id: 'food', label: 'אוכל', icon: Utensils },
         { id: 'attractions', label: 'אטרקציות', icon: Ticket },
         { id: 'map_full', label: 'מפה', icon: MapPin },
-        { id: 'flights', label: 'העברות', icon: Plane },
-        { id: 'hotels', label: 'מלונות', icon: Hotel },
 ];
 
 export const LayoutFixed: React.FC<LayoutProps> = ({
@@ -88,8 +85,8 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                 <Plane className="w-5 h-5 transform group-hover:-rotate-12 transition-transform" />
                                                         </div>
                                                         <div className="flex flex-col">
-                                                                <span className="font-black text-xl leading-none text-slate-800 tracking-tight">Travel Planner AI</span>
-                                                                <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest leading-none mt-0.5">Smart Edition</span>
+                                                                <span className="font-black text-xl leading-none text-slate-800 tracking-tight">WeTravel</span>
+                                                                <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest leading-none mt-0.5">Plan together</span>
                                                         </div>
                                                 </div>
 
