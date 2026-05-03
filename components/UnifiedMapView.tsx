@@ -10,7 +10,7 @@ import { Trip } from '../types';
 import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
 import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl, toEnglishCountryName } from '../utils/geocodePlaces';
-import { isPlaceInTripScope, getTripCountryBbox, getTripCountries, getTripCountryBboxes, placeInTripCountries, getCountryForHotel, coordInTripCountries } from '../utils/tripScope';
+import { isPlaceInTripScope, getTripCountryBbox, getTripCountries, getTripCountryBboxes, placeInTripCountries, getCountryForHotel, coordInTripCountries, coordInTripCities, getTripCityBboxes } from '../utils/tripScope';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
@@ -711,6 +711,23 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         });
     }, [trip?.id, trip?.destination, trip?.destinationEnglish, trip?.hotels?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Warm the city-bbox cache for every trip city on mount. Required so the
+    // synchronous coordInTripCities() check in the marker filter has data to
+    // work with — otherwise the first map render passes everything through.
+    useEffect(() => {
+        if (!trip) return;
+        let cancelled = false;
+        getTripCityBboxes(trip).then(() => {
+            if (!cancelled) {
+                // Bump a counter to force the marker effect to re-run now
+                // that the cache has been warmed.
+                setCityBboxTick(v => v + 1);
+            }
+        }).catch(() => { /* network failure — fall back to permissive mode */ });
+        return () => { cancelled = true; };
+    }, [trip?.id, trip?.destination, trip?.destinationEnglish, trip?.hotels?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    const [cityBboxTick, setCityBboxTick] = useState(0);
+
     // 1. Build raw map items from trip data
     useEffect(() => {
         if (!trip && !items) return;
@@ -900,6 +917,27 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             console.info(`[Map] Dropped ${droppedOutOfCountry} items outside trip countries`);
         }
 
+        // STRICT TRIP-CITY WHITELIST: tighter than country. Drops AI
+        // restaurants/attractions whose lat/lng fall inside the country
+        // (e.g. Thailand) but OUTSIDE any of the user's trip cities
+        // (Bangkok / Pattaya / Koh Chang). This catches chain restaurants
+        // and same-named attractions that Photon resolved to a different
+        // city. Hotels are NEVER filtered this way — the user explicitly
+        // booked them, even if their address is in a sub-area we don't
+        // recognize as a "city".
+        if (trip && cityBboxTick > 0) { // only after city bboxes are warmed
+            const beforeLen = raw.length;
+            raw = raw.filter(item => {
+                if (item.type === 'airport' || item.type === 'hotel') return true;
+                if (!isValidCoordinate(item.lat, item.lng)) return true; // not yet geocoded
+                return coordInTripCities(item.lat as number, item.lng as number, trip);
+            });
+            const dropped = beforeLen - raw.length;
+            if (dropped > 0) {
+                console.info(`[Map] Dropped ${dropped} AI items outside trip cities (in-country but wrong-city)`);
+            }
+        }
+
         // Assign chronological order
         const sorted = [...raw].sort((a, b) => getItemTimestamp(a) - getItemTimestamp(b));
         sorted.forEach((item, i) => { item.order = i + 1; });
@@ -921,7 +959,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         });
 
         setMapItems(sorted);
-    }, [trip, items, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions]);
+    }, [trip, items, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions, cityBboxTick]);
 
     // 2. Geocode missing items — batched 5-concurrent to cut wait from 7s → ~2s.
     //    Items appear on the map progressively as each batch resolves.

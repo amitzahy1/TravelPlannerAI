@@ -16,7 +16,7 @@ import {
     cityKey,
     displayCityName,
 } from './geoData';
-import { getCountryBbox, coordInBbox, toEnglishCountryName } from './geocodePlaces';
+import { getCountryBbox, coordInBbox, toEnglishCountryName, getCityBbox, getCityBboxSync } from './geocodePlaces';
 
 export interface ScopedPlace {
     name?: string;
@@ -304,6 +304,62 @@ export const coordInTripCountries = (lat: number, lng: number, trip: Trip): bool
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
     const bboxes = getTripCountryBboxes(trip);
     if (bboxes.length === 0) return true; // permissive when trip has no resolvable country yet
+    return bboxes.some(b => coordInBbox(lat, lng, b));
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// TRIP-CITY whitelist — TIGHTER than the country whitelist. The country
+// check rejects out-of-Thailand items; this rejects in-Thailand items
+// that are not in any of the user's actual trip cities (Bangkok, Pattaya,
+// Koh Chang). Catches the case where Photon resolved an attraction name
+// like "Pearl Beach" or "Kai Bae Viewpoint" to a same-named place
+// elsewhere in the country.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Resolve & cache the bboxes for every city in the trip. Async because
+ * city centroids may need to be fetched on first use. Subsequent calls
+ * are free (localStorage-backed).
+ */
+export const getTripCityBboxes = async (
+    trip: Trip,
+): Promise<Array<[number, number, number, number]>> => {
+    const cities = getTripCities(trip, { excludeFlightOnly: true, lang: 'en' });
+    if (cities.length === 0) return [];
+    const country = inferTripCountry(trip) || undefined;
+    const bboxes: Array<[number, number, number, number]> = [];
+    for (const city of cities) {
+        const b = await getCityBbox(city, country);
+        if (b) bboxes.push(b);
+    }
+    return bboxes;
+};
+
+/** Synchronous variant — returns only city bboxes already cached. Used by
+ *  marker filters that can't wait on a network round-trip. The async
+ *  variant should be called once at trip load to warm the cache. */
+export const getTripCityBboxesSync = (
+    trip: Trip,
+): Array<[number, number, number, number]> => {
+    const cities = getTripCities(trip, { excludeFlightOnly: true, lang: 'en' });
+    const country = inferTripCountry(trip) || undefined;
+    const bboxes: Array<[number, number, number, number]> = [];
+    for (const city of cities) {
+        const b = getCityBboxSync(city, country);
+        if (b) bboxes.push(b);
+    }
+    return bboxes;
+};
+
+/**
+ * Strict trip-city check: does the lat/lng fall inside ANY of the trip's
+ * city bboxes? Returns TRUE if no trip cities are cached yet (permissive
+ * on cold start so we never blank-screen a fresh map).
+ */
+export const coordInTripCities = (lat: number, lng: number, trip: Trip): boolean => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+    const bboxes = getTripCityBboxesSync(trip);
+    if (bboxes.length === 0) return true; // cache cold — be permissive
     return bboxes.some(b => coordInBbox(lat, lng, b));
 };
 

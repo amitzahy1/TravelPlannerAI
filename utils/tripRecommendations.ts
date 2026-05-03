@@ -138,7 +138,10 @@ export const computeRecommendations = (
                 });
         }
 
-        // 3. Missing hotels — drop first/last day (assumed travel days).
+        // 3. Missing hotels — emit ONE chip per (city, contiguous-date-range)
+        //    so the user sees "חסר מלון בפטאייה ב-23-25/8" instead of a generic
+        //    "חסר מלון" lump that hides where and when. Drops first+last days
+        //    of the trip (assumed travel days).
         const datesWithHotel = new Set<string>();
         trip.hotels?.forEach(h => {
                 const start = new Date(h.checkInDate);
@@ -151,42 +154,66 @@ export const computeRecommendations = (
                         }
                 }
         });
-        const datesWithoutHotel = timeline
+        const missingHotelDays = timeline
                 .filter(day => !datesWithHotel.has(day.dateIso))
                 .filter((_, i, arr) => i > 0 && i < arr.length - 1);
-        if (datesWithoutHotel.length > 0) {
-                const isos = datesWithoutHotel.map(d => d.dateIso);
+        // Group by city, then split each group into contiguous date ranges.
+        const hotelByCity = new Map<string, string[]>();
+        missingHotelDays.forEach(day => {
+                const city = (day.locationContext || '').trim() || '—';
+                if (!hotelByCity.has(city)) hotelByCity.set(city, []);
+                hotelByCity.get(city)!.push(day.dateIso);
+        });
+        Array.from(hotelByCity.entries()).forEach(([city, isos]) => {
                 const ranges = compactRanges(isos);
-                recs.push({
-                        id: 'rec-hotel-missing',
-                        type: 'hotel_missing',
-                        title: 'חסר מלון',
-                        subtitle: `🏨 ${isos.length} לילות — ${formatDateRanges(ranges)}`,
-                        suggestedDates: isos,
-                        dateRanges: ranges,
-                        actionCount: isos.length,
+                ranges.forEach((range, idx) => {
+                        const cityLabel = city === '—' ? '' : ` ב-${city}`;
+                        const dateLabel = range.start === range.end
+                                ? formatHebrewDay(range.start)
+                                : `${formatHebrewDay(range.start)}–${formatHebrewDay(range.end)}`;
+                        const datesInRange: string[] = [];
+                        const cur = new Date(range.start);
+                        const endDate = new Date(range.end);
+                        while (cur <= endDate) {
+                                datesInRange.push(cur.toISOString().split('T')[0]);
+                                cur.setDate(cur.getDate() + 1);
+                        }
+                        recs.push({
+                                id: `rec-hotel-missing-${city}-${range.start}`,
+                                type: 'hotel_missing',
+                                title: `חסר מלון${cityLabel} ב-${dateLabel}`,
+                                subtitle: `🏨 ${datesInRange.length} ${datesInRange.length === 1 ? 'לילה' : 'לילות'} ללא מלון רשום`,
+                                suggestedDates: datesInRange,
+                                dateRanges: [range],
+                                actionCount: datesInRange.length,
+                        });
                 });
-        }
+        });
 
-        // 4. Missing transfers — use the SAME detector that the FlightsView
-        // shows so the home-page chip always matches the transport-page count.
+        // 4. Missing transfers — one chip per suggested transfer so the user
+        //    can see exactly which day each missing transfer is for. Uses the
+        //    SAME detectSuggestedTransports() the FlightsView shows so counts
+        //    are always synced.
         const suggested = detectSuggestedTransports(trip);
-        if (suggested.length > 0) {
-                const isos = suggested
-                        .map(s => (s.date || '').slice(0, 10))
-                        .filter(Boolean) as string[];
-                const ranges = compactRanges(isos);
-                const dateLabel = ranges.length > 0 ? ` — ${formatDateRanges(ranges)}` : '';
+        suggested.forEach(s => {
+                const isoDate = (s.date || '').slice(0, 10);
+                const dateLabel = isoDate ? formatHebrewDay(isoDate) : '';
+                const fromCity = ((s as any).fromCity || (s as any).fromName || '').toString().trim();
+                const toCity = ((s as any).toCity || (s as any).toName || '').toString().trim();
+                const route = fromCity && toCity ? `${fromCity}→${toCity}` : (fromCity || toCity);
+                const titleParts = ['הסעה'];
+                if (route) titleParts.push(route);
+                if (dateLabel) titleParts.push(`ב-${dateLabel}`);
                 recs.push({
-                        id: 'rec-transfer',
+                        id: `rec-transfer-${s.id}`,
                         type: 'transfer',
-                        title: 'הסעה חסרה',
-                        subtitle: `🚗 ${suggested.length} הסעות חסרות${dateLabel}`,
-                        suggestedDates: isos,
-                        dateRanges: ranges,
-                        actionCount: suggested.length,
+                        title: titleParts.join(' '),
+                        subtitle: `🚗 ${s.reason || 'הסעה חסרה'}`,
+                        suggestedDates: isoDate ? [isoDate] : [],
+                        dateRanges: isoDate ? [{ start: isoDate, end: isoDate }] : [],
+                        actionCount: 1,
                 });
-        }
+        });
 
         // 4b. AI market research missing
         if (!trip.aiRestaurants || trip.aiRestaurants.length === 0) {

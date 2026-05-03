@@ -61,9 +61,6 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
         // localStorage dismiss list — there's no React state for the list itself.
         const [dismissTick, setDismissTick] = useState(0);
 
-        // Mobile Collapsible State
-        const [isCollapsed, setIsCollapsed] = useState(true);
-
         const handleDismiss = (recId: string) => {
                 dismissRec(trip.id, recId);
                 setDismissTick(v => v + 1);
@@ -105,24 +102,10 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
 
         return (
                 <>
-                        {/* Mobile: Toggle Button (Only visible if >0 recs) */}
-                        <div className="md:hidden bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 p-3 flex justify-between items-center cursor-pointer active:bg-amber-100 transition-colors" onClick={() => setIsCollapsed(!isCollapsed)}>
-                                <div className="flex items-center gap-2">
-                                        <div className="p-1.5 bg-amber-100 rounded-lg">
-                                                <Lightbulb className="w-4 h-4 text-amber-600" />
-                                        </div>
-                                        <span className="text-sm font-bold text-amber-800">המלצות לשיפור</span>
-                                        <span className="bg-amber-200 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                                                {recommendations.length}
-                                        </span>
-                                </div>
-                                <div className={`transform transition-transform ${!isCollapsed ? 'rotate-180' : ''}`}>
-                                        <ChevronDown className="w-5 h-5 text-amber-500" />
-                                </div>
-                        </div>
-
-                        {/* Recommendation Bar (Visible on Desktop OR when Expanded on Mobile) */}
-                        <div className={`${isCollapsed ? 'hidden md:block' : 'block'} bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 border border-amber-200/50 rounded-b-2xl md:rounded-2xl p-3 mb-6 shadow-sm mx-4 md:mx-0 mt-2 md:mt-0 animate-in slide-in-from-top-2`}>
+                        {/* Visibility is controlled entirely by the parent's outer pill —
+                             the inner mobile-only header pill was a duplicate and showed a
+                             second number that didn't match the outer one. */}
+                        <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 border border-amber-200/50 rounded-2xl p-3 mb-6 shadow-sm mx-4 md:mx-0 animate-in slide-in-from-top-2">
                                 <div className="flex items-center gap-3">
                                         {/* Icon & Title - Desktop Only */}
                                         <div className="hidden md:flex items-center gap-2 min-w-fit">
