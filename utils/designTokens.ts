@@ -98,3 +98,42 @@ export const semantic = {
 export const touchTarget = 44;
 
 export type CityPaletteSlot = (typeof cityPalette)[number];
+
+// ── Z-index hierarchy (named tokens) ────────────────────────────
+// Replaces the wild z-10 / 40 / 50 / 80 / 100 / 200 / 1000 / 9999
+// anarchy across components. Use the constant — never `z-[…]`.
+//
+//   base       — most content
+//   raised     — hovered cards, sticky page headers
+//   sticky     — sticky toolbars within a page
+//   navbar     — top app navigation
+//   dropdown   — open menus / popovers
+//   mapOverlay — Leaflet UI on top of the map
+//   modal      — single overlay layer for dialogs
+//   modalOver  — confirm-modals stacked on top of an open modal
+//   toast      — always above everything except tooltips
+//   tooltip    — last layer, click-through
+export const zIndex = {
+        base: 1,
+        raised: 10,
+        sticky: 20,
+        navbar: 40,
+        dropdown: 50,
+        mapOverlay: 60,
+        modal: 100,
+        modalOver: 110,
+        toast: 200,
+        tooltip: 300,
+} as const;
+export type ZIndexLayer = keyof typeof zIndex;
+
+// ── Motion (canonical animation specs) ──────────────────────────
+// Import these from `utils/motion.ts` (re-exports) instead of redefining
+// keyframes per file. Goal: every animation in the product feels related.
+export const motionDurations = {
+        instant: 120,    // hover state
+        quick: 180,      // toasts, badges
+        base: 220,       // modals, page-enter
+        slide: 260,      // carousel transitions
+        deliberate: 360, // success / hero animations
+} as const;

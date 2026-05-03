@@ -10,7 +10,7 @@ import { Trip } from '../types';
 import { Loader2, Map as MapIcon } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
 import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl, toEnglishCountryName } from '../utils/geocodePlaces';
-import { isPlaceInTripScope, getTripCountryBbox, getTripCountries, getTripCountryBboxes, placeInTripCountries, getCountryForHotel } from '../utils/tripScope';
+import { isPlaceInTripScope, getTripCountryBbox, getTripCountries, getTripCountryBboxes, placeInTripCountries, getCountryForHotel, coordInTripCountries } from '../utils/tripScope';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { MODE_COLORS } from '../utils/transportColors';
@@ -267,6 +267,73 @@ const geocodeAddress = async (
         return null;
     }
     return null;
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// Trip-aware geocoding + coord validation. The "wrong-continent map" bug
+// (Koh Chang in Europe, Bangkok in Africa) was caused by three classes of
+// stale data slipping past the per-call bbox check:
+//   1. localStorage geocode cache from a previous session validated nothing.
+//   2. Hotels saved on the trip with wrong-country lat/lng kept those coords.
+//   3. Route-stop geocoding called geocodeAddress() without any bbox at all.
+// Routing every coord through these helpers fixes all three at once.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Returns the input coords iff they fall inside one of the trip's country
+ *  bboxes. If the trip has no resolvable countries (brand-new trip), passes
+ *  the coords through unchanged so we don't blank-screen a fresh map. */
+const validateCoordsForTrip = (
+    lat: number | undefined | null,
+    lng: number | undefined | null,
+    trip: Trip | null | undefined,
+): { lat: number; lng: number } | null => {
+    if (!isValidCoordinate(lat, lng)) return null;
+    if (!trip) return { lat: lat as number, lng: lng as number };
+    const countries = getTripCountries(trip);
+    if (countries.size === 0) return { lat: lat as number, lng: lng as number };
+    if (!coordInTripCountries(lat as number, lng as number, trip)) return null;
+    return { lat: lat as number, lng: lng as number };
+};
+
+/** Geocode a query and return coords ONLY if they fall inside one of the
+ *  trip's country bboxes. Tries each country bbox as a Photon bias, with
+ *  the country name appended to the query for disambiguation. */
+const geocodeForTrip = async (
+    query: string,
+    trip: Trip | null | undefined,
+): Promise<{ lat: number; lng: number } | null> => {
+    if (!query) return null;
+    if (!trip) return geocodeAddress(query);
+    const bboxes = getTripCountryBboxes(trip);
+    if (bboxes.length === 0) return geocodeAddress(query);
+    const countries = [...getTripCountries(trip)];
+    // Try each country in order — append country to query, bias bbox.
+    for (let i = 0; i < bboxes.length; i++) {
+        const country = countries[i];
+        const q = country && !query.toLowerCase().includes(country.toLowerCase())
+            ? `${query}, ${country}`
+            : query;
+        const r = await geocodeAddress(q, bboxes[i]);
+        if (r && coordInTripCountries(r.lat, r.lng, trip)) return r;
+    }
+    // Final attempt without bbox bias — but validate the result.
+    const fallback = await geocodeAddress(query);
+    return fallback && coordInTripCountries(fallback.lat, fallback.lng, trip)
+        ? fallback
+        : null;
+};
+
+/** Validated cache lookup. Returns cached coords ONLY if they pass the
+ *  trip-country check. Wrong-country cache entries are dropped (returns
+ *  null) so the caller can re-geocode with the new trip-bbox constraint. */
+const lookupCachedCoords = (
+    cache: Record<string, { lat: number; lng: number }>,
+    key: string,
+    trip: Trip | null | undefined,
+): { lat: number; lng: number } | null => {
+    const cached = cache[key];
+    if (!cached) return null;
+    return validateCoordsForTrip(cached.lat, cached.lng, trip);
 };
 
 // --- PREMIUM PIN MARKER ---
@@ -618,6 +685,32 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     // Keep geocodedCacheRef in sync so the mapItems useEffect can read it.
     useEffect(() => { geocodedCacheRef.current = geocodedCache; }, [geocodedCache]);
 
+    // ─────────────────────────────────────────────────────────────────
+    // Stale-cache scrub. localStorage `geocodedCache` accumulates entries
+    // across trips — including the Africa-positioned "Bangkok" or
+    // Europe-positioned "Koh Chang" results that caused the bug. When
+    // the active trip changes, drop any cache entry whose coords don't
+    // belong to the trip's countries. The next geocode call will redo
+    // them with the correct bbox bias.
+    // ─────────────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (!trip) return;
+        const tripCountries = getTripCountries(trip);
+        if (tripCountries.size === 0) return; // no resolvable country — skip
+        const dirty: string[] = [];
+        for (const [k, v] of Object.entries(geocodedCache)) {
+            if (!coordInTripCountries(v.lat, v.lng, trip)) dirty.push(k);
+        }
+        if (dirty.length === 0) return;
+        console.warn(`[Map] Scrubbing ${dirty.length} stale geocode-cache entries that fall outside trip countries`, dirty);
+        setGeocodedCache(prev => {
+            const next = { ...prev };
+            dirty.forEach(k => { delete next[k]; });
+            saveGeoCache(next);
+            return next;
+        });
+    }, [trip?.id, trip?.destination, trip?.destinationEnglish, trip?.hotels?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // 1. Build raw map items from trip data
     useEffect(() => {
         if (!trip && !items) return;
@@ -904,6 +997,51 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         run();
     }, [mapItems.length]);
 
+    // 2b. AI sanity check — runs after geocoding settles. The deterministic
+    //     bbox check above catches the common case (Photon returning a place
+    //     in the wrong country); this AI pass catches the rare case of coords
+    //     that technically fall inside the country but at a wildly wrong
+    //     position. Any pin the AI flags as out-of-country gets dropped and
+    //     a single toast notifies the user.
+    useEffect(() => {
+        if (!trip) return;
+        if (mapItems.length === 0) return;
+        if (loading) return; // wait for geocoding to settle
+        const tripCountries = [...getTripCountries(trip)];
+        if (tripCountries.length === 0) return;
+
+        // Run once per stable item set. Cancel-safe via the ref check inside.
+        let cancelled = false;
+        const runId = Math.random().toString(36).slice(2);
+        const run = async () => {
+            const verifiable = mapItems
+                .filter(i => isValidCoordinate(i.lat, i.lng) && i.type !== 'airport')
+                .map(i => ({ id: i.id, name: i.name, lat: i.lat as number, lng: i.lng as number }));
+            if (verifiable.length === 0) return;
+
+            try {
+                const { verifyPinsAgainstTripCountries } = await import('../utils/mapSanityCheck');
+                const results = await verifyPinsAgainstTripCountries(verifiable, tripCountries);
+                if (cancelled) return;
+                const wrongIds = new Set(results.filter(r => !r.in_country).map(r => r.id));
+                if (wrongIds.size === 0) return;
+                console.warn(`[Map][${runId}] AI sanity check rejected ${wrongIds.size} pins`, [...wrongIds]);
+                setMapItems(prev =>
+                    prev.map(i => (wrongIds.has(i.id) ? { ...i, lat: undefined, lng: undefined } : i)),
+                );
+                try {
+                    const { toast } = await import('../stores/useToastStore');
+                    toast.warning(`${wrongIds.size} מקומות הוסרו מהמפה — מיקומם לא תואם למדינת הטיול`);
+                } catch { /* toast import is optional */ }
+            } catch (e) {
+                console.warn('[Map] AI sanity check failed', e);
+            }
+        };
+        // Debounce so a flurry of geocode updates doesn't trigger N AI calls.
+        const t = window.setTimeout(run, 800);
+        return () => { cancelled = true; window.clearTimeout(t); };
+    }, [trip?.id, mapItems.length, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // 3. Build date-ordered route stops
     useEffect(() => {
         if (!trip || items) return;
@@ -1023,13 +1161,18 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     ts = (lastDatedHotelTs || Date.now()) + undatedSeq * 24 * 3600 * 1000;
                     console.warn(`[Map] Hotel "${h.name}" has no parseable checkInDate — placing at end of route`);
                 }
+                // ⚠️ STRICT: only accept the hotel's cached lat/lng if they
+                // pass the trip-country whitelist. Stale wrong-country coords
+                // (e.g. Photon returning a Russian "Koh Chang" in Europe)
+                // get dropped here so the geocoder retries with bbox bias.
+                const validatedHotelCoords = validateCoordsForTrip(h.lat, h.lng, trip);
                 candidates.push({
                     name: city,
                     displayName: h.name || city,
                     type: 'hotel',
                     date: h.checkInDate,
                     emoji: '🏨',
-                    coords: isValidCoordinate(h.lat, h.lng) ? { lat: h.lat!, lng: h.lng! } : undefined,
+                    coords: validatedHotelCoords || undefined,
                     sortTs: ts,
                     isFlightOnly: false,
                 });
@@ -1111,14 +1254,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         queries.push(`${stop.code}`);
                 }
                 queries.push(stop.name);
-                // Try cache for every candidate first
+                // Try cache for every candidate first — VALIDATED against the trip's
+                // country whitelist so a stale "Bangkok in Africa" entry can't sneak in.
                 for (const q of queries) {
-                        if (geocodedCache[q]) { stop.coords = geocodedCache[q]; break; }
+                        const cached = lookupCachedCoords(geocodedCache, q, trip);
+                        if (cached) { stop.coords = cached; break; }
                 }
                 if (stop.coords) continue;
-                // Network: try each in order, save the first hit
+                // Network: every geocode call goes through `geocodeForTrip` which
+                // (a) appends the country name, (b) biases by country bbox, and
+                // (c) rejects wrong-country results. Stops will resolve to null
+                // if no matching place exists in the trip's countries — better
+                // than a globally-positioned wrong pin.
                 for (const q of queries) {
-                        const coords = await geocodeAddress(q);
+                        const coords = await geocodeForTrip(q, trip);
                         if (coords) {
                                 stop.coords = coords;
                                 setGeocodedCache(prev => {
@@ -1182,13 +1331,24 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     const hard = SMALL_AIRPORT_COORDS[raw.toUpperCase()];
                     if (hard) { next[raw] = hard; continue; }
                 }
-                // 2. Existing geo cache (browser-persisted from prior trips).
-                const cached = geocodedCache[raw] || geocodedCache[raw.toUpperCase()] ||
-                    geocodedCache[`${raw} Airport`] || geocodedCache[`${raw.toUpperCase()} Airport`];
+                // 2. Existing geo cache (browser-persisted from prior trips) —
+                //    validated against the trip-country whitelist so stale
+                //    wrong-continent entries can't sneak in.
+                const cacheCandidates = [
+                    raw,
+                    raw.toUpperCase(),
+                    `${raw} Airport`,
+                    `${raw.toUpperCase()} Airport`,
+                ];
+                let cached: { lat: number; lng: number } | null = null;
+                for (const k of cacheCandidates) {
+                    cached = lookupCachedCoords(geocodedCache, k, trip);
+                    if (cached) break;
+                }
                 if (cached) { next[raw] = cached; continue; }
-                // 3. Live geocode as last resort.
+                // 3. Live geocode as last resort — country-aware.
                 const q = /^[a-z]{3}$/.test(raw) ? `${raw.toUpperCase()} Airport` : raw;
-                const c = await geocodeAddress(q);
+                const c = await geocodeForTrip(q, trip);
                 if (c) next[raw] = c;
             }
             setAirportCoords(next);
@@ -1250,10 +1410,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             for (const name of Array.from(names)) {
                 const key = name.toLowerCase();
                 if (waypointCoords[key]) { next[key] = waypointCoords[key]; continue; }
-                // Cache first
-                const cached = geocodedCache[name] || geocodedCache[name.toLowerCase()];
+                // Cache first — validated against the trip's countries.
+                const cached = lookupCachedCoords(geocodedCache, name, trip)
+                    || lookupCachedCoords(geocodedCache, name.toLowerCase(), trip);
                 if (cached) { next[key] = cached; continue; }
-                const coords = await geocodeAddress(name);
+                const coords = await geocodeForTrip(name, trip);
                 if (coords) {
                     next[key] = coords;
                     setGeocodedCache(prev => {
@@ -1743,9 +1904,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 // like "בנגקוק - פטאיה - קו צ'אנג" fail on both Photon and Nominatim.
                 const destQuery = trip.destinationEnglish || trip.destination;
                 const destCacheKey = `dest:${destQuery}`;
-                const destPromise = geocodedCache[destCacheKey]
-                    ? Promise.resolve(geocodedCache[destCacheKey])
-                    : geocodeAddress(destQuery).then(c => {
+                const validatedDestCache = lookupCachedCoords(geocodedCache, destCacheKey, trip);
+                const destPromise = validatedDestCache
+                    ? Promise.resolve(validatedDestCache)
+                    : geocodeForTrip(destQuery, trip).then(c => {
                             if (c) {
                                 setGeocodedCache(prev => {
                                     const next = { ...prev, [destCacheKey]: c };
@@ -1790,7 +1952,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             }
         } else if (trip?.destination) {
             const destQuery = trip.destinationEnglish || trip.destination;
-            geocodeAddress(destQuery).then(c => {
+            geocodeForTrip(destQuery, trip).then(c => {
                 if (!mapInstanceRef.current) return;
                 if (c) map.setView([c.lat, c.lng], 8);
             });
