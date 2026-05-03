@@ -450,12 +450,15 @@ const FlightRow: React.FC<{
           </div>
         </div>
 
-        {/* Row 2 — boarding-pass route strip (dir=ltr for natural time→time read) */}
-        <div dir="ltr" className="relative flex items-center gap-3 bg-gradient-to-l from-slate-50 to-white rounded-2xl p-3 border border-slate-100">
+        {/* Row 2 — boarding-pass route strip. Three-column grid: airline logo
+            + departure / timeline / arrival. The middle column expands to fill
+            available width so the dotted line + duration chip always fit
+            cleanly on tiny screens — no minWidth hacks, no overflow. */}
+        <div dir="ltr" className="relative grid grid-cols-[auto_auto_1fr_auto] items-center gap-3 bg-gradient-to-l from-slate-50 to-white rounded-2xl p-3 border border-slate-100">
           {/* Left accent strip (boarding-pass feel) */}
           <span aria-hidden className="absolute left-0 top-3 bottom-3 w-1 rounded-pill bg-gradient-to-b from-blue-500 to-sky-400" />
 
-          <div className="w-10 h-10 rounded-xl border border-slate-100 bg-white shadow-card overflow-hidden flex items-center justify-center p-0.5 shrink-0 ml-1">
+          <div className="w-10 h-10 rounded-xl border border-slate-100 bg-white shadow-card overflow-hidden flex items-center justify-center p-0.5 ml-1">
             <img src={logoUrl} alt={airline || 'airline'}
               onError={e => (e.currentTarget.style.display = 'none')}
               loading="lazy" decoding="async"
@@ -463,14 +466,14 @@ const FlightRow: React.FC<{
           </div>
 
           {/* Departure */}
-          <div className="shrink-0 text-left min-w-0" style={{ minWidth: '76px' }}>
+          <div className="text-left min-w-0">
             <div className="text-2xl font-black text-slate-900 leading-none tracking-[0.04em] font-mono tabular-nums">{segment.fromCode || '—'}</div>
             <div className="text-xs font-bold text-slate-600 leading-none mt-1 font-mono tabular-nums">{depTime || '—'}</div>
             <div className="text-2xs text-slate-400 mt-0.5 truncate max-w-[90px]">{fromLabel}</div>
           </div>
 
           {/* Timeline */}
-          <div className="grow flex flex-col items-center min-w-[44px]">
+          <div className="flex flex-col items-center min-w-0 px-2">
             {duration ? (
               <span className="text-2xs font-bold text-slate-500 mb-1 whitespace-nowrap bg-white px-1.5 py-0.5 rounded-pill border border-slate-100 shadow-card">
                 {duration}
@@ -529,7 +532,7 @@ const FlightRow: React.FC<{
           </div>
 
           {/* Arrival */}
-          <div className="shrink-0 text-right min-w-0" style={{ minWidth: '76px' }}>
+          <div className="text-right min-w-0">
             <div className="text-2xl font-black text-slate-900 leading-none tracking-[0.04em] font-mono tabular-nums inline-flex items-start gap-0.5 justify-end">
               {segment.toCode || '—'}
               {dayDiff > 0 && <span className="text-2xs font-black text-orange-500 mt-0.5">+{dayDiff}</span>}

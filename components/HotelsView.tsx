@@ -8,6 +8,8 @@ import {
     ShieldCheck, Lock, ChevronDown, Users, Tag, CheckCheck, DollarSign, Copy, Check, RotateCw
 } from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
+import { getCityTheme } from '../utils/cityColors';
+import { Badge } from './ui/Badge';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
 import { toast } from '../stores/useToastStore';
@@ -397,8 +399,16 @@ Address: "${primary.address}"`;
 
     const saveNote = () => { onSaveNote(noteText); setIsEditingNote(false); };
 
+    // City-color stripe (4px) on the start-edge — gives each hotel a visual
+    // tag that matches the calendar / itinerary city palette so the user
+    // can scan a hotel list and instantly see which city each entry is in.
+    const cityTheme = primary.city ? getCityTheme(primary.city) : null;
+
     return (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group/card">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group/card relative">
+            {cityTheme && (
+                <span aria-hidden="true" className={`absolute top-0 bottom-0 start-0 w-1 ${cityTheme.bg}`} />
+            )}
 
             {/* ── Card header — square image on the right, info column next,
                  action menu top-left. Replaces the cramped strip layout where
@@ -449,18 +459,16 @@ Address: "${primary.address}"`;
 
                     {/* Chips row — neutral / luxury palette, no indigo */}
                     <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                        <span className="inline-flex items-center gap-1 text-2xs font-bold bg-slate-900 text-white px-2 py-0.5 rounded-pill whitespace-nowrap">
-                            <Calendar className="w-3 h-3" aria-hidden="true" />
+                        <Badge tone="neutral" variant="solid" size="sm" iconLeading={<Calendar />}>
                             {nightsCount ?? '?'} לילות
-                        </span>
+                        </Badge>
                         {mergedRooms.length > 0 && (
-                            <span className="inline-flex items-center gap-1 text-2xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-pill whitespace-nowrap">
-                                <BedDouble className="w-3 h-3" aria-hidden="true" />
+                            <Badge tone="neutral" size="sm" iconLeading={<BedDouble />}>
                                 {mergedRooms.length} חדר{mergedRooms.length !== 1 ? 'ים' : ''}
-                            </span>
+                            </Badge>
                         )}
                         {primary.bookingSource && (
-                            <span className={`text-2xs font-black px-2 py-0.5 rounded-pill whitespace-nowrap ${sourceStyle.bg} ${sourceStyle.text}`}>
+                            <span className={`text-2xs font-black px-2 py-0.5 rounded-full whitespace-nowrap ${sourceStyle.bg} ${sourceStyle.text}`}>
                                 {sourceStyle.label}
                             </span>
                         )}

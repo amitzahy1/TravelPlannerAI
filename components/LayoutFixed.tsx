@@ -145,20 +145,28 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                 )}
 
                                                 {/* Center: Desktop Content Nav Tabs (without trip management) */}
-                                                <div className="hidden lg:flex items-center gap-1 bg-slate-100/80 p-1.5 rounded-2xl mx-4">
-                                                        {contentNavItems.map(item => (
-                                                                <button
-                                                                        key={item.id}
-                                                                        onClick={() => onSwitchTab(item.id)}
-                                                                        className={`flex items-center px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${currentTab === item.id
-                                                                                ? 'bg-white text-blue-600 shadow-sm scale-105'
-                                                                                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
-                                                                                }`}
-                                                                >
-                                                                        <item.icon className={`w-4 h-4 ml-2 ${currentTab === item.id ? 'text-blue-600' : 'text-slate-400'}`} />
-                                                                        {item.label}
-                                                                </button>
-                                                        ))}
+                                                <div className="hidden lg:flex items-center gap-1 mx-4">
+                                                        {contentNavItems.map(item => {
+                                                                const active = currentTab === item.id;
+                                                                return (
+                                                                        <button
+                                                                                key={item.id}
+                                                                                onClick={() => onSwitchTab(item.id)}
+                                                                                className={`relative flex items-center px-4 py-2.5 text-sm font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-md ${active
+                                                                                        ? 'text-blue-600'
+                                                                                        : 'text-slate-500 hover:text-slate-800'
+                                                                                        }`}
+                                                                        >
+                                                                                <item.icon className={`w-4 h-4 ml-2 ${active ? 'text-blue-600' : 'text-slate-400'}`} />
+                                                                                {item.label}
+                                                                                {/* Active indicator — 2px underline, calmer than the
+                                                                                    pill background. Animates in via opacity. */}
+                                                                                <span
+                                                                                        className={`absolute bottom-0 inset-x-3 h-0.5 rounded-full bg-blue-600 transition-opacity duration-150 ${active ? 'opacity-100' : 'opacity-0'}`}
+                                                                                />
+                                                                        </button>
+                                                                );
+                                                        })}
                                                 </div>
 
                                                 {/* Left: Login & Mobile Menu */}
