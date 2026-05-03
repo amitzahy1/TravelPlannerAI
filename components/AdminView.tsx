@@ -1097,7 +1097,10 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                         )}
 
                         {activeTab === 'health' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (
-                            <DataHealthPanel trip={activeTrip} />
+                            <DataHealthPanel
+                                trip={activeTrip}
+                                onUpdateTrip={(t) => handleUpdateTrip(t)}
+                            />
                         )}
 
                         {activeTab === 'logs' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (

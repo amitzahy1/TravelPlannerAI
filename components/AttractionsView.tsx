@@ -11,6 +11,8 @@ import { ThinkingLoader } from './ThinkingLoader';
 import { PlaceCard } from './PlaceCard';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
 import { ConfirmModal } from './ConfirmModal';
+import { Tabs } from './ui/Tabs';
+import { SkeletonCardGrid } from './ui/Skeleton';
 
 import { cleanTextForMap } from '../utils/textUtils';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
@@ -819,24 +821,18 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 </div>
             )}
 
-            {/* Tab bar — my_list / market research. The list/map view
-                 toggle has its OWN row below (segmented control). */}
-            <div className="bg-slate-100/80 p-1.5 rounded-2xl flex relative mb-2">
-                <button
-                    onClick={() => setActiveTab('my_list')}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'my_list' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <Ticket className={`w-4 h-4 ${activeTab === 'my_list' ? 'text-purple-500' : 'text-slate-400'}`} />
-                    הרשימה שלי
-                </button>
-                <button
-                    onClick={() => setActiveTab('recommended')}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all relative z-10 ${activeTab === 'recommended' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <Sparkles className={`w-4 h-4 ${activeTab === 'recommended' ? 'text-blue-500' : 'text-slate-400'}`} />
-                    מחקר שוק (AI)
-                </button>
-            </div>
+            {/* Tab bar — canonical Tabs primitive. */}
+            <Tabs<'my_list' | 'recommended'>
+                value={activeTab}
+                onChange={setActiveTab}
+                fullWidth
+                className="mb-2"
+                ariaLabel="Attractions view mode"
+                items={[
+                    { value: 'recommended', label: 'מחקר שוק (AI)', iconLeading: <Sparkles /> },
+                    { value: 'my_list', label: 'הרשימה שלי', iconLeading: <Ticket /> },
+                ]}
+            />
 
             {/* List ↔ Map segmented control */}
             <div className="inline-flex bg-slate-100 rounded-xl p-1 mb-3">
@@ -1015,7 +1011,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                 </div>
                             )}
 
-                            {loadingRecs ? <ThinkingLoader texts={["סורק אטרקציות...", "מחפש פנינים נסתרות...", "בודק דירוגים...", "מצליב מידע עם מקומיים..."]} /> : (
+                            {loadingRecs ? (
+                                <div className="space-y-4">
+                                    <ThinkingLoader texts={["סורק אטרקציות...", "מחפש פנינים נסתרות...", "בודק דירוגים...", "מצליב מידע עם מקומיים..."]} />
+                                    <SkeletonCardGrid count={6} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" />
+                                </div>
+                            ) : (
                                 <>
                                     {allAiAttractions().length === 0 || hasStaleData ? (
                                         <div className="flex flex-col items-center justify-center py-10 space-y-4 text-center px-4">
