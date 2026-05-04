@@ -341,19 +341,27 @@ const makePinIcon = (
     config: typeof TYPE_CONFIG[keyof typeof TYPE_CONFIG],
     label?: string,
     source: 'saved' | 'ai' = 'saved',
+    wrap: boolean = false,
 ) => {
     const [c1, c2] = config.gradient;
     // When a label is supplied we render a name pill above the pin so the
-    // user can read every place's name at a glance without clicking. Long
-    // names are truncated to keep neighbouring pins from colliding.
-    const trimmed = label ? (label.length > 26 ? label.slice(0, 25) + '…' : label) : '';
+    // user can read every place's name at a glance without clicking.
+    //   - wrap=false (default): single-line, truncated to 26 chars.
+    //   - wrap=true (used for hotel names at city zoom): allow 2-3 lines
+    //     of wrap so long names like "KC Grande Resort Koh Chang" don't
+    //     overflow into neighbouring pins.
+    const trimmed = label ? (wrap ? label : (label.length > 26 ? label.slice(0, 25) + '…' : label)) : '';
+    const wrapStyles = wrap
+        ? 'white-space:normal;max-width:140px;line-height:1.2;text-align:center;'
+        : 'white-space:nowrap;line-height:1.3;';
     const labelHtml = trimmed ? `
         <div style="
             background:${source === 'ai' ? '#ffffffd9' : 'white'};
             border:1px ${source === 'ai' ? 'dashed' : 'solid'} ${c1}${source === 'ai' ? '88' : '55'};border-radius:8px;
             padding:2px 8px;font-size:10px;font-weight:700;color:${source === 'ai' ? '#475569' : '#0f172a'};
-            box-shadow:0 2px 6px rgba(15,23,42,0.18);white-space:nowrap;
-            font-family:'Rubik','Inter',sans-serif;line-height:1.3;
+            box-shadow:0 2px 6px rgba(15,23,42,0.18);
+            font-family:'Rubik','Inter',sans-serif;
+            ${wrapStyles}
             margin-bottom:3px;direction:rtl;
         ">${trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
     ` : '';
@@ -580,26 +588,61 @@ const estimateTravelTime = (distKm: number, mode: string): string => {
 const fmtDistKm = (km: number): string =>
     km >= 1000 ? `${(km / 1000).toFixed(1)}K ק"מ` : `${Math.round(km)} ק"מ`;
 
-const makeRouteBadge = (distKm: number, transport: SegmentTransportInfo, color: string): L.DivIcon => {
+/**
+ * Zoom-tiered label level. The map decides what's visible based on this
+ * value; matches the patterns Mapbox / Apple Maps / Polarsteps use.
+ *   0 — country/world: only polyline + START/END markers
+ *   1 — regional: + numbered route stops
+ *   2 — metro: + hotel pins (icons only, no names) + segment emoji only
+ *   3 — city: + restaurants/attractions + hotel names with wrap + segment emoji+duration
+ *   4 — street: full labels everywhere, segment emoji+duration+distance
+ */
+const labelTier = (z: number): 0 | 1 | 2 | 3 | 4 => {
+    if (z >= 14) return 4;
+    if (z >= 12) return 3;
+    if (z >= 10) return 2;
+    if (z >= 8)  return 1;
+    return 0;
+};
+
+const makeRouteBadge = (
+    distKm: number,
+    transport: SegmentTransportInfo,
+    color: string,
+    tier: 2 | 3 | 4 = 4,
+): L.DivIcon => {
     const displayTime = transport.duration || estimateTravelTime(distKm, transport.mode);
-    // Compact: single row "emoji label · time · distance". No more warning
-    // chip — if no flight, we drive by default, which is not a failure.
+    // Tier 2 (metro): emoji-only chip, no text. Conveys mode without overlap.
+    // Tier 3 (city): emoji + duration. Drops kilometers.
+    // Tier 4 (street): full label "emoji label · time · distance" — original.
+    let inner: string;
+    if (tier === 2) {
+        inner = `<span style="font-size:13px;line-height:1">${transport.emoji}</span>`;
+    } else if (tier === 3) {
+        inner = `
+            <span style="font-size:12px;line-height:1">${transport.emoji}</span>
+            <span style="font-size:10px;color:#475569;font-weight:700">${displayTime}</span>
+        `;
+    } else {
+        inner = `
+            <span style="font-size:12px;line-height:1">${transport.emoji}</span>
+            <span style="font-size:10px;font-weight:800;color:${color};letter-spacing:.01em">${transport.label}</span>
+            <span style="color:#cbd5e1;font-size:8px">•</span>
+            <span style="font-size:10px;color:#475569;font-weight:700">${displayTime}</span>
+            <span style="color:#cbd5e1;font-size:8px">•</span>
+            <span style="font-size:10px;color:#475569;font-weight:600">${fmtDistKm(distKm)}</span>
+        `;
+    }
+    const padding = tier === 2 ? '4px 6px' : '3px 9px 3px 8px';
     const html = `<div style="
         display:inline-flex;align-items:center;gap:5px;
         background:white;border-radius:999px;
-        padding:3px 9px 3px 8px;
+        padding:${padding};
         box-shadow:0 2px 8px rgba(15,23,42,.14),0 1px 2px rgba(15,23,42,.08);
         border:1px solid ${color}33;
         font-family:'Rubik','Inter',sans-serif;
         white-space:nowrap;direction:rtl;
-    ">
-        <span style="font-size:12px;line-height:1">${transport.emoji}</span>
-        <span style="font-size:10px;font-weight:800;color:${color};letter-spacing:.01em">${transport.label}</span>
-        <span style="color:#cbd5e1;font-size:8px">•</span>
-        <span style="font-size:10px;color:#475569;font-weight:700">${displayTime}</span>
-        <span style="color:#cbd5e1;font-size:8px">•</span>
-        <span style="font-size:10px;color:#475569;font-weight:600">${fmtDistKm(distKm)}</span>
-    </div>`;
+    ">${inner}</div>`;
     return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 12] });
 };
 
@@ -1686,6 +1729,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // the trip route read instantly.
         const PLACES_REVEAL_ZOOM = 11;
         const showPlaces = mapZoom >= PLACES_REVEAL_ZOOM || activeCity !== 'ALL';
+        // Tier drives label content + which marker types render. When a
+        // city filter is active, jump straight to tier 3 so the user
+        // sees full info inside the city they picked.
+        const tier = activeCity !== 'ALL' ? 3 : labelTier(mapZoom);
 
         // Plot non-airport items with premium pins. Hotels are routed to
         // the unclustered route layer so they're always individually
@@ -1702,13 +1749,23 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             // Hide name labels at low zoom — only the icon remains so the
             // first-glance picture stays clean. Names appear once the user
             // zooms in past the city level.
-            const showLabel = mapZoom >= PLACES_REVEAL_ZOOM || activeCity !== 'ALL';
-            const icon = makePinIcon(cfg, showLabel ? item.name : undefined, pinSource);
+            // Tier-driven label rendering:
+            //   - Hotels: show name with wrap at tier ≥ 3, hide name at lower tiers.
+            //   - Restaurants/attractions: hide name at tier ≤ 2 (the
+            //     "showPlaces" guard above already prevents the marker
+            //     from rendering at tier ≤ 2 anyway), show name at tier 3+.
+            const showLabel = tier >= 3;
+            const wrapLabel = item.type === 'hotel' && tier >= 3;
+            const icon = makePinIcon(cfg, showLabel ? item.name : undefined, pinSource, wrapLabel);
 
             const targetLayer = item.type === 'hotel' ? routeLayer : markerLayer;
             const marker = L.marker([item.lat!, item.lng!], {
                 icon,
-                zIndexOffset: item.type === 'hotel' ? 2000 : 0,
+                // Z-index priority for label collisions:
+                //   hotels   3000 (highest — anchor of trip planning)
+                //   stops    2000 (set elsewhere on the route-stop markers)
+                //   places   0    (restaurants/attractions — clusters absorb most)
+                zIndexOffset: item.type === 'hotel' ? 3000 : 0,
             }).addTo(targetLayer);
 
             // React portal popup — renders MapItemPopup synchronously via
@@ -1926,7 +1983,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         // Hide transport badges at low zoom — declutters the
                         // first-glance view; the polyline + numbered stops are
                         // enough to communicate the route.
-                        const badgeIcon = (mapZoom >= 9) ? makeRouteBadge(subDist, subTransport, subColor) : null;
+                        // Tier-driven badge: tier 2 = emoji-only, tier 3 = emoji+duration, tier 4 = full.
+                        const segTier = labelTier(mapZoom);
+                        const badgeIcon = segTier >= 2 ? makeRouteBadge(subDist, subTransport, subColor, Math.max(2, Math.min(4, segTier)) as 2 | 3 | 4) : null;
                         drawSubSegment(subPath, subColor, badgeIcon, 0.5);
                         bounds.extend([sub.from.lat, sub.from.lng]);
                         bounds.extend([sub.to.lat, sub.to.lng]);
@@ -1973,7 +2032,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         : NEUTRAL_GRAY;
                     const stagger = 0.45 + (i % 3) * 0.05;
                     // Hide transport badges at low zoom (matches the multi-segment branch above).
-                    const badgeIcon = (dist >= 5 && mapZoom >= 9) ? makeRouteBadge(dist, transport, modeColor) : null;
+                    const segTier = labelTier(mapZoom);
+                    const badgeIcon = (dist >= 5 && segTier >= 2) ? makeRouteBadge(dist, transport, modeColor, Math.max(2, Math.min(4, segTier)) as 2 | 3 | 4) : null;
                     drawSubSegment(pathPoints, modeColor, badgeIcon, stagger);
                     bounds.extend([start.coords.lat, start.coords.lng]);
                     bounds.extend([end.coords.lat, end.coords.lng]);
