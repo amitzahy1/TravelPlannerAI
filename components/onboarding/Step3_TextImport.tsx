@@ -99,6 +99,37 @@ const buildAiPromptForClipboard = (destination?: string, startDate?: string, end
 אפשר להחזיר כטקסט מובנה או כטבלה. השתמשו בפורמט תאריך עקבי (DD/MM/YYYY).`;
 };
 
+/**
+ * Variant of the prompt designed for Gemini's Gmail integration. Tells Gemini
+ * to FETCH the bookings from the user's Gmail rather than expecting them
+ * pre-attached. The user pastes this into Gemini Advanced (which can read
+ * Gmail natively) and pastes the answer back into our textarea.
+ */
+const buildGeminiGmailPrompt = (destination?: string, startDate?: string, endDate?: string) => {
+        const dest = destination?.trim();
+        const start = formatHebrewDate(startDate);
+        const end = formatHebrewDate(endDate);
+        const tripScope = dest && start && end
+                ? `לטיול ל-${dest} בתאריכים ${start} עד ${end}`
+                : dest
+                        ? `לטיול ל-${dest}`
+                        : 'לטיול הקרוב שלי';
+
+        return `חפש ב-Gmail שלי את כל אישורי ההזמנה ${tripScope}. כלל מיילים מ-Booking.com, Airbnb, Skyscanner, Trip.com, Expedia, Hotels.com, חברות תעופה, רכבת, רכב שכור, העברות, ביטוח נסיעות וכל הזמנת תיירות אחרת.
+
+סכם את כל מה שמצאת בעברית בטקסט אחד מובנה שכולל:
+
+לכל מלון: שם, עיר, תאריך צ'ק-אין (DD/MM/YYYY), תאריך צ'ק-אאוט, סוג חדר, מספר מבוגרים וילדים לחדר, מקור הזמנה, והערות אם יש.
+
+לכל טיסה: חברת תעופה, מספר טיסה, מעיר לעיר (כולל קוד IATA), תאריך, שעת המראה, שעת נחיתה, PNR אם ידוע.
+
+לכל הזמנת תחבורה אחרת: סוג (רכבת/אוטובוס/מעבורת/רכב), מ-, ל-, תאריך, שעה.
+
+החזר את התשובה כטקסט אחד שאוכל להעתיק. השתמש בפורמט תאריך עקבי (DD/MM/YYYY) ושמור על שמות בעברית כשאפשר.
+
+חשוב: אל תוסיף הסבר או הקדמה — רק את המידע המובנה.`;
+};
+
 const ANALYZING_MESSAGES = [
         'מעבד את תיאור הטיול...',
         'מזהה פורמט...',
@@ -383,6 +414,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
         const [errorMessage, setErrorMessage] = useState<string>('');
         const [showExample, setShowExample] = useState(false);
         const [copied, setCopied] = useState(false);
+        const [gmailPromptCopied, setGmailPromptCopied] = useState(false);
         const [analyzingIdx, setAnalyzingIdx] = useState(0);
         const [useParsedDates, setUseParsedDates] = useState(true);
 
@@ -467,6 +499,21 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                         setTimeout(() => setCopied(false), 2200);
                 } catch {
                         setCopied(false);
+                }
+        };
+
+        const handleCopyGmailPrompt = async () => {
+                const prompt = buildGeminiGmailPrompt(
+                        initialData?.destination,
+                        initialData?.startDate,
+                        initialData?.endDate
+                );
+                try {
+                        await navigator.clipboard.writeText(prompt);
+                        setGmailPromptCopied(true);
+                        setTimeout(() => setGmailPromptCopied(false), 2200);
+                } catch {
+                        setGmailPromptCopied(false);
                 }
         };
 
@@ -591,6 +638,53 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                         exit={{ opacity: 0, y: -10 }}
                                                         className="max-w-3xl mx-auto space-y-4"
                                                 >
+                                                        {/* Gemini × Gmail shortcut — for users who don't already have
+                                                            an AI summary ready. Generates a Gmail-search prompt and
+                                                            opens Gemini in a new tab; user pastes the answer back. */}
+                                                        <div className="rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 via-indigo-50 to-white p-4 md:p-5 shadow-sm">
+                                                                <div className="flex items-start gap-3">
+                                                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-md shadow-purple-500/30">
+                                                                                <Sparkles className="w-5 h-5 text-white" />
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0">
+                                                                                <h3 className="font-black text-brand-navy text-base mb-1">
+                                                                                        🪄 בנה לי פרומפט ל-Gemini שיקרא את ה-Gmail
+                                                                                </h3>
+                                                                                <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
+                                                                                        העתק את הפרומפט, פתח את Gemini, הדבק. Gemini יקרא אוטומטית את ה-Gmail שלך וייצר סיכום של כל ההזמנות. חזור לכאן והדבק את התוצאה למטה.
+                                                                                </p>
+                                                                        </div>
+                                                                </div>
+                                                                <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                                                                        <button
+                                                                                type="button"
+                                                                                onClick={handleCopyGmailPrompt}
+                                                                                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm transition-colors shadow shadow-purple-500/30 min-h-[44px]"
+                                                                        >
+                                                                                {gmailPromptCopied ? (
+                                                                                        <>
+                                                                                                <CheckCircle2 className="w-4 h-4" />
+                                                                                                הועתק לזיכרון ✓
+                                                                                        </>
+                                                                                ) : (
+                                                                                        <>
+                                                                                                <Copy className="w-4 h-4" />
+                                                                                                העתק פרומפט
+                                                                                        </>
+                                                                                )}
+                                                                        </button>
+                                                                        <a
+                                                                                href="https://gemini.google.com/app"
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-purple-200 hover:border-purple-400 hover:bg-purple-50 text-purple-700 font-bold text-sm transition-colors min-h-[44px]"
+                                                                        >
+                                                                                <Bot className="w-4 h-4" />
+                                                                                פתח את Gemini
+                                                                        </a>
+                                                                </div>
+                                                        </div>
+
                                                         {/* Helper row */}
                                                         <div className="flex flex-wrap items-center gap-2">
                                                                 <button

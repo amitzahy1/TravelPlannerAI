@@ -6,7 +6,9 @@ import { Step1_5_Dates } from './Step1_5_Dates';
 import { Step2_ChoosePath } from './Step2_ChoosePath';
 import { Step3_SmartImport } from './Step3_SmartImport';
 import { Step3_TextImport } from './Step3_TextImport';
+import { Step3_Mailbox } from './Step3_Mailbox';
 import { SuccessAnimation } from './SuccessAnimation';
+import type { ImportMethod } from './Step2_ChoosePath';
 
 interface MagicalWizardProps {
         isOpen: boolean;
@@ -49,9 +51,9 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                 setStep(2); // Go to Method
         };
 
-        const handleStep2Select = (method: 'smart' | 'manual' | 'text') => {
+        const handleStep2Select = (method: ImportMethod) => {
                 setTripData((prev: any) => ({ ...prev, method }));
-                setStep(3); // Go to Final Step (Smart / Manual / Text)
+                setStep(3); // Go to Final Step (Smart / Text / Mail)
         };
 
         const handleStep3Back = () => {
@@ -227,6 +229,11 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                                 onComplete={handleStep3Complete}
                                                                                 onBack={handleStep3Back}
                                                                                 initialData={tripData}
+                                                                        />
+                                                                ) : tripData.method === 'mail' ? (
+                                                                        <Step3_Mailbox
+                                                                                onComplete={handleStep3Complete}
+                                                                                onBack={handleStep3Back}
                                                                         />
                                                                 ) : (
                                                                         <Step3_SmartImport

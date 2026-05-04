@@ -1098,6 +1098,7 @@ export const ItineraryView: React.FC<{
             <PageIntro
                 icon={<CalendarIntroIcon />}
                 description="המסלול המלא של הטיול שלך, יום אחר יום. כל מה שתכננתם — טיסות, מלונות, מסעדות ופעילויות — במקום אחד מסודר."
+                className="hidden md:flex"
             />
 
             {/* 2.4 Compact actions — single row, two pills. Cities now

@@ -26,6 +26,27 @@ export const WORLD_DESTINATIONS: Record<string, string[]> = {
         'Armenia': ['Yerevan', 'Gyumri', 'Dilijan', 'Garni'],
         'Azerbaijan': ['Baku', 'Ganja', 'Sheki'],
         'Jordan': ['Amman', 'Petra', 'Aqaba', 'Wadi Rum'],
+        'Iran': ['Tehran', 'Isfahan', 'Shiraz', 'Yazd'],
+        'Pakistan': ['Islamabad', 'Lahore', 'Karachi'],
+        'Bangladesh': ['Dhaka', 'Cox\'s Bazar'],
+        'Nepal': ['Kathmandu', 'Pokhara', 'Chitwan'],
+        'Bhutan': ['Thimphu', 'Paro', 'Punakha'],
+        'Myanmar': ['Yangon', 'Bagan', 'Mandalay', 'Inle Lake'],
+        'Laos': ['Vientiane', 'Luang Prabang', 'Vang Vieng'],
+        'Brunei': ['Bandar Seri Begawan'],
+        'Mongolia': ['Ulaanbaatar', 'Gobi Desert'],
+        'Kazakhstan': ['Astana', 'Almaty'],
+        'Uzbekistan': ['Tashkent', 'Samarkand', 'Bukhara', 'Khiva'],
+        'Kyrgyzstan': ['Bishkek', 'Issyk-Kul'],
+        'Tajikistan': ['Dushanbe'],
+        'Turkmenistan': ['Ashgabat'],
+        'Saudi Arabia': ['Riyadh', 'Jeddah', 'Mecca', 'Medina', 'AlUla'],
+        'Qatar': ['Doha'],
+        'Oman': ['Muscat', 'Salalah', 'Nizwa'],
+        'Bahrain': ['Manama'],
+        'Kuwait': ['Kuwait City'],
+        'Lebanon': ['Beirut', 'Byblos', 'Baalbek'],
+        'Cyprus': ['Nicosia', 'Paphos', 'Limassol', 'Ayia Napa', 'Larnaca'],
 
         // EUROPE
         'France': ['Paris', 'Nice', 'Lyon', 'Marseille', 'Bordeaux', 'Strasbourg', 'Cannes', 'Chamonix'],
@@ -39,7 +60,7 @@ export const WORLD_DESTINATIONS: Record<string, string[]> = {
         'Switzerland': ['Zurich', 'Geneva', 'Lucerne', 'Interlaken', 'Zermatt', 'Bern'],
         'Austria': ['Vienna', 'Salzburg', 'Innsbruck', 'Hallstatt'],
         'Czech Republic': ['Prague', 'Brno', 'Cesky Krumlov'],
-        'Hungary': ['Budapest', 'Debrecen'],
+        'Hungary': ['Budapest', 'Debrecen', 'Eger'],
         'Croatia': ['Dubrovnik', 'Split', 'Hvar', 'Zagreb', 'Zadar'],
         'Belgium': ['Brussels', 'Bruges', 'Ghent', 'Antwerp'],
         'Ireland': ['Dublin', 'Cork', 'Galway', 'Killarney'],
@@ -48,14 +69,45 @@ export const WORLD_DESTINATIONS: Record<string, string[]> = {
         'Denmark': ['Copenhagen', 'Aarhus'],
         'Finland': ['Helsinki', 'Rovaniemi'],
         'Iceland': ['Reykjavik', 'Vik'],
-        'Poland': ['Warsaw', 'Krakow', 'Gdansk'],
+        'Poland': ['Warsaw', 'Krakow', 'Gdansk', 'Wroclaw'],
         'Romania': ['Bucharest', 'Brasov', 'Cluj-Napoca'],
         'Russia': ['Moscow', 'Saint Petersburg'],
+        'Bulgaria': ['Sofia', 'Plovdiv', 'Sunny Beach', 'Varna'],
+        'Slovakia': ['Bratislava', 'High Tatras', 'Kosice'],
+        'Slovenia': ['Ljubljana', 'Bled', 'Piran'],
+        'Estonia': ['Tallinn', 'Parnu'],
+        'Latvia': ['Riga', 'Jurmala'],
+        'Lithuania': ['Vilnius', 'Kaunas'],
+        'Ukraine': ['Kyiv', 'Lviv', 'Odesa'],
+        'Albania': ['Tirana', 'Saranda', 'Ksamil', 'Berat'],
+        'Serbia': ['Belgrade', 'Novi Sad'],
+        'Montenegro': ['Kotor', 'Budva', 'Podgorica'],
+        'Bosnia and Herzegovina': ['Sarajevo', 'Mostar'],
+        'North Macedonia': ['Skopje', 'Ohrid'],
+        'Luxembourg': ['Luxembourg City'],
+        'Liechtenstein': ['Vaduz'],
+        'Monaco': ['Monaco', 'Monte Carlo'],
+        'Andorra': ['Andorra la Vella'],
+        'Malta': ['Valletta', 'Mdina', 'Sliema', 'Gozo'],
 
         // NORTH AMERICA
         'United States': ['New York', 'Los Angeles', 'Las Vegas', 'Miami', 'Orlando', 'San Francisco', 'Chicago', 'Washington', 'Boston', 'Hawaii'],
         'Canada': ['Toronto', 'Vancouver', 'Montreal', 'Quebec City', 'Calgary', 'Banff'],
         'Mexico': ['Mexico City', 'Cancun', 'Tulum', 'Playa del Carmen', 'Cabo San Lucas', 'Puerto Vallarta'],
+        'Cuba': ['Havana', 'Varadero', 'Trinidad'],
+        'Dominican Republic': ['Santo Domingo', 'Punta Cana', 'Puerto Plata'],
+        'Jamaica': ['Kingston', 'Montego Bay', 'Negril'],
+        'Bahamas': ['Nassau', 'Paradise Island', 'Exuma'],
+        'Barbados': ['Bridgetown'],
+        'Costa Rica': ['San Jose', 'Manuel Antonio', 'La Fortuna', 'Tamarindo'],
+        'Panama': ['Panama City', 'Boquete', 'Bocas del Toro'],
+        'Guatemala': ['Guatemala City', 'Antigua', 'Tikal', 'Lake Atitlan'],
+        'Belize': ['Belize City', 'San Pedro', 'Caye Caulker'],
+        'Honduras': ['Tegucigalpa', 'Roatan', 'Copan'],
+        'Nicaragua': ['Managua', 'Granada', 'Ometepe'],
+        'El Salvador': ['San Salvador', 'El Tunco'],
+        'Puerto Rico': ['San Juan', 'Old San Juan'],
+        'Trinidad and Tobago': ['Port of Spain'],
 
         // SOUTH AMERICA
         'Brazil': ['Rio de Janeiro', 'Sao Paulo', 'Salvador', 'Florianopolis', 'Foz do Iguacu'],
@@ -63,18 +115,44 @@ export const WORLD_DESTINATIONS: Record<string, string[]> = {
         'Peru': ['Lima', 'Cusco', 'Machu Picchu', 'Arequipa'],
         'Colombia': ['Bogota', 'Medellin', 'Cartagena'],
         'Chile': ['Santiago', 'Valparaiso', 'San Pedro de Atacama'],
+        'Ecuador': ['Quito', 'Guayaquil', 'Galapagos', 'Cuenca'],
+        'Bolivia': ['La Paz', 'Sucre', 'Uyuni'],
+        'Uruguay': ['Montevideo', 'Punta del Este', 'Colonia del Sacramento'],
+        'Paraguay': ['Asuncion'],
+        'Venezuela': ['Caracas', 'Margarita Island'],
 
         // OCEANIA
         'Australia': ['Sydney', 'Melbourne', 'Brisbane', 'Gold Coast', 'Perth', 'Cairns'],
         'New Zealand': ['Auckland', 'Queenstown', 'Wellington', 'Christchurch'],
         'Fiji': ['Nadi', 'Suva'],
+        'French Polynesia': ['Papeete', 'Bora Bora', 'Moorea'],
+        'Samoa': ['Apia'],
+        'Vanuatu': ['Port Vila'],
+        'Solomon Islands': ['Honiara'],
+        'Tonga': ['Nuku\'alofa'],
 
         // AFRICA
         'Egypt': ['Cairo', 'Luxor', 'Aswan', 'Hurghada', 'Sharm El Sheikh'],
         'South Africa': ['Cape Town', 'Johannesburg', 'Durban', 'Kruger National Park'],
         'Morocco': ['Marrakech', 'Casablanca', 'Fes', 'Chefchaouen', 'Tangier'],
         'Kenya': ['Nairobi', 'Mombasa', 'Maasai Mara'],
-        'Tanzania': ['Zanzibar', 'Dar es Salaam', 'Serengeti']
+        'Tanzania': ['Zanzibar', 'Dar es Salaam', 'Serengeti'],
+        'Tunisia': ['Tunis', 'Djerba', 'Hammamet', 'Sousse'],
+        'Algeria': ['Algiers', 'Oran'],
+        'Ethiopia': ['Addis Ababa', 'Lalibela'],
+        'Ghana': ['Accra', 'Cape Coast'],
+        'Senegal': ['Dakar'],
+        'Namibia': ['Windhoek', 'Sossusvlei', 'Swakopmund'],
+        'Botswana': ['Gaborone', 'Okavango Delta', 'Chobe'],
+        'Zimbabwe': ['Harare', 'Victoria Falls'],
+        'Mozambique': ['Maputo', 'Bazaruto'],
+        'Madagascar': ['Antananarivo', 'Nosy Be'],
+        'Mauritius': ['Port Louis', 'Grand Baie'],
+        'Seychelles': ['Mahe', 'Praslin', 'La Digue'],
+        'Rwanda': ['Kigali', 'Volcanoes National Park'],
+        'Uganda': ['Kampala', 'Bwindi'],
+        'Nigeria': ['Lagos', 'Abuja'],
+        'Sudan': ['Khartoum']
 };
 
 // Aliases for matching (e.g. Metro Manila -> Manila)
@@ -193,63 +271,357 @@ const CITY_HEBREW_NAMES: Record<string, string> = {
         'koh samui': 'קו סאמוי',
         'samui': 'קו סאמוי',
         'chiang mai': "צ'יאנג מאי",
+        'chiang rai': "צ'יאנג ראי",
         'krabi': 'קראבי',
         'hua hin': 'חואה הין',
         'trat': 'טראט',
+        'ayutthaya': 'איוטאיה',
+        'ko phi phi': 'פיפי',
         // UAE
         'abu dhabi': 'אבו דאבי',
         'dubai': 'דובאי',
+        'sharjah': 'שארג\'ה',
         // Israel
         'tel aviv': 'תל אביב',
         'tel-aviv': 'תל אביב',
         'jerusalem': 'ירושלים',
         'haifa': 'חיפה',
         'eilat': 'אילת',
-        // Europe
+        'dead sea': 'ים המלח',
+        'nazareth': 'נצרת',
+        'tiberias': 'טבריה',
+        // Europe — Western
         'paris': 'פריז',
+        'nice': 'ניס',
+        'lyon': 'ליון',
+        'marseille': 'מארסיי',
+        'bordeaux': 'בורדו',
+        'cannes': 'קאן',
+        'chamonix': 'שאמוני',
         'london': 'לונדון',
+        'edinburgh': 'אדינבורו',
+        'manchester': 'מנצ\'סטר',
+        'liverpool': 'ליברפול',
+        'glasgow': 'גלזגו',
+        'oxford': 'אוקספורד',
         'rome': 'רומא',
         'milan': 'מילאנו',
         'florence': 'פירנצה',
         'venice': 'ונציה',
+        'naples': 'נאפולי',
+        'turin': 'טורינו',
+        'verona': 'ורונה',
+        'bologna': 'בולוניה',
+        'sicily': 'סיציליה',
+        'sardinia': 'סרדיניה',
+        'amalfi': 'אמאלפי',
         'barcelona': 'ברצלונה',
         'madrid': 'מדריד',
+        'seville': 'סביליה',
+        'valencia': 'ולנסיה',
+        'granada': 'גרנדה',
+        'mallorca': 'מיורקה',
+        'ibiza': 'איביזה',
+        'tenerife': 'טנריף',
+        'malaga': 'מלאגה',
         'lisbon': 'ליסבון',
         'porto': 'פורטו',
+        'algarve': 'אלגארב',
+        'sintra': 'סינטרה',
+        'madeira': 'מדיירה',
         'amsterdam': 'אמסטרדם',
+        'rotterdam': 'רוטרדם',
+        'utrecht': 'אוטרכט',
         'berlin': 'ברלין',
         'munich': 'מינכן',
+        'hamburg': 'המבורג',
+        'frankfurt': 'פרנקפורט',
+        'cologne': 'קלן',
+        'heidelberg': 'היידלברג',
+        'zurich': 'ציריך',
+        'geneva': 'ז\'נבה',
+        'lucerne': 'לוצרן',
+        'interlaken': 'אינטרלאקן',
+        'zermatt': 'צרמט',
+        'bern': 'ברן',
         'vienna': 'וינה',
+        'salzburg': 'זלצבורג',
+        'innsbruck': 'אינסברוק',
+        'hallstatt': 'הלשטאט',
+        'brussels': 'בריסל',
+        'bruges': 'ברוז\'',
+        'ghent': 'גנט',
+        'antwerp': 'אנטוורפן',
+        'dublin': 'דבלין',
+        'cork': 'קורק',
+        'galway': 'גאלוויי',
+        // Europe — Central / Eastern
         'prague': 'פראג',
+        'brno': 'ברנו',
         'budapest': 'בודפשט',
+        'eger': 'אגר',
+        'debrecen': 'דברצן',
         'athens': 'אתונה',
+        'santorini': 'סנטוריני',
+        'mykonos': 'מיקונוס',
+        'crete': 'כרתים',
+        'rhodes': 'רודוס',
+        'corfu': 'קורפו',
+        'thessaloniki': 'סלוניקי',
+        'dubrovnik': 'דוברובניק',
+        'split': 'ספליט',
+        'hvar': 'חוואר',
+        'zagreb': 'זאגרב',
+        'zadar': 'זאדר',
+        'warsaw': 'ורשה',
+        'krakow': 'קרקוב',
+        'gdansk': 'גדנסק',
+        'wroclaw': 'ורוצלב',
+        'bucharest': 'בוקרשט',
+        'brasov': 'בראשוב',
+        'moscow': 'מוסקבה',
+        'saint petersburg': 'סנט פטרסבורג',
+        'tallinn': 'טאלין',
+        'riga': 'ריגה',
+        'vilnius': 'וילנה',
+        'kyiv': 'קייב',
+        'lviv': 'לבוב',
+        'sofia': 'סופיה',
+        'plovdiv': 'פלובדיב',
+        'varna': 'וארנה',
+        'bratislava': 'ברטיסלבה',
+        'ljubljana': 'לובליאנה',
+        'bled': 'בלד',
+        'tirana': 'טירנה',
+        'saranda': 'סרנדה',
+        'ksamil': 'קסמיל',
+        'belgrade': 'בלגרד',
+        'kotor': 'קוטור',
+        'budva': 'בודבה',
+        'sarajevo': 'סראייבו',
+        'mostar': 'מוסטר',
+        'skopje': 'סקופיה',
+        'ohrid': 'אוחריד',
+        'luxembourg city': 'לוקסמבורג',
+        'monaco': 'מונקו',
+        'monte carlo': 'מונטה קרלו',
+        'valletta': 'ולטה',
+        'gozo': 'גוזו',
+        'sliema': 'סלימה',
+        'mdina': 'מדינה',
+        'reykjavik': 'רייקיאוויק',
+        'helsinki': 'הלסינקי',
+        'stockholm': 'שטוקהולם',
+        'gothenburg': 'גטבורג',
+        'oslo': 'אוסלו',
+        'bergen': 'ברגן',
+        'copenhagen': 'קופנהגן',
         // North America
         'new york': 'ניו יורק',
         'los angeles': 'לוס אנג\'לס',
         'miami': 'מיאמי',
+        'orlando': 'אורלנדו',
         'san francisco': 'סן פרנסיסקו',
         'las vegas': 'לאס וגאס',
-        // Asia
+        'chicago': 'שיקגו',
+        'washington': 'וושינגטון',
+        'boston': 'בוסטון',
+        'hawaii': 'הוואי',
+        'toronto': 'טורונטו',
+        'vancouver': 'ונקובר',
+        'montreal': 'מונטריאול',
+        'quebec city': 'קוויבק סיטי',
+        'banff': 'באנף',
+        'mexico city': 'מקסיקו סיטי',
+        'cancun': 'קנקון',
+        'tulum': 'טולום',
+        'playa del carmen': 'פלאיה דל כרמן',
+        'cabo san lucas': 'קאבו סן לוקאס',
+        'havana': 'הוואנה',
+        'varadero': 'ורדרו',
+        'punta cana': 'פונטה קאנה',
+        'nassau': 'נסאו',
+        'san juan': 'סן חואן',
+        'antigua': 'אנטיגואה',
+        // South America
+        'rio de janeiro': 'ריו דה ז\'ניירו',
+        'sao paulo': 'סאו פאולו',
+        'salvador': 'סלבדור',
+        'foz do iguacu': 'איגואסו',
+        'buenos aires': 'בואנוס איירס',
+        'mendoza': 'מנדוסה',
+        'bariloche': 'בריצ\'ה',
+        'ushuaia': 'אושוואיה',
+        'lima': 'לימה',
+        'cusco': 'קוסקו',
+        'machu picchu': 'מאצ\'ו פיצ\'ו',
+        'bogota': 'בוגוטה',
+        'medellin': 'מדיין',
+        'cartagena': 'קרטחנה',
+        'santiago': 'סנטיאגו',
+        'quito': 'קיטו',
+        'galapagos': 'גלפגוס',
+        'la paz': 'לה פאס',
+        'uyuni': 'אויוני',
+        'montevideo': 'מונטווידאו',
+        'punta del este': 'פונטה דל אסטה',
+        // Asia — East / SE
         'tokyo': 'טוקיו',
         'kyoto': 'קיוטו',
         'osaka': 'אוסקה',
+        'sapporo': 'סאפורו',
+        'fukuoka': 'פוקואוקה',
+        'nara': 'נארה',
+        'okinawa': 'אוקינאווה',
+        'hakone': 'האקונה',
+        'hiroshima': 'הירושימה',
         'seoul': 'סיאול',
+        'busan': 'בוסאן',
+        'jeju city': 'ג\'ז\'ו',
+        'incheon': 'אינצ\'און',
         'hong kong': 'הונג קונג',
+        'macau': 'מקאו',
         'singapore': 'סינגפור',
+        'sentosa': 'סנטוסה',
         'bali': 'באלי',
+        'ubud': 'אובוד',
+        'jakarta': 'ג\'קרטה',
+        'yogyakarta': 'יוגיאקרטה',
+        'lombok': 'לומבוק',
         'kuala lumpur': 'קואלה לומפור',
+        'penang': 'פנאנג',
+        'langkawi': 'לנגקאווי',
+        'beijing': 'בייג\'ינג',
+        'shanghai': 'שנגחאי',
+        'xi\'an': 'שיאן',
+        'hanoi': 'האנוי',
+        'ho chi minh city': 'הו צ\'י מין',
+        'da nang': 'דה נאנג',
+        'hoi an': 'הוי אן',
+        'phu quoc': 'פו קווק',
+        'ha long bay': 'הא לונג',
+        'phnom penh': 'פנום פן',
+        'siem reap': 'סיאם ריאפ',
+        'taipei': 'טאיפיי',
+        'kaohsiung': 'קאוסיונג',
+        // Asia — South / Indian Subcontinent
+        'new delhi': 'ניו דלהי',
+        'delhi': 'דלהי',
+        'mumbai': 'מומבאי',
+        'jaipur': 'ג\'איפור',
+        'agra': 'אגרה',
+        'goa': 'גואה',
+        'varanasi': 'ורנאסי',
+        'kerala': 'קראלה',
+        'malé': 'מאלה',
+        'male': 'מאלה',
+        'colombo': 'קולומבו',
+        'kandy': 'קנדי',
+        'galle': 'גאלה',
+        'kathmandu': 'קטמנדו',
+        'pokhara': 'פוקרה',
+        'thimphu': 'תימפו',
+        'paro': 'פארו',
+        // Asia — Caucasus / Central
+        'tbilisi': 'טביליסי',
+        'batumi': 'באטומי',
+        'kazbegi': 'קזבגי',
+        'kutaisi': 'קוטאיסי',
+        'mestia': 'מסטיה',
+        'borjomi': 'בורז\'ומי',
+        'mtskheta': 'מצחתה',
+        'yerevan': 'ירוואן',
+        'gyumri': 'גיומרי',
+        'dilijan': 'דיליז\'אן',
+        'baku': 'באקו',
+        'tashkent': 'טשקנט',
+        'samarkand': 'סמרקנד',
+        'bukhara': 'בוכרה',
+        'almaty': 'אלמטי',
+        'astana': 'אסטנה',
+        'bishkek': 'בישקק',
+        // Middle East
+        'amman': 'עמאן',
+        'petra': 'פטרה',
+        'aqaba': 'עקבה',
+        'wadi rum': 'ואדי רם',
+        'beirut': 'ביירות',
+        'doha': 'דוחה',
+        'riyadh': 'ריאד',
+        'jeddah': 'ג\'דה',
+        'mecca': 'מכה',
+        'medina': 'מדינה',
+        'alula': 'אל עולא',
+        'muscat': 'מוסקט',
+        'manama': 'מנאמה',
+        'kuwait city': 'כווית',
+        'tehran': 'טהרן',
+        'isfahan': 'איספהאן',
+        'shiraz': 'שיראז',
+        'istanbul': 'איסטנבול',
+        'cappadocia': 'קפדוקיה',
+        'antalya': 'אנטליה',
+        'bodrum': 'בודרום',
+        'izmir': 'איזמיר',
+        'ankara': 'אנקרה',
+        'nicosia': 'ניקוסיה',
+        'paphos': 'פאפוס',
+        'limassol': 'לימסול',
+        'ayia napa': 'איה נאפה',
+        'larnaca': 'לרנקה',
         // Philippines
         'manila': 'מנילה',
         'cebu': 'סבו',
         'boracay': 'בוראקאי',
         'el nido': 'אל נידו',
         'palawan': 'פלאוואן',
-        // Georgia
-        'tbilisi': 'טביליסי',
-        'batumi': 'באטומי',
-        'kazbegi': 'קזבגי',
-        'kutaisi': 'קוטאיסי',
-        // Countries (shown when only destination is set)
+        'coron': 'קורון',
+        'bohol': 'בוהול',
+        'siargao': 'סיארגאו',
+        // Africa
+        'cairo': 'קהיר',
+        'luxor': 'לוקסור',
+        'aswan': 'אסואן',
+        'hurghada': 'חורגדה',
+        'sharm el sheikh': 'שארם א-שייח',
+        'cape town': 'קייפטאון',
+        'johannesburg': 'יוהנסבורג',
+        'durban': 'דרבן',
+        'marrakech': 'מרקש',
+        'casablanca': 'קזבלנקה',
+        'fes': 'פס',
+        'chefchaouen': 'שפשאון',
+        'tangier': 'טנג\'יר',
+        'nairobi': 'ניירובי',
+        'mombasa': 'מומבסה',
+        'maasai mara': 'מאסאי מארה',
+        'zanzibar': 'זנזיבר',
+        'serengeti': 'סרנגטי',
+        'tunis': 'תוניס',
+        'djerba': 'ג\'רבה',
+        'addis ababa': 'אדיס אבבה',
+        'accra': 'אקרה',
+        'windhoek': 'וינדהוק',
+        'sossusvlei': 'סוסוסוולי',
+        'victoria falls': 'מפלי ויקטוריה',
+        'kigali': 'קיגלי',
+        'mahe': 'מאהה',
+        'praslin': 'פראסלין',
+        // Oceania
+        'sydney': 'סידני',
+        'melbourne': 'מלבורן',
+        'brisbane': 'בריסביין',
+        'gold coast': 'גולד קוסט',
+        'perth': 'פרת\'',
+        'cairns': 'קיירנס',
+        'auckland': 'אוקלנד',
+        'queenstown': 'קווינסטאון',
+        'wellington': 'וולינגטון',
+        'christchurch': 'קרייסטצ\'רץ\'',
+        'nadi': 'נאדי',
+        'bora bora': 'בורה בורה',
+        'papeete': 'פפיטה',
+        // Countries (shown when only destination is set, or for country-level picks)
         'thailand': 'תאילנד',
         'israel': 'ישראל',
         'italy': 'איטליה',
@@ -258,6 +630,113 @@ const CITY_HEBREW_NAMES: Record<string, string> = {
         'japan': 'יפן',
         'georgia': 'גאורגיה',
         'philippines': 'הפיליפינים',
+        'spain': 'ספרד',
+        'germany': 'גרמניה',
+        'united kingdom': 'אנגליה',
+        'portugal': 'פורטוגל',
+        'netherlands': 'הולנד',
+        'switzerland': 'שווייץ',
+        'austria': 'אוסטריה',
+        'czech republic': 'צ\'כיה',
+        'hungary': 'הונגריה',
+        'croatia': 'קרואטיה',
+        'belgium': 'בלגיה',
+        'ireland': 'אירלנד',
+        'sweden': 'שבדיה',
+        'norway': 'נורבגיה',
+        'denmark': 'דנמרק',
+        'finland': 'פינלנד',
+        'iceland': 'איסלנד',
+        'poland': 'פולין',
+        'romania': 'רומניה',
+        'russia': 'רוסיה',
+        'bulgaria': 'בולגריה',
+        'slovakia': 'סלובקיה',
+        'slovenia': 'סלובניה',
+        'estonia': 'אסטוניה',
+        'latvia': 'לטביה',
+        'lithuania': 'ליטא',
+        'ukraine': 'אוקראינה',
+        'albania': 'אלבניה',
+        'serbia': 'סרביה',
+        'montenegro': 'מונטנגרו',
+        'bosnia and herzegovina': 'בוסניה',
+        'north macedonia': 'מקדוניה',
+        'luxembourg': 'לוקסמבורג',
+        'malta': 'מלטה',
+        'cyprus': 'קפריסין',
+        'vietnam': 'וייטנאם',
+        'indonesia': 'אינדונזיה',
+        'cambodia': 'קמבודיה',
+        'malaysia': 'מלזיה',
+        'maldives': 'האיים המלדיביים',
+        'sri lanka': 'סרי לנקה',
+        'taiwan': 'טייוואן',
+        'china': 'סין',
+        'south korea': 'דרום קוריאה',
+        'india': 'הודו',
+        'nepal': 'נפאל',
+        'bhutan': 'בהוטן',
+        'myanmar': 'מיאנמר',
+        'laos': 'לאוס',
+        'mongolia': 'מונגוליה',
+        'kazakhstan': 'קזחסטן',
+        'uzbekistan': 'אוזבקיסטן',
+        'kyrgyzstan': 'קירגיזסטן',
+        'iran': 'איראן',
+        'turkey': 'טורקיה',
+        'jordan': 'ירדן',
+        'lebanon': 'לבנון',
+        'saudi arabia': 'סעודיה',
+        'qatar': 'קטאר',
+        'oman': 'עומאן',
+        'bahrain': 'בחריין',
+        'kuwait': 'כווית',
+        'united arab emirates': 'איחוד האמירויות',
+        'egypt': 'מצרים',
+        'morocco': 'מרוקו',
+        'south africa': 'דרום אפריקה',
+        'kenya': 'קניה',
+        'tanzania': 'טנזניה',
+        'tunisia': 'תוניסיה',
+        'ethiopia': 'אתיופיה',
+        'namibia': 'נמיביה',
+        'botswana': 'בוטסואנה',
+        'zimbabwe': 'זימבבואה',
+        'mozambique': 'מוזמביק',
+        'madagascar': 'מדגסקר',
+        'mauritius': 'מאוריציוס',
+        'seychelles': 'איי סיישל',
+        'rwanda': 'רואנדה',
+        'uganda': 'אוגנדה',
+        'nigeria': 'ניגריה',
+        'australia': 'אוסטרליה',
+        'new zealand': 'ניו זילנד',
+        'fiji': 'פיג\'י',
+        'french polynesia': 'פולינזיה הצרפתית',
+        'united states': 'ארה"ב',
+        'canada': 'קנדה',
+        'mexico': 'מקסיקו',
+        'cuba': 'קובה',
+        'dominican republic': 'הרפובליקה הדומיניקנית',
+        'jamaica': 'ג\'מייקה',
+        'bahamas': 'איי בהאמה',
+        'costa rica': 'קוסטה ריקה',
+        'panama': 'פנמה',
+        'guatemala': 'גואטמלה',
+        'belize': 'בליז',
+        'puerto rico': 'פוארטו ריקו',
+        'brazil': 'ברזיל',
+        'argentina': 'ארגנטינה',
+        'peru': 'פרו',
+        'colombia': 'קולומביה',
+        'chile': 'צ\'ילה',
+        'ecuador': 'אקוודור',
+        'bolivia': 'בוליביה',
+        'uruguay': 'אורוגוואי',
+        'venezuela': 'ונצואלה',
+        'armenia': 'ארמניה',
+        'azerbaijan': 'אזרבייג\'ן',
 };
 
 // Reverse map for fast Hebrew → English key lookup
@@ -611,4 +1090,159 @@ export const getTripCities = (
                 return cityEntries;
         }
         return filtered;
+};
+
+// ============================================================================
+// Country flag emojis — one entry per country in WORLD_DESTINATIONS. Used by
+// the destination picker to render rich result rows. Keys are the same English
+// country names that index WORLD_DESTINATIONS.
+// ============================================================================
+export const COUNTRY_FLAGS: Record<string, string> = {
+        'Philippines': '🇵🇭', 'Thailand': '🇹🇭', 'Vietnam': '🇻🇳', 'Japan': '🇯🇵',
+        'South Korea': '🇰🇷', 'Indonesia': '🇮🇩', 'China': '🇨🇳', 'Cambodia': '🇰🇭',
+        'Singapore': '🇸🇬', 'Malaysia': '🇲🇾', 'India': '🇮🇳', 'Maldives': '🇲🇻',
+        'Sri Lanka': '🇱🇰', 'Taiwan': '🇹🇼', 'United Arab Emirates': '🇦🇪',
+        'Israel': '🇮🇱', 'Turkey': '🇹🇷', 'Georgia': '🇬🇪', 'Armenia': '🇦🇲',
+        'Azerbaijan': '🇦🇿', 'Jordan': '🇯🇴', 'Iran': '🇮🇷', 'Pakistan': '🇵🇰',
+        'Bangladesh': '🇧🇩', 'Nepal': '🇳🇵', 'Bhutan': '🇧🇹', 'Myanmar': '🇲🇲',
+        'Laos': '🇱🇦', 'Brunei': '🇧🇳', 'Mongolia': '🇲🇳', 'Kazakhstan': '🇰🇿',
+        'Uzbekistan': '🇺🇿', 'Kyrgyzstan': '🇰🇬', 'Tajikistan': '🇹🇯', 'Turkmenistan': '🇹🇲',
+        'Saudi Arabia': '🇸🇦', 'Qatar': '🇶🇦', 'Oman': '🇴🇲', 'Bahrain': '🇧🇭',
+        'Kuwait': '🇰🇼', 'Lebanon': '🇱🇧', 'Cyprus': '🇨🇾',
+        'France': '🇫🇷', 'Italy': '🇮🇹', 'United Kingdom': '🇬🇧', 'Spain': '🇪🇸',
+        'Germany': '🇩🇪', 'Greece': '🇬🇷', 'Portugal': '🇵🇹', 'Netherlands': '🇳🇱',
+        'Switzerland': '🇨🇭', 'Austria': '🇦🇹', 'Czech Republic': '🇨🇿', 'Hungary': '🇭🇺',
+        'Croatia': '🇭🇷', 'Belgium': '🇧🇪', 'Ireland': '🇮🇪', 'Sweden': '🇸🇪',
+        'Norway': '🇳🇴', 'Denmark': '🇩🇰', 'Finland': '🇫🇮', 'Iceland': '🇮🇸',
+        'Poland': '🇵🇱', 'Romania': '🇷🇴', 'Russia': '🇷🇺', 'Bulgaria': '🇧🇬',
+        'Slovakia': '🇸🇰', 'Slovenia': '🇸🇮', 'Estonia': '🇪🇪', 'Latvia': '🇱🇻',
+        'Lithuania': '🇱🇹', 'Ukraine': '🇺🇦', 'Albania': '🇦🇱', 'Serbia': '🇷🇸',
+        'Montenegro': '🇲🇪', 'Bosnia and Herzegovina': '🇧🇦', 'North Macedonia': '🇲🇰',
+        'Luxembourg': '🇱🇺', 'Liechtenstein': '🇱🇮', 'Monaco': '🇲🇨', 'Andorra': '🇦🇩',
+        'Malta': '🇲🇹',
+        'United States': '🇺🇸', 'Canada': '🇨🇦', 'Mexico': '🇲🇽', 'Cuba': '🇨🇺',
+        'Dominican Republic': '🇩🇴', 'Jamaica': '🇯🇲', 'Bahamas': '🇧🇸', 'Barbados': '🇧🇧',
+        'Costa Rica': '🇨🇷', 'Panama': '🇵🇦', 'Guatemala': '🇬🇹', 'Belize': '🇧🇿',
+        'Honduras': '🇭🇳', 'Nicaragua': '🇳🇮', 'El Salvador': '🇸🇻', 'Puerto Rico': '🇵🇷',
+        'Trinidad and Tobago': '🇹🇹',
+        'Brazil': '🇧🇷', 'Argentina': '🇦🇷', 'Peru': '🇵🇪', 'Colombia': '🇨🇴',
+        'Chile': '🇨🇱', 'Ecuador': '🇪🇨', 'Bolivia': '🇧🇴', 'Uruguay': '🇺🇾',
+        'Paraguay': '🇵🇾', 'Venezuela': '🇻🇪',
+        'Australia': '🇦🇺', 'New Zealand': '🇳🇿', 'Fiji': '🇫🇯', 'French Polynesia': '🇵🇫',
+        'Samoa': '🇼🇸', 'Vanuatu': '🇻🇺', 'Solomon Islands': '🇸🇧', 'Tonga': '🇹🇴',
+        'Egypt': '🇪🇬', 'South Africa': '🇿🇦', 'Morocco': '🇲🇦', 'Kenya': '🇰🇪',
+        'Tanzania': '🇹🇿', 'Tunisia': '🇹🇳', 'Algeria': '🇩🇿', 'Ethiopia': '🇪🇹',
+        'Ghana': '🇬🇭', 'Senegal': '🇸🇳', 'Namibia': '🇳🇦', 'Botswana': '🇧🇼',
+        'Zimbabwe': '🇿🇼', 'Mozambique': '🇲🇿', 'Madagascar': '🇲🇬', 'Mauritius': '🇲🇺',
+        'Seychelles': '🇸🇨', 'Rwanda': '🇷🇼', 'Uganda': '🇺🇬', 'Nigeria': '🇳🇬',
+        'Sudan': '🇸🇩',
+};
+
+// ============================================================================
+// Search helper for the destination picker.
+//
+// Returns ranked results matching `query` against:
+//   - country names (English + Hebrew)
+//   - city names (English + Hebrew)
+//
+// Each result carries enough info for the dropdown to render: the canonical
+// city / country, the Hebrew label, the country flag, and a `kind` flag so
+// the UI can show different icons for country vs city picks.
+// ============================================================================
+export type DestinationKind = 'country' | 'city';
+export interface DestinationMatch {
+        kind: DestinationKind;
+        /** Canonical English name (e.g. "Budapest" or "Hungary") */
+        canonical: string;
+        /** Hebrew label if known, else canonical */
+        hebrew: string;
+        /** Owning country (English). For city kind only — equals canonical for country kind. */
+        country: string;
+        /** Owning country in Hebrew if known, else country */
+        countryHebrew: string;
+        flag: string;
+        /** Lower is better. 0 = exact match, < 1 = strong prefix, etc. */
+        score: number;
+}
+
+const stripDiacritics = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+const normalizeForSearch = (s: string): string => stripDiacritics(
+        s.normalize('NFC').toLowerCase()
+).replace(/[^a-z0-9֐-׿\s]/gi, '').trim();
+
+const heLabel = (englishKey: string, fallback: string): string => CITY_HEBREW_NAMES[englishKey.toLowerCase()] || fallback;
+
+/**
+ * Score a candidate against a normalized query. Lower is better; Infinity = no match.
+ *
+ * Hierarchy:
+ *   0       → exact match
+ *   0.1     → starts-with match (longer candidate gets a slight penalty)
+ *   0.5     → contains match
+ *   1 + lev → fuzzy match within Levenshtein tolerance (≤ 2 for ≥6 chars, ≤ 1 otherwise)
+ *   Infinity → no match
+ */
+const scoreCandidate = (candidate: string, query: string): number => {
+        const c = normalizeForSearch(candidate);
+        const q = normalizeForSearch(query);
+        if (!c || !q) return Infinity;
+        if (c === q) return 0;
+        if (c.startsWith(q)) return 0.1 + (c.length - q.length) * 0.001;
+        if (c.includes(q)) return 0.5 + (c.length - q.length) * 0.001;
+        // Fuzzy fallback only for queries ≥ 4 chars to avoid junk matches
+        if (q.length >= 4) {
+                const maxDist = q.length >= 6 ? 2 : 1;
+                const dist = levenshtein(c, q);
+                if (dist <= maxDist) return 1 + dist;
+        }
+        return Infinity;
+};
+
+export const searchDestinations = (rawQuery: string, limit = 8): DestinationMatch[] => {
+        const query = (rawQuery || '').trim();
+        if (query.length < 1) return [];
+
+        const seen = new Set<string>();
+        const out: DestinationMatch[] = [];
+
+        const push = (kind: DestinationKind, country: string, name: string, score: number) => {
+                if (!isFinite(score)) return;
+                const key = `${kind}:${name.toLowerCase()}|${country.toLowerCase()}`;
+                if (seen.has(key)) return;
+                seen.add(key);
+                const flag = COUNTRY_FLAGS[country] || '🌐';
+                const hebrew = kind === 'country'
+                        ? heLabel(country, country)
+                        : heLabel(name, name);
+                const countryHebrew = heLabel(country, country);
+                out.push({ kind, canonical: name, hebrew, country, countryHebrew, flag, score });
+        };
+
+        // Score every country (English + Hebrew)
+        for (const country of Object.keys(WORLD_DESTINATIONS)) {
+                const heCountry = heLabel(country, country);
+                const sEn = scoreCandidate(country, query);
+                const sHe = scoreCandidate(heCountry, query);
+                const score = Math.min(sEn, sHe);
+                if (isFinite(score)) push('country', country, country, score);
+
+                // Score every city in the country (English + Hebrew)
+                for (const city of WORLD_DESTINATIONS[country]) {
+                        const heCity = heLabel(city, city);
+                        const cEn = scoreCandidate(city, query);
+                        const cHe = scoreCandidate(heCity, query);
+                        const cScore = Math.min(cEn, cHe);
+                        if (isFinite(cScore)) push('city', country, city, cScore);
+                }
+        }
+
+        out.sort((a, b) => {
+                if (a.score !== b.score) return a.score - b.score;
+                // Tie-break: cities before countries (more specific wins)
+                if (a.kind !== b.kind) return a.kind === 'city' ? -1 : 1;
+                return a.canonical.length - b.canonical.length;
+        });
+
+        return out.slice(0, limit);
 };

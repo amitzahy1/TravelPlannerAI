@@ -5,6 +5,9 @@ import { Map, Plane, Utensils, Hotel, Globe, Ticket, Compass, ChevronDown, MapPi
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
 import { TripProgress } from './shared';
+import { Mailbox } from './Mailbox';
+import { MailboxButton } from './MailboxButton';
+import { isMailboxTrip, claimMailboxTrip, mergeTripIntoTarget } from '../utils/mailbox';
 
 // Helper to extract city from hotel address
 const extractCityFromAddress = (address?: string): string | null => {
@@ -47,6 +50,34 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
         const [isWalletOpen, setIsWalletOpen] = useState(false);
         const [isTripMenuOpen, setIsTripMenuOpen] = useState(false);
         const [isTripDropdownOpen, setIsTripDropdownOpen] = useState(false);
+        const [isMailboxOpen, setIsMailboxOpen] = useState(false);
+
+        const mailboxCount = useMemo(() => trips.filter(isMailboxTrip).length, [trips]);
+
+        const handleMailboxClaim = async (tripId: string) => {
+                if (!onUpdateTrip) return;
+                const trip = trips.find(t => t.id === tripId);
+                if (trip) onUpdateTrip(claimMailboxTrip(trip));
+        };
+
+        const handleMailboxMerge = async (sourceId: string, targetId: string) => {
+                if (!onUpdateTrip || !onDeleteTrip) return;
+                const source = trips.find(t => t.id === sourceId);
+                const target = trips.find(t => t.id === targetId);
+                if (!source || !target) return;
+                onUpdateTrip(mergeTripIntoTarget(target, source));
+                onDeleteTrip(sourceId);
+        };
+
+        const handleMailboxDelete = async (tripId: string) => {
+                if (!onDeleteTrip) return;
+                onDeleteTrip(tripId);
+        };
+
+        const handleMailboxOpen = (tripId: string) => {
+                onSwitchTrip(tripId);
+                setIsMailboxOpen(false);
+        };
 
         // Dynamic route calculation
         const dynamicRoute = useMemo(() => {
@@ -169,9 +200,27 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         })}
                                                 </div>
 
-                                                {/* Left: Login & Mobile Menu */}
+                                                {/* Left: Login, Mobile New Trip, Mobile Mailbox, & Mobile Menu */}
                                                 <div className="flex items-center gap-2 flex-shrink-0">
                                                         <LoginButton />
+
+                                                        {/* Mobile: quick-create new trip — always visible so users
+                                                            never have to dig through the menu to start one. */}
+                                                        <button
+                                                                onClick={() => onOpenAdmin()}
+                                                                className="lg:hidden p-2.5 bg-blue-600 rounded-xl text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 flex-shrink-0 shadow-md shadow-blue-500/30"
+                                                                aria-label="צור טיול חדש"
+                                                                title="טיול חדש"
+                                                        >
+                                                                <Plus className="w-5 h-5" aria-hidden="true" />
+                                                        </button>
+
+                                                        {/* Mobile: persistent mailbox surface */}
+                                                        <MailboxButton
+                                                                count={mailboxCount}
+                                                                onClick={() => setIsMailboxOpen(true)}
+                                                                variant="mobile-icon"
+                                                        />
 
                                                         {/* Mobile Menu Trigger */}
                                                         <button
@@ -261,6 +310,12 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                 <Wallet className="w-4 h-4 text-slate-500" />
                                                                 <span>ארנק</span>
                                                         </button>
+
+                                                        <MailboxButton
+                                                                count={mailboxCount}
+                                                                onClick={() => setIsMailboxOpen(true)}
+                                                                variant="desktop-pill"
+                                                        />
                                                 </div>
 
                                         </div>
@@ -290,13 +345,21 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                 {/* 2. Trip Management — primary action */}
                                                 <div>
                                                         <h3 className="font-bold text-slate-400 text-xs uppercase tracking-wider mb-3">ניהול</h3>
-                                                        <div className="grid grid-cols-2 gap-3">
+                                                        <div className="grid grid-cols-3 gap-3">
                                                                 <button
                                                                         onClick={() => { onSwitchTab('trips'); setIsTripMenuOpen(false); }}
                                                                         className="flex flex-col items-center justify-center gap-2 bg-slate-900 text-white p-4 rounded-2xl shadow-lg shadow-slate-900/20 transition-all active:scale-95"
                                                                 >
                                                                         <Settings className="w-6 h-6" />
-                                                                        <span className="font-bold text-sm">ניהול טיול</span>
+                                                                        <span className="font-bold text-xs">ניהול טיול</span>
+                                                                </button>
+
+                                                                <button
+                                                                        onClick={() => { onOpenAdmin(); setIsTripMenuOpen(false); }}
+                                                                        className="flex flex-col items-center justify-center gap-2 bg-blue-600 text-white p-4 rounded-2xl shadow-lg shadow-blue-500/30 transition-all active:scale-95"
+                                                                >
+                                                                        <Plus className="w-6 h-6" />
+                                                                        <span className="font-bold text-xs">טיול חדש</span>
                                                                 </button>
 
                                                                 <button
@@ -304,7 +367,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                         className="flex flex-col items-center justify-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 p-4 rounded-2xl transition-all active:scale-95 border border-slate-200"
                                                                 >
                                                                         <Wallet className="w-6 h-6" />
-                                                                        <span className="font-bold text-sm">ארנק</span>
+                                                                        <span className="font-bold text-xs">ארנק</span>
                                                                 </button>
                                                         </div>
                                                 </div>
@@ -424,6 +487,60 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                         onUpdateTrip={onUpdateTrip}
                                 />
                         )}
+
+                        {/* Mailbox Panel — right-side drawer on desktop, bottom-sheet on mobile.
+                            Uses the same Mailbox core as the wizard's Step3_Mailbox so the UX
+                            is identical wherever the user encounters it. */}
+                        <AnimatePresence>
+                                {isMailboxOpen && (
+                                        <>
+                                                <motion.div
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        exit={{ opacity: 0 }}
+                                                        onClick={() => setIsMailboxOpen(false)}
+                                                        className="fixed inset-0 z-[110] bg-brand-navy/40 backdrop-blur-sm"
+                                                />
+                                                {/* Desktop: side drawer */}
+                                                <motion.div
+                                                        initial={{ x: '-100%' }}
+                                                        animate={{ x: 0 }}
+                                                        exit={{ x: '-100%' }}
+                                                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                                        className="hidden md:flex fixed top-0 bottom-0 left-0 z-[120] w-full max-w-md bg-white shadow-2xl flex-col"
+                                                >
+                                                        <Mailbox
+                                                                trips={trips}
+                                                                onMergeIntoTrip={handleMailboxMerge}
+                                                                onClaimAsTrip={handleMailboxClaim}
+                                                                onDeleteTrip={handleMailboxDelete}
+                                                                onOpenTrip={handleMailboxOpen}
+                                                                onClose={() => setIsMailboxOpen(false)}
+                                                        />
+                                                </motion.div>
+                                                {/* Mobile: bottom sheet */}
+                                                <motion.div
+                                                        initial={{ y: '100%' }}
+                                                        animate={{ y: 0 }}
+                                                        exit={{ y: '100%' }}
+                                                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                                        className="md:hidden fixed inset-x-0 bottom-0 z-[120] h-[85vh] bg-white shadow-2xl rounded-t-3xl flex flex-col overflow-hidden"
+                                                >
+                                                        <div className="flex justify-center pt-2 shrink-0">
+                                                                <div className="w-12 h-1.5 rounded-full bg-slate-200" />
+                                                        </div>
+                                                        <Mailbox
+                                                                trips={trips}
+                                                                onMergeIntoTrip={handleMailboxMerge}
+                                                                onClaimAsTrip={handleMailboxClaim}
+                                                                onDeleteTrip={handleMailboxDelete}
+                                                                onOpenTrip={handleMailboxOpen}
+                                                                onClose={() => setIsMailboxOpen(false)}
+                                                        />
+                                                </motion.div>
+                                        </>
+                                )}
+                        </AnimatePresence>
                 </div>
         );
 };
