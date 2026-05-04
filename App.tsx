@@ -30,6 +30,7 @@ import { toast } from './stores/useToastStore';
 import { runBackgroundResearch } from './services/backgroundResearch';
 import { MagicalWizard } from './components/onboarding/MagicalWizard';
 import { InviteeWelcome } from './components/onboarding/InviteeWelcome';
+import { HeroPreview } from './components/HeroPreview';
 import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
 
@@ -489,6 +490,13 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // Hero-design preview route (#/hero-preview) — short-circuits the entire app
+  // so the user can compare 3 hero options side-by-side without auth/data noise.
+  // Throwaway: removes itself once a design is chosen.
+  if (typeof window !== 'undefined' && window.location.hash.includes('hero-preview')) {
+    return <HeroPreview />;
+  }
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
