@@ -1127,6 +1127,15 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             {isShareModalOpen && <ShareModal trip={activeTrip} onClose={() => setIsShareModalOpen(false)} onUpdateTrip={(updatedTrip) => { const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t); setTrips(newTrips); onSave(newTrips); }} />}
 
             {isWizardOpen && <MagicalWizard isOpen={true} onClose={() => setIsWizardOpen(false)} onComplete={(wizardData) => {
+                // Mailbox path: user claimed or merged into an existing trip. Skip
+                // creating a new trip and just switch to the chosen one — otherwise
+                // we'd append an empty stub alongside.
+                if (wizardData.mailboxClaimedTripId) {
+                    setIsWizardOpen(false);
+                    onSwitchTrip(wizardData.mailboxClaimedTripId);
+                    return;
+                }
+
                 // The wizard's text-import path passes parsed data via wizardData.freeTextResult;
                 // the smart-import / manual paths put it on wizardData.{flights,hotels} directly.
                 // We support BOTH so trains/ferries/buses extracted in the text path land

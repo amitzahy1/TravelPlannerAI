@@ -62,10 +62,17 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
 
         const handleStep3Complete = (finalData: any) => {
                 const completeData = { ...tripData, ...finalData };
-                setTripData(completeData); // Store final data
-                setStep(4); // Show Success Screen
+                setTripData(completeData);
 
-                // Auto-close after animation
+                // Mailbox-claim path: the user is opening an EXISTING trip from
+                // their inbox, not creating a new one. Skip the "trip created!"
+                // animation — it'd be a lie — and complete immediately.
+                if (finalData?.mailboxClaimedTripId) {
+                        onComplete(completeData);
+                        return;
+                }
+
+                setStep(4); // Show Success Screen
                 setTimeout(() => {
                         onComplete(completeData);
                 }, 2500);

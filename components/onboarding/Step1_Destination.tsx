@@ -51,18 +51,24 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
         useEffect(() => { setHighlightIdx(0); }, [inputValue]);
 
         // iOS keyboard-aware: open dropdown ABOVE the input when there's not
-        // enough space below. The mobile keyboard typically eats ~280px on small
-        // phones, so anything < 280px below the field gets flipped.
+        // enough space below. On iOS Safari, `window.innerHeight` does NOT shrink
+        // when the keyboard is up — only `visualViewport.height` does. We use the
+        // visual viewport when available so the flip-up logic actually fires.
         useEffect(() => {
                 if (!showDropdown || !inputWrapRef.current) return;
                 const measure = () => {
                         const rect = inputWrapRef.current!.getBoundingClientRect();
-                        const below = window.innerHeight - rect.bottom;
+                        const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+                        const below = viewportHeight - rect.bottom;
                         setOpenAbove(below < 280 && rect.top > below);
                 };
                 measure();
                 window.addEventListener('resize', measure);
-                return () => window.removeEventListener('resize', measure);
+                window.visualViewport?.addEventListener('resize', measure);
+                return () => {
+                        window.removeEventListener('resize', measure);
+                        window.visualViewport?.removeEventListener('resize', measure);
+                };
         }, [showDropdown, matches.length]);
 
         const isDuplicate = (label: string) => destinations.some(
@@ -90,14 +96,16 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
         const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === 'ArrowDown') {
                         e.preventDefault();
-                        const total = matches.length + (inputValue.trim() ? 1 : 0);
-                        setHighlightIdx(i => (i + 1) % Math.max(total, 1));
+                        const total = totalDropdownRows;
+                        if (total === 0) return;
+                        setHighlightIdx(i => (i + 1) % total);
                         return;
                 }
                 if (e.key === 'ArrowUp') {
                         e.preventDefault();
-                        const total = matches.length + (inputValue.trim() ? 1 : 0);
-                        setHighlightIdx(i => (i - 1 + Math.max(total, 1)) % Math.max(total, 1));
+                        const total = totalDropdownRows;
+                        if (total === 0) return;
+                        setHighlightIdx(i => (i - 1 + total) % total);
                         return;
                 }
                 if (e.key === 'Enter') {

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Mailbox } from '../Mailbox';
@@ -27,10 +27,7 @@ export const Step3_Mailbox: React.FC<Step3MailboxProps> = ({ onComplete }) => {
 
         useEffect(() => {
                 if (!user) { setLoading(false); return; }
-                const q = query(
-                        collection(db, 'users', user.uid, 'trips'),
-                        orderBy('id', 'desc')
-                );
+                const q = query(collection(db, 'users', user.uid, 'trips'));
                 const unsub = onSnapshot(q, snap => {
                         const next: Trip[] = [];
                         snap.forEach(doc => next.push(doc.data() as Trip));

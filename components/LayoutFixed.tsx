@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip } from '../types';
-import { Map, Plane, Utensils, Hotel, Globe, Ticket, Compass, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home, Search } from 'lucide-react';
+import { Map, Plane, Utensils, Hotel, Globe, Ticket, Compass, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home, Search, Mail } from 'lucide-react';
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
 import { TripProgress } from './shared';
@@ -215,12 +215,17 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                 <Plus className="w-5 h-5" aria-hidden="true" />
                                                         </button>
 
-                                                        {/* Mobile: persistent mailbox surface */}
-                                                        <MailboxButton
-                                                                count={mailboxCount}
-                                                                onClick={() => setIsMailboxOpen(true)}
-                                                                variant="mobile-icon"
-                                                        />
+                                                        {/* Mobile: persistent mailbox surface — only when there
+                                                            are actual pending items. Empty-state discovery happens
+                                                            via the menu overlay tile below; keeping this conditional
+                                                            avoids overflowing the header on iPhone SE / mini sizes. */}
+                                                        {mailboxCount > 0 && (
+                                                                <MailboxButton
+                                                                        count={mailboxCount}
+                                                                        onClick={() => setIsMailboxOpen(true)}
+                                                                        variant="mobile-icon"
+                                                                />
+                                                        )}
 
                                                         {/* Mobile Menu Trigger */}
                                                         <button
@@ -345,7 +350,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                 {/* 2. Trip Management — primary action */}
                                                 <div>
                                                         <h3 className="font-bold text-slate-400 text-xs uppercase tracking-wider mb-3">ניהול</h3>
-                                                        <div className="grid grid-cols-3 gap-3">
+                                                        <div className="grid grid-cols-2 gap-3">
                                                                 <button
                                                                         onClick={() => { onSwitchTab('trips'); setIsTripMenuOpen(false); }}
                                                                         className="flex flex-col items-center justify-center gap-2 bg-slate-900 text-white p-4 rounded-2xl shadow-lg shadow-slate-900/20 transition-all active:scale-95"
@@ -360,6 +365,19 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                 >
                                                                         <Plus className="w-6 h-6" />
                                                                         <span className="font-bold text-xs">טיול חדש</span>
+                                                                </button>
+
+                                                                <button
+                                                                        onClick={() => { setIsMailboxOpen(true); setIsTripMenuOpen(false); }}
+                                                                        className="relative flex flex-col items-center justify-center gap-2 bg-emerald-600 text-white p-4 rounded-2xl shadow-lg shadow-emerald-500/30 transition-all active:scale-95"
+                                                                >
+                                                                        {mailboxCount > 0 && (
+                                                                                <span className="absolute top-2 right-2 inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-white text-emerald-700 text-2xs font-black ring-2 ring-emerald-600">
+                                                                                        {mailboxCount > 99 ? '99+' : mailboxCount}
+                                                                                </span>
+                                                                        )}
+                                                                        <Mail className="w-6 h-6" />
+                                                                        <span className="font-bold text-xs">תיבת דואר</span>
                                                                 </button>
 
                                                                 <button

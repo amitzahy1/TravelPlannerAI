@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Copy, Check, Hotel, Plane, Trash2, Plus, ChevronDown, ExternalLink, Sparkles, ArrowLeft } from 'lucide-react';
 import { Trip } from '../types';
-import { MAILBOX_FORWARD_ADDRESS, gmailComposeUrl, isMailboxTrip, claimMailboxTrip, mergeTripIntoTarget } from '../utils/mailbox';
+import { MAILBOX_FORWARD_ADDRESS, gmailComposeUrl, isMailboxTrip } from '../utils/mailbox';
 
 interface MailboxProps {
         trips: Trip[];
