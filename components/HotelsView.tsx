@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip, HotelBooking, HotelRoom, TravelersComposition } from '../types';
@@ -15,13 +15,27 @@ import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
 import { toast } from '../stores/useToastStore';
 import { safeMapsUrl } from '../utils/mapsUrl';
+import { resolveRealPlaceImage } from '../services/placeImageService';
 
 
-// Generic hotel fallback image
+// Generic hotel-exterior fallback image — used as the SAFE default whenever
+// we don't yet have a Wikipedia photo or a city-keyword match. Never the
+// "person at a desk" stock photo that previously matched chain hotels.
 const HOTEL_FALLBACK = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80';
 
-// Helper to determine placeholder image based on hotel data
-const getPlaceImage = (hotel: HotelBooking): string => {
+/**
+ * Returns the INITIAL image for a hotel — what we render before Wikipedia
+ * has a chance to upgrade it. Order:
+ *   1. hotel.imageUrl (explicitly set on the trip).
+ *   2. City-keyword match → city-themed photo (Bangkok skyline, Paris, etc.).
+ *   3. Generic HOTEL_FALLBACK.
+ *
+ * The previous chain-brand keyword match (`holiday inn / marriott / …` →
+ * "person at a desk" photo) is GONE — every chain hotel now goes through
+ * the Wikipedia resolver and either gets a real chain photo or falls back
+ * to the generic hotel exterior.
+ */
+const getInitialHotelImage = (hotel: HotelBooking): string => {
     if (hotel.imageUrl) return hotel.imageUrl;
     const combined = [hotel.name, hotel.city, hotel.address].filter(Boolean).join(' ').toLowerCase();
     if (combined.includes('bangkok') || combined.includes('bkk')) return 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?auto=format&fit=crop&w=800&q=80';
@@ -41,16 +55,35 @@ const getPlaceImage = (hotel: HotelBooking): string => {
     if (combined.includes('dubai')) return 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=800&q=80';
     if (combined.includes('tokyo') || combined.includes('japan')) return 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=800&q=80';
     if (combined.includes('bali') || combined.includes('indonesia')) return 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?auto=format&fit=crop&w=800&q=80';
-    // South Africa + surrounding safari countries — was missing.
     if (combined.includes('cape town') || combined.includes('קייפטאון')) return 'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=800&q=80';
     if (combined.includes('johannesburg') || combined.includes('יוהנסבורג')) return 'https://images.unsplash.com/photo-1577948000111-9c970dfe3743?auto=format&fit=crop&w=800&q=80';
     if (combined.includes('south africa') || combined.includes('דרום אפריקה') || combined.includes('kruger') || combined.includes('safari')) return 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=800&q=80';
-    // Britain beyond London
     if (combined.includes('edinburgh') || combined.includes('scotland')) return 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=800&q=80';
     if (combined.includes('manchester') || combined.includes('liverpool')) return 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80';
     if (combined.includes('beach') || combined.includes('resort') || combined.includes('island')) return 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&q=80';
-    if (combined.includes('holiday inn') || combined.includes('marriott') || combined.includes('hilton') || combined.includes('sheraton') || combined.includes('hyatt')) return 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=800&q=80';
     return HOTEL_FALLBACK;
+};
+
+/**
+ * React hook that returns the best available image for a hotel:
+ * starts with the city-themed initial, then upgrades to a real
+ * Wikipedia photo of THIS hotel when one is found. Wikipedia results
+ * are cached for 30 days in localStorage.
+ */
+const useHotelImage = (hotel: HotelBooking): string => {
+    const initial = useMemo(() => getInitialHotelImage(hotel), [hotel.name, hotel.city, hotel.address, hotel.imageUrl]);
+    const [src, setSrc] = useState<string>(initial);
+    useEffect(() => { setSrc(initial); }, [initial]);
+    useEffect(() => {
+        if (hotel.imageUrl) return; // user explicitly set one — respect it
+        let cancelled = false;
+        const locale = hotel.address || hotel.city || '';
+        resolveRealPlaceImage(hotel.name, locale, 'hotel')
+            .then(real => { if (!cancelled && real) setSrc(real); })
+            .catch(() => { /* network/CORS — keep initial */ });
+        return () => { cancelled = true; };
+    }, [hotel.name, hotel.city, hotel.address, hotel.imageUrl]);
+    return src;
 };
 
 // Luxurious neutral palette — slate base with subtle warm accents.
@@ -309,7 +342,7 @@ const HotelCard: React.FC<{
     const [noteText, setNoteText] = useState(primary.notes || '');
     const [analyzing, setAnalyzing] = useState(false);
 
-    const displayImage = getPlaceImage(primary);
+    const displayImage = useHotelImage(primary);
     const sourceStyle = SOURCE_STYLES[primary.bookingSource || ''] || { bg: 'bg-slate-600', text: 'text-white', label: primary.bookingSource || '' };
 
     const nightsCount = (() => {

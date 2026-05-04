@@ -11,7 +11,7 @@
  * requested type, we reject the image and fall back to category stock.
  */
 
-type PlaceType = 'restaurant' | 'attraction';
+type PlaceType = 'restaurant' | 'attraction' | 'hotel';
 
 const CACHE_KEY = 'placeImageCache.v3';
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -89,11 +89,12 @@ const timedFetch = async (url: string, timeoutMs = 8000): Promise<Response | nul
 // -----------------------------------------------------------------------------
 
 const RESTAURANT_POSITIVE = [
-        'restaurant', 'eatery', 'bistro', 'café', 'cafe', 'coffee shop', 'bar',
+        'restaurant', 'eatery', 'bistro', 'café', 'cafe', 'coffee shop', 'bar','pub',
         'diner', 'pub', 'bakery', 'pizzeria', 'ramen', 'sushi', 'steakhouse',
         'chef', 'cuisine', 'culinary', 'michelin', 'menu', 'dining', 'tavern',
-        'patisserie', 'brewery', 'noodle', 'food hall', 'bbq', 'grill',
-        'trattoria', 'osteria', 'izakaya', 'speakeasy', 'cocktail',
+        'patisserie', 'brewery', 'noodle', 'bbq', 'grill','thai food','ramen',
+        'trattoria', 'osteria', 'izakaya', 'speakeasy', 'cocktail','burger','steak',
+        'street food',
 ];
 
 const ATTRACTION_POSITIVE = [
@@ -103,6 +104,15 @@ const ATTRACTION_POSITIVE = [
         'landmark', 'ruins', 'cave', 'waterfall', 'beach', 'mountain', 'island',
         'viewpoint', 'neighborhood', 'district', 'area', 'city', 'town',
         'village', 'theatre', 'theater', 'stadium', 'arena', 'tourist', 'visitor',
+];
+
+const HOTEL_POSITIVE = [
+        'hotel', 'resort', 'inn', 'lodge', 'lodging', 'guesthouse', 'guest house',
+        'motel', 'bed and breakfast', 'b&b', 'hostel', 'suites', 'accommodation',
+        'aparthotel', 'apartment hotel', 'boutique hotel', 'villa',
+        'hyatt', 'marriott', 'hilton', 'sheraton', 'holiday inn', 'four seasons',
+        'ritz', 'westin', 'intercontinental', 'kempinski', 'shangri-la',
+        'rooms', 'rooftop','holidayinn','holiday inn',
 ];
 
 // Strong negative signals — if the description starts with / contains any of
@@ -129,7 +139,11 @@ const lowerExtract = (page: any): string => {
 const matchesType = (text: string, type: PlaceType): boolean => {
         if (!text) return false;
         if (HARD_NEGATIVE.some(kw => text.includes(kw))) return false;
-        const positives = type === 'restaurant' ? RESTAURANT_POSITIVE : ATTRACTION_POSITIVE;
+        const positives = type === 'restaurant'
+                ? RESTAURANT_POSITIVE
+                : type === 'hotel'
+                        ? HOTEL_POSITIVE
+                        : ATTRACTION_POSITIVE;
         return positives.some(kw => text.includes(kw));
 };
 
@@ -274,7 +288,7 @@ export const resolveRealPlaceImage = async (
                 try {
                         const nameClean = name.trim();
                         const cityClean = (city || '').trim();
-                        const typeWord = type === 'restaurant' ? 'restaurant' : '';
+                        const typeWord = type === 'restaurant' ? 'restaurant' : type === 'hotel' ? 'hotel' : '';
 
                         let url: string | null = null;
 

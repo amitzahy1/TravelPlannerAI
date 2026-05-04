@@ -118,6 +118,22 @@ const AppContent: React.FC = () => {
     }
   }, [isLoading, authLoading, trips.length, joinShareId]);
 
+  // First-visit welcome — show the InviteeWelcome carousel once per device
+  // on app entry whenever the user has at least one trip available, even if
+  // they didn't arrive via a shared-trip link. localStorage flag prevents
+  // re-popping on every refresh.
+  useEffect(() => {
+    if (isLoading || authLoading) return;
+    if (welcomeForShareId) return; // shared-trip welcome already showing
+    if (!activeTrip) return; // need an active trip for the slide content
+    try {
+      const seen = localStorage.getItem('weTravel.firstVisitWelcome.v1');
+      if (seen === '1') return;
+      setWelcomeForShareId(`first-visit-${activeTrip.id}`);
+      setWelcomeForTrip(activeTrip);
+    } catch { /* private mode — show anyway */ }
+  }, [isLoading, authLoading, activeTrip?.id, welcomeForShareId]);
+
   // Scroll to top on tab change — without this the new view inherits the
   // previous view's scroll position, so e.g. switching to Hotels from a
   // long Itinerary lands the user at the bottom of the hotels list.
@@ -449,7 +465,12 @@ const AppContent: React.FC = () => {
           trip={welcomeForTrip}
           ownerName={welcomeForTrip.sharing?.owner ? undefined : undefined}
           onDismiss={() => {
-            try { localStorage.setItem(`seenInviteeWelcome:${welcomeForShareId}`, '1'); } catch { /* noop */ }
+            try {
+              localStorage.setItem(`seenInviteeWelcome:${welcomeForShareId}`, '1');
+              // Always mark first-visit seen too so a non-share dismissal
+              // also stops the welcome from re-popping on every refresh.
+              localStorage.setItem('weTravel.firstVisitWelcome.v1', '1');
+            } catch { /* noop */ }
             setWelcomeForShareId(null);
             setWelcomeForTrip(null);
           }}

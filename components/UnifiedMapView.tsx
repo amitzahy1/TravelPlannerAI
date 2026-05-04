@@ -650,6 +650,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     // Restaurants and attractions appear as the user zooms in, so the
     // first-glance picture is clean and the trip route reads instantly.
     const [mapZoom, setMapZoom] = useState<number>(8);
+    // Snap-back protection — true once the user has manually panned/zoomed.
+    // applyBounds() respects this and skips re-fitting the trip view.
+    const userInteractedRef = useRef(false);
+    // Reset on deliberate context switches: different trip OR different
+    // city filter. The user expects a fresh fit in those cases.
+    useEffect(() => {
+        userInteractedRef.current = false;
+    }, [trip?.id, activeCity]);
 
     // Sync externally-controlled city → internal state. When
     // `controlledActiveCity` is `undefined` the component manages its own
@@ -1545,6 +1553,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         setMapZoom(map.getZoom());
         map.on('zoomend', () => setMapZoom(map.getZoom()));
 
+        // Snap-back protection (Phase 1.1): once the user has manually panned
+        // or zoomed, don't auto-fit them away when geocode batches settle or
+        // layer flags change. The flag resets when the trip itself changes
+        // or when the user clicks the explicit "fit to trip" button below.
+        map.on('dragstart zoomstart', () => { userInteractedRef.current = true; });
+
         setTimeout(() => map.invalidateSize(), 200);
         const ro = new ResizeObserver(() => map.invalidateSize());
         ro.observe(mapContainerRef.current);
@@ -1977,6 +1991,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // zoom the map out to a hemisphere view. Layover pins stay drawn —
         // they're just not the focal point.
         const applyBounds = (b: L.LatLngBounds) => {
+            // Snap-back gate: once the user has manually panned/zoomed, don't
+            // re-fit them. The user can re-fit by clicking the "↻ trip view"
+            // button or by switching the city filter (which resets the flag).
+            if (userInteractedRef.current) return;
             // Tighter default zoom + less padding on the "ALL" view so the
             // trip's actual geography fills more of the screen.
             // compactView (FullTripMapView's "whole trip" mode) drops maxZoom
@@ -2051,7 +2069,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         }
 
         [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
-    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles, mapZoom]);
+    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles, heatmap, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions, mapZoom]);
 
 
     // Fly to a GPS-located position and show a "you are here" marker.
@@ -2122,10 +2140,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 </div>
             )}
 
-            {/* Zoom-in hint — appears at low zoom on the ALL view, telling
-                 the user that restaurants/attractions appear when they zoom in. */}
+            {/* Zoom-in hint — moved to the bottom (above the bottom stats
+                 bar) so it doesn't fight the city-filter pills at the top.
+                 Lower z-index than markers so it never blocks pin clicks. */}
             {mapZoom < 11 && activeCity === 'ALL' && (mapItems.some(i => i.type === 'restaurant' || i.type === 'attraction')) && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur px-3 py-1.5 rounded-full shadow-md border border-slate-200 flex items-center gap-1.5 pointer-events-none">
+                <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[600] bg-white/95 backdrop-blur px-3 py-1.5 rounded-full shadow-md border border-slate-200 flex items-center gap-1.5 pointer-events-none">
                     <span className="text-[11px] font-bold text-slate-600">🔍 התקרב כדי לראות מסעדות ואטרקציות</span>
                 </div>
             )}
