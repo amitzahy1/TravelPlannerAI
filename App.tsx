@@ -31,6 +31,7 @@ import { runBackgroundResearch } from './services/backgroundResearch';
 import { MagicalWizard } from './components/onboarding/MagicalWizard';
 import { InviteeWelcome } from './components/onboarding/InviteeWelcome';
 import { HeroPreview } from './components/HeroPreview';
+import { PopupPreview } from './components/PopupPreview';
 import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
 
@@ -490,11 +491,13 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  // Hero-design preview route (#/hero-preview) — short-circuits the entire app
-  // so the user can compare 3 hero options side-by-side without auth/data noise.
-  // Throwaway: removes itself once a design is chosen.
-  if (typeof window !== 'undefined' && window.location.hash.includes('hero-preview')) {
-    return <HeroPreview />;
+  // Design-picker preview routes — short-circuit the app so the user can
+  // compare options without auth/data noise. Throwaway; remove the route +
+  // the corresponding component once a design is chosen.
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash;
+    if (hash.includes('hero-preview')) return <HeroPreview />;
+    if (hash.includes('popup-preview')) return <PopupPreview />;
   }
 
   return (
