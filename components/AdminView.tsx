@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Trip, HotelBooking, FlightSegment, HotelRoom } from '../types';
+import { Trip, HotelBooking, FlightSegment, HotelRoom, Transport } from '../types';
 import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble } from 'lucide-react';
 import { generateWithFallback } from '../services/aiService';
 import { parseFreeTextTrip } from '../services/freeTextImportService';
@@ -122,7 +122,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [logisticsTab, setLogisticsTab] = useState<'flights' | 'hotels'>('flights');
     const [freeText, setFreeText] = useState('');
     const [isFreeTextProcessing, setIsFreeTextProcessing] = useState(false);
-    const [freeTextResult, setFreeTextResult] = useState<{ hotels: HotelBooking[], flights: FlightSegment[], summary: string } | null>(null);
+    const [freeTextResult, setFreeTextResult] = useState<{ hotels: HotelBooking[], flights: FlightSegment[], transports: Transport[], summary: string } | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
     const [tripToDelete, setTripToDelete] = useState<string | null>(null);
     const [tripToLeave, setTripToLeave] = useState<string | null>(null); // NEW: For shared trip leave confirmation
@@ -131,7 +131,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [hotelToDelete, setHotelToDelete] = useState<string | null>(null); // For Admin hotel deletion
     const [hotelConflicts, setHotelConflicts] = useState<{ existing: HotelBooking, incoming: HotelBooking }[]>([]);
     const [conflictResolutions, setConflictResolutions] = useState<Record<number, 'keep' | 'replace' | 'both'>>({});
-    const [pendingApplyData, setPendingApplyData] = useState<{ hotels: HotelBooking[], flights: FlightSegment[] } | null>(null);
+    const [pendingApplyData, setPendingApplyData] = useState<{ hotels: HotelBooking[], flights: FlightSegment[], transports?: Transport[] } | null>(null);
 
 
     // Wizard auto-open removed (handled by App.tsx for better UX)
@@ -643,13 +643,27 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         }
     };
 
-    const applyMergedData = (resolvedHotels: HotelBooking[], resolvedFlights: FlightSegment[]) => {
+    const applyMergedData = (resolvedHotels: HotelBooking[], resolvedFlights: FlightSegment[], resolvedTransports?: Transport[]) => {
         if (!activeTrip) return;
         const newDates = recalculateTripDates(resolvedHotels, resolvedFlights, activeTrip.dates);
+        // Merge incoming transports with existing trip.transports (dedupe by mode+date+from→to).
+        const existingTransports = activeTrip.transports || [];
+        const norm = (s?: string) => (s || '').trim().toLowerCase();
+        const mergedTransports = [...existingTransports];
+        for (const inc of (resolvedTransports || [])) {
+            const dup = mergedTransports.find(t =>
+                t.mode === inc.mode
+                && (t.date || '') === (inc.date || '')
+                && norm(t.from) === norm(inc.from)
+                && norm(t.to) === norm(inc.to)
+            );
+            if (!dup) mergedTransports.push(inc);
+        }
         const mergedTrip = {
             ...activeTrip,
             hotels: resolvedHotels,
             flights: { ...activeTrip.flights, segments: resolvedFlights },
+            transports: mergedTransports,
             ...(newDates ? { dates: newDates } : {}),
         };
         handleUpdateTrip(mergedTrip);
@@ -706,9 +720,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         if (conflicts.length > 0) {
             setHotelConflicts(conflicts);
             setConflictResolutions({});
-            setPendingApplyData({ hotels: directMerge, flights: mergedFlights });
+            setPendingApplyData({ hotels: directMerge, flights: mergedFlights, transports: freeTextResult.transports || [] });
         } else {
-            applyMergedData(directMerge, mergedFlights);
+            applyMergedData(directMerge, mergedFlights, freeTextResult.transports || []);
         }
     };
 
@@ -725,7 +739,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             }
             // 'keep' → do nothing, existing stays
         });
-        applyMergedData(hotels, pendingApplyData.flights);
+        applyMergedData(hotels, pendingApplyData.flights, (pendingApplyData as any).transports || []);
     };
 
 
@@ -1112,7 +1126,39 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
             {isShareModalOpen && <ShareModal trip={activeTrip} onClose={() => setIsShareModalOpen(false)} onUpdateTrip={(updatedTrip) => { const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t); setTrips(newTrips); onSave(newTrips); }} />}
 
-            {isWizardOpen && <MagicalWizard isOpen={true} onClose={() => setIsWizardOpen(false)} onComplete={(wizardData) => { const newTrip: Trip = { id: crypto.randomUUID(), name: wizardData.destination ? `Trip to ${wizardData.destination}` : "New Adventure", destination: wizardData.destination || "", dates: wizardData.startDate ? `${wizardData.startDate} - ${wizardData.endDate}` : "", coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80", flights: wizardData.flights || { passengers: [], pnr: "", segments: [] }, hotels: wizardData.hotels || [], restaurants: [], attractions: [], itinerary: [], documents: [], secureNotes: [], isShared: false }; handleCreateTrip(newTrip); }} />}
+            {isWizardOpen && <MagicalWizard isOpen={true} onClose={() => setIsWizardOpen(false)} onComplete={(wizardData) => {
+                // The wizard's text-import path passes parsed data via wizardData.freeTextResult;
+                // the smart-import / manual paths put it on wizardData.{flights,hotels} directly.
+                // We support BOTH so trains/ferries/buses extracted in the text path land
+                // on the new trip's transports[] instead of being silently dropped.
+                const ftr = wizardData.freeTextResult;
+                const flightsSegments = wizardData.flights?.segments
+                    ?? (ftr?.flights as FlightSegment[] | undefined)
+                    ?? [];
+                const hotelsArr = (wizardData.hotels as HotelBooking[] | undefined)
+                    ?? (ftr?.hotels as HotelBooking[] | undefined)
+                    ?? [];
+                const transportsArr = (wizardData.transports as Transport[] | undefined)
+                    ?? (ftr?.transports as Transport[] | undefined)
+                    ?? [];
+                const newTrip: Trip = {
+                    id: crypto.randomUUID(),
+                    name: wizardData.destination ? `Trip to ${wizardData.destination}` : "New Adventure",
+                    destination: wizardData.destination || "",
+                    dates: wizardData.startDate ? `${wizardData.startDate} - ${wizardData.endDate}` : "",
+                    coverImage: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80",
+                    flights: { passengers: [], pnr: "", segments: flightsSegments },
+                    hotels: hotelsArr,
+                    transports: transportsArr,
+                    restaurants: [],
+                    attractions: [],
+                    itinerary: [],
+                    documents: [],
+                    secureNotes: [],
+                    isShared: false,
+                };
+                handleCreateTrip(newTrip);
+            }} />}
         </div>
     );
 };

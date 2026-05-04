@@ -1,4 +1,4 @@
-import type { HotelBooking, FlightSegment } from '../types';
+import type { HotelBooking, FlightSegment, Transport, TransportMode } from '../types';
 import { generateWithFallback, analyzeTripFiles } from './aiService';
 
 export interface FreeTextParseHints {
@@ -11,6 +11,14 @@ export interface FreeTextParseHints {
 export interface FreeTextParseResult {
   hotels: HotelBooking[];
   flights: FlightSegment[];
+  /**
+   * Non-flight transports — trains, ferries, buses, cruises, transfers, car rentals.
+   * Critical for trips outside the flight-only mental model: a Renfe AVE,
+   * a Buquebus ferry, a FlixBus ticket all land here so the map polyline
+   * draws the right segment and the "missing transport" detector doesn't
+   * falsely flag them. Empty if the input only mentions flights.
+   */
+  transports: Transport[];
   summary: string;
 }
 
@@ -77,6 +85,24 @@ Return ONLY valid JSON in this exact structure:
       "flightNumber": "number or TBD",
       "duration": "estimated or Unknown"
     }
+  ],
+  "transports": [
+    {
+      "mode": "train | bus | ferry | cruise | transfer | car_rental | drive",
+      "from": "departure city or station name",
+      "to": "arrival city or station name",
+      "fromAddress": "optional full address — e.g. 'Atocha Station, Madrid'",
+      "toAddress": "optional full address — e.g. 'Sants Station, Barcelona'",
+      "date": "YYYY-MM-DD",
+      "departureTime": "HH:MM or 00:00",
+      "arrivalTime": "HH:MM or 00:00",
+      "duration": "as written or estimated — e.g. '2h 30m'",
+      "provider": "company name — Renfe / FlixBus / Buquebus / SBB / Eurostar / etc.",
+      "bookingRef": "PNR or ticket number if mentioned",
+      "vehicle": "train / bus / ferry / cruise vehicle identifier — e.g. 'AVE 03051', 'ICE 1234', 'M/V Atlantic'",
+      "pickupPoint": "platform / pier / bay / pickup location if mentioned",
+      "notes": "any other free-form info"
+    }
   ]
 }
 
@@ -94,10 +120,27 @@ ROOMS — CRITICAL (follow these exactly):
 - If guest count is totally unknown for a room, default to 2 adults and 0 children.
 - If no room type at all is mentioned for a hotel, use "Standard Room".
 
+TRANSPORTS — CRITICAL (follow these exactly):
+- ANY non-flight ground/water transport must produce an entry in the transports[] array. NEVER collapse a train / bus / ferry / cruise / transfer / car-rental into a hotel notes field — they belong in transports[].
+- Mode mapping:
+  · "train" — Renfe (AVE, AVANT, Cercanías), Eurostar, ICE, TGV, Shinkansen, Amtrak, Indian Railways, BTS/MRT/Skytrain (single ride), JR
+  · "bus" — FlixBus, Greyhound, intercity coach, charter bus
+  · "ferry" — Buquebus, ferry crossings, hydrofoil, jetfoil, water taxi
+  · "cruise" — multi-day cruise itinerary (Royal Caribbean, MSC, Carnival, Norwegian, Disney Cruise)
+  · "transfer" — airport ↔ hotel shuttle / private van / hotel pickup
+  · "car_rental" — Hertz / Avis / Sixt / Europcar / Discover Cars pickup itself (not the driving)
+  · "drive" — explicit self-drive segment between cities (often paired with car_rental)
+- Examples to recognise:
+  · "Renfe AVE 03051 ממדריד אטוצ'ה לברצלונה סנטס, 14/06 09:00→11:30" → mode: 'train', provider: 'Renfe', vehicle: 'AVE 03051'
+  · "Buquebus to Colonia, 7am" → mode: 'ferry', provider: 'Buquebus'
+  · "FlixBus N123 to Prague" → mode: 'bus', provider: 'FlixBus', vehicle: 'N123'
+  · "Sixt rental Madrid airport, return 18/06" → mode: 'car_rental', provider: 'Sixt'
+  · "Private van pickup from BKK 14:00" → mode: 'transfer'
+- If a date is given as a range, create one transport per direction (outbound + return).
+
 OTHER:
 - Flights: a "landing" (נחיתה) = arrival flight, "departure" (המראה) = departure flight
-- For transfers (vans, ferries) mentioned: put them in the hotel's notes field
-- If booking / reservation / confirmation number is given, put it in the hotel's "confirmationCode" field
+- If booking / reservation / confirmation number is given, put it in the appropriate "confirmationCode" or "bookingRef" field
 - Always return valid JSON, never return markdown or extra text
 
 Trip plan text:
@@ -147,17 +190,43 @@ export async function parseFreeTextTrip(
 
   const flights: FlightSegment[] = parsed.flights || [];
 
-  // Validation: if BOTH hotels and flights came back empty the AI
-  // either misunderstood the input or the user typed something too
-  // vague. Surface this instead of silently creating an empty trip.
-  if (hotels.length === 0 && flights.length === 0) {
-    throw new Error('לא נמצאו מלונות או טיסות בטקסט. נסי להוסיף פרטים ספציפיים יותר (תאריכים, שמות מלונות, קודי טיסה).');
+  // Non-flight transports (trains / ferries / buses / cruises / transfers / car rentals).
+  // The AI returns a clean Transport shape; we add the missing id and the
+  // sourceArrayKey marker so buildUnifiedTransports merges them correctly.
+  const VALID_MODES: TransportMode[] = ['flight', 'train', 'bus', 'ferry', 'cruise', 'transfer', 'car_rental', 'drive'];
+  const transports: Transport[] = (parsed.transports || [])
+    .filter((t: any) => t && typeof t.mode === 'string' && VALID_MODES.includes(t.mode))
+    .filter((t: any) => t.mode !== 'flight') // flights live in `flights[]`, not `transports[]`
+    .map((t: any) => ({
+      id: `tr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      mode: t.mode as TransportMode,
+      from: t.from || '',
+      to: t.to || '',
+      fromAddress: t.fromAddress || undefined,
+      toAddress: t.toAddress || undefined,
+      date: t.date || '',
+      departureTime: t.departureTime || '',
+      arrivalTime: t.arrivalTime || '',
+      duration: t.duration || '',
+      provider: t.provider || '',
+      bookingRef: t.bookingRef || '',
+      vehicle: t.vehicle || '',
+      pickupPoint: t.pickupPoint || '',
+      notes: t.notes || '',
+      sourceArrayKey: 'transports',
+    }));
+
+  // Validation: if NOTHING came back, the AI either misunderstood the input
+  // or the user typed something too vague. Surface this instead of silently
+  // creating an empty trip.
+  if (hotels.length === 0 && flights.length === 0 && transports.length === 0) {
+    throw new Error('לא נמצאו מלונות, טיסות או העברות בטקסט. נסי להוסיף פרטים ספציפיים יותר (תאריכים, שמות מלונות, קודי טיסה).');
   }
 
   const summary: string = parsed.summary
-    || `נמצאו ${hotels.length} מלונות ו-${flights.length} טיסות`;
+    || `נמצאו ${hotels.length} מלונות, ${flights.length} טיסות ו-${transports.length} העברות`;
 
-  return { hotels, flights, summary };
+  return { hotels, flights, transports, summary };
 }
 
 /**
@@ -182,23 +251,51 @@ export async function parseFilesToFreeText(files: File[]): Promise<FreeTextParse
     rooms: [],
   }));
 
-  const flights: FlightSegment[] = (raw?.categories?.transport || []).map((t: any) => ({
-    fromCode: t.data.departure?.iata || '',
-    fromCity: t.data.departure?.city || '',
-    toCode: t.data.arrival?.iata || '',
-    toCity: t.data.arrival?.city || '',
-    departureTime: t.data.departure?.displayTime || '',
-    arrivalTime: t.data.arrival?.displayTime || '',
-    flightNumber: t.data.flightNumber || '',
-    airline: t.data.airline || '',
-    duration: '',
-    date: t.data.departure?.isoDate || '',
-  }));
+  // Route the analyzer's transport entries by mode: flights stay in flights[],
+  // everything else lands in transports[] with the proper Transport shape.
+  const allTransport = (raw?.categories?.transport || []) as any[];
+  const flights: FlightSegment[] = allTransport
+    .filter(t => !t?.data?.mode || t.data.mode === 'flight' || t?.data?.flightNumber || t?.data?.airline)
+    .map((t: any) => ({
+      fromCode: t.data.departure?.iata || '',
+      fromCity: t.data.departure?.city || '',
+      toCode: t.data.arrival?.iata || '',
+      toCity: t.data.arrival?.city || '',
+      departureTime: t.data.departure?.displayTime || '',
+      arrivalTime: t.data.arrival?.displayTime || '',
+      flightNumber: t.data.flightNumber || '',
+      airline: t.data.airline || '',
+      duration: '',
+      date: t.data.departure?.isoDate || '',
+    }));
+
+  const NON_FLIGHT_MODES = new Set<TransportMode>(['train', 'bus', 'ferry', 'cruise', 'transfer', 'car_rental', 'drive']);
+  const transports: Transport[] = allTransport
+    .filter(t => t?.data?.mode && NON_FLIGHT_MODES.has(t.data.mode as TransportMode))
+    .map((t: any) => ({
+      id: `tr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      mode: t.data.mode as TransportMode,
+      from: t.data.departure?.city || t.data.departure?.station || '',
+      to: t.data.arrival?.city || t.data.arrival?.station || '',
+      fromAddress: t.data.departure?.address || undefined,
+      toAddress: t.data.arrival?.address || undefined,
+      date: t.data.departure?.isoDate || '',
+      departureTime: t.data.departure?.displayTime || '',
+      arrivalTime: t.data.arrival?.displayTime || '',
+      duration: t.data.duration || '',
+      provider: t.data.provider || t.data.operator || '',
+      bookingRef: t.data.bookingId || t.data.bookingRef || '',
+      vehicle: t.data.vehicle || t.data.trainNumber || t.data.busNumber || '',
+      pickupPoint: t.data.pickupPoint || '',
+      notes: t.data.notes || '',
+      sourceArrayKey: 'transports',
+    }));
 
   return {
     hotels,
     flights,
-    summary: `מקבצים: ${hotels.length} מלונות ו-${flights.length} טיסות`,
+    transports,
+    summary: `מקבצים: ${hotels.length} מלונות, ${flights.length} טיסות ו-${transports.length} העברות`,
   };
 }
 
@@ -244,9 +341,24 @@ export function mergeFreeTextResults(
     if (!dup) flights.push(inc);
   }
 
+  // Merge transports — dedupe by (mode, date, from→to). Two trains on the
+  // same day with the same endpoints are considered the same booking.
+  const norm = (s?: string) => (s || '').trim().toLowerCase();
+  const transports = [...(existing.transports || [])];
+  for (const inc of (incoming.transports || [])) {
+    const dup = transports.find(t =>
+      t.mode === inc.mode
+      && (t.date || '') === (inc.date || '')
+      && norm(t.from) === norm(inc.from)
+      && norm(t.to) === norm(inc.to)
+    );
+    if (!dup) transports.push(inc);
+  }
+
   return {
     hotels,
     flights,
-    summary: `סה"כ ${hotels.length} מלונות ו-${flights.length} טיסות`,
+    transports,
+    summary: `סה"כ ${hotels.length} מלונות, ${flights.length} טיסות ו-${transports.length} העברות`,
   };
 }
