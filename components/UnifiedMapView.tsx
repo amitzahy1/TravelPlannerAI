@@ -808,9 +808,29 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             if (layerFlags.hotels) {
                 trip.hotels?.forEach(h => {
                     const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
+                    // Prefer coords extracted from the hotel's googleMapsUrl over
+                    // the saved h.lat/h.lng — the URL is the user's source of
+                    // truth (it leads to the right place on Google Maps), while
+                    // the saved coords may be stale results from an old geocode
+                    // run. If both exist and disagree by >2km, the URL wins.
+                    const urlCoords = extractCoordsFromMapsUrl(h.googleMapsUrl);
+                    let finalLat = h.lat;
+                    let finalLng = h.lng;
+                    if (urlCoords) {
+                        if (!isValidCoordinate(h.lat, h.lng)) {
+                            finalLat = urlCoords.lat;
+                            finalLng = urlCoords.lng;
+                        } else {
+                            const distKm = getDistanceKm(h.lat as number, h.lng as number, urlCoords.lat, urlCoords.lng);
+                            if (distKm > 2) {
+                                finalLat = urlCoords.lat;
+                                finalLng = urlCoords.lng;
+                            }
+                        }
+                    }
                     raw.push({
                         id: h.id, type: 'hotel', name: h.name, address: h.address,
-                        lat: h.lat, lng: h.lng, description: h.roomType, date: h.checkInDate, city,
+                        lat: finalLat, lng: finalLng, description: h.roomType, date: h.checkInDate, city,
                         imageUrl: h.imageUrl,
                         notes: h.notes,
                         googleMapsUrl: h.googleMapsUrl,

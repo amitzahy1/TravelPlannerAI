@@ -236,8 +236,11 @@ export const extractCoordsFromMapsUrl = (url?: string): { lat: number; lng: numb
                 /@(-?\d+\.\d+),(-?\d+\.\d+)/,                                  // /@lat,lng
                 /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,                              // ?q=lat,lng
                 /[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/,                             // ?ll=lat,lng
-                /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,                               // !3dlat!4dlng
-                /destination=(-?\d+\.\d+),(-?\d+\.\d+)/,                        // directions
+                /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,                               // !3dlat!4dlng (place URLs)
+                /destination=(-?\d+\.\d+),(-?\d+\.\d+)/,                        // /maps/dir destination
+                /[?&]center=(-?\d+\.\d+),(-?\d+\.\d+)/,                         // ?center=lat,lng (newer share pages)
+                /[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/,                          // /maps/search?api=1&query=lat,lng
+                /[?&]daddr=(-?\d+\.\d+),(-?\d+\.\d+)/,                          // legacy directions destination
         ];
         for (const re of matchers) {
                 const m = url.match(re);
@@ -248,6 +251,38 @@ export const extractCoordsFromMapsUrl = (url?: string): { lat: number; lng: numb
                                 return { lat, lng };
                         }
                 }
+        }
+        return null;
+};
+
+/**
+ * Pull the place's HUMAN-READABLE NAME out of a Google Maps URL when
+ * coords aren't directly extractable. Useful as a stronger geocoder input
+ * than the AI-generated free-text name — Google's path segment usually
+ * has the canonical place name (e.g. "Holiday+Inn+Pattaya").
+ *
+ * Examples:
+ *   /maps/place/Holiday+Inn+Pattaya/@12.9,100.9   → "Holiday Inn Pattaya"
+ *   /place/Eiffel+Tower/data=...                  → "Eiffel Tower"
+ *   /maps/search/?query=Eiffel%20Tower            → "Eiffel Tower"
+ */
+export const nameFromMapsUrl = (url?: string): string | null => {
+        if (!url) return null;
+        // Path-based: /place/<name>/...
+        const placeMatch = url.match(/\/place\/([^/?@]+)/);
+        if (placeMatch) {
+                try {
+                        return decodeURIComponent(placeMatch[1].replace(/\+/g, ' ')).trim() || null;
+                } catch { return null; }
+        }
+        // Query-string-based: ?query=<name> or ?q=<name> (only when q isn't lat,lng)
+        const queryMatch = url.match(/[?&](?:query|q)=([^&]+)/);
+        if (queryMatch) {
+                const raw = queryMatch[1];
+                if (/^-?\d+\.\d+,-?\d+\.\d+$/.test(raw)) return null; // it's coords, not a name
+                try {
+                        return decodeURIComponent(raw.replace(/\+/g, ' ')).trim() || null;
+                } catch { return null; }
         }
         return null;
 };
@@ -384,12 +419,26 @@ export const geocodePlace = async (input: GeocodableInput): Promise<{ lat: numbe
 
         // Build query variants. With cityHint, prefer "Name, City, Country" first
         // so Photon's relevance ranking is biased toward the right city.
+        // We ALSO use the URL-extracted name (e.g. "Holiday Inn Pattaya" pulled
+        // from the path of a googleMapsUrl) as a high-confidence query candidate
+        // — usually more accurate than the AI's free-text place name.
+        const urlName = nameFromMapsUrl(input.googleMapsUrl);
         const baseQuery = [input.name, input.location || input.address].filter(Boolean).join(', ');
         const withCity = input.cityHint ? `${input.name}, ${input.cityHint}${input.countryHint ? `, ${input.countryHint}` : ''}` : null;
         const withHint = input.countryHint ? `${baseQuery}, ${input.countryHint}` : null;
+        const urlNameWithCity = urlName && input.cityHint
+                ? `${urlName}, ${input.cityHint}${input.countryHint ? `, ${input.countryHint}` : ''}`
+                : null;
+        const urlNameWithCountry = urlName && input.countryHint
+                ? `${urlName}, ${input.countryHint}`
+                : null;
 
         const attempts: Array<{ query: string; useBbox: 'city' | 'country' | 'none' }> = [
-                // 1. City-tagged query, biased + validated by city bbox.
+                // 0. URL-name + city — highest confidence.
+                ...(urlNameWithCity && cityBbox ? [{ query: urlNameWithCity, useBbox: 'city' as const }] : []),
+                // 0b. URL-name + country.
+                ...(urlNameWithCountry ? [{ query: urlNameWithCountry, useBbox: countryBbox ? 'country' as const : 'none' as const }] : []),
+                // 1. City-tagged query (AI name), biased + validated by city bbox.
                 ...(withCity && cityBbox ? [{ query: withCity, useBbox: 'city' as const }] : []),
                 // 2. Country-tagged query with country bbox.
                 ...(withHint ? [{ query: withHint, useBbox: countryBbox ? 'country' as const : 'none' as const }] : []),
