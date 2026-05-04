@@ -82,12 +82,27 @@ const useFallbackImage = (item: PopupItem): string | null => {
     return imgSrc;
 };
 
+// Notes are user / AI-extracted free text. In the popup we show only the first
+// short line so a multi-paragraph transport note doesn't drown the card. Pulls
+// out the first sentence/line up to ~70 chars, keeping the original on the
+// `notes` field for the full hotel/restaurant detail view.
+const summarizeNote = (raw: string): { short: string; truncated: boolean } => {
+    if (!raw) return { short: '', truncated: false };
+    const flat = raw.replace(/\s+/g, ' ').trim();
+    // First sentence by Hebrew/Latin punctuation
+    const m = flat.match(/^[^.!?\n。;]+[.!?。;]?/);
+    let candidate = (m?.[0] || flat).trim();
+    if (candidate.length > 70) candidate = candidate.slice(0, 67).trimEnd() + '…';
+    return { short: candidate, truncated: candidate !== flat };
+};
+
 export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = false }) => {
     const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.hotel;
     const dateLabel = parseDateLabel(item.date);
     const mapsLink = safeMapsUrl(item.googleMapsUrl, item.name, item.address);
     const tagLabel = item.cuisine || item.category || cfg.label;
     const imageUrl = useFallbackImage(item);
+    const noteSummary = summarizeNote(item.notes || '');
 
     const headerStyle: React.CSSProperties = imageUrl
         ? {
@@ -167,9 +182,17 @@ export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = fal
                         {item.description}
                     </div>
                 )}
-                {item.notes && (
-                    <div style={{ fontSize: 10, color: '#475569', background: '#fffaeb', border: '1px solid #fde68a', borderRadius: 6, padding: '5px 8px', marginTop: 6, lineHeight: 1.4 }}>
-                        📝 {item.notes}
+                {noteSummary.short && (
+                    <div
+                        title={noteSummary.truncated ? item.notes : undefined}
+                        style={{
+                            fontSize: 10, color: '#475569', background: '#fffaeb', border: '1px solid #fde68a',
+                            borderRadius: 6, padding: '5px 8px', marginTop: 6, lineHeight: 1.4,
+                            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}
+                    >
+                        📝 {noteSummary.short}
                     </div>
                 )}
                 {dateLabel && (
