@@ -7,6 +7,8 @@ import { pickTripCover } from '../utils/destinationCover';
 import { CoverPickerModal } from './CoverPickerModal';
 import { computeRecommendations, countRecommendationActions } from '../utils/tripRecommendations';
 import { getDismissedRecs } from '../utils/dismissedRecommendations';
+import { PageIntro } from './ui/PageIntro';
+import { Calendar as CalendarIntroIcon } from 'lucide-react';
 import { exportTripPDF } from '../utils/generateTripHTML';
 import { downloadTripIcal } from '../utils/generateTripIcal';
 import { FileText as FileTextIcon, CalendarDays as CalendarDaysIcon } from 'lucide-react';
@@ -846,8 +848,10 @@ export const ItineraryView: React.FC<{
     return (
         <div className="space-y-4 sm:space-y-6 animate-fade-in pb-24">
 
-            {/* 1. HERO SECTION — countdown floats top-left web / bottom-left mobile */}
-            <div className="relative h-[220px] mx-1 group">
+            {/* 1. HERO SECTION — countdown floats top-left web / bottom-left mobile.
+                 Responsive height: 140px on phones (the timeline below stays
+                 above the fold), 180px on tablets, 220px on desktop. */}
+            <div className="relative h-[140px] sm:h-[180px] md:h-[220px] mx-1 group">
                 {/* Background Layer (Clipped) */}
                 <div className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-xl z-0">
                     <img
@@ -1090,6 +1094,11 @@ export const ItineraryView: React.FC<{
                     </div>
                 </div>
             </div>
+
+            <PageIntro
+                icon={<CalendarIntroIcon />}
+                description="המסלול המלא של הטיול שלך, יום אחר יום. כל מה שתכננתם — טיסות, מלונות, מסעדות ופעילויות — במקום אחד מסודר."
+            />
 
             {/* 2.4 Compact actions — single row, two pills. Cities now
                  live on the hero so this strip only carries the

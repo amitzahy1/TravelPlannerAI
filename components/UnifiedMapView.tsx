@@ -405,8 +405,12 @@ const makeStopPill = (
     color: string,
     role: 'start' | 'end' | 'middle' = 'middle',
 ) => {
-    // Trim names so stacked pins don't all grow long and collide.
-    const display = name.length > 26 ? name.slice(0, 23) + '…' : name;
+    // City names are intentionally NOT shown on the route stop pill —
+    // they overlap with the hotel-name labels in the same city. The user
+    // already knows which cities they're visiting (the city filter pill
+    // at the top of the map shows them). We only render the number + an
+    // optional emoji here so the pill stays compact + collision-free.
+    void name; // unused — kept in the signature for API symmetry
     // Role ribbon — appears above stop #1 and the final stop so the user
     // sees the trip's beginning + end at a glance.
     const ribbonText = role === 'start' ? 'התחלה' : role === 'end' ? 'סיום' : '';
@@ -427,19 +431,17 @@ const makeStopPill = (
             ? 'box-shadow:0 0 0 3px #0f172a,0 3px 10px rgba(15,23,42,0.18);'
             : 'box-shadow:0 3px 10px rgba(15,23,42,0.18),0 1px 3px rgba(15,23,42,0.08);';
     const html = `
-        <div style="display:inline-flex;flex-direction:column;align-items:flex-start;">
+        <div style="display:inline-flex;flex-direction:column;align-items:center;">
             ${ribbonHtml}
             <div style="
-                display:inline-flex; align-items:center; gap:5px;
+                display:inline-flex; align-items:center; justify-content:center; gap:3px;
                 background:white;
                 border-radius:999px;
-                padding:3px 10px 3px 3px;
+                padding:3px 8px;
                 ${ringStyle}
                 border:1px solid rgba(255,255,255,0.9);
                 white-space:nowrap;
                 font-family:'Rubik','Inter',sans-serif;
-                position:relative;
-                max-width:220px;
             ">
                 <div style="
                     width:22px; height:22px; border-radius:50%;
@@ -449,11 +451,11 @@ const makeStopPill = (
                     box-shadow:0 2px 6px ${color}50;
                     flex-shrink:0;
                 ">${num}</div>
-                <span style="font-size:11px; font-weight:700; color:#1e293b; letter-spacing:0.1px;">${emoji} ${display}</span>
+                <span style="font-size:13px;line-height:1;">${emoji}</span>
             </div>
         </div>
     `;
-    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [-8, role === 'middle' ? 11 : 24] });
+    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [22, role === 'middle' ? 16 : 32] });
 };
 
 // --- ROUTE INFO BADGE (travel time/distance/mode between stops) ---

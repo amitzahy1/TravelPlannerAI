@@ -10,6 +10,7 @@ import {
 import { generateWithFallback } from '../services/aiService';
 import { getCityTheme } from '../utils/cityColors';
 import { Badge } from './ui/Badge';
+import { PageIntro } from './ui/PageIntro';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { ConfirmModal } from './ConfirmModal';
 import { toast } from '../stores/useToastStore';
@@ -811,6 +812,11 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
 
     return (
         <div className="space-y-4 sm:space-y-6 animate-fade-in pb-10">
+
+            <PageIntro
+                icon={<Hotel />}
+                description="כל המלונות שהזמנתם בטיול, עם הרכב החדרים, מספר האורחים והערות. אפשר להוסיף חדרים, לערוך ולתזמן צ׳ק-אין."
+            />
 
             {hotels && hotels.length > 0 ? (
                 <>

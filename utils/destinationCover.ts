@@ -173,19 +173,22 @@ export const hasCuratedCover = (destination?: string): boolean => {
 };
 
 /**
- * Picks the BEST cover for a trip: a curated keyword-matched cover for the
- * destination beats a stale wizard-uploaded `coverImage` (which was often
- * the same generic boat-on-lake regardless of where the user is going).
- * Falls back to the wizard cover if no keyword matches, then to the generic.
+ * Picks the BEST cover for a trip. The cover-picker modal writes user choices
+ * straight to `trip.coverImage`, so any non-empty `wizardCover` value here is
+ * an explicit user pick and MUST win. The keyword-matched curated cover is
+ * the fallback for trips where the user hasn't picked yet.
+ *
+ * (The previous implementation prioritised the curated cover even when a
+ * user pick existed — that was correct when `wizardCover` meant a stale
+ * generic boat photo from the old onboarding, but broke once the cover
+ * picker shipped.)
  */
 export const pickTripCover = (
         destination?: string,
         wizardCover?: string,
         size: number = 1600
 ): string => {
-        if (hasCuratedCover(destination)) {
-                return getDestinationCover(destination, size);
-        }
         if (wizardCover && wizardCover.trim()) return wizardCover;
+        if (hasCuratedCover(destination)) return getDestinationCover(destination, size);
         return getDestinationCover(destination, size);
 };

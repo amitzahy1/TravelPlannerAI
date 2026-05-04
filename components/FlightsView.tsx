@@ -13,6 +13,7 @@ import { localTimeAtAirportToUTC, AIRPORT_TIMEZONES } from '../utils/airportTime
 import { generateWithFallback } from '../services/aiService';
 import { toast } from '../stores/useToastStore';
 import { Sparkles } from 'lucide-react';
+import { PageIntro } from './ui/PageIntro';
 
 const formatDurationMs = (ms: number): string => {
   if (!isFinite(ms) || ms <= 0) return '';
@@ -718,7 +719,12 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
   const flightToDelete = deletingIndex !== null ? flights.segments[deletingIndex] : null;
 
   return (
-    <div className="space-y-12 animate-fade-in pb-20">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in pb-20">
+
+      <PageIntro
+        icon={<Plane />}
+        description="טיסות, רכבות, מעבורות וכל ההעברות בטיול. האתר מזהה אוטומטית העברות חסרות בין יעדים ומציע להוסיף אותן."
+      />
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">

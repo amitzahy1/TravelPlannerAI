@@ -15,6 +15,8 @@ import { Tabs } from './ui/Tabs';
 import { SkeletonCardGrid } from './ui/Skeleton';
 import { canEditTrip, isViewerOnly } from '../utils/tripPermissions';
 import { getLocalAI, setLocalAI } from '../utils/localTripAI';
+import { findClosedPlaces } from '../utils/closedPlaceCheck';
+import { PageIntro } from './ui/PageIntro';
 
 import { cleanTextForMap } from '../utils/textUtils';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
@@ -177,7 +179,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
             const data = JSON.parse(response.text || '{}');
             if (data.results) {
-                const operational = data.results.filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search - attr - ${i} `, categoryTitle: 'תוצאות חיפוש' }));
+                const operational = data.results.filter((r: any) => r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search - attr - ${i} `, categoryTitle: 'תוצאות חיפוש' }));
                 // Trip-scope filter — same logic as RestaurantsView. Drops are
                 // toast-flagged; if every result is out of scope we show them
                 // anyway since the user explicitly searched for it.
@@ -287,9 +289,35 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 }
             }
 
+            // Show results immediately; the closed-place verifier prunes
+            // flagged listings once the second-pass AI returns.
             setAiCategories(accumulatedCategories);
             persistAiAttractions(accumulatedCategories);
             setSelectedCity('all');
+
+            // Closed-place safety net (same pattern as Restaurants).
+            (async () => {
+                const baseCountry = (trip.destinationEnglish || trip.destination)?.split(/[-,]/)[0]?.trim() || '';
+                const places = accumulatedCategories.flatMap(cat =>
+                    (cat.attractions || []).map(a => ({
+                        id: a.id,
+                        name: a.name,
+                        city: (a.region || cat.region || '').toString(),
+                        country: baseCountry,
+                    }))
+                );
+                if (places.length === 0) return;
+                const closed = await findClosedPlaces(places);
+                if (closed.size === 0) return;
+                const cleaned = accumulatedCategories.map(cat => ({
+                    ...cat,
+                    attractions: (cat.attractions || []).filter(a => !closed.has(a.id)),
+                }));
+                setAiCategories(cleaned);
+                persistAiAttractions(cleaned);
+                console.info(`[Attractions] Closed-place check dropped ${closed.size} listings`);
+            })();
+
             // Upstream geocoding so the map view doesn't lazy-resolve 200+
             // attractions on first open.
             geocodeAndPersistAttractions(accumulatedCategories);
@@ -379,17 +407,24 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     — tourists actually want to visit famous places. Don't invent places.
 
     **PART 0: OPERATIONAL VERIFICATION — HARD RULE (READ FIRST)**
-    Every attraction you return MUST currently be open / operating. Set a
-    "business_status" field on every attraction: one of "OPERATIONAL",
-    "CLOSED_TEMPORARILY", or "CLOSED_PERMANENTLY".
-    - DO NOT include any attraction marked "permanently closed" or
-      "temporarily closed" on Google Maps.
-    - If you are not >85% confident the attraction is still open as of
-      the current month, OMIT it entirely. Do not guess.
-    - Seasonal attractions (e.g. closed for monsoon, closed in winter)
-      are fine to include — but set verification_needed: true on them
-      so the user knows to double-check seasonal hours.
-    - When in doubt, leave it out. Empty category > closed listing.
+    Every attraction you return MUST currently be open / operating. The
+    "business_status" field is REQUIRED and MUST be exactly "OPERATIONAL".
+    If any of the following are true, OMIT the attraction entirely (do not
+    return it with a non-operational status — just leave it out):
+    - The place is marked "permanently closed" or "temporarily closed"
+      on Google Maps. Many famous-but-now-closed attractions exist —
+      always cross-check Google Maps status before recommending.
+    - You are not >90% confident the attraction is still open as of
+      the current month. The bar is high: when in doubt, leave it out.
+    - Reviews show closure reports in the last 6 months even without
+      Google Maps confirming.
+
+    Seasonal attractions (closed for monsoon / winter) ARE fine to
+    include but set "verification_needed": true so the user knows to
+    double-check seasonal hours.
+
+    Critical: omitting > including. An empty category is fine; a closed
+    listing is a failure of the system.
 
     **PART 1: QUOTA & SCOPE**
     - For EACH of the 10 categories below, return 3-5 real attractions (aim for 5).
@@ -811,6 +846,10 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     return (
         <div className="space-y-4 animate-fade-in pb-10">
+            <PageIntro
+                icon={<Ticket />}
+                description="מחקר שוק AI על אטרקציות בערי הטיול — אתרי חובה, טבע, היסטוריה ועוד. אפשר לשמור לרשימה ולתזמן לתאריך מתאים."
+            />
             {/* Search Bar */}
             <div className="relative z-20">
                 <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">

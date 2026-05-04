@@ -15,6 +15,8 @@ import { ConfirmModal } from './ConfirmModal';
 import { stripChainRestaurants } from '../utils/chainRestaurants';
 import { canEditTrip, isViewerOnly } from '../utils/tripPermissions';
 import { getLocalAI, setLocalAI, clearLocalAI, hasLocalAI } from '../utils/localTripAI';
+import { findClosedPlaces } from '../utils/closedPlaceCheck';
+import { PageIntro } from './ui/PageIntro';
 import { toast } from '../stores/useToastStore';
 
 // Extended interface for internal use
@@ -239,7 +241,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 if (data.results) {
                     // Filter out closed businesses
                     const operationalResults = data.results
-                        .filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL')
+                        .filter((r: any) => r.business_status === 'OPERATIONAL')
                         .map((r: any, i: number) => ({ ...r, id: `search-res-${i}`, categoryTitle: 'תוצאות חיפוש' }));
 
                     // Trip-scope filter — keep AI from sneaking out-of-country
@@ -322,7 +324,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                             // Frontend safety-net (Round 10): even with the prompt's hard
                             // exclusion list, the model occasionally slips chains through.
                             restaurants: stripChainRestaurants(c.restaurants || [])
-                                .filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL')
+                                .filter((r: any) => r.business_status === 'OPERATIONAL')
                                 .map((r: any, j: number) => ({
                                     ...r,
                                     region: r.region || city,
@@ -363,9 +365,38 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 }
             }
 
+            // Show results immediately so the user isn't waiting on the
+            // closed-place verifier — it then quietly removes any flagged
+            // places once the second-pass AI returns.
             setAiCategories(accumulatedCategories);
             persistAiRestaurants(accumulatedCategories);
             setSelectedCity('all');
+
+            // Closed-place safety net: ask a fast model "is each of these
+            // permanently/temporarily closed?" and drop anything flagged.
+            // Cached per (name, city) so re-runs are free.
+            (async () => {
+                const baseCountry = (trip.destinationEnglish || trip.destination)?.split(/[-,]/)[0]?.trim() || '';
+                const places = accumulatedCategories.flatMap(cat =>
+                    (cat.restaurants || []).map(r => ({
+                        id: r.id,
+                        name: r.name,
+                        city: (r.region || cat.region || '').toString(),
+                        country: baseCountry,
+                    }))
+                );
+                if (places.length === 0) return;
+                const closed = await findClosedPlaces(places);
+                if (closed.size === 0) return;
+                const cleaned = accumulatedCategories.map(cat => ({
+                    ...cat,
+                    restaurants: (cat.restaurants || []).filter(r => !closed.has(r.id)),
+                }));
+                setAiCategories(cleaned);
+                persistAiRestaurants(cleaned);
+                console.info(`[Restaurants] Closed-place check dropped ${closed.size} listings`);
+            })();
+
             // Upstream geocoding — fill in lat/lng for every newly-fetched
             // restaurant in the background so the map view doesn't have to
             // batch-geocode 200+ places lazily on first open. Coords are
@@ -464,17 +495,25 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     hole-in-the-wall legends locals actually eat at.
 
     **PART 0: OPERATIONAL VERIFICATION — HARD RULE (READ FIRST)**
-    Every place you return MUST currently be operating. Set a
-    "business_status" field on every restaurant: one of "OPERATIONAL",
-    "CLOSED_TEMPORARILY", or "CLOSED_PERMANENTLY".
-    - DO NOT include any place marked "permanently closed" or
-      "temporarily closed" on Google Maps.
-    - If you are not >85% confident the place is still open as of the
-      current month, OMIT it entirely. Do not guess.
-    - If the chef who made it famous has left, the venue has changed
-      ownership, or the location moved without keeping quality, treat
-      it as effectively closed and omit it.
-    - When in doubt, leave it out. Empty category > closed listing.
+    Every place you return MUST currently be operating. The "business_status"
+    field is REQUIRED on every restaurant — set it to exactly "OPERATIONAL".
+    If any of the following are true, OMIT the restaurant entirely (do not
+    return it with a non-operational status — just leave it out):
+    - The place is marked "permanently closed" or "temporarily closed" on
+      Google Maps. (Real example we caught: "Rimpa Lapin" in Pratumnak
+      Hill, Pattaya — DO NOT include this. Many places like it exist —
+      check before recommending.)
+    - You are not >90% confident the place is still open as of the
+      current month. The bar is high: when in doubt, leave it out.
+    - The chef who made it famous has left, the venue has changed
+      ownership, or the location moved without keeping quality.
+    - Reviews show closure reports in the last 6 months even without
+      Google Maps confirming.
+
+    Critical: omitting > including. An empty category is fine; a
+    closed listing is a failure of the system. Cross-check at minimum:
+    Google Maps status, recent reviews (last 90 days), official social
+    media. If any of these signal closure, omit.
 
     **PART 1: QUOTA & SCOPE**
     - For EACH of the 10 categories below, return 3-5 real restaurants
@@ -1127,6 +1166,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     return (
         <div className="space-y-4 animate-fade-in pb-12">
+            <PageIntro
+                icon={<Utensils />}
+                description="מחקר שוק AI מסעדות בסביבת המלון ובכל ערי הטיול, ממוין לפי קטגוריות וסוג. אפשר לשמור לרשימה ולתזמן ביומן."
+            />
             {/* Search Bar */}
             <div className="relative z-20">
                 <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100 transition-all">

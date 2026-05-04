@@ -111,7 +111,7 @@ export const Modal: React.FC<ModalProps> = ({
                                         initial="initial"
                                         animate="animate"
                                         exit="exit"
-                                        className="fixed inset-0 flex items-start sm:items-center justify-center bg-slate-900/55 backdrop-blur-sm p-3 sm:p-4 pt-12 sm:pt-4 overflow-y-auto"
+                                        className="fixed inset-0 flex items-start justify-center bg-slate-900/55 backdrop-blur-sm p-4 py-8 sm:py-12 overflow-y-auto"
                                         style={{ zIndex: zIndex[layer] }}
                                         dir="rtl"
                                         role="dialog"
@@ -126,7 +126,7 @@ export const Modal: React.FC<ModalProps> = ({
                                                 animate="animate"
                                                 exit="exit"
                                                 onClick={(e) => e.stopPropagation()}
-                                                className={`relative bg-white rounded-2xl shadow-2xl shadow-slate-900/20 w-full ${sizeClasses[size]} flex flex-col ${fullHeight ? 'max-h-[90vh] h-[90vh]' : 'max-h-[90vh]'} overflow-hidden ${panelClassName}`}
+                                                className={`relative bg-white rounded-2xl shadow-2xl shadow-slate-900/20 w-full ${sizeClasses[size]} flex flex-col ${fullHeight ? 'max-h-[calc(100vh-6rem)] h-[calc(100vh-6rem)] overflow-hidden' : ''} ${panelClassName}`}
                                         >
                                                 {!hideHeader && (title || showCloseButton) && (
                                                         <div className="flex items-start justify-between gap-3 px-6 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
