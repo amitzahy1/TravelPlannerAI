@@ -41,21 +41,29 @@ interface LayerRowProps {
         icon: React.ReactNode;
         accentColor: string;
         count?: number;
+        helpText?: string; // optional explainer rendered below the label
 }
 
-const LayerRow: React.FC<LayerRowProps> = ({ label, checked, onChange, icon, accentColor, count }) => (
-        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-50 transition-colors">
+const LayerRow: React.FC<LayerRowProps> = ({ label, checked, onChange, icon, accentColor, count, helpText }) => (
+        <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-50 transition-colors">
                 <span
-                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
                         style={{ background: `${accentColor}1a`, color: accentColor }}
                 >
                         {icon}
                 </span>
-                <span className="flex-1 text-sm font-semibold text-slate-700 leading-none">{label}</span>
+                <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-slate-700 leading-snug">{label}</div>
+                        {helpText && (
+                                <div className="text-[11px] text-slate-500 leading-snug mt-0.5">{helpText}</div>
+                        )}
+                </div>
                 {typeof count === 'number' && count > 0 && (
-                        <span className="text-[11px] font-black text-slate-400 tabular-nums">{count}</span>
+                        <span className="text-[11px] font-black text-slate-400 tabular-nums mt-1">{count}</span>
                 )}
-                <Toggle checked={checked} onChange={onChange} label={label} />
+                <div className="mt-0.5">
+                        <Toggle checked={checked} onChange={onChange} label={label} />
+                </div>
         </div>
 );
 
@@ -161,7 +169,8 @@ export const LayersPanel: React.FC<LayersPanelProps> = ({
 
                         <SectionHeader>תצוגה</SectionHeader>
                         <LayerRow
-                                label="מעגל הליכה 15/30 דק׳"
+                                label="טווח הליכה מהמלון"
+                                helpText="עיגולים סביב כל מלון: 1.2 ק״מ (15 דק׳ הליכה) ו-2.4 ק״מ (30 דק׳). שימושי לאתר מסעדות ואטרקציות בקרבת מקום."
                                 checked={prefs.walkingCircles}
                                 onChange={v => onPrefChange({ walkingCircles: v })}
                                 icon={<Footprints className="w-3.5 h-3.5" />}

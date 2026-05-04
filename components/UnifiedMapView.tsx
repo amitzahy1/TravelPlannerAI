@@ -2229,6 +2229,37 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 </div>
             )}
 
+            {/* Fit-to-trip button — clears the snap-back gate and re-fits the
+                 entire trip into view. Appears only after the user has manually
+                 panned/zoomed (i.e. when their view is no longer the auto-fit). */}
+            <button
+                onClick={() => {
+                    userInteractedRef.current = false;
+                    // Trigger re-render so the marker effect calls applyBounds again.
+                    setMapZoom(z => z); // no-op set forces dep refresh in dev only
+                    const map = mapInstanceRef.current;
+                    if (!map) return;
+                    // Build bounds from all visible markers + route stops
+                    const b = L.latLngBounds([]);
+                    mapItems.forEach(i => {
+                        if (isValidCoordinate(i.lat, i.lng)) b.extend([i.lat as number, i.lng as number]);
+                    });
+                    routeStops.forEach(s => {
+                        if (s.coords) b.extend([s.coords.lat, s.coords.lng]);
+                    });
+                    if (b.isValid()) {
+                        map.fitBounds(b, { padding: [40, 40], maxZoom: 13, duration: 0.7 });
+                    }
+                }}
+                title="התאם לטיול כולו"
+                aria-label="התאם לטיול כולו"
+                className="absolute bottom-28 right-4 z-[700] w-10 h-10 inline-flex items-center justify-center bg-white hover:bg-slate-50 rounded-full shadow-lg border border-slate-200 text-slate-600 transition-all active:scale-95"
+            >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4" />
+                </svg>
+            </button>
+
             {/* Loading indicator */}
             {loading && (
                 <div className="absolute bottom-28 left-4 z-[1000] bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-gray-100 flex items-center gap-2">

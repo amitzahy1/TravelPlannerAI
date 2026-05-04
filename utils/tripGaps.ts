@@ -45,7 +45,27 @@ export interface MissingPoint {
         entityName?: string;
 }
 
-export const getMissingDataPoints = (trip: Trip): MissingPoint[] => {
+export interface MissingDataLayerFlags {
+        aiRestaurants?: boolean;   // include AI-restaurant geocode failures?  default true
+        aiAttractions?: boolean;   // include AI-attraction geocode failures?  default true
+        myLists?: boolean;          // include saved restaurants/attractions?    default true
+}
+
+/**
+ * `getMissingDataPoints(trip)` — full count, used by Data Health Panel.
+ * `getMissingDataPoints(trip, layerFlags)` — filtered count for the map's
+ *   "X חסרים" pill, so turning off "AI Restaurants" actually drops the
+ *   count of AI-restaurant geocode failures from view.
+ *
+ * The hotel-day gap and missing-transport gap stay regardless of filters
+ * — those are critical pre-trip blockers that don't belong to a layer.
+ */
+export const getMissingDataPoints = (trip: Trip, layerFlags?: MissingDataLayerFlags): MissingPoint[] => {
+        const fl = {
+                aiRestaurants: layerFlags?.aiRestaurants !== false,
+                aiAttractions: layerFlags?.aiAttractions !== false,
+                myLists: layerFlags?.myLists !== false,
+        };
         const out: MissingPoint[] = [];
 
         // --- 1. Days without hotel coverage --------------------------------
@@ -102,10 +122,20 @@ export const getMissingDataPoints = (trip: Trip): MissingPoint[] => {
         });
 
         // --- 3. Items with geocodeFailed=true ------------------------------
-        const failedRestaurants = (trip.aiRestaurants || []).flatMap(c => c.restaurants || []).filter(r => r.geocodeFailed);
-        const failedAttractions = (trip.aiAttractions || []).flatMap(c => c.attractions || []).filter(a => a.geocodeFailed);
-        const failedSavedR = (trip.restaurants || []).flatMap(c => c.restaurants || []).filter(r => r.geocodeFailed);
-        const failedSavedA = (trip.attractions || []).flatMap(c => c.attractions || []).filter(a => a.geocodeFailed);
+        // Layer flags hide categories the user has toggled off so the count
+        // matches what's actually visible on the map.
+        const failedRestaurants = fl.aiRestaurants
+                ? (trip.aiRestaurants || []).flatMap(c => c.restaurants || []).filter(r => r.geocodeFailed)
+                : [];
+        const failedAttractions = fl.aiAttractions
+                ? (trip.aiAttractions || []).flatMap(c => c.attractions || []).filter(a => a.geocodeFailed)
+                : [];
+        const failedSavedR = fl.myLists
+                ? (trip.restaurants || []).flatMap(c => c.restaurants || []).filter(r => r.geocodeFailed)
+                : [];
+        const failedSavedA = fl.myLists
+                ? (trip.attractions || []).flatMap(c => c.attractions || []).filter(a => a.geocodeFailed)
+                : [];
 
         const buildSearchUrl = (place: { name?: string; location?: string; googleMapsUrl?: string }) =>
                 safeMapsUrl(place.googleMapsUrl, place.name || '', place.location);
@@ -139,12 +169,12 @@ export const getMissingDataPoints = (trip: Trip): MissingPoint[] => {
         // Photon resolved them but country/city didn't match the trip
         // confidently. User should eyeball them.
         const ambiguousR = [
-                ...(trip.aiRestaurants || []).flatMap(c => c.restaurants || []),
-                ...(trip.restaurants || []).flatMap(c => c.restaurants || []),
+                ...(fl.aiRestaurants ? (trip.aiRestaurants || []).flatMap(c => c.restaurants || []) : []),
+                ...(fl.myLists ? (trip.restaurants || []).flatMap(c => c.restaurants || []) : []),
         ].filter(r => r.verificationStatus === 'ambiguous');
         const ambiguousA = [
-                ...(trip.aiAttractions || []).flatMap(c => c.attractions || []),
-                ...(trip.attractions || []).flatMap(c => c.attractions || []),
+                ...(fl.aiAttractions ? (trip.aiAttractions || []).flatMap(c => c.attractions || []) : []),
+                ...(fl.myLists ? (trip.attractions || []).flatMap(c => c.attractions || []) : []),
         ].filter(a => a.verificationStatus === 'ambiguous');
         ambiguousR.forEach(r => {
                 out.push({
