@@ -173,6 +173,14 @@
     }
   }
 
+  /* Hide the floating dock whenever a full-screen overlay (wizard, etc.)
+     is open. Without this, the dock's z-index 999999 covers the wizard's
+     sticky bottom CTAs (e.g. "המשך לתאריכים" in Step 1) and the user
+     can't proceed. MagicalWizard toggles `body.modal-open` while mounted. */
+  body.modal-open .floating-dock {
+    display: none !important;
+  }
+
   .dock-item {
     position: relative;
     display: flex;

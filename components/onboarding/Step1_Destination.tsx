@@ -190,6 +190,18 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                                 aria-controls="destination-listbox"
                                                 aria-activedescendant={dropdownVisible ? `dest-row-${highlightIdx}` : undefined}
                                                 autoFocus
+                                                // Suppress browser/OS autofill prompts (Android Inline Autofill,
+                                                // 1Password, LastPass, etc.) — this is a search input, not a
+                                                // credentials field.
+                                                autoComplete="off"
+                                                autoCorrect="off"
+                                                autoCapitalize="off"
+                                                spellCheck={false}
+                                                inputMode="search"
+                                                name="trip-destination-search"
+                                                data-1p-ignore
+                                                data-lpignore="true"
+                                                data-form-type="other"
                                         />
                                         {inputValue && (
                                                 <button
@@ -360,7 +372,7 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                                 initial={{ opacity: 0, y: 30 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: 30 }}
-                                                className="md:hidden fixed inset-x-0 bottom-0 z-20 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 py-3 pb-[max(env(safe-area-inset-bottom,0px),12px)]"
+                                                className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 py-3 pb-[max(env(safe-area-inset-bottom,0px),12px)] shadow-[0_-8px_24px_rgba(15,23,42,0.06)]"
                                                 dir="rtl"
                                         >
                                                 <RippleButton

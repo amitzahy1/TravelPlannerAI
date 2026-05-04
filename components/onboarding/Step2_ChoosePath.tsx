@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, ClipboardPaste, Mail } from 'lucide-react';
+import { Sparkles, ArrowRight, ClipboardPaste, Mail, HelpCircle } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
+import { HowItWorksModal } from '../HowItWorksModal';
 
 export type ImportMethod = 'smart' | 'text' | 'mail';
 
@@ -30,6 +31,7 @@ const cardVariants = {
  *   - Smart Mailbox — forward emails to our inbox; we accumulate them
  */
 export const Step2_ChoosePath: React.FC<Step2Props> = ({ onSelect }) => {
+        const [howItWorksOpen, setHowItWorksOpen] = useState(false);
         return (
                 <div className="w-full max-w-6xl mx-auto" dir="rtl">
                         <motion.div
@@ -106,9 +108,18 @@ export const Step2_ChoosePath: React.FC<Step2Props> = ({ onSelect }) => {
                                                         ChatGPT · Gemini · Claude · NotebookLM
                                                 </span>
 
-                                                <p className="text-slate-500 text-xs md:text-sm leading-relaxed mb-4 flex-1">
+                                                <p className="text-slate-500 text-xs md:text-sm leading-relaxed mb-3 flex-1">
                                                         הדבק טקסט שיצרת בכל AI. ה-AI שלנו יחלץ יעדים, תאריכים, מלונות וטיסות — או שנייצר לך פרומפט מוכן ל-Gemini שיקרא את ה-Gmail שלך.
                                                 </p>
+
+                                                <button
+                                                        onClick={(e) => { e.stopPropagation(); setHowItWorksOpen(true); }}
+                                                        className="inline-flex items-center gap-1.5 text-2xs md:text-xs font-bold text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-1 rounded-full mb-3 self-end"
+                                                        type="button"
+                                                >
+                                                        <HelpCircle className="w-3.5 h-3.5" />
+                                                        איך זה עובד עם NotebookLM?
+                                                </button>
 
                                                 <div className="w-full flex flex-col gap-1 text-2xs md:text-xs text-slate-500 bg-slate-50 rounded-md p-2.5 mb-4 text-right">
                                                         <div>✓ מזהה ערים ותאריכים</div>
@@ -162,6 +173,8 @@ export const Step2_ChoosePath: React.FC<Step2Props> = ({ onSelect }) => {
                         <p className="text-center text-xs text-slate-400 mt-5 max-w-xl mx-auto px-4">
                                 טיפ: אחרי היצירה יש עריכה מלאה — אפשר להוסיף ידנית טיסות, מלונות ופעילויות בכל תג.
                         </p>
+
+                        <HowItWorksModal isOpen={howItWorksOpen} onClose={() => setHowItWorksOpen(false)} />
                 </div>
         );
 };

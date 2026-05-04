@@ -19,7 +19,7 @@ import {
     Share2, Download, CloudRain, Sun, Moon,
     ChevronDown, ChevronUp, AlertCircle, Clock, Check,
     Plane, Car, Globe, Hotel, Utensils, Ticket, Plus, Sparkles, X,
-    ArrowLeft, Edit2, BedDouble, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, CheckCircle2,
+    ArrowLeft, Edit2, BedDouble, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, CheckCircle2, Move,
     LayoutGrid, List, Lightbulb
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
@@ -727,6 +727,31 @@ export const ItineraryView: React.FC<{
         setCoverPickerOpen(true);
     };
 
+    // Cover focal-point editor — lets the user drag the photo on mobile to
+    // pick which part of a wide cover image is shown in the compact 170-px
+    // hero. Persists as `trip.coverFocal` (0–100 percent each axis) so other
+    // surfaces (trip cards, map cover, etc.) can read the same focal.
+    const focalRef = useRef<HTMLDivElement>(null);
+    const [focalEditing, setFocalEditing] = useState(false);
+    const [focalDraft, setFocalDraft] = useState<{ x: number; y: number } | null>(null);
+    const focal = focalDraft ?? trip.coverFocal ?? { x: 50, y: 50 };
+
+    const handleFocalDrag = (clientX: number, clientY: number) => {
+        if (!focalRef.current || !focalEditing) return;
+        const r = focalRef.current.getBoundingClientRect();
+        const x = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
+        const y = Math.max(0, Math.min(100, ((clientY - r.top) / r.height) * 100));
+        setFocalDraft({ x, y });
+    };
+
+    const commitFocal = () => {
+        if (focalEditing && focalDraft) {
+            onUpdateTrip({ ...trip, coverFocal: focalDraft });
+        }
+        setFocalDraft(null);
+        setFocalEditing(false);
+    };
+
 
 
     const handleScheduleFavorite = (item: Restaurant | Attraction | { name: string, id: string }, dateIso: string, type: 'food' | 'attraction' | 'transfer' | 'hotel_missing') => {
@@ -848,40 +873,106 @@ export const ItineraryView: React.FC<{
     return (
         <div className="space-y-4 sm:space-y-6 animate-fade-in pb-24">
 
-            {/* 1. HERO SECTION — countdown floats top-left web / bottom-left mobile.
-                 Responsive height: 140px on phones (the timeline below stays
-                 above the fold), 180px on tablets, 220px on desktop. */}
-            <div className="relative h-[140px] sm:h-[180px] md:h-[220px] mx-1 group">
+            {/* 1. HERO — Mobile (Option B): compact 170-px overlay with
+                 countdown top-left, date + actions top-right, title + cities
+                 in a single inline scroll-row at the bottom. Long-press / Move
+                 button enables drag-to-reposition focal point. */}
+            <div
+                ref={focalRef}
+                onTouchMove={focalEditing ? (e) => handleFocalDrag(e.touches[0].clientX, e.touches[0].clientY) : undefined}
+                onMouseMove={focalEditing ? (e) => handleFocalDrag(e.clientX, e.clientY) : undefined}
+                onTouchEnd={focalEditing ? commitFocal : undefined}
+                onMouseUp={focalEditing ? commitFocal : undefined}
+                className="md:hidden relative h-[170px] mx-1 rounded-[1.75rem] overflow-hidden shadow-xl select-none"
+            >
+                <img
+                    src={pickTripCover(trip.destination, trip.coverImage)}
+                    className="w-full h-full object-cover"
+                    style={{ objectPosition: `${focal.x}% ${focal.y}%` }}
+                    alt="Trip Cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-slate-900/5"></div>
+
+                {/* Top-left: countdown */}
+                <div className="absolute left-3 top-3 z-20">
+                    <TripCountdown trip={trip} variant="overlay" />
+                </div>
+
+                {/* Top-right: date pill + Move + cover-edit */}
+                <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 text-white/90 font-bold text-2xs uppercase tracking-wide bg-white/15 backdrop-blur-md px-2 py-1 rounded-full w-fit border border-white/25">
+                        <Calendar className="w-3 h-3" />
+                        <span dir="ltr">{formatHeroDates(trip.dates)}</span>
+                    </div>
+                    <button
+                        onClick={() => setFocalEditing(e => !e)}
+                        className={`w-8 h-8 rounded-full text-white flex items-center justify-center backdrop-blur-md ${focalEditing ? 'bg-emerald-500/95 ring-2 ring-white/50' : 'bg-black/40'}`}
+                        aria-label={focalEditing ? 'סיים מיקום תמונה' : 'הזז תמונה'}
+                        title={focalEditing ? 'סיים מיקום תמונה' : 'הזז תמונה'}
+                    >
+                        <Move className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={handleChangeCover} className="w-8 h-8 bg-black/40 backdrop-blur-md rounded-full text-white flex items-center justify-center" aria-label="החלף תמונת נושא">
+                        <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+
+                {/* Bottom: title + cities single inline row */}
+                <div className="absolute right-3 left-3 bottom-3 z-10 text-right" dir="rtl">
+                    <h1 className="text-2xl font-black text-white drop-shadow-md leading-tight mb-1.5 truncate">
+                        {trip.name}
+                    </h1>
+                    {heroCityNights.length > 0 ? (
+                        <div className="flex items-center gap-1 text-white/95 text-2xs font-bold flex-nowrap overflow-x-auto scrollbar-hide" dir="rtl">
+                            <MapPin className="w-3 h-3 text-blue-300 shrink-0" />
+                            {heroCityNights.map(([city, nights], i) => (
+                                <span key={city} className="shrink-0">
+                                    <span dir="ltr">{city}</span>
+                                    <span className="text-white/65 ms-1">({nights} {nights === 1 ? 'לילה' : 'לילות'})</span>
+                                    {i < heroCityNights.length - 1 && <span className="text-white/40 mx-1">·</span>}
+                                </span>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1.5 text-2xs font-bold text-white/90">
+                            <MapPin className="w-3 h-3 text-blue-300" /> {trip.destination}
+                        </div>
+                    )}
+                </div>
+
+                {focalEditing && (
+                    <div className="absolute top-1/2 -translate-y-1/2 inset-x-3 px-3 py-2 bg-emerald-600/95 text-white text-xs font-bold text-center backdrop-blur-md z-30 rounded-lg pointer-events-none">
+                        גרור כדי לבחור את החלק שיוצג · לחץ על Move שוב לסיום
+                    </div>
+                )}
+            </div>
+
+            {/* 1. HERO — Desktop (kept as-is): tall hero with countdown,
+                 date + PDF, title + cities, and the interactive stats bar. */}
+            <div className="hidden md:block relative h-[180px] md:h-[220px] mx-1 group">
                 {/* Background Layer (Clipped) */}
                 <div className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-xl z-0">
                     <img
                         src={pickTripCover(trip.destination, trip.coverImage)}
                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                        style={{ objectPosition: `${focal.x}% ${focal.y}%` }}
                         alt="Trip Cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
                     <button onClick={handleChangeCover} className="absolute top-3 right-3 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" aria-label="החלף תמונת נושא"><Edit2 className="w-4 h-4" aria-hidden="true" /></button>
                 </div>
 
-                {/* Floating countdown — top-left on web, bottom-left on
-                     mobile per user request. "Left" = physical left = visual
-                     end in the RTL layout. */}
-                <div className="absolute left-3 top-3 hidden md:block z-20 pointer-events-auto">
-                    <TripCountdown trip={trip} variant="overlay" />
-                </div>
-                <div className="absolute left-3 bottom-3 md:hidden z-20 pointer-events-auto">
+                {/* Floating countdown — top-left on desktop. */}
+                <div className="absolute left-3 top-3 z-20 pointer-events-auto">
                     <TripCountdown trip={trip} variant="overlay" />
                 </div>
 
                 {/* Content Layer (Not clipped, allows Popovers) */}
-                <div className="absolute inset-0 pointer-events-none z-10 flex flex-col md:flex-row justify-between items-end p-4 sm:p-6">
+                <div className="absolute inset-0 pointer-events-none z-10 flex flex-row justify-between items-end p-6">
                     {/* Text Info */}
-                    <div className="space-y-1 max-w-xl pointer-events-auto w-full md:w-auto">
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-2 flex-wrap">
-                            {/* Short date pill — "6/8 – 26/8" instead of the
-                                 raw 23-char ISO range so countdown + export
-                                 buttons fit on a single 360 px row. */}
-                            <div className="flex items-center gap-1.5 text-white/90 font-bold text-2xs sm:text-xs uppercase tracking-wide bg-white/15 backdrop-blur-md px-2.5 py-1.5 rounded-full w-fit border border-white/25">
+                    <div className="space-y-1 max-w-xl pointer-events-auto">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <div className="flex items-center gap-1.5 text-white/90 font-bold text-xs uppercase tracking-wide bg-white/15 backdrop-blur-md px-2.5 py-1.5 rounded-full w-fit border border-white/25">
                                 <Calendar className="w-3.5 h-3.5" />
                                 <span dir="ltr">{formatHeroDates(trip.dates)}</span>
                             </div>
@@ -889,35 +980,17 @@ export const ItineraryView: React.FC<{
                                 onClick={() => exportTripPDF(trip)}
                                 aria-label="ייצא סיכום טיול"
                                 title="ייצא PDF"
-                                className="h-9 px-2.5 sm:px-3 bg-white/90 hover:bg-white backdrop-blur-md rounded-full text-slate-900 text-2xs sm:text-xs font-bold flex items-center gap-1.5 shadow-popover transition-colors"
+                                className="h-9 px-3 bg-white/90 hover:bg-white backdrop-blur-md rounded-full text-slate-900 text-xs font-bold flex items-center gap-1.5 shadow-popover transition-colors"
                             >
                                 <FileTextIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                                <span className="hidden sm:inline">ייצא PDF</span>
+                                <span>ייצא PDF</span>
                             </button>
-                            {/* Hero is intentionally lean now — countdown
-                                 lives in the floating corner above; iCal +
-                                 refresh removed per earlier feedback. */}
-                            {false && onRefresh && (
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        const btn = e.currentTarget;
-                                        btn.classList.add('animate-spin');
-                                        onRefresh();
-                                        setTimeout(() => btn.classList.remove('animate-spin'), 1000);
-                                    }}
-                                    className="h-9 w-9 bg-white/15 backdrop-blur-md text-white/85 hover:bg-white/25 hover:text-white rounded-full transition-colors border border-white/15 flex items-center justify-center"
-                                    title="רענן נתונים"
-                                >
-                                    <RefreshCw className="w-3.5 h-3.5" />
-                                </button>
-                            )}
                         </div>
-                        <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-white leading-tight tracking-tight drop-shadow-md">
+                        <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight drop-shadow-md">
                             {trip.name}
                         </h1>
                         {heroCityNights.length > 0 ? (
-                            <div className="flex items-start gap-2 text-sm md:text-base font-medium text-white/95 flex-wrap">
+                            <div className="flex items-start gap-2 text-base font-medium text-white/95 flex-wrap">
                                 <MapPin className="w-4 h-4 text-blue-300 flex-shrink-0 mt-0.5" />
                                 <span className="leading-tight">
                                     {heroCityNights.map(([city, nights], i) => (
@@ -937,7 +1010,7 @@ export const ItineraryView: React.FC<{
                     </div>
 
                     {/* Interactive Hero Stats Bar with Popover */}
-                    <div className="hidden md:block relative pointer-events-auto">
+                    <div className="relative pointer-events-auto">
                         <div className="flex gap-6 bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-3xl">
                             <div className="flex flex-col items-center min-w-[60px]">
                                 <Plane className="w-8 h-8 text-blue-400 mb-1" />

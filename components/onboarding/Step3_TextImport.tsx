@@ -19,9 +19,11 @@ import {
         Save,
         UploadCloud,
         TextCursor,
+        HelpCircle,
 } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import { VoiceInputButton } from '../shared';
+import { HowItWorksModal } from '../HowItWorksModal';
 import {
         parseFreeTextTrip,
         parseFilesToFreeText,
@@ -415,6 +417,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
         const [showExample, setShowExample] = useState(false);
         const [copied, setCopied] = useState(false);
         const [gmailPromptCopied, setGmailPromptCopied] = useState(false);
+        const [howItWorksOpen, setHowItWorksOpen] = useState(false);
         const [analyzingIdx, setAnalyzingIdx] = useState(0);
         const [useParsedDates, setUseParsedDates] = useState(true);
 
@@ -683,6 +686,14 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                                 פתח את Gemini
                                                                         </a>
                                                                 </div>
+                                                                <button
+                                                                        type="button"
+                                                                        onClick={() => setHowItWorksOpen(true)}
+                                                                        className="mt-2 inline-flex items-center gap-1.5 text-2xs font-bold text-purple-700 hover:text-purple-900 hover:bg-purple-100 px-2 py-1 rounded-full"
+                                                                >
+                                                                        <HelpCircle className="w-3.5 h-3.5" />
+                                                                        למד עוד על השיטה (NotebookLM + Gemini)
+                                                                </button>
                                                         </div>
 
                                                         {/* Helper row */}
@@ -1190,6 +1201,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                         )}
                                 </AnimatePresence>
                         </div>
+                        <HowItWorksModal isOpen={howItWorksOpen} onClose={() => setHowItWorksOpen(false)} />
                 </div>
         );
 };

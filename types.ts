@@ -413,6 +413,9 @@ export interface Trip {
   days?: number; // Total duration in days
   destinationEnglish?: string; // New field for Weather API
   coverImage: string;
+  /** Focal point for the cover image, in percent (0-100). Lets the user pick
+   *  which part of a wide photo shows in the hero on narrow screens. */
+  coverFocal?: { x: number; y: number };
   groupType?: 'family' | 'couple' | 'friends' | 'solo' | 'business';
   travelers?: TravelersComposition; // Detailed composition
   flights: Ticket; // Legacy name, maybe rename to 'transport'?

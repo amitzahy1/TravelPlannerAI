@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Step1_Destination } from './Step1_Destination';
@@ -19,6 +19,15 @@ interface MagicalWizardProps {
 export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, onComplete }) => {
         const [step, setStep] = useState(0);
         const [tripData, setTripData] = useState<any>({});
+
+        // Hide the floating bottom dock while the wizard is open. Without this,
+        // the dock floats above the wizard's sticky "המשך" footer on mobile and
+        // hides it. CSS rule lives in src/index.css under `body.modal-open`.
+        useEffect(() => {
+                if (!isOpen) return;
+                document.body.classList.add('modal-open');
+                return () => document.body.classList.remove('modal-open');
+        }, [isOpen]);
 
         // Animation variants for slide transition
         const slideVariants = {
