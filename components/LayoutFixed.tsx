@@ -117,7 +117,7 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                         </div>
                                                         <div className="flex flex-col">
                                                                 <span className="font-black text-xl leading-none text-slate-800 tracking-tight">WeTravel</span>
-                                                                <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest leading-none mt-0.5">Plan together</span>
+                                                                <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest leading-none mt-0.5">AI Trip Organizer</span>
                                                         </div>
                                                 </div>
 

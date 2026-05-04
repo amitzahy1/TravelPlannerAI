@@ -90,7 +90,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
         if (!isOpen) return null;
 
         return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 font-rubik" dir="rtl">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 font-rubik" dir="rtl">
                         {/* Backdrop */}
                         <motion.div
                                 initial={{ opacity: 0 }}
@@ -106,11 +106,11 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                                 transition={{ type: "spring", duration: 0.6, bounce: 0.2 }}
-                                className="relative w-full max-w-5xl h-[85vh] max-h-[800px] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+                                className="relative w-full max-w-5xl h-[96vh] sm:h-[90vh] md:h-[85vh] max-h-[800px] bg-white rounded-2xl md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
                         >
                                 {/* Top Navigation / Progress (Hide on Success) */}
                                 {step < 4 && (
-                                        <div className="flex items-center justify-between px-5 py-4 md:px-8 md:py-5 z-20">
+                                        <div className="flex items-center justify-between px-3 py-2 md:px-8 md:py-5 z-20">
                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                         {/* Progress bar + step counter */}
                                                         <div className="flex items-center gap-3 min-w-0">
@@ -157,7 +157,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                 )}
 
                                 {/* Content Area */}
-                                <div className="flex-1 relative overflow-hidden flex items-center justify-center p-6 md:p-12">
+                                <div className="flex-1 relative overflow-hidden flex items-center justify-center p-3 md:p-12">
                                         <AnimatePresence mode="wait" custom={step}>
                                                 {step === 0 && (
                                                         <motion.div
@@ -173,7 +173,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                 }}
                                                                 className="absolute inset-0 w-full overflow-y-auto"
                                                         >
-                                                                <div className="min-h-full flex items-center justify-center p-4 md:p-8">
+                                                                <div className="min-h-full flex items-center justify-center p-1 md:p-8">
                                                                         <Step1_Destination
                                                                                 onNext={handleStep1Next}
                                                                                 initialData={tripData}
@@ -195,7 +195,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                 }}
                                                                 className="absolute inset-0 w-full overflow-y-auto"
                                                         >
-                                                                <div className="min-h-full flex items-center justify-center p-4 md:p-8">
+                                                                <div className="min-h-full flex items-center justify-center p-1 md:p-8">
                                                                         <Step1_5_Dates
                                                                                 onNext={handleDatesNext}
                                                                                 onBack={() => setStep(0)}
@@ -218,7 +218,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                 }}
                                                                 className="absolute inset-0 w-full overflow-y-auto"
                                                         >
-                                                                <div className="min-h-full flex items-center justify-center p-4 md:p-8">
+                                                                <div className="min-h-full flex items-center justify-center p-1 md:p-8">
                                                                         <Step2_ChoosePath
                                                                                 onSelect={handleStep2Select}
                                                                                 onBack={() => setStep(1)} // Back to Dates

@@ -641,10 +641,11 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                         exit={{ opacity: 0, y: -10 }}
                                                         className="max-w-3xl mx-auto space-y-4"
                                                 >
-                                                        {/* Gemini × Gmail shortcut — for users who don't already have
-                                                            an AI summary ready. Generates a Gmail-search prompt and
-                                                            opens Gemini in a new tab; user pastes the answer back. */}
-                                                        <div className="rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 via-indigo-50 to-white p-4 md:p-5 shadow-sm">
+                                                        {/* Gemini × Gmail shortcut — full panel on desktop, single
+                                                            button on mobile so the textarea + analyze CTA fit one
+                                                            screen. Tapping the mobile button opens the same prompt
+                                                            actions in HowItWorksModal. */}
+                                                        <div className="hidden md:block rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 via-indigo-50 to-white p-4 md:p-5 shadow-sm">
                                                                 <div className="flex items-start gap-3">
                                                                         <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-md shadow-purple-500/30">
                                                                                 <Sparkles className="w-5 h-5 text-white" />
@@ -653,7 +654,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                                 <h3 className="font-black text-brand-navy text-base mb-1">
                                                                                         🪄 בנה לי פרומפט ל-Gemini שיקרא את ה-Gmail
                                                                                 </h3>
-                                                                                <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
+                                                                                <p className="text-sm text-slate-600 leading-relaxed">
                                                                                         העתק את הפרומפט, פתח את Gemini, הדבק. Gemini יקרא אוטומטית את ה-Gmail שלך וייצר סיכום של כל ההזמנות. חזור לכאן והדבק את התוצאה למטה.
                                                                                 </p>
                                                                         </div>
@@ -693,6 +694,29 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                                 >
                                                                         <HelpCircle className="w-3.5 h-3.5" />
                                                                         למד עוד על השיטה (NotebookLM + Gemini)
+                                                                </button>
+                                                        </div>
+
+                                                        {/* MOBILE: single-row Gemini pill — opens the help modal which
+                                                            carries the full instructions + buttons. Saves ~120px of
+                                                            vertical space so the textarea + actions fit one screen. */}
+                                                        <div className="md:hidden flex items-center gap-2">
+                                                                <button
+                                                                        type="button"
+                                                                        onClick={() => setHowItWorksOpen(true)}
+                                                                        className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-bold text-2xs shadow shadow-purple-500/30 min-h-[40px]"
+                                                                >
+                                                                        <Sparkles className="w-3.5 h-3.5" />
+                                                                        🪄 פרומפט ל-Gemini שיקרא את ה-Gmail
+                                                                </button>
+                                                                <button
+                                                                        type="button"
+                                                                        onClick={handleCopyGmailPrompt}
+                                                                        className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-white border border-purple-200 text-purple-700 font-bold text-2xs min-h-[40px]"
+                                                                        aria-label="העתק פרומפט"
+                                                                >
+                                                                        {gmailPromptCopied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                                                        {gmailPromptCopied ? '✓' : 'העתק'}
                                                                 </button>
                                                         </div>
 

@@ -19,7 +19,7 @@ import {
     Share2, Download, CloudRain, Sun, Moon,
     ChevronDown, ChevronUp, AlertCircle, Clock, Check,
     Plane, Car, Globe, Hotel, Utensils, Ticket, Plus, Sparkles, X,
-    ArrowLeft, Edit2, BedDouble, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, CheckCircle2, Move,
+    ArrowLeft, Edit2, BedDouble, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, CheckCircle2,
     LayoutGrid, List, Lightbulb
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
@@ -727,30 +727,10 @@ export const ItineraryView: React.FC<{
         setCoverPickerOpen(true);
     };
 
-    // Cover focal-point editor — lets the user drag the photo on mobile to
-    // pick which part of a wide cover image is shown in the compact 170-px
-    // hero. Persists as `trip.coverFocal` (0–100 percent each axis) so other
-    // surfaces (trip cards, map cover, etc.) can read the same focal.
-    const focalRef = useRef<HTMLDivElement>(null);
-    const [focalEditing, setFocalEditing] = useState(false);
-    const [focalDraft, setFocalDraft] = useState<{ x: number; y: number } | null>(null);
-    const focal = focalDraft ?? trip.coverFocal ?? { x: 50, y: 50 };
-
-    const handleFocalDrag = (clientX: number, clientY: number) => {
-        if (!focalRef.current || !focalEditing) return;
-        const r = focalRef.current.getBoundingClientRect();
-        const x = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
-        const y = Math.max(0, Math.min(100, ((clientY - r.top) / r.height) * 100));
-        setFocalDraft({ x, y });
-    };
-
-    const commitFocal = () => {
-        if (focalEditing && focalDraft) {
-            onUpdateTrip({ ...trip, coverFocal: focalDraft });
-        }
-        setFocalDraft(null);
-        setFocalEditing(false);
-    };
+    // Cover focal-point — read-only here. The drag-to-reposition editor lives
+    // inside CoverPickerModal; this view just applies the persisted focal so
+    // the chosen crop shows in the hero.
+    const focal = trip.coverFocal ?? { x: 50, y: 50 };
 
 
 
@@ -874,17 +854,10 @@ export const ItineraryView: React.FC<{
         <div className="space-y-4 sm:space-y-6 animate-fade-in pb-24">
 
             {/* 1. HERO — Mobile (Option B): compact 170-px overlay with
-                 countdown top-left, date + actions top-right, title + cities
-                 in a single inline scroll-row at the bottom. Long-press / Move
-                 button enables drag-to-reposition focal point. */}
-            <div
-                ref={focalRef}
-                onTouchMove={focalEditing ? (e) => handleFocalDrag(e.touches[0].clientX, e.touches[0].clientY) : undefined}
-                onMouseMove={focalEditing ? (e) => handleFocalDrag(e.clientX, e.clientY) : undefined}
-                onTouchEnd={focalEditing ? commitFocal : undefined}
-                onMouseUp={focalEditing ? commitFocal : undefined}
-                className="md:hidden relative h-[170px] mx-1 rounded-[1.75rem] overflow-hidden shadow-xl select-none"
-            >
+                 countdown top-left, date + cover-edit top-right, title +
+                 cities in a single inline scroll-row at the bottom. The
+                 focal-point drag editor lives inside CoverPickerModal. */}
+            <div className="md:hidden relative h-[170px] mx-1 rounded-[1.75rem] overflow-hidden shadow-xl">
                 <img
                     src={pickTripCover(trip.destination, trip.coverImage)}
                     className="w-full h-full object-cover"
@@ -898,20 +871,12 @@ export const ItineraryView: React.FC<{
                     <TripCountdown trip={trip} variant="overlay" />
                 </div>
 
-                {/* Top-right: date pill + Move + cover-edit */}
+                {/* Top-right: date pill + cover-edit */}
                 <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5">
                     <div className="flex items-center gap-1.5 text-white/90 font-bold text-2xs uppercase tracking-wide bg-white/15 backdrop-blur-md px-2 py-1 rounded-full w-fit border border-white/25">
                         <Calendar className="w-3 h-3" />
                         <span dir="ltr">{formatHeroDates(trip.dates)}</span>
                     </div>
-                    <button
-                        onClick={() => setFocalEditing(e => !e)}
-                        className={`w-8 h-8 rounded-full text-white flex items-center justify-center backdrop-blur-md ${focalEditing ? 'bg-emerald-500/95 ring-2 ring-white/50' : 'bg-black/40'}`}
-                        aria-label={focalEditing ? 'סיים מיקום תמונה' : 'הזז תמונה'}
-                        title={focalEditing ? 'סיים מיקום תמונה' : 'הזז תמונה'}
-                    >
-                        <Move className="w-3.5 h-3.5" />
-                    </button>
                     <button onClick={handleChangeCover} className="w-8 h-8 bg-black/40 backdrop-blur-md rounded-full text-white flex items-center justify-center" aria-label="החלף תמונת נושא">
                         <Edit2 className="w-3.5 h-3.5" />
                     </button>
@@ -939,12 +904,6 @@ export const ItineraryView: React.FC<{
                         </div>
                     )}
                 </div>
-
-                {focalEditing && (
-                    <div className="absolute top-1/2 -translate-y-1/2 inset-x-3 px-3 py-2 bg-emerald-600/95 text-white text-xs font-bold text-center backdrop-blur-md z-30 rounded-lg pointer-events-none">
-                        גרור כדי לבחור את החלק שיוצג · לחץ על Move שוב לסיום
-                    </div>
-                )}
             </div>
 
             {/* 1. HERO — Desktop (kept as-is): tall hero with countdown,
@@ -1769,7 +1728,8 @@ export const ItineraryView: React.FC<{
                 onClose={() => setCoverPickerOpen(false)}
                 destination={trip.destination || ''}
                 currentCover={trip.coverImage}
-                onPick={(url) => onUpdateTrip({ ...trip, coverImage: url })}
+                currentFocal={trip.coverFocal}
+                onPick={(url, focal) => onUpdateTrip({ ...trip, coverImage: url, coverFocal: focal })}
             />
 
         </div >

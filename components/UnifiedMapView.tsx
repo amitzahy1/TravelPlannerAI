@@ -696,6 +696,13 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     // Snap-back protection — true once the user has manually panned/zoomed.
     // applyBounds() respects this and skips re-fitting the trip view.
     const userInteractedRef = useRef(false);
+    // Popup-protection — true while a Leaflet popup is open. The marker-render
+    // effect skips its rebuild while this is true so flyTo's zoom-end doesn't
+    // tear the popup down a second after it appeared. After the popup closes
+    // we bump `popupRebuildToken` to fire one fresh render with the latest
+    // tier/visibility state.
+    const popupOpenRef = useRef(false);
+    const [popupRebuildToken, setPopupRebuildToken] = useState(0);
     // Reset on deliberate context switches: different trip OR different
     // city filter. The user expects a fresh fit in those cases.
     useEffect(() => {
@@ -1628,6 +1635,16 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             ? L.markerClusterGroup({
                 showCoverageOnHover: false,
                 maxClusterRadius: 50,
+                // EXPLICIT — these default to true in leaflet.markercluster but
+                // were missing from the original config, and some clusters
+                // (especially groups of items at the same coords) refused to
+                // expand on tap. Setting them explicitly guarantees the
+                // tap-to-zoom AND the spiderfy-when-overlapping behaviour.
+                zoomToBoundsOnClick: true,
+                spiderfyOnMaxZoom: true,
+                animate: true,
+                animateAddingMarkers: false,
+                removeOutsideVisibleBounds: true,
                 iconCreateFunction: (cluster: any) => L.divIcon({
                     html: `<div style="
                         background:linear-gradient(135deg,#4f46e5,#7c3aed);
@@ -1657,6 +1674,16 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // layer flags change. The flag resets when the trip itself changes
         // or when the user clicks the explicit "fit to trip" button below.
         map.on('dragstart zoomstart', () => { userInteractedRef.current = true; });
+
+        // Popup-protection: while a popup is open, skip the marker rebuild
+        // so flyTo's zoom-end doesn't kill the popup the user just opened.
+        // After the popup closes, bump the rebuild token so any tier /
+        // visibility changes that happened in the meantime get applied.
+        map.on('popupopen', () => { popupOpenRef.current = true; });
+        map.on('popupclose', () => {
+            popupOpenRef.current = false;
+            setPopupRebuildToken(t => t + 1);
+        });
 
         setTimeout(() => map.invalidateSize(), 200);
         const ro = new ResizeObserver(() => map.invalidateSize());
@@ -1708,6 +1735,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         const markerLayer = markersRef.current;
         const routeLayer = routeLayerRef.current;
         if (!map || !markerLayer || !routeLayer) return;
+
+        // Popup-protection: a marker tap fires flyTo → zoom-end fires →
+        // mapZoom state updates → this effect re-runs. Without this guard
+        // markerLayer.clearLayers() destroys the marker that owns the
+        // open popup, so Leaflet auto-closes it (~1s after it appeared).
+        // Skip the rebuild while a popup is open; the popupclose handler
+        // bumps `popupRebuildToken` so we run once when it dismisses.
+        if (popupOpenRef.current) return;
 
         map.invalidateSize();
         markerLayer.clearLayers();
@@ -1820,6 +1855,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 if (isValidCoordinate(item.lat, item.lng)) {
                     const targetZoom = item.type === 'hotel' ? 16 : 17;
                     const currentZoom = map.getZoom();
+                    // Cancel any in-flight flyTo before starting a new one —
+                    // racing animations leave the map in a "stuck" state where
+                    // pinch / scroll-zoom feels unresponsive.
+                    map.stop();
                     map.flyTo([item.lat!, item.lng!], Math.max(currentZoom, targetZoom), { duration: 0.7 });
                 }
                 const container = document.createElement('div');
@@ -2218,7 +2257,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         }
 
         [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
-    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles, heatmap, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions, mapZoom]);
+    }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles, heatmap, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions, mapZoom, popupRebuildToken]);
 
 
     // Fly to a GPS-located position and show a "you are here" marker.
@@ -2226,6 +2265,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         const map = mapInstanceRef.current;
         if (!map || !flyTo) return;
 
+        map.stop();
         map.flyTo([flyTo.lat, flyTo.lng], flyTo.zoom ?? 15, { duration: 1.2 });
 
         // Remove previous locate marker before adding a new one.

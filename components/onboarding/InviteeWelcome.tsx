@@ -50,7 +50,7 @@ export const InviteeWelcome: React.FC<InviteeWelcomeProps> = ({ trip, onDismiss 
         const slides: SlideDef[] = [
                 {
                         kind: 'welcome',
-                        eyebrow: 'WeTravel · Plan together',
+                        eyebrow: 'WeTravel · AI Trip Organizer',
                         accent: 'from-blue-500 via-indigo-500 to-violet-600',
                         title: `ברוכים הבאים לטיול ל${destination} ${year}`,
                         body: 'הטיול נבנה על-ידי כל מי שמתכנן אותו — אתם, חברים, משפחה. כל הפרטים במקום אחד, מתעדכנים בזמן אמת.',
