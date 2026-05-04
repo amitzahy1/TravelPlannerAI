@@ -1,234 +1,234 @@
 import React, { useEffect, useState } from 'react';
+import { MapPin, Star, Trophy, Calendar, ChevronLeft, Plus, Check, Hotel, Utensils, Plane, Camera } from 'lucide-react';
 import { safeMapsUrl } from '../../utils/mapsUrl';
 import { getFoodImage, getAttractionImage } from '../../services/imageMapper';
 import { resolveRealPlaceImage } from '../../services/placeImageService';
 
 const TYPE_CONFIG = {
-    hotel:      { color: '#0ea5e9', gradient: ['#0ea5e9', '#0284c7'] as [string, string], label: 'מלון' },
-    restaurant: { color: '#f97316', gradient: ['#f97316', '#ea580c'] as [string, string], label: 'מסעדה' },
-    attraction: { color: '#8b5cf6', gradient: ['#8b5cf6', '#7c3aed'] as [string, string], label: 'אטרקציה' },
-    airport:    { color: '#6366f1', gradient: ['#6366f1', '#4f46e5'] as [string, string], label: 'שדה תעופה' },
+        hotel: { color: '#0ea5e9', accent: 'bg-sky-500', accentText: 'text-sky-600', label: 'מלון', Icon: Hotel },
+        restaurant: { color: '#f97316', accent: 'bg-orange-500', accentText: 'text-orange-600', label: 'מסעדה', Icon: Utensils },
+        attraction: { color: '#8b5cf6', accent: 'bg-violet-500', accentText: 'text-violet-600', label: 'אטרקציה', Icon: Camera },
+        airport: { color: '#6366f1', accent: 'bg-indigo-500', accentText: 'text-indigo-600', label: 'שדה תעופה', Icon: Plane },
 } as const;
 
 export interface PopupItem {
-    id: string;
-    type: 'hotel' | 'restaurant' | 'attraction' | 'airport';
-    name: string;
-    description?: string;
-    address?: string;
-    date?: string;
-    rating?: number;
-    cuisine?: string;
-    category?: string;
-    recommendationSource?: string;
-    priceRange?: string;
-    imageUrl?: string;
-    notes?: string;
-    googleMapsUrl?: string;
-    source?: 'saved' | 'ai';
+        id: string;
+        type: 'hotel' | 'restaurant' | 'attraction' | 'airport';
+        name: string;
+        description?: string;
+        address?: string;
+        date?: string;
+        rating?: number;
+        cuisine?: string;
+        category?: string;
+        recommendationSource?: string;
+        priceRange?: string;
+        imageUrl?: string;
+        notes?: string;
+        googleMapsUrl?: string;
+        source?: 'saved' | 'ai';
 }
 
 const parseDateLabel = (dateStr?: string): string => {
-    if (!dateStr) return '';
-    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        return new Date(dateStr + 'T12:00:00').toLocaleDateString('he-IL', { day: '2-digit', month: 'short', year: 'numeric' });
-    }
-    const parts = dateStr.split('/');
-    if (parts.length === 3) {
-        const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-        return d.toLocaleDateString('he-IL', { day: '2-digit', month: 'short', year: 'numeric' });
-    }
-    return dateStr;
+        if (!dateStr) return '';
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return new Date(dateStr + 'T12:00:00').toLocaleDateString('he-IL', { day: '2-digit', month: 'short' });
+        }
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+                const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                return d.toLocaleDateString('he-IL', { day: '2-digit', month: 'short' });
+        }
+        return dateStr;
 };
 
 interface Props {
-    item: PopupItem;
-    // When provided, render an "add to my list" CTA; the parent map view
-    // wires this to its existing handleToggleRec, so saving from the map
-    // matches saving from the list cards exactly.
-    onAddToList?: () => void;
-    isAdded?: boolean;
+        item: PopupItem;
+        onAddToList?: () => void;
+        isAdded?: boolean;
 }
 
-// Pick a stock image with the same helpers PlaceCard uses, then upgrade to a
-// real photo from Wikipedia when available. Hotels keep the gradient header
-// (no stock noise) so we only resolve images for restaurants/attractions.
 const useFallbackImage = (item: PopupItem): string | null => {
-    const initial = (() => {
-        if (item.imageUrl) return item.imageUrl;
-        if (item.type === 'restaurant') {
-            return getFoodImage(item.name, item.description || '', [item.cuisine || '', item.address || '']).url;
-        }
-        if (item.type === 'attraction') {
-            return getAttractionImage(item.name, item.description || '', [item.category || '', item.address || '']).url;
-        }
-        return null;
-    })();
+        const initial = (() => {
+                if (item.imageUrl) return item.imageUrl;
+                if (item.type === 'restaurant') {
+                        return getFoodImage(item.name, item.description || '', [item.cuisine || '', item.address || '']).url;
+                }
+                if (item.type === 'attraction') {
+                        return getAttractionImage(item.name, item.description || '', [item.category || '', item.address || '']).url;
+                }
+                return null;
+        })();
 
-    const [imgSrc, setImgSrc] = useState<string | null>(initial);
+        const [imgSrc, setImgSrc] = useState<string | null>(initial);
 
-    useEffect(() => { setImgSrc(initial); }, [initial]);
+        useEffect(() => { setImgSrc(initial); }, [initial]);
 
-    useEffect(() => {
-        if (item.imageUrl) return; // already a real photo from the trip data
-        if (item.type !== 'restaurant' && item.type !== 'attraction') return;
-        let cancelled = false;
-        resolveRealPlaceImage(item.name, item.address || '', item.type).then(real => {
-            if (!cancelled && real) setImgSrc(real);
-        });
-        return () => { cancelled = true; };
-    }, [item.name, item.address, item.type, item.imageUrl]);
+        useEffect(() => {
+                if (item.imageUrl) return;
+                if (item.type !== 'restaurant' && item.type !== 'attraction') return;
+                let cancelled = false;
+                resolveRealPlaceImage(item.name, item.address || '', item.type).then(real => {
+                        if (!cancelled && real) setImgSrc(real);
+                });
+                return () => { cancelled = true; };
+        }, [item.name, item.address, item.type, item.imageUrl]);
 
-    return imgSrc;
+        return imgSrc;
 };
 
-// Notes are user / AI-extracted free text. In the popup we show only the first
-// short line so a multi-paragraph transport note doesn't drown the card. Pulls
-// out the first sentence/line up to ~70 chars, keeping the original on the
-// `notes` field for the full hotel/restaurant detail view.
+// Notes are user / AI-extracted free text. In the popup we show only a short
+// summary so a multi-paragraph transport note doesn't drown the card.
 const summarizeNote = (raw: string): { short: string; truncated: boolean } => {
-    if (!raw) return { short: '', truncated: false };
-    const flat = raw.replace(/\s+/g, ' ').trim();
-    // First sentence by Hebrew/Latin punctuation
-    const m = flat.match(/^[^.!?\n。;]+[.!?。;]?/);
-    let candidate = (m?.[0] || flat).trim();
-    if (candidate.length > 70) candidate = candidate.slice(0, 67).trimEnd() + '…';
-    return { short: candidate, truncated: candidate !== flat };
+        if (!raw) return { short: '', truncated: false };
+        const flat = raw.replace(/\s+/g, ' ').trim();
+        const m = flat.match(/^[^.!?\n。;]+[.!?。;]?/);
+        let candidate = (m?.[0] || flat).trim();
+        if (candidate.length > 60) candidate = candidate.slice(0, 57).trimEnd() + '…';
+        return { short: candidate, truncated: candidate !== flat };
 };
 
+/**
+ * Horizontal map popup — image on the right (RTL), info column on the left,
+ * action strip across the bottom. Compact, scannable, consistent across the
+ * four item types (hotel / restaurant / attraction / airport). Type-specific
+ * colour comes from TYPE_CONFIG.
+ */
 export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = false }) => {
-    const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.hotel;
-    const dateLabel = parseDateLabel(item.date);
-    const mapsLink = safeMapsUrl(item.googleMapsUrl, item.name, item.address);
-    const tagLabel = item.cuisine || item.category || cfg.label;
-    const imageUrl = useFallbackImage(item);
-    const noteSummary = summarizeNote(item.notes || '');
+        const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.hotel;
+        const dateLabel = parseDateLabel(item.date);
+        const mapsLink = safeMapsUrl(item.googleMapsUrl, item.name, item.address);
+        const tagLabel = item.cuisine || item.category;
+        const imageUrl = useFallbackImage(item);
+        const noteSummary = summarizeNote(item.notes || '');
+        const showAddButton = !!onAddToList && item.source === 'ai';
+        const Icon = cfg.Icon;
 
-    const headerStyle: React.CSSProperties = imageUrl
-        ? {
-            backgroundImage: `linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.2) 55%,transparent 90%),url('${imageUrl}')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }
-        : {
-            background: `linear-gradient(135deg,${cfg.gradient[0]} 0%,${cfg.gradient[1]} 100%)`,
-          };
+        return (
+                <div
+                        className="bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200"
+                        style={{ width: 300, fontFamily: "'Rubik','Inter',sans-serif" }}
+                        dir="rtl"
+                >
+                        {/* Top row: image (right in RTL) + info column (left) */}
+                        <div className="flex">
+                                {/* Image / gradient block */}
+                                <div
+                                        className="w-[88px] h-[88px] flex-shrink-0 relative"
+                                        style={imageUrl
+                                                ? { backgroundImage: `url('${imageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                                : { background: `linear-gradient(135deg,${cfg.color},${cfg.color}cc)` }
+                                        }
+                                >
+                                        {!imageUrl && (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                        <Icon className="w-9 h-9 text-white/85" />
+                                                </div>
+                                        )}
+                                        {/* Type pill at the top of image */}
+                                        <span className={`absolute top-1.5 right-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded ${cfg.accent} text-white text-[9px] font-black shadow-sm`}>
+                                                {cfg.label}
+                                        </span>
+                                </div>
 
-    const showAddButton = !!onAddToList && item.source === 'ai';
+                                {/* Info column */}
+                                <div className="flex-1 p-2.5 min-w-0">
+                                        <div className="flex items-start justify-between gap-1.5">
+                                                <h3 className="text-sm font-black text-brand-navy leading-tight truncate flex-1" dir="ltr">
+                                                        {item.name}
+                                                </h3>
+                                                {typeof item.rating === 'number' && item.rating > 0 && (
+                                                        <span className="inline-flex items-center gap-0.5 text-2xs font-black text-amber-700 shrink-0">
+                                                                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                                                                {item.rating.toFixed(1)}
+                                                        </span>
+                                                )}
+                                        </div>
 
-    return (
-        <div style={{ fontFamily: "'Rubik','Inter',sans-serif", direction: 'rtl', textAlign: 'right', width: 220, padding: 0 }}>
+                                        {item.address && (
+                                                <div className="flex items-center gap-1 text-2xs text-slate-500 mt-0.5" dir="ltr">
+                                                        <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
+                                                        <span className="truncate">{item.address}</span>
+                                                </div>
+                                        )}
 
-            {/* Image / gradient header */}
-            <div style={{ position: 'relative', width: '100%', height: 110, overflow: 'hidden', flexShrink: 0, ...headerStyle }}>
-
-                {/* Category chip — top right */}
-                {tagLabel && (
-                    <span dir="ltr" style={{
-                        position: 'absolute', top: 8, right: 8,
-                        background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)',
-                        border: '1px solid rgba(255,255,255,0.18)', color: '#fff',
-                        fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.4px',
-                        padding: '3px 8px', borderRadius: 6,
-                        maxWidth: '60%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>
-                        {tagLabel}
-                    </span>
-                )}
-
-                {/* Price chip — top left */}
-                {item.priceRange && (
-                    <span style={{
-                        position: 'absolute', top: 8, left: 8,
-                        background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)',
-                        border: '1px solid rgba(255,255,255,0.18)', color: '#fff',
-                        fontSize: 9, fontWeight: 900, padding: '3px 8px', borderRadius: 6,
-                    }}>
-                        {item.priceRange}
-                    </span>
-                )}
-
-                {/* Bottom overlay: name + address + rating + source */}
-                <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <h3 dir="ltr" style={{ margin: 0, fontSize: 13, fontWeight: 900, color: '#fff', lineHeight: 1.2, textAlign: 'left', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
-                        {item.name}
-                    </h3>
-                    {item.address && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: '#cbd5e1', fontWeight: 600, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
-                            📍&nbsp;<span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.address}</span>
+                                        {(tagLabel || item.priceRange || item.recommendationSource) && (
+                                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                                        {tagLabel && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-700 text-[10px] font-bold border border-slate-200 max-w-[110px] truncate" dir="ltr">
+                                                                        {tagLabel}
+                                                                </span>
+                                                        )}
+                                                        {item.priceRange && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                                                                        {item.priceRange}
+                                                                </span>
+                                                        )}
+                                                        {item.recommendationSource && (
+                                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
+                                                                        <Trophy className="w-2.5 h-2.5" />
+                                                                        <span className="max-w-[90px] truncate">{item.recommendationSource}</span>
+                                                                </span>
+                                                        )}
+                                                </div>
+                                        )}
+                                </div>
                         </div>
-                    )}
-                    {(typeof item.rating === 'number' && item.rating > 0 || item.recommendationSource) && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                            {typeof item.rating === 'number' && item.rating > 0 && (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 10, fontWeight: 900, padding: '2px 6px', borderRadius: 6, flexShrink: 0 }}>
-                                    ⭐ {item.rating.toFixed(1)}
-                                </span>
-                            )}
-                            {item.recommendationSource && (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)', color: '#fde047', fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.3px', padding: '2px 6px', borderRadius: 6, minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    🏆 {item.recommendationSource}
-                                </span>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
 
-            {/* Body */}
-            <div style={{ padding: '8px 10px' }}>
-                {item.description && (
-                    <div style={{ fontSize: 10, color: '#475569', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {item.description}
-                    </div>
-                )}
-                {noteSummary.short && (
-                    <div
-                        title={noteSummary.truncated ? item.notes : undefined}
-                        style={{
-                            fontSize: 10, color: '#475569', background: '#fffaeb', border: '1px solid #fde68a',
-                            borderRadius: 6, padding: '5px 8px', marginTop: 6, lineHeight: 1.4,
-                            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}
-                    >
-                        📝 {noteSummary.short}
-                    </div>
-                )}
-                {dateLabel && (
-                    <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, marginTop: 6 }}>
-                        📅 {dateLabel}
-                    </div>
-                )}
-                <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-                    <a
-                        href={mapsLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 800, color: '#2563eb', textDecoration: 'none', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '4px 8px', borderRadius: 6 }}
-                    >
-                        🧭 ניווט
-                    </a>
-                    {showAddButton && (
-                        <button
-                            onClick={e => { e.stopPropagation(); onAddToList!(); }}
-                            disabled={isAdded}
-                            style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 3,
-                                fontSize: 10, fontWeight: 800,
-                                color: isAdded ? '#92400e' : '#fff',
-                                background: isAdded ? '#fef3c7' : '#0f172a',
-                                border: `1px solid ${isAdded ? '#fcd34d' : '#0f172a'}`,
-                                padding: '4px 8px', borderRadius: 6,
-                                cursor: isAdded ? 'default' : 'pointer',
-                            }}
-                        >
-                            {isAdded ? '✓ נשמר' : '＋ הוסף לרשימה'}
-                        </button>
-                    )}
+                        {/* Optional note row — only when there's a meaningful summary */}
+                        {noteSummary.short && (
+                                <div
+                                        title={noteSummary.truncated ? item.notes : undefined}
+                                        className="px-2.5 pb-2 text-[10px] text-slate-600 leading-snug"
+                                        style={{
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                overflow: 'hidden',
+                                        }}
+                                        dir="rtl"
+                                >
+                                        <span className="font-bold text-slate-700">📝 </span>{noteSummary.short}
+                                </div>
+                        )}
+
+                        {/* Action strip */}
+                        <div className="border-t border-slate-100 px-2.5 py-2 flex items-center justify-between gap-2 bg-slate-50">
+                                <span className="text-[10px] text-slate-500 font-bold inline-flex items-center gap-1 min-w-0">
+                                        {dateLabel ? (
+                                                <>
+                                                        <Calendar className="w-3 h-3 shrink-0" />
+                                                        <span className="truncate">{dateLabel}</span>
+                                                </>
+                                        ) : (
+                                                <span className="text-slate-400">—</span>
+                                        )}
+                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                        {showAddButton && (
+                                                <button
+                                                        onClick={(e) => { e.stopPropagation(); onAddToList!(); }}
+                                                        disabled={isAdded}
+                                                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md border ${isAdded ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'} ${isAdded ? 'cursor-default' : 'cursor-pointer'}`}
+                                                >
+                                                        {isAdded ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                                        {isAdded ? 'נשמר' : 'הוסף'}
+                                                </button>
+                                        )}
+                                        <a
+                                                href={mapsLink}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-md text-white shadow-sm"
+                                                style={{ background: cfg.color }}
+                                        >
+                                                <MapPin className="w-3 h-3" />
+                                                ניווט
+                                                <ChevronLeft className="w-3 h-3" />
+                                        </a>
+                                </div>
+                        </div>
                 </div>
-            </div>
-        </div>
-    );
+        );
 };

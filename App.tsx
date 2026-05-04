@@ -30,8 +30,6 @@ import { toast } from './stores/useToastStore';
 import { runBackgroundResearch } from './services/backgroundResearch';
 import { MagicalWizard } from './components/onboarding/MagicalWizard';
 import { InviteeWelcome } from './components/onboarding/InviteeWelcome';
-import { HeroPreview } from './components/HeroPreview';
-import { PopupPreview } from './components/PopupPreview';
 import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
 
@@ -491,15 +489,6 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  // Design-picker preview routes — short-circuit the app so the user can
-  // compare options without auth/data noise. Throwaway; remove the route +
-  // the corresponding component once a design is chosen.
-  if (typeof window !== 'undefined') {
-    const hash = window.location.hash;
-    if (hash.includes('hero-preview')) return <HeroPreview />;
-    if (hash.includes('popup-preview')) return <PopupPreview />;
-  }
-
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
