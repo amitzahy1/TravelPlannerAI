@@ -124,17 +124,29 @@ export const getMissingDataPoints = (trip: Trip, layerFlags?: MissingDataLayerFl
         // --- 3. Items with geocodeFailed=true ------------------------------
         // Layer flags hide categories the user has toggled off so the count
         // matches what's actually visible on the map.
+        //
+        // Critical: places that DO have a working `googleMapsUrl` are NOT
+        // "missing" — the user can tap that link and navigate to the right
+        // place in Google Maps. The fact that our local Photon geocoder
+        // failed (tiny street vendors, small bistros) is OUR limitation,
+        // not a real gap. Skip them.
+        const isReallyMissing = (place: { geocodeFailed?: boolean; googleMapsUrl?: string }) => {
+                if (!place.geocodeFailed) return false;
+                const url = (place.googleMapsUrl || '').trim();
+                if (url.length > 8) return false; // has a working URL → not missing
+                return true;
+        };
         const failedRestaurants = fl.aiRestaurants
-                ? (trip.aiRestaurants || []).flatMap(c => c.restaurants || []).filter(r => r.geocodeFailed)
+                ? (trip.aiRestaurants || []).flatMap(c => c.restaurants || []).filter(isReallyMissing)
                 : [];
         const failedAttractions = fl.aiAttractions
-                ? (trip.aiAttractions || []).flatMap(c => c.attractions || []).filter(a => a.geocodeFailed)
+                ? (trip.aiAttractions || []).flatMap(c => c.attractions || []).filter(isReallyMissing)
                 : [];
         const failedSavedR = fl.myLists
-                ? (trip.restaurants || []).flatMap(c => c.restaurants || []).filter(r => r.geocodeFailed)
+                ? (trip.restaurants || []).flatMap(c => c.restaurants || []).filter(isReallyMissing)
                 : [];
         const failedSavedA = fl.myLists
-                ? (trip.attractions || []).flatMap(c => c.attractions || []).filter(a => a.geocodeFailed)
+                ? (trip.attractions || []).flatMap(c => c.attractions || []).filter(isReallyMissing)
                 : [];
 
         const buildSearchUrl = (place: { name?: string; location?: string; googleMapsUrl?: string }) =>
@@ -165,45 +177,12 @@ export const getMissingDataPoints = (trip: Trip, layerFlags?: MissingDataLayerFl
                 });
         });
 
-        // --- 3b. Items with ambiguous verification --------------------------
-        // Photon resolved them but country/city didn't match the trip
-        // confidently. User should eyeball them.
-        const ambiguousR = [
-                ...(fl.aiRestaurants ? (trip.aiRestaurants || []).flatMap(c => c.restaurants || []) : []),
-                ...(fl.myLists ? (trip.restaurants || []).flatMap(c => c.restaurants || []) : []),
-        ].filter(r => r.verificationStatus === 'ambiguous');
-        const ambiguousA = [
-                ...(fl.aiAttractions ? (trip.aiAttractions || []).flatMap(c => c.attractions || []) : []),
-                ...(fl.myLists ? (trip.attractions || []).flatMap(c => c.attractions || []) : []),
-        ].filter(a => a.verificationStatus === 'ambiguous');
-        ambiguousR.forEach(r => {
-                out.push({
-                        id: `gap-ambig-r-${r.id}`,
-                        kind: 'ambiguous_location',
-                        label: `${r.name} — מיקום לא מאומת`,
-                        suggestedAction: 'אמת ב-Google Maps',
-                        deepLinkTab: 'food',
-                        lat: r.lat,
-                        lng: r.lng,
-                        externalUrl: buildSearchUrl(r),
-                        entityId: r.id,
-                        entityName: r.name,
-                });
-        });
-        ambiguousA.forEach(a => {
-                out.push({
-                        id: `gap-ambig-a-${a.id}`,
-                        kind: 'ambiguous_location',
-                        label: `${a.name} — מיקום לא מאומת`,
-                        suggestedAction: 'אמת ב-Google Maps',
-                        deepLinkTab: 'attractions',
-                        lat: a.lat,
-                        lng: a.lng,
-                        externalUrl: buildSearchUrl(a),
-                        entityId: a.id,
-                        entityName: a.name,
-                });
-        });
+        // --- 3b. Ambiguous verification entries removed entirely -----------
+        // The 'ambiguous_location' gap kind ("מיקום לא מאומת") was generating
+        // pages of false alarms — Photon often returns 'ambiguous' for places
+        // it actually resolved correctly. Per user direction, we no longer
+        // surface these as missing. Real geocode failures (3) and real data
+        // gaps (1, 2, 4) still produce gaps.
 
         // --- 4. Trip cities without ANY AI research ------------------------
         const cities = getTripCities(trip, { excludeFlightOnly: true });

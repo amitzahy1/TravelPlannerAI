@@ -1526,7 +1526,43 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         });
         let cancelled = false;
         classifyTripRoute(trip.id, legs).then(result => {
-            if (!cancelled) setLegClassifications(result);
+            if (cancelled) return;
+            // Post-classify guard: AI sometimes returns "flight" for short legs
+            // even though the user has no actual flight booked. If the leg has
+            // no matching FlightSegment in trip.flights AND the great-circle
+            // distance is < 700 km (≤ ~7 hours by car), override to "drive".
+            // Prevents phantom Bangkok→Pattaya / Madrid→Toledo / etc. flight lines.
+            const cleaned: typeof result = {};
+            for (const [k, v] of Object.entries(result)) {
+                if (v.mode !== 'flight') {
+                    cleaned[k] = v;
+                    continue;
+                }
+                const [legFrom, legTo] = k.split('__');
+                const hasRealFlight = (trip.flights?.segments || []).some(s => {
+                    const sf = (s.fromCity || s.fromCode || '').toLowerCase();
+                    const st = (s.toCity || s.toCode || '').toLowerCase();
+                    return sf.includes(legFrom) && st.includes(legTo);
+                });
+                if (hasRealFlight) {
+                    cleaned[k] = v;
+                    continue;
+                }
+                // No matching flight — find the leg's distance to decide.
+                const fromStop = routeStops.find(s => cleanCityName(s.name).toLowerCase() === legFrom);
+                const toStop = routeStops.find(s => cleanCityName(s.name).toLowerCase() === legTo);
+                let distKm = Infinity;
+                if (fromStop?.coords && toStop?.coords) {
+                    distKm = getDistanceKm(fromStop.coords.lat, fromStop.coords.lng, toStop.coords.lat, toStop.coords.lng);
+                }
+                if (distKm < 700) {
+                    console.info(`[Route] Overriding phantom "flight" classification for ${legFrom}→${legTo} (${Math.round(distKm)}km, no booking) → drive`);
+                    cleaned[k] = { ...v, mode: 'drive', notes: v.notes || 'נסיעה' };
+                } else {
+                    cleaned[k] = v;
+                }
+            }
+            setLegClassifications(cleaned);
         });
         return () => { cancelled = true; };
     }, [trip?.id, routeStops, items]);
@@ -1754,8 +1790,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             //   - Restaurants/attractions: hide name at tier ≤ 2 (the
             //     "showPlaces" guard above already prevents the marker
             //     from rendering at tier ≤ 2 anyway), show name at tier 3+.
-            const showLabel = tier >= 3;
-            const wrapLabel = item.type === 'hotel' && tier >= 3;
+            // Hotel name labels: ALWAYS visible, even at country-level zoom,
+            // so the user can scan the trip and see which hotels are where
+            // at a glance. Restaurants/attractions stay tier-gated to keep
+            // the dense view clean — they only appear at tier ≥ 3 anyway.
+            const showLabel = item.type === 'hotel' || tier >= 3;
+            const wrapLabel = item.type === 'hotel'; // hotel labels always wrap to 2-3 lines
             const icon = makePinIcon(cfg, showLabel ? item.name : undefined, pinSource, wrapLabel);
 
             const targetLayer = item.type === 'hotel' ? routeLayer : markerLayer;
@@ -1771,11 +1811,16 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             // React portal popup — renders MapItemPopup synchronously via
             // flushSync so the DOM is populated before Leaflet opens the popup.
             marker.on('click', () => {
-                // Drilling into a hotel: zoom in so the user can see the
-                // restaurants/attractions surrounding it. Zoom 16 ≈ a 4-block
-                // radius, close enough to read nearby pins.
-                if (item.type === 'hotel' && isValidCoordinate(item.lat, item.lng)) {
-                    map.flyTo([item.lat!, item.lng!], 16, { duration: 1.0 });
+                // Click-to-zoom on EVERY pin: focus + zoom in so the user
+                // can read surrounding context. Different target zoom per
+                // type — hotels open a 4-block radius, places get tighter.
+                // Setting userInteractedRef before the flyTo prevents the
+                // marker effect from snapping the view back to whole-trip.
+                userInteractedRef.current = true;
+                if (isValidCoordinate(item.lat, item.lng)) {
+                    const targetZoom = item.type === 'hotel' ? 16 : 17;
+                    const currentZoom = map.getZoom();
+                    map.flyTo([item.lat!, item.lng!], Math.max(currentZoom, targetZoom), { duration: 0.7 });
                 }
                 const container = document.createElement('div');
                 const popupRoot = createRoot(container);
@@ -2048,6 +2093,19 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             const visibleStops = validStops.filter(s =>
                 !!s.coords && isInTripRegion(s.coords.lat, s.coords.lng)
             );
+            // Hotel coords list — used to skip route-stop emoji pills that
+            // coincide with a hotel marker. Without this, the user sees TWO
+            // overlapping pins at every hotel city: the route-stop pill
+            // (number + "התחלה" + house emoji) AND the hotel pin (lock icon).
+            // The hotel pin already conveys "I'm staying here" — we hide
+            // the redundant emoji pill at low zoom and just keep the START/
+            // END ribbon attached to the hotel pin label below.
+            const hotelCoords = (trip?.hotels || [])
+                .filter(h => isValidCoordinate(h.lat, h.lng))
+                .map(h => ({ lat: h.lat as number, lng: h.lng as number }));
+            const stopCoincidesWithHotel = (lat: number, lng: number): boolean =>
+                hotelCoords.some(h => getDistanceKm(lat, lng, h.lat, h.lng) < 0.25);
+
             visibleStops.forEach((stop, idx) => {
                 if (!stop.coords) return;
                 const color = STOP_COLORS[idx % STOP_COLORS.length];
@@ -2056,6 +2114,17 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     : idx === visibleStops.length - 1
                         ? 'end'
                         : 'middle';
+
+                // Skip the route-stop emoji pill when it coincides with a
+                // hotel and the user is in the trip-overview zoom (the
+                // hotel pin is already there with a name label). At higher
+                // zooms we render both so the numbered sequence stays visible.
+                const isOnHotel = stopCoincidesWithHotel(stop.coords.lat, stop.coords.lng);
+                if (isOnHotel && tier <= 2) {
+                    bounds.extend([stop.coords.lat, stop.coords.lng]);
+                    return;
+                }
+
                 const icon = makeStopPill(idx + 1, stop.displayName || stop.name, stop.emoji || '📍', color, role);
 
                 L.marker([stop.coords.lat, stop.coords.lng], { icon, zIndexOffset: 2000 })
