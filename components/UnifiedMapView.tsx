@@ -878,43 +878,66 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         setActiveCity(controlledActiveCity ?? 'ALL');
     }, [controlledActiveCity]);
 
-    // Dedicated city flyTo: when the external city selection changes,
-    // immediately geocode that city and fly the map there. This is separate
-    // from the render useEffect so it fires reliably even when items for
-    // the selected city haven't been geocoded yet.
+    // Dedicated city flyTo — sole authority for "tap a chip → camera moves".
+    //
+    // Strategy, in priority order:
+    //   1. PREFERRED: fit the resolved hotel bounds for that city. The user
+    //      cares about "where am I staying", not the abstract city centroid.
+    //   2. FALLBACK: geocoded city centroid + zoom 13 (existing behaviour).
+    //
+    // Re-fires when `mapItems` changes — so as soon as a hotel for the
+    // currently-active city resolves, the camera updates from "centroid
+    // fallback" to the tighter hotel bounds. Without this dep, the user
+    // had to click the chip a second time to re-trigger the effect once
+    // their hotels finished geocoding.
     useEffect(() => {
         if (!controlledActiveCity) return; // null → ALL view, nothing to fly to
         const map = mapInstanceRef.current;
         if (!map) return;
 
-        // Country bbox from trip — passed alongside `items` by RestaurantsView /
-        // AttractionsView so we can constrain Photon and reject wrong-country results.
+        // 1. Prefer the user's actual hotel bounds in this city.
+        const targetKey = cityKey(controlledActiveCity);
+        const cityHotels = mapItems.filter(i =>
+            i.type === 'hotel'
+            && isValidCoordinate(i.lat, i.lng)
+            && cityKey(i.city || '') === targetKey,
+        );
+        if (cityHotels.length > 0) {
+            const b = L.latLngBounds(cityHotels.map(h => [h.lat as number, h.lng as number] as [number, number]));
+            if (b.isValid()) {
+                map.stop();
+                userInteractedRef.current = true; // suppress applyBounds racing
+                map.flyToBounds(b, { padding: [60, 60], maxZoom: 14, duration: 1.0 });
+                // eslint-disable-next-line no-console
+                console.info(`[CityFly] ${controlledActiveCity} → ${cityHotels.length} hotel(s) bounds`);
+                return;
+            }
+        }
+
+        // 2. Fallback: geocoded city centroid.
         const tripBbox = trip
             ? (getTripCountryBbox(trip) || getCountryBbox(trip.destinationEnglish || trip.destination || ''))
             : null;
-        // Always use an English country name for Photon — Hebrew strings like
-        // "תאילנד 26 ימים" confuse the geocoder and can return Georgia or Israel.
         const countryName = toEnglishCountryName(trip?.destinationEnglish || trip?.destination || '');
 
         const cacheKey = `city:${controlledActiveCity}`;
         const cached = geocodedCacheRef.current[cacheKey];
         if (cached) {
-            // Reject cached city coords outside the country (saved before bbox validation).
             if (tripBbox && !coordInBbox(cached.lat, cached.lng, tripBbox)) {
                 delete geocodedCacheRef.current[cacheKey];
             } else {
+                map.stop();
+                userInteractedRef.current = true;
                 map.flyTo([cached.lat, cached.lng], 13, { duration: 1 });
+                // eslint-disable-next-line no-console
+                console.info(`[CityFly] ${controlledActiveCity} → cached centroid (no hotels yet)`);
                 return;
             }
         }
 
-        // Prefer English name — better Photon coverage. getCityKeywords returns
-        // the Hebrew name plus any English alias; grab the first ASCII-only variant.
         const keywords = getCityKeywords(controlledActiveCity);
         const baseQuery = keywords.find(k => /^[a-z]/i.test(k) && k !== controlledActiveCity.toLowerCase())
             ?? controlledActiveCity;
-        // Append country name so "Pattaya" → "Pattaya, Thailand" — disambiguates
-        // against same-named places in other countries and improves Photon ranking.
         const query = countryName && !baseQuery.toLowerCase().includes(countryName.toLowerCase())
             ? `${baseQuery}, ${countryName}` : baseQuery;
 
@@ -927,9 +950,13 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 saveGeoCache(next);
                 return next;
             });
+            m.stop();
+            userInteractedRef.current = true;
             m.flyTo([coords.lat, coords.lng], 13, { duration: 1 });
+            // eslint-disable-next-line no-console
+            console.info(`[CityFly] ${controlledActiveCity} → geocoded centroid (no hotels resolved)`);
         });
-    }, [controlledActiveCity, trip]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [controlledActiveCity, mapItems, trip]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const [geocodedCache, setGeocodedCache] = useState<Record<string, { lat: number; lng: number }>>(loadGeoCache);
 
@@ -1339,17 +1366,18 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
     // 2a. Notify the wrapper of resolved items so it can compute city bounds
     //     for the chip-strip click handler. Fires whenever the resolved-coord
-    //     subset of mapItems changes — does NOT fire while geocoding is still
-    //     producing the snapshot (loading=true), to avoid spamming the
-    //     wrapper with partial states.
+    //     subset of mapItems changes — INCLUDING during geocoding, so the
+    //     wrapper has a partial snapshot the moment any item resolves. The
+    //     earlier `if (loading) return;` gate caused chip clicks to silently
+    //     do nothing on the user's trip (no saved hotel coords → loading
+    //     stays true the whole time you're trying to interact).
     useEffect(() => {
         if (!onItemsResolved) return;
-        if (loading) return;
         const resolved = mapItems
             .filter(i => isValidCoordinate(i.lat, i.lng))
             .map(i => ({ id: i.id, type: i.type, name: i.name, lat: i.lat as number, lng: i.lng as number, city: i.city }));
         onItemsResolved(resolved);
-    }, [mapItems, loading, onItemsResolved]);
+    }, [mapItems, onItemsResolved]);
 
     // 2b. AI sanity check — runs after geocoding settles. The deterministic
     //     bbox check above catches the common case (Photon returning a place
@@ -2367,13 +2395,35 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     const pathPoints = curvedPath(start.coords, end.coords);
                     let transport = getSegmentTransport(start, end, trip, dist, airportCoords);
                     if (aiLeg && aiLeg.mode) {
-                        transport = {
-                            mode: aiLeg.mode === 'drive+ferry' || aiLeg.mode === 'multi' ? 'drive' : aiLeg.mode as any,
-                            emoji: transportEmojiForMode(aiLeg.mode),
-                            label: aiLeg.notes || transportLabelForMode(aiLeg.mode),
-                            duration: fmtHours(aiLeg.durationHours) || transport.duration,
-                            hasTransportData: true,
-                        };
+                        if (transport.mode === 'flight' && transport.hasTransportData) {
+                            // The user's recorded flight wins over an AI 'multi' guess.
+                            // A multi-modal leg with a recorded flight is dominantly a
+                            // flight (most of the distance, most of the time). Only adopt
+                            // AI's duration if it's better; keep mode/emoji/label intact.
+                            if (aiLeg.durationHours) {
+                                transport = { ...transport, duration: fmtHours(aiLeg.durationHours) || transport.duration };
+                            }
+                        } else if (aiLeg.mode === 'drive+ferry' || aiLeg.mode === 'multi') {
+                            // Multi-modal AI guess + no recorded flight → coarse 'drive'
+                            // default but adopt AI's emoji/label so the user still sees
+                            // the multi-modal hint on the badge.
+                            transport = {
+                                mode: 'drive',
+                                emoji: transportEmojiForMode(aiLeg.mode),
+                                label: aiLeg.notes || transportLabelForMode(aiLeg.mode),
+                                duration: fmtHours(aiLeg.durationHours) || transport.duration,
+                                hasTransportData: true,
+                            };
+                        } else {
+                            // Single confirmed mode from AI — use it.
+                            transport = {
+                                mode: aiLeg.mode as any,
+                                emoji: transportEmojiForMode(aiLeg.mode),
+                                label: aiLeg.notes || transportLabelForMode(aiLeg.mode),
+                                duration: fmtHours(aiLeg.durationHours) || transport.duration,
+                                hasTransportData: true,
+                            };
+                        }
                     }
                     // Diagnostic — emit a one-line summary per leg so the user
                     // can see in console why a leg landed on its mode (e.g.

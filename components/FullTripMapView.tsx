@@ -133,53 +133,38 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                 setMobilePanelOpen(false);
         };
 
-        // Build a bounding rectangle from a list of items. Returns null when
-        // the list is empty so the caller can skip the fly.
-        const computeBounds = (
-                items: ResolvedItem[],
-        ): [[number, number], [number, number]] | null => {
-                if (items.length === 0) return null;
-                let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-                items.forEach(i => {
-                        if (i.lat < minLat) minLat = i.lat;
-                        if (i.lat > maxLat) maxLat = i.lat;
-                        if (i.lng < minLng) minLng = i.lng;
-                        if (i.lng > maxLng) maxLng = i.lng;
-                });
-                return [[minLat, minLng], [maxLat, maxLng]];
-        };
-
-        // Smart click contract for city chips:
-        //   • 'all' chip                       → setView('all') + fly to whole-trip bounds
-        //   • Different city chip              → setView(city) + fly to that city's bounds
-        //   • Same active chip, single tap     → setView('all') + fly to whole-trip bounds
-        //   • Same active chip within 1.5 s    → step through that city's hotels (next one)
-        // All flies use `flyToBounds` (via the bounds shape) so a single tap
-        // tightly fits the city — no race with the marker effect's applyBounds.
+        // Click contract — every click ZOOMS, no toggle:
+        //   • 'all' chip                  → setView('all'); UnifiedMapView refits whole trip
+        //   • Any city chip               → setView(city); UnifiedMapView's dedicated city
+        //                                   flyTo effect fits that city's hotels (or the
+        //                                   geocoded centroid if hotels haven't resolved yet)
+        //   • Same chip within 1.5 s      → step through that city's hotels (next one)
+        //
+        // Camera is owned by UnifiedMapView's dedicated city flyTo effect.
+        // Earlier we ALSO dispatched setFlyTo({bounds}) here — that raced the
+        // dedicated effect, sometimes the centroid fly won and produced the
+        // "had to click twice" symptom. Single source of truth now.
         const handleCityPick = (cityName: string | 'all') => {
                 const now = Date.now();
-                const items = resolvedItemsRef.current;
-                const tripItems = items.filter(i => i.type !== 'airport');
 
                 if (cityName === 'all') {
                         setView({ city: 'all' });
-                        const b = computeBounds(tripItems);
-                        if (b) setFlyTo({ bounds: b, maxZoom: 11, kind: 'reveal' });
                         lastChipClickRef.current = null;
                         return;
                 }
 
-                const targetKey = cityKey(cityName);
-                const cityItems = tripItems.filter(i => cityKey(i.city || '') === targetKey);
-
                 // Same chip tapped twice within 1.5 s while already focused → step through its hotels.
+                // This branch DOES drive the camera directly because it's a more specific intent
+                // (zoom to ONE hotel) than the dedicated city flyTo effect knows how to provide.
                 const last = lastChipClickRef.current;
                 if (
                         view.city === cityName &&
                         last?.city === cityName &&
                         now - last.ts < 1500
                 ) {
-                        const cityHotels = cityItems.filter(i => i.type === 'hotel');
+                        const targetKey = cityKey(cityName);
+                        const cityHotels = resolvedItemsRef.current
+                                .filter(i => i.type === 'hotel' && cityKey(i.city || '') === targetKey);
                         if (cityHotels.length > 0) {
                                 const nextIdx = (last.idx + 1) % cityHotels.length;
                                 const h = cityHotels[nextIdx];
@@ -189,20 +174,9 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                         }
                 }
 
-                // Same chip already active, fresh click → toggle off (back to whole trip).
-                if (view.city === cityName) {
-                        setView({ city: 'all' });
-                        const b = computeBounds(tripItems);
-                        if (b) setFlyTo({ bounds: b, maxZoom: 11, kind: 'reveal' });
-                        lastChipClickRef.current = null;
-                        return;
-                }
-
-                // Different city → focus + fly. flyToBounds with the city's
-                // items: one click, fits tightly, no race.
+                // Different city OR same city after the 1.5 s window — let
+                // UnifiedMapView's dedicated city flyTo effect handle the camera.
                 setView({ city: cityName });
-                const b = computeBounds(cityItems);
-                if (b) setFlyTo({ bounds: b, maxZoom: 14, kind: 'reveal' });
                 lastChipClickRef.current = { city: cityName, ts: now, idx: -1 };
         };
 
