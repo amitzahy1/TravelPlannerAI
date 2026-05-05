@@ -7,7 +7,7 @@ import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
-import { Loader2, Map as MapIcon } from 'lucide-react';
+import { Loader2, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
 import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl, toEnglishCountryName } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, getTripCountryBbox, getTripCountries, getTripCountryBboxes, placeInTripCountries, getCountryForHotel, coordInTripCountries, coordInTripCities, getTripCityBboxes } from '../utils/tripScope';
@@ -2420,25 +2420,29 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // eslint-disable-next-line no-console
         console.info(`[CityClick] ${cityName} | mapReady=${!!map} | mapItems=${mapItems.length} | popupOpen=${popupOpenRef.current}`);
 
-        // Close any open popup so the marker-render effect can rebuild for
-        // the new city (popupOpenRef would otherwise short-circuit it).
         if (map && popupOpenRef.current) {
             map.closePopup();
             popupOpenRef.current = false;
         }
 
         // Double-tap on the same NON-ALL pill → step through that city's hotels.
-        if (cityName !== 'ALL' && last?.city === cityName && now - last.ts < 1500 && map && trip?.hotels) {
-            const cityHotels = trip.hotels.filter(h => {
-                if (!isValidCoordinate(h.lat, h.lng)) return false;
-                const itemCity = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
-                return cityKey(itemCity) === cityKey(cityName) || cityKey(h.city || '') === cityKey(cityName);
+        // Reads from MAPITEMS (which has the resolved coords from geocoding)
+        // not trip.hotels (which often has no lat/lng on this trip).
+        if (cityName !== 'ALL' && last?.city === cityName && now - last.ts < 1500 && map) {
+            const targetKey = cityKey(cityName);
+            const keywords = getCityKeywords(cityName);
+            const cityHotels = mapItems.filter(i => {
+                if (i.type !== 'hotel' || !isValidCoordinate(i.lat, i.lng)) return false;
+                if (targetKey && cityKey(i.city || '') === targetKey) return true;
+                const addr = (i.address || '').toLowerCase();
+                const iCity = (i.city || '').toLowerCase();
+                return keywords.some(kw => addr.includes(kw) || iCity.includes(kw));
             });
             if (cityHotels.length > 0) {
                 const nextIdx = (last.idx + 1) % cityHotels.length;
                 const h = cityHotels[nextIdx];
                 map.stop();
-                userInteractedRef.current = true; // prevent the marker effect from snapping back
+                userInteractedRef.current = true;
                 map.flyTo([h.lat as number, h.lng as number], 16, { duration: 0.8 });
                 lastCityClickRef.current = { city: cityName, ts: now, idx: nextIdx };
                 return;
@@ -2468,35 +2472,63 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 })();
 
             // eslint-disable-next-line no-console
-            console.info(`[CityClick] ${cityName} → targetItems=${targetItems.length}`, targetItems.slice(0, 5).map(i => ({ name: i.name, type: i.type, lat: i.lat, lng: i.lng, city: i.city })));
+            console.info(`[CityClick] ${cityName} → targetItems=${targetItems.length}`);
+            let didFly = false;
             if (targetItems.length > 0) {
                 const targetBounds = L.latLngBounds(targetItems.map(i => [i.lat as number, i.lng as number] as [number, number]));
                 if (targetBounds.isValid()) {
                     userInteractedRef.current = false;
                     map.stop();
-                    // eslint-disable-next-line no-console
-                    console.info(`[CityClick] flyToBounds firing: ${cityName}`, { padding: 60, maxZoom: cityName === 'ALL' ? 11 : 15 });
                     map.flyToBounds(targetBounds, {
                         padding: [60, 60],
-                        // City view zooms to 15 (was 14) so we cross the
-                        // tier ≥ 3 / zoom ≥ 13 thresholds — restaurant +
-                        // attraction labels reveal, place names appear,
-                        // hotel name labels read clearly.
                         maxZoom: cityName === 'ALL' ? 11 : 15,
                         duration: 1.0,
                     });
-                } else {
-                    // eslint-disable-next-line no-console
-                    console.warn(`[CityClick] ${cityName} → bounds invalid`);
+                    didFly = true;
                 }
-            } else {
-                // eslint-disable-next-line no-console
-                console.warn(`[CityClick] ${cityName} → no items matched the filter; check city/address fields`);
+            }
+
+            // Fallback: no items have coords yet (still geocoding) — geocode
+            // the city/destination on the fly so the click ALWAYS does
+            // something visible. Keeps the click responsive even before the
+            // marker pipeline has caught up.
+            if (!didFly && trip) {
+                const fallbackQuery = cityName === 'ALL'
+                    ? (trip.destinationEnglish || trip.destination || '')
+                    : cityName;
+                if (fallbackQuery) {
+                    // eslint-disable-next-line no-console
+                    console.info(`[CityClick] no items yet — geocoding "${fallbackQuery}" as fallback`);
+                    geocodeForTrip(fallbackQuery, trip).then(coords => {
+                        if (!coords || !mapInstanceRef.current) return;
+                        userInteractedRef.current = false;
+                        mapInstanceRef.current.stop();
+                        mapInstanceRef.current.flyTo(
+                            [coords.lat, coords.lng],
+                            cityName === 'ALL' ? 8 : 13,
+                            { duration: 1.0 },
+                        );
+                    });
+                }
             }
         }
 
         setActiveCity(cityName);
         lastCityClickRef.current = { city: cityName, ts: now, idx: -1 };
+    };
+
+    // Refresh button — clears the geocoding cache + forces the geocoding
+    // effect to re-run from scratch. Useful when a hotel was misplaced on
+    // first run (often because Photon resolved the wrong POI) and the user
+    // wants a fresh attempt.
+    const handleMapRefresh = () => {
+        try { localStorage.removeItem(STORAGE_KEY); } catch { /* private mode */ }
+        setGeocodedCache({});
+        // Strip coords from current mapItems so the geocoding effect has
+        // pending items to re-run on. The effect's pending check is
+        // `!isValidCoordinate(i.lat, i.lng) && i.address`.
+        setMapItems(prev => prev.map(i => ({ ...i, lat: undefined, lng: undefined })));
+        userInteractedRef.current = false;
     };
 
     // Fly to a GPS-located position and show a "you are here" marker.
@@ -2635,6 +2667,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4" />
                 </svg>
+            </button>
+
+            {/* Refresh map data — clears the geocoding cache and triggers a
+                 fresh geocode pass. Useful after changing a hotel's address
+                 or when a pin is in the wrong place because Photon picked the
+                 wrong POI on first run. Sits stacked above the fit-to-trip
+                 button so the corner stays organized. */}
+            <button
+                onClick={handleMapRefresh}
+                title="רענן מיקומים"
+                aria-label="רענן מיקומים"
+                className="absolute bottom-40 right-4 z-[700] w-10 h-10 inline-flex items-center justify-center bg-white hover:bg-slate-50 rounded-full shadow-lg border border-slate-200 text-slate-600 transition-all active:scale-95"
+            >
+                <RefreshCw className="w-4 h-4" />
             </button>
 
             {/* (Loading indicator moved to the centered full-map overlay above) */}
