@@ -30,6 +30,9 @@ import { toast } from './stores/useToastStore';
 import { runBackgroundResearch } from './services/backgroundResearch';
 import { MagicalWizard } from './components/onboarding/MagicalWizard';
 import { InviteeWelcome } from './components/onboarding/InviteeWelcome';
+
+// Lazy-loaded eval routes — keeps maplibre-gl out of the main bundle.
+const MapV2Demo = React.lazy(() => import('./components/MapV2Demo').then(m => ({ default: m.MapV2Demo })));
 import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
 
@@ -489,6 +492,21 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // Throwaway design-evaluation route — short-circuits the main app so the
+  // user can compare without auth/data noise. Auth + React Query stay
+  // wrapped so the demo can read trip data via useTrips().
+  if (typeof window !== 'undefined' && window.location.hash.includes('map-v2')) {
+    return (
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500" dir="rtl">טוען מפה…</div>}>
+            <MapV2Demo />
+          </React.Suspense>
+        </QueryClientProvider>
+      </AuthProvider>
+    );
+  }
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
