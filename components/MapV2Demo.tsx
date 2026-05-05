@@ -35,12 +35,49 @@ interface MapItem extends PopupItem {
         lng: number;
 }
 
-const buildMapItems = (trip: Trip | null): MapItem[] => {
+// Same key the main UnifiedMapView uses. Items that were geocoded in the
+// main view have their coords cached here so the demo can pick them up
+// without re-geocoding.
+const GEO_CACHE_KEY = 'travel_app_geo_cache_v6';
+
+const loadGeoCache = (): Record<string, { lat: number; lng: number }> => {
+        try {
+                const raw = JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}') as Record<string, { lat: number; lng: number; ts?: number }>;
+                const out: Record<string, { lat: number; lng: number }> = {};
+                Object.entries(raw).forEach(([k, v]) => {
+                        if (typeof v?.lat === 'number' && typeof v?.lng === 'number') {
+                                out[k] = { lat: v.lat, lng: v.lng };
+                        }
+                });
+                return out;
+        } catch { return {}; }
+};
+
+/**
+ * Resolve coordinates for an item: prefer its own lat/lng, fall back to the
+ * shared geocoding cache by address, then by name. Mirrors the resolution
+ * logic in UnifiedMapView so the demo sees the same items as the main map.
+ */
+const resolveCoords = (
+        item: { lat?: number; lng?: number; address?: string; name?: string },
+        cache: Record<string, { lat: number; lng: number }>,
+): { lat: number; lng: number } | null => {
+        if (typeof item.lat === 'number' && typeof item.lng === 'number') {
+                return { lat: item.lat, lng: item.lng };
+        }
+        if (item.address && cache[item.address]) return cache[item.address];
+        if (item.address && cache[item.address.toLowerCase()]) return cache[item.address.toLowerCase()];
+        if (item.name && cache[item.name]) return cache[item.name];
+        return null;
+};
+
+const buildMapItems = (trip: Trip | null, cache: Record<string, { lat: number; lng: number }>): MapItem[] => {
         if (!trip) return [];
         const out: MapItem[] = [];
 
         (trip.hotels || []).forEach((h: HotelBooking) => {
-                if (typeof h.lat === 'number' && typeof h.lng === 'number') {
+                const coords = resolveCoords(h, cache);
+                if (coords) {
                         out.push({
                                 id: h.id || `hotel-${h.name}`,
                                 type: 'hotel',
@@ -53,14 +90,15 @@ const buildMapItems = (trip: Trip | null): MapItem[] => {
                                 notes: h.notes,
                                 googleMapsUrl: (h as any).googleMapsUrl,
                                 source: 'saved',
-                                lat: h.lat, lng: h.lng,
+                                lat: coords.lat, lng: coords.lng,
                         });
                 }
         });
 
         (trip.restaurants || []).forEach(cat => {
                 (cat.restaurants || []).forEach((r: any) => {
-                        if (typeof r.lat === 'number' && typeof r.lng === 'number') {
+                        const coords = resolveCoords(r, cache);
+                        if (coords) {
                                 out.push({
                                         id: r.id || `rest-${r.name}`,
                                         type: 'restaurant',
@@ -73,7 +111,7 @@ const buildMapItems = (trip: Trip | null): MapItem[] => {
                                         recommendationSource: r.recommendationSource,
                                         googleMapsUrl: r.googleMapsUrl,
                                         source: 'saved',
-                                        lat: r.lat, lng: r.lng,
+                                        lat: coords.lat, lng: coords.lng,
                                 });
                         }
                 });
@@ -81,7 +119,8 @@ const buildMapItems = (trip: Trip | null): MapItem[] => {
 
         (trip.attractions || []).forEach(cat => {
                 (cat.attractions || []).forEach((a: any) => {
-                        if (typeof a.lat === 'number' && typeof a.lng === 'number') {
+                        const coords = resolveCoords(a, cache);
+                        if (coords) {
                                 out.push({
                                         id: a.id || `attr-${a.name}`,
                                         type: 'attraction',
@@ -93,7 +132,7 @@ const buildMapItems = (trip: Trip | null): MapItem[] => {
                                         recommendationSource: a.recommendationSource,
                                         googleMapsUrl: a.googleMapsUrl,
                                         source: 'saved',
-                                        lat: a.lat, lng: a.lng,
+                                        lat: coords.lat, lng: coords.lng,
                                 });
                         }
                 });
@@ -121,9 +160,21 @@ export const MapV2Demo: React.FC = () => {
         const [styleReady, setStyleReady] = useState(false);
         const [flyingThrough, setFlyingThrough] = useState(false);
 
-        const items = useMemo(() => buildMapItems(activeTrip), [activeTrip]);
+        const geoCache = useMemo(() => loadGeoCache(), []);
+        const items = useMemo(() => buildMapItems(activeTrip, geoCache), [activeTrip, geoCache]);
         const hotels = useMemo(() => items.filter(i => i.type === 'hotel'), [items]);
         const [mapError, setMapError] = useState<string | null>(null);
+
+        // Diagnostic: how many trip items had no coords (no own lat/lng + not in
+        // the geocoding cache). Surfaced in the empty state so the user knows
+        // why nothing is showing.
+        const totalTripItems = useMemo(() => {
+                if (!activeTrip) return 0;
+                let n = (activeTrip.hotels || []).length;
+                (activeTrip.restaurants || []).forEach(cat => { n += (cat.restaurants || []).length; });
+                (activeTrip.attractions || []).forEach(cat => { n += (cat.attractions || []).length; });
+                return n;
+        }, [activeTrip]);
 
         // Initialize map once. Wait for items to be available so we can use a
         // sensible center. We also retry with a fallback style if the primary
@@ -469,9 +520,14 @@ export const MapV2Demo: React.FC = () => {
                 return (
                         <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center" dir="rtl">
                                 <div className="text-2xl font-black text-brand-navy">{activeTrip.name}</div>
-                                <p className="text-slate-500 max-w-sm">לטיול הזה עוד אין פריטים עם קואורדינטות. הוסף מלון או מסעדה ותראה איך הם מופיעים על המפה.</p>
+                                <p className="text-slate-500 max-w-sm">
+                                        לטיול הזה יש <strong className="text-brand-navy">{totalTripItems}</strong> פריטים, אבל אף אחד מהם עוד לא נמצא בקאש הקואורדינטות.
+                                </p>
+                                <p className="text-2xs text-slate-400 max-w-sm leading-relaxed">
+                                        טיפ: פתח את האתר הראשי, בקר בלשונית המפה (UnifiedMapView). זה מפעיל את ה-Geocoding ושומר את הקואורדינטות בקאש. אז חזור הנה ותראה את המפה.
+                                </p>
                                 <a href="#/" className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-blue-600 text-white font-bold text-sm shadow">
-                                        <ArrowRight className="w-4 h-4" /> חזרה לאתר
+                                        <ArrowRight className="w-4 h-4" /> פתח את המפה הראשית כדי למלא את הקאש
                                 </a>
                         </div>
                 );
@@ -487,7 +543,7 @@ export const MapV2Demo: React.FC = () => {
                                         </div>
                                         <div className="min-w-0">
                                                 <div className="font-black text-brand-navy text-sm truncate">{activeTrip.name} · MAP V2 (Beta)</div>
-                                                <div className="text-2xs text-slate-500 truncate">{items.length} פריטים · MapLibre + OpenFreeMap</div>
+                                                <div className="text-2xs text-slate-500 truncate">{items.length}/{totalTripItems} פריטים על המפה · MapLibre + OpenFreeMap</div>
                                         </div>
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
