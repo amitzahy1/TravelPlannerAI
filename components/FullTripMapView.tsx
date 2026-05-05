@@ -2,7 +2,7 @@
  * FullTripMapView — the dedicated experience for the `map_full` tab.
  *
  * Wraps UnifiedMapView and adds the full trip-overview UX layer:
- *   • Top floating pill bar: trip name + share button + city focus chips
+ *   • Top floating pill bar: city focus chips (+ mobile layers button)
  *   • Right sidebar (desktop) / bottom drawer (mobile): LayersPanel
  *   • Bottom row: TripStatsBar + GPS button + keyboard shortcuts hint
  *   • MissingDataSheet — bottom-sheet with gap list + deep-link CTAs
@@ -12,7 +12,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trip } from '../types';
-import { Keyboard, Layers, LocateFixed, LocateOff, Share2 } from 'lucide-react';
+import { Keyboard, Layers, LocateFixed, LocateOff } from 'lucide-react';
 import { UnifiedMapView } from './UnifiedMapView';
 import { LayersPanel } from './map/LayersPanel';
 import { MissingDataSheet } from './map/MissingDataSheet';
@@ -53,7 +53,6 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                 | { bounds: [[number, number], [number, number]]; maxZoom?: number; kind?: 'gps' | 'reveal' }
                 | null
         >(null);
-        const [shareToast, setShareToast] = useState(false);
         const [shortcutsOpen, setShortcutsOpen] = useState(false);
         const shortcutsRef = useRef<HTMLDivElement>(null);
 
@@ -180,13 +179,6 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                 lastChipClickRef.current = { city: cityName, ts: now, idx: -1 };
         };
 
-        const handleShare = useCallback(() => {
-                navigator.clipboard?.writeText(window.location.href).then(() => {
-                        setShareToast(true);
-                        setTimeout(() => setShareToast(false), 2000);
-                });
-        }, []);
-
         const handleLocate = useCallback(() => {
                 if (!navigator.geolocation) return;
                 setLocateState('loading');
@@ -246,28 +238,6 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                                 {/* Top floating bar */}
                                 <div className="absolute top-3 right-3 left-3 z-[1000] flex flex-col gap-2 pointer-events-none">
                                         <div className="flex items-center gap-2">
-
-                                                {/* Trip name + share */}
-                                                <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg border border-slate-200/80 px-3 py-2 pointer-events-auto flex-shrink-0 flex items-center gap-2">
-                                                        <h2 className="text-sm font-black text-slate-800 truncate max-w-[160px]">
-                                                                {title || trip.name}
-                                                        </h2>
-                                                        <div className="relative">
-                                                                <button
-                                                                        onClick={handleShare}
-                                                                        className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-                                                                        aria-label="שתף קישור למפה"
-                                                                        title="שתף קישור למפה"
-                                                                >
-                                                                        <Share2 className="w-3.5 h-3.5" />
-                                                                </button>
-                                                                {shareToast && (
-                                                                        <div className="absolute top-full mt-1.5 right-0 bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap shadow-lg">
-                                                                                הקישור הועתק!
-                                                                        </div>
-                                                                )}
-                                                        </div>
-                                                </div>
 
                                                 {/* City chips */}
                                                 <div className="flex-1 overflow-x-auto scrollbar-hide pointer-events-auto">

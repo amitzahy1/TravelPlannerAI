@@ -465,7 +465,7 @@ const makeStopPill = (
     nums: number[],
     name: string,
     color: string,
-    role: 'start' | 'end' | 'middle' = 'middle',
+    role: 'start' | 'end' | 'middle' | 'roundtrip' = 'middle',
 ) => {
     // Truncate aggressively so two pills can sit side-by-side without crowding.
     const safeName = (name || '').trim();
@@ -473,24 +473,44 @@ const makeStopPill = (
     const escapedName = displayName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     // Role ribbon — appears above stop #1 and the final stop so the user
-    // sees the trip's beginning + end at a glance.
-    const ribbonText = role === 'start' ? 'התחלה' : role === 'end' ? 'סיום' : '';
-    const ribbonBg = role === 'start' ? '#10b981' : role === 'end' ? '#0f172a' : '';
-    const ribbonHtml = ribbonText ? `
-        <div style="
-            background:${ribbonBg};color:#fff;font-size:8px;font-weight:900;
-            text-transform:uppercase;letter-spacing:0.4px;
-            padding:1px 6px;border-radius:999px;margin-bottom:3px;
-            box-shadow:0 2px 6px rgba(15,23,42,0.25);
-            font-family:'Rubik','Inter',sans-serif;
-            display:inline-block;
-        ">${ribbonText}</div>
-    ` : '';
+    // sees the trip's beginning + end at a glance. A round-trip city
+    // (start === end) shows a single two-tone ribbon so the green and
+    // dark badges no longer stack on the same coords.
+    let ribbonHtml = '';
+    if (role === 'roundtrip') {
+        ribbonHtml = `
+            <div style="
+                display:inline-flex;align-items:stretch;
+                margin-bottom:3px;border-radius:999px;overflow:hidden;
+                box-shadow:0 2px 6px rgba(15,23,42,0.25);
+                font-family:'Rubik','Inter',sans-serif;
+                font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:0.4px;
+            ">
+                <span style="background:#10b981;color:#fff;padding:1px 6px;">התחלה</span>
+                <span style="background:#0f172a;color:#fff;padding:1px 6px;">סיום</span>
+            </div>
+        `;
+    } else {
+        const ribbonText = role === 'start' ? 'התחלה' : role === 'end' ? 'סיום' : '';
+        const ribbonBg = role === 'start' ? '#10b981' : role === 'end' ? '#0f172a' : '';
+        ribbonHtml = ribbonText ? `
+            <div style="
+                background:${ribbonBg};color:#fff;font-size:8px;font-weight:900;
+                text-transform:uppercase;letter-spacing:0.4px;
+                padding:1px 6px;border-radius:999px;margin-bottom:3px;
+                box-shadow:0 2px 6px rgba(15,23,42,0.25);
+                font-family:'Rubik','Inter',sans-serif;
+                display:inline-block;
+            ">${ribbonText}</div>
+        ` : '';
+    }
     const ringStyle = role === 'start'
         ? 'box-shadow:0 0 0 2px #10b981,0 3px 10px rgba(15,23,42,0.20);'
         : role === 'end'
             ? 'box-shadow:0 0 0 2px #0f172a,0 3px 10px rgba(15,23,42,0.20);'
-            : 'box-shadow:0 3px 10px rgba(15,23,42,0.18),0 1px 2px rgba(15,23,42,0.08);';
+            : role === 'roundtrip'
+                ? 'box-shadow:0 0 0 2px #10b981, 0 0 0 4px #0f172a, 0 3px 10px rgba(15,23,42,0.20);'
+                : 'box-shadow:0 3px 10px rgba(15,23,42,0.18),0 1px 2px rgba(15,23,42,0.08);';
 
     // Build the number disc(s). 1 → single disc. 2 → two overlapping discs
     // (chain-link). 3+ → first…last, with a tooltip listing all numbers.
@@ -716,22 +736,6 @@ const getSegmentTransport = (
     return { mode: 'drive', emoji: '🚗', label: 'נסיעה', hasTransportData: false };
 };
 
-const estimateTravelTime = (distKm: number, mode: string): string => {
-    if (mode === 'flight') {
-        const h = Math.max(1, Math.round(distKm / 800));
-        return h <= 1 ? '~1 שעה' : `~${h} שעות`;
-    }
-    if (mode === 'train') {
-        const h = distKm / 150;
-        return h < 1 ? `~${Math.round(h * 60)} דק'` : `~${h.toFixed(1)} שעות`;
-    }
-    const h = distKm / 80;
-    return h < 1 ? `~${Math.round(h * 60)} דק'` : `~${(Math.round(h * 10) / 10)} שעות`;
-};
-
-const fmtDistKm = (km: number): string =>
-    km >= 1000 ? `${(km / 1000).toFixed(1)}K ק"מ` : `${Math.round(km)} ק"מ`;
-
 /**
  * Zoom-tiered label level. The map decides what's visible based on this
  * value; matches the patterns Mapbox / Apple Maps / Polarsteps use.
@@ -747,51 +751,6 @@ const labelTier = (z: number): 0 | 1 | 2 | 3 | 4 => {
     if (z >= 10) return 2;
     if (z >= 8)  return 1;
     return 0;
-};
-
-const makeRouteBadge = (
-    distKm: number,
-    transport: SegmentTransportInfo,
-    color: string,
-    tier: 1 | 2 | 3 | 4 = 4,
-): L.DivIcon => {
-    const displayTime = transport.duration || estimateTravelTime(distKm, transport.mode);
-    // Every tier shows the mode emoji + duration so a glance at the route
-    // line answers "by what, how long". Higher tiers add the mode label and
-    // the distance.
-    //   tier 1 (regional, zoom ≥ 8) — bigger emoji + duration
-    //   tier 2 (metro,    zoom ≥ 10) — same as tier 1, slightly larger
-    //   tier 3 (city,     zoom ≥ 12) — adds nothing extra (still emoji + duration)
-    //   tier 4 (street,   zoom ≥ 14) — full label "emoji label · time · distance"
-    let inner: string;
-    if (tier === 4) {
-        inner = `
-            <span style="font-size:15px;line-height:1">${transport.emoji}</span>
-            <span style="font-size:11px;font-weight:800;color:${color};letter-spacing:.01em">${transport.label}</span>
-            <span style="color:#cbd5e1;font-size:9px">•</span>
-            <span style="font-size:11px;color:#334155;font-weight:800">${displayTime}</span>
-            <span style="color:#cbd5e1;font-size:9px">•</span>
-            <span style="font-size:11px;color:#475569;font-weight:600">${fmtDistKm(distKm)}</span>
-        `;
-    } else {
-        const emojiSize = tier === 1 ? 16 : 17;
-        const textSize = tier === 1 ? 11 : 12;
-        inner = `
-            <span style="font-size:${emojiSize}px;line-height:1">${transport.emoji}</span>
-            <span style="font-size:${textSize}px;color:#334155;font-weight:800;line-height:1">${displayTime}</span>
-        `;
-    }
-    const padding = tier === 1 ? '4px 8px' : tier === 2 ? '5px 9px' : '4px 10px';
-    const html = `<div style="
-        display:inline-flex;align-items:center;gap:5px;
-        background:white;border-radius:999px;
-        padding:${padding};
-        box-shadow:0 2px 8px rgba(15,23,42,.14),0 1px 2px rgba(15,23,42,.08);
-        border:1px solid ${color}33;
-        font-family:'Rubik','Inter',sans-serif;
-        white-space:nowrap;direction:rtl;
-    ">${inner}</div>`;
-    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 12] });
 };
 
 // ============================================================
@@ -1854,8 +1813,31 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     useEffect(() => {
         if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-        const map = L.map(mapContainerRef.current, { zoomControl: false, attributionControl: false })
-            .setView([41.7, 44.8], 7);
+        const map = L.map(mapContainerRef.current, { zoomControl: false, attributionControl: false });
+
+        // Pick an initial view from the trip itself so mobile users never see
+        // a flash of the wrong region while bounds are computed asynchronously.
+        // Order: hotel coords → trip-country bbox → world view (NOT Caucasus).
+        const hotelCoords: L.LatLngExpression[] = (trip?.hotels || [])
+            .filter(h => typeof h.lat === 'number' && typeof h.lng === 'number')
+            .map(h => [h.lat as number, h.lng as number]);
+        if (hotelCoords.length >= 2) {
+            map.fitBounds(L.latLngBounds(hotelCoords), { padding: [40, 40], maxZoom: 11 });
+        } else if (hotelCoords.length === 1) {
+            map.setView(hotelCoords[0], 11);
+        } else {
+            const bboxes = trip ? getTripCountryBboxes(trip) : [];
+            if (bboxes.length > 0) {
+                // bbox tuple is [minLon, minLat, maxLon, maxLat] (west, south, east, north).
+                const corners: L.LatLngExpression[] = bboxes.flatMap(([w, s, e, n]) => [
+                    [s, w] as L.LatLngExpression,
+                    [n, e] as L.LatLngExpression,
+                ]);
+                map.fitBounds(L.latLngBounds(corners), { padding: [40, 40], maxZoom: 6 });
+            } else {
+                map.setView([20, 0], 2);
+            }
+        }
 
         const tileUrl = tileTheme === 'dark'
             ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
@@ -2225,29 +2207,6 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             });
         }
 
-        // Walking-distance rings: 1.2 km ≈ 15 min walk, 2.4 km ≈ 30 min walk
-        // at 5 km/h. Drawn on routeLayer so they survive cluster-only redraws.
-        if (walkingCircles && trip?.hotels?.length) {
-            trip.hotels.forEach(h => {
-                if (!isValidCoordinate(h.lat, h.lng)) return;
-                L.circle([h.lat!, h.lng!], {
-                    radius: 1200,
-                    color: '#10b981', weight: 1.5,
-                    fillColor: '#10b981', fillOpacity: 0.08, opacity: 0.45,
-                })
-                    .bindTooltip('15 דק׳ הליכה', { permanent: true, direction: 'top', className: 'walking-label' })
-                    .addTo(routeLayer);
-                L.circle([h.lat!, h.lng!], {
-                    radius: 2400,
-                    color: '#10b981', weight: 1,
-                    fillColor: '#10b981', fillOpacity: 0.04, opacity: 0.30,
-                    dashArray: '6 4',
-                })
-                    .bindTooltip('30 דק׳ הליכה', { permanent: true, direction: 'top', className: 'walking-label' })
-                    .addTo(routeLayer);
-            });
-        }
-
         // Draw route (only in ALL view)
         if (activeCity === 'ALL' && trip && !items && routeStops.length > 0) {
             const STOP_COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626'];
@@ -2286,14 +2245,35 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 L.polyline(pathPoints, { color: primaryColor, weight: 12, opacity: 0.12, lineCap: 'round' }).addTo(routeLayer);
                 L.polyline(pathPoints, { color: 'white', weight: 5.5, opacity: 1, lineCap: 'round' }).addTo(routeLayer);
                 L.polyline(pathPoints, { color: primaryColor, weight: 3.5, opacity: 0.92, dashArray: '10, 6', lineCap: 'round' }).addTo(routeLayer);
-                const arrowIdx = Math.max(1, Math.floor(pathPoints.length * 0.6));
-                const bearing = getBearing(pathPoints[arrowIdx - 1][0], pathPoints[arrowIdx - 1][1], pathPoints[pathPoints.length - 1][0], pathPoints[pathPoints.length - 1][1]);
-                const arrowHtml = `<div style="transform:rotate(${bearing}deg);color:${primaryColor};filter:drop-shadow(0 1px 3px rgba(0,0,0,0.3))">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L19 9H14V22H10V9H5L12 2Z"/></svg>
-                </div>`;
-                L.marker([pathPoints[arrowIdx][0], pathPoints[arrowIdx][1]], {
-                    icon: L.divIcon({ html: arrowHtml, className: '', iconSize: [18, 18], iconAnchor: [9, 9] })
-                }).addTo(routeLayer);
+
+                // Direction chevrons — multiple along the path so the trip
+                // direction reads at any zoom. Curved paths (60 pts) get
+                // three chevrons; straight 2-pt segments get one mid-point.
+                const chevronFractions = pathPoints.length >= 4 ? [0.25, 0.5, 0.75] : [0.5];
+                chevronFractions.forEach(t => {
+                    const idx = Math.min(pathPoints.length - 2, Math.max(0, Math.floor(t * (pathPoints.length - 1))));
+                    const [aLat, aLng] = pathPoints[idx];
+                    const [bLat, bLng] = pathPoints[idx + 1];
+                    const bearing = getBearing(aLat, aLng, bLat, bLng);
+                    // White outline behind the colored chevron so it stays
+                    // readable over both land and sea tiles.
+                    const html = `<div style="
+                        transform:rotate(${bearing}deg);
+                        color:${primaryColor};
+                        filter:drop-shadow(0 0 1px white) drop-shadow(0 0 1px white) drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+                        line-height:0;
+                    ">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4L19 11H14V20H10V11H5L12 4Z"/></svg>
+                    </div>`;
+                    const midLat = (aLat + bLat) / 2;
+                    const midLng = (aLng + bLng) / 2;
+                    L.marker([midLat, midLng], {
+                        icon: L.divIcon({ html, className: '', iconSize: [16, 16], iconAnchor: [8, 8] }),
+                        interactive: false,
+                        zIndexOffset: 1400,
+                    }).addTo(routeLayer);
+                });
+
                 if (badge) {
                     const badgeIdx = Math.floor(pathPoints.length * badgePos);
                     L.marker([pathPoints[badgeIdx][0], pathPoints[badgeIdx][1]], {
@@ -2301,20 +2281,6 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     }).addTo(routeLayer);
                 }
             };
-
-            // Intermediate waypoint pin (e.g. ferry pier). Small diamond.
-            const makeWaypointPin = (name: string, mode: 'ferry' | 'drive' | 'train' | 'flight'): L.DivIcon => {
-                const emoji = mode === 'ferry' ? '⛴' : mode === 'train' ? '🚆' : mode === 'flight' ? '✈️' : '🚗';
-                const html = `<div style="display:inline-flex;align-items:center;gap:4px;background:white;border:1px solid #cbd5e1;border-radius:999px;padding:3px 8px;box-shadow:0 2px 6px rgba(15,23,42,.15);font-family:'Rubik',sans-serif;font-size:10px;font-weight:700;color:#334155;white-space:nowrap;direction:rtl;">
-                    <span style="font-size:11px">${emoji}</span>${name.length > 22 ? name.slice(0, 21) + '…' : name}
-                </div>`;
-                return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 10] });
-            };
-
-            const fmtHours = (h?: number): string | undefined =>
-                typeof h === 'number' && h > 0
-                    ? (h >= 1 ? `~${h.toFixed(h % 1 ? 1 : 0)} שעות` : `~${Math.round(h * 60)} דק׳`)
-                    : undefined;
 
             // Draw lines between stops — multi-segment if AI classified the
             // leg as drive+ferry / multi AND we've geocoded the waypoints.
@@ -2349,9 +2315,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 }
 
                 if (resolvedSegments.length >= 2) {
-                    // Draw each sub-segment with mode-aware colors + per-sub
-                    // badge + intermediate waypoint pin between sub-segments.
-                    resolvedSegments.forEach((sub, subIdx) => {
+                    // Draw each sub-segment with mode-aware line colors only —
+                    // no transport badge, no duration label, no waypoint pin.
+                    // The colored, arrow-decorated polyline alone conveys the
+                    // route; mode/duration text was dropped because estimates
+                    // were inaccurate and cluttered the map.
+                    resolvedSegments.forEach(sub => {
                         const subColor = sub.mode === 'ferry'
                             ? '#0ea5e9'  // sky — "water"
                             : sub.mode === 'flight'
@@ -2360,34 +2329,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                                     ? '#a855f7'
                                     : lineColor; // drive uses the leg's stop color
                         const subPath = curvedPath(sub.from, sub.to);
-                        const subLabel = sub.mode === 'ferry' ? 'מעבורת' : sub.mode === 'train' ? 'רכבת' : sub.mode === 'flight' ? 'טיסה' : 'נסיעה';
-                        const subEmoji = sub.mode === 'ferry' ? '⛴' : sub.mode === 'train' ? '🚆' : sub.mode === 'flight' ? '✈️' : '🚗';
-                        const subDist = getDistanceKm(sub.from.lat, sub.from.lng, sub.to.lat, sub.to.lng);
-                        const subTransport: SegmentTransportInfo = {
-                            mode: sub.mode,
-                            emoji: subEmoji,
-                            label: subLabel,
-                            duration: fmtHours(sub.durationHours),
-                            hasTransportData: true,
-                        };
-                        // Tier-driven badge: tier 1 = emoji-only mini, tier 2 = emoji-only,
-                        // tier 3 = emoji+duration, tier 4 = full label. Showing at tier 1
-                        // means the trip-overview zoom communicates "✈️ / 🚗 / ⛴" at a
-                        // glance instead of just colored lines.
-                        const segTier = labelTier(mapZoom);
-                        const badgeIcon = segTier >= 1 ? makeRouteBadge(subDist, subTransport, subColor, Math.max(1, Math.min(4, segTier)) as 1 | 2 | 3 | 4) : null;
-                        drawSubSegment(subPath, subColor, badgeIcon, 0.5);
+                        drawSubSegment(subPath, subColor, null, 0.5);
                         bounds.extend([sub.from.lat, sub.from.lng]);
                         bounds.extend([sub.to.lat, sub.to.lng]);
-                        // Drop a small intermediate pin at the junction (not at
-                        // the final via which is the leg's end-stop).
-                        const isLast = subIdx === resolvedSegments.length - 1;
-                        if (!isLast) {
-                            const pinIcon = makeWaypointPin(sub.viaName, resolvedSegments[subIdx + 1].mode);
-                            L.marker([sub.to.lat, sub.to.lng], {
-                                icon: pinIcon, zIndexOffset: 1800, interactive: false,
-                            }).addTo(routeLayer);
-                        }
                     });
                 } else {
                     // Single-segment rendering (legacy path).
@@ -2396,22 +2340,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     let transport = getSegmentTransport(start, end, trip, dist, airportCoords);
                     if (aiLeg && aiLeg.mode) {
                         if (transport.mode === 'flight' && transport.hasTransportData) {
-                            // The user's recorded flight wins over an AI 'multi' guess.
-                            // A multi-modal leg with a recorded flight is dominantly a
-                            // flight (most of the distance, most of the time). Only adopt
-                            // AI's duration if it's better; keep mode/emoji/label intact.
-                            if (aiLeg.durationHours) {
-                                transport = { ...transport, duration: fmtHours(aiLeg.durationHours) || transport.duration };
-                            }
+                            // Recorded flight wins; AI's mode/duration is ignored.
                         } else if (aiLeg.mode === 'drive+ferry' || aiLeg.mode === 'multi') {
-                            // Multi-modal AI guess + no recorded flight → coarse 'drive'
-                            // default but adopt AI's emoji/label so the user still sees
-                            // the multi-modal hint on the badge.
+                            // Multi-modal AI guess + no recorded flight → keep
+                            // the coarse 'drive' fallback so the line color
+                            // doesn't pretend to know the exact mode.
                             transport = {
                                 mode: 'drive',
                                 emoji: transportEmojiForMode(aiLeg.mode),
                                 label: aiLeg.notes || transportLabelForMode(aiLeg.mode),
-                                duration: fmtHours(aiLeg.durationHours) || transport.duration,
                                 hasTransportData: true,
                             };
                         } else {
@@ -2420,7 +2357,6 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                                 mode: aiLeg.mode as any,
                                 emoji: transportEmojiForMode(aiLeg.mode),
                                 label: aiLeg.notes || transportLabelForMode(aiLeg.mode),
-                                duration: fmtHours(aiLeg.durationHours) || transport.duration,
                                 hasTransportData: true,
                             };
                         }
@@ -2456,14 +2392,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     const modeColor = isConfidentMode
                         ? (MODE_COLORS[transport.mode as keyof typeof MODE_COLORS]?.line || lineColor)
                         : NEUTRAL_GRAY;
-                    const stagger = 0.45 + (i % 3) * 0.05;
-                    // Render the mode emoji from tier 1 (zoom ≥ 8) so the trip-overview
-                    // shows ✈️ / 🚗 / ⛴ on each leg. Tier-1 puck is small enough that
-                    // even short legs read without overlap; longer legs get richer
-                    // labels at higher zooms.
-                    const segTier = labelTier(mapZoom);
-                    const badgeIcon = (dist >= 5 && segTier >= 1) ? makeRouteBadge(dist, transport, modeColor, Math.max(1, Math.min(4, segTier)) as 1 | 2 | 3 | 4) : null;
-                    drawSubSegment(pathPoints, modeColor, badgeIcon, stagger);
+                    // Transport-mode/duration badges removed — the colored,
+                    // arrow-decorated polyline now carries the route on its own.
+                    drawSubSegment(pathPoints, modeColor, null, 0);
                     bounds.extend([start.coords.lat, start.coords.lng]);
                     bounds.extend([end.coords.lat, end.coords.lng]);
                 }
@@ -2498,7 +2429,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 coords: { lat: number; lng: number };
                 name: string;
                 nums: number[];
-                role: 'start' | 'end' | 'middle';
+                role: 'start' | 'end' | 'middle' | 'roundtrip';
                 colorIdx: number;
             };
             const stopGroups: StopGroup[] = [];
@@ -2516,9 +2447,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 );
                 if (found) {
                     found.nums.push(num);
-                    // 'end' wins (so a Bangkok-start + Bangkok-end group keeps
-                    // the סיום ribbon). Otherwise keep the existing role.
-                    if (role === 'end') found.role = 'end';
+                    // Round-trip: when the same city is BOTH start and end of
+                    // the trip we collapse the two ribbons into a single
+                    // two-tone "התחלה / סיום" badge so they don't stack.
+                    if (role === 'end' && found.role === 'start') found.role = 'roundtrip';
+                    else if (role === 'start' && found.role === 'end') found.role = 'roundtrip';
+                    else if (role === 'end' && found.role !== 'roundtrip') found.role = 'end';
                     else if (role === 'start' && found.role === 'middle') found.role = 'start';
                 } else {
                     // Use the CITY name (`stop.name`) for both the pill label
