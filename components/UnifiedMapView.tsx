@@ -2278,8 +2278,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
                 const icon = makeStopPill(idx + 1, stop.displayName || stop.name, stop.emoji || '📍', color, role);
 
-                L.marker([stop.coords.lat, stop.coords.lng], { icon, zIndexOffset: 2000 })
+                const stopMarker = L.marker([stop.coords.lat, stop.coords.lng], { icon, zIndexOffset: 2000 })
                     .addTo(routeLayer);
+
+                // Tapping the stop pill = same behaviour as tapping the
+                // city button. Lets the user drill into a city directly
+                // from the map without hunting for the chip strip above.
+                stopMarker.on('click', () => {
+                    handleCityPillClick(stop.name);
+                });
 
                 bounds.extend([stop.coords.lat, stop.coords.lng]);
             });
@@ -2439,7 +2446,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     map.stop();
                     map.flyToBounds(targetBounds, {
                         padding: [60, 60],
-                        maxZoom: cityName === 'ALL' ? 11 : 14,
+                        // City view zooms to 15 (was 14) so we cross the
+                        // tier ≥ 3 / zoom ≥ 13 thresholds — restaurant +
+                        // attraction labels reveal, place names appear,
+                        // hotel name labels read clearly.
+                        maxZoom: cityName === 'ALL' ? 11 : 15,
                         duration: 1.0,
                     });
                 }
