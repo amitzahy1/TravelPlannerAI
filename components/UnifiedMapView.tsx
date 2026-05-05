@@ -13,6 +13,7 @@ import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl, toEnglishCountry
 import { isPlaceInTripScope, getTripCountryBbox, getTripCountries, getTripCountryBboxes, placeInTripCountries, getCountryForHotel, coordInTripCountries, coordInTripCities, getTripCityBboxes } from '../utils/tripScope';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
 import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
+import { toast } from '../stores/useToastStore';
 import { MODE_COLORS } from '../utils/transportColors';
 import { MapItemPopup } from './map/MapItemPopup';
 
@@ -2374,6 +2375,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                             hasTransportData: true,
                         };
                     }
+                    // Diagnostic — emit a one-line summary per leg so the user
+                    // can see in console why a leg landed on its mode (e.g.
+                    // "drive" vs "flight"). When the mode is wrong, the log
+                    // tells us whether the trip lacks the relevant flight,
+                    // whether the matcher rejected it, etc.
+                    try {
+                        const flightSummaries = (trip.flights?.segments || []).map(s =>
+                            `${s.fromCode || s.fromCity || '?'}→${s.toCode || s.toCity || '?'}@${s.date || '?'}`,
+                        ).join(' | ');
+                        // eslint-disable-next-line no-console
+                        console.info(
+                            `[Leg] ${start.name}→${end.name} ${Math.round(dist)}km → ${transport.mode} ${transport.emoji} (${transport.label}) | flights: ${flightSummaries || 'none'}`,
+                        );
+                    } catch { /* never throw from a log */ }
                     // Per-mode polyline colour — flight=blue, ferry=cyan,
                     // drive=slate, train=violet, bus=amber. Falls back to
                     // the per-stop colour for unknown modes.
@@ -2953,19 +2968,38 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     hotelName={fixLocationFor.hotelName}
                     onCancel={() => setFixLocationFor(null)}
                     onSave={(url) => {
-                        const coords = extractCoordsFromMapsUrl(url.trim());
+                        const trimmed = url.trim();
+                        const coords = extractCoordsFromMapsUrl(trimmed);
+                        // Short share URLs (maps.app.goo.gl/...) don't expose coords —
+                        // tell the user explicitly so they don't think the modal "ate"
+                        // their input. Same for any URL with no coord patterns.
                         if (!coords) {
-                            return 'לא הצלחתי לזהות קואורדינטות בקישור — ודא שהעתקת קישור מ-Google Maps';
+                            const isShortUrl = /maps\.app\.goo\.gl|goo\.gl\/maps/i.test(trimmed);
+                            return isShortUrl
+                                ? 'הקישור הוא קישור מקוצר ולא מכיל קואורדינטות. פתח אותו ב-Google Maps והעתק את ה-URL המלא משורת הכתובת.'
+                                : 'לא הצלחתי לזהות קואורדינטות בקישור. ודא שהעתקת קישור מ-Google Maps עם נקודה ספציפית (כולל @lat,lng או !3d!4d).';
+                        }
+                        const matched = (trip.hotels || []).find(h => h.id === fixLocationFor.hotelId);
+                        if (!matched) {
+                            // eslint-disable-next-line no-console
+                            console.error('[FixLocation] hotelId not found in trip', fixLocationFor.hotelId);
+                            return 'לא נמצא המלון בנתוני הטיול — נסה לרענן את הדף.';
                         }
                         const updated: Trip = {
                             ...trip,
                             hotels: (trip.hotels || []).map(h =>
                                 h.id === fixLocationFor.hotelId
-                                    ? { ...h, lat: coords.lat, lng: coords.lng, googleMapsUrl: url.trim() }
+                                    ? { ...h, lat: coords.lat, lng: coords.lng, googleMapsUrl: trimmed }
                                     : h,
                             ),
                         };
+                        // eslint-disable-next-line no-console
+                        console.info(
+                            `[FixLocation] saving "${matched.name}" → (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`,
+                            { url: trimmed, hotelId: fixLocationFor.hotelId },
+                        );
                         onUpdateTrip(updated);
+                        toast.success(`המיקום של ${matched.name} עודכן`);
                         setFixLocationFor(null);
                         return null;
                     }}
