@@ -342,7 +342,7 @@ const makePinIcon = (
     label?: string,
     source: 'saved' | 'ai' = 'saved',
     wrap: boolean = false,
-    badge?: { text: string; color: 'amber' | 'blue' | 'emerald' | 'rose' | 'slate' },
+    badge?: { text: string; color: 'amber' | 'blue' | 'emerald' | 'rose' | 'slate' | 'violet' | 'cyan' },
     dayHue?: { c1: string; c2: string },
 ) => {
     // Day-tinted gradient when active filter narrows to a single day. Lets
@@ -383,11 +383,13 @@ const makePinIcon = (
     // of the pin showing rating ("⭐ 8.4") or nights count ("3 ל'") so users
     // can scan quality without clicking. Color-coded.
     const badgeBg: Record<NonNullable<typeof badge>['color'], string> = {
-        amber: '#f59e0b',
+        amber: '#d97706',
         blue: '#2563eb',
-        emerald: '#10b981',
-        rose: '#e11d48',
+        emerald: '#059669',
+        rose: '#dc2626',
         slate: '#64748b',
+        violet: '#7c3aed',
+        cyan: '#0891b2',
     };
     const badgeHtml = badge ? `
         <div style="
@@ -1835,6 +1837,32 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // sees full info inside the city they picked.
         const tier = activeCity !== 'ALL' ? 3 : labelTier(mapZoom);
 
+        // STOP-NUMBER LOOKUP — built once before rendering hotels so each
+        // hotel pin can carry its stage badge ("1", "2", "3") right on the
+        // pin instead of needing a separate stop-pill marker. Lets the user
+        // read the trip route at a glance from the default zoom (without
+        // the badge, the user sees only hotel names with no sequence info).
+        const STOP_COLORS_LOOKUP = ['#2563eb', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626'];
+        const hotelStopMap = new Map<string, { num: number; hex: string }>();
+        if (activeCity === 'ALL' && trip && !items && routeStops.length > 0) {
+            const validStopsForLookup = routeStops.filter(s => s.coords);
+            const tripHotelCoords = (trip?.hotels || [])
+                .filter(h => isValidCoordinate(h.lat, h.lng))
+                .map(h => ({ lat: h.lat as number, lng: h.lng as number }));
+            validStopsForLookup.forEach((stop, idx) => {
+                if (!stop.coords) return;
+                const matched = tripHotelCoords.find(h =>
+                    getDistanceKm(stop.coords!.lat, stop.coords!.lng, h.lat, h.lng) < 0.25,
+                );
+                if (matched) {
+                    const key = `${matched.lat.toFixed(4)},${matched.lng.toFixed(4)}`;
+                    hotelStopMap.set(key, { num: idx + 1, hex: STOP_COLORS_LOOKUP[idx % STOP_COLORS_LOOKUP.length] });
+                }
+            });
+        }
+        const lookupHotelStop = (lat: number, lng: number): { num: number; hex: string } | undefined =>
+            hotelStopMap.get(`${lat.toFixed(4)},${lng.toFixed(4)}`);
+
         // Plot non-airport items with premium pins. Hotels are routed to
         // the unclustered route layer so they're always individually
         // visible as a reference point — even at low zoom where dense
@@ -1862,19 +1890,31 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             const showLabel = item.type === 'hotel' || tier >= 3;
             const wrapLabel = item.type === 'hotel'; // hotel labels always wrap to 2-3 lines
 
-            // Content-bearing badge: rating for hotels/places, nights for
-            // hotels (preferred when available). Lets the user judge quality
-            // before tapping. Hidden at low zoom (the icon-only view is
-            // already busy enough).
-            let badge: { text: string; color: 'amber' | 'blue' | 'emerald' | 'rose' | 'slate' } | undefined;
-            if (tier >= 3) {
+            // Content-bearing badge. Priority:
+            //   1. Stop-number badge for hotels that anchor a trip stage —
+            //      always visible (any zoom). Tells the user "this is stop
+            //      N of the trip" without needing a separate stop pill.
+            //   2. Rating / nights badges (zoom tier ≥ 3 — city level only
+            //      so the regional view stays uncluttered).
+            let badge: { text: string; color: 'amber' | 'blue' | 'emerald' | 'rose' | 'slate' | 'violet' | 'cyan' } | undefined;
+            const hotelStop = item.type === 'hotel' && isValidCoordinate(item.lat, item.lng)
+                ? lookupHotelStop(item.lat as number, item.lng as number)
+                : undefined;
+            if (hotelStop) {
+                // Map the stop's hex color to the closest named badge color so
+                // the badge visually matches its incoming/outgoing route leg.
+                const hexToName: Record<string, NonNullable<typeof badge>['color']> = {
+                    '#2563eb': 'blue', '#7c3aed': 'violet', '#0891b2': 'cyan',
+                    '#059669': 'emerald', '#d97706': 'amber', '#dc2626': 'rose',
+                };
+                badge = { text: String(hotelStop.num), color: hexToName[hotelStop.hex] || 'blue' };
+            } else if (tier >= 3) {
                 if (item.type === 'hotel') {
                     const nights = (item as any).nights;
                     if (typeof nights === 'number' && nights > 0) {
                         badge = { text: `${nights} ל'`, color: 'blue' };
                     } else if (typeof item.rating === 'number' && item.rating > 0) {
-                        const r = item.rating > 5 ? item.rating.toFixed(1) : item.rating.toFixed(1);
-                        badge = { text: `⭐ ${r}`, color: 'amber' };
+                        badge = { text: `⭐ ${item.rating.toFixed(1)}`, color: 'amber' };
                     }
                 } else if (typeof item.rating === 'number' && item.rating > 0) {
                     badge = { text: `⭐ ${item.rating.toFixed(1)}`, color: 'amber' };
@@ -2204,12 +2244,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         ? 'end'
                         : 'middle';
 
-                // Skip the route-stop emoji pill when it coincides with a
-                // hotel and the user is in the trip-overview zoom (the
-                // hotel pin is already there with a name label). At higher
-                // zooms we render both so the numbered sequence stays visible.
+                // Skip the standalone stop pill when it coincides with a
+                // hotel — the hotel pin now carries the stage-number badge
+                // (built into the hotelStopMap above), so a separate pill
+                // would just double-render. For non-hotel transit cities
+                // (no hotel at this stop) the pill renders at ALL zooms so
+                // the trip's chronological story is always readable.
                 const isOnHotel = stopCoincidesWithHotel(stop.coords.lat, stop.coords.lng);
-                if (isOnHotel && tier <= 2) {
+                if (isOnHotel) {
                     bounds.extend([stop.coords.lat, stop.coords.lng]);
                     return;
                 }

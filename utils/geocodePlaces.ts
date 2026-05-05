@@ -232,15 +232,24 @@ const cacheKey = (name: string, location: string): string =>
  */
 export const extractCoordsFromMapsUrl = (url?: string): { lat: number; lng: number } | null => {
         if (!url) return null;
+        // Order matters: place-pin coords (!3d!4d) must come before viewport
+        // coords (@lat,lng) because a typical Google Maps share URL contains
+        // BOTH — the @ form is the user's last viewport center (often shifted
+        // away from the actual pin) while !3d!4d marks the canonical place
+        // location. Real-world example that exposed this bug:
+        //   /maps/place/KC+Grande+Resort+Koh+Chang/@12.0957,102.2655,11z/...
+        //     !3d12.1102!4d102.2696
+        // The viewport (@) sits 2 km away from the pin (!3d!4d) — pinning
+        // the hotel via @ rendered it on the mainland instead of the island.
         const matchers: RegExp[] = [
-                /@(-?\d+\.\d+),(-?\d+\.\d+)/,                                  // /@lat,lng
+                /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,                               // !3dlat!4dlng (place URLs — most authoritative)
                 /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,                              // ?q=lat,lng
                 /[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/,                             // ?ll=lat,lng
-                /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,                               // !3dlat!4dlng (place URLs)
+                /[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/,                          // /maps/search?api=1&query=lat,lng
                 /destination=(-?\d+\.\d+),(-?\d+\.\d+)/,                        // /maps/dir destination
                 /[?&]center=(-?\d+\.\d+),(-?\d+\.\d+)/,                         // ?center=lat,lng (newer share pages)
-                /[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/,                          // /maps/search?api=1&query=lat,lng
                 /[?&]daddr=(-?\d+\.\d+),(-?\d+\.\d+)/,                          // legacy directions destination
+                /@(-?\d+\.\d+),(-?\d+\.\d+)/,                                   // /@lat,lng (viewport — last-resort fallback)
         ];
         for (const re of matchers) {
                 const m = url.match(re);
