@@ -904,21 +904,54 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     // !3d!4d had the correct north-island coords). The previous
                     // 2km tolerance let drifted-but-not-by-much saved coords
                     // win — too loose. Now: URL > saved > geocode-cache.
-                    const urlCoords = extractCoordsFromMapsUrl(h.googleMapsUrl);
+                    // FULL hotel-record dump so we can see every field stored on
+                    // the trip's hotel — including any URL-like field that
+                    // might NOT be named `googleMapsUrl`. The diagnostic
+                    // showed all hotels reporting hasUrl=N, but the user
+                    // expected URLs to be there — so dump everything and find
+                    // out what's actually stored.
+                    try {
+                        const recordSnapshot: Record<string, unknown> = {};
+                        Object.keys(h).forEach(k => {
+                            const v = (h as any)[k];
+                            if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || v == null) {
+                                recordSnapshot[k] = v;
+                            } else if (Array.isArray(v)) {
+                                recordSnapshot[k] = `[Array(${v.length})]`;
+                            } else if (typeof v === 'object') {
+                                recordSnapshot[k] = `[Object: ${Object.keys(v).join(',')}]`;
+                            }
+                        });
+                        // eslint-disable-next-line no-console
+                        console.info(`[HotelRecord] ${h.name}`, recordSnapshot);
+                    } catch { /* never throw from a log */ }
+
+                    // Try multiple URL-like fields, not just googleMapsUrl.
+                    const candidateUrls: Array<string | undefined> = [
+                        h.googleMapsUrl,
+                        (h as any).mapsUrl,
+                        (h as any).url,
+                        (h as any).link,
+                        (h as any).bookingUrl,
+                    ];
+                    let urlCoords: { lat: number; lng: number } | null = null;
+                    let urlSource = '';
+                    for (const candidate of candidateUrls) {
+                        const c = extractCoordsFromMapsUrl(candidate);
+                        if (c) { urlCoords = c; urlSource = candidate || ''; break; }
+                    }
+
                     let finalLat = h.lat;
                     let finalLng = h.lng;
-                    // Verbose per-hotel diagnostic so we can see ALL the inputs
-                    // for any misplaced pin in one console line. Format:
-                    //   [Hotel] Name | saved=(lat,lng) | url=(lat,lng OR none) | hasUrl=Y/N
                     try {
                         const sLat = typeof h.lat === 'number' ? h.lat.toFixed(4) : 'n/a';
                         const sLng = typeof h.lng === 'number' ? h.lng.toFixed(4) : 'n/a';
                         const uStr = urlCoords ? `(${urlCoords.lat.toFixed(4)}, ${urlCoords.lng.toFixed(4)})` : 'none';
-                        const hasUrlStr = h.googleMapsUrl ? 'Y' : 'N';
-                        const urlPreview = h.googleMapsUrl ? h.googleMapsUrl.slice(0, 80) + (h.googleMapsUrl.length > 80 ? '…' : '') : '';
+                        const urlPreview = urlSource ? urlSource.slice(0, 100) : '';
                         // eslint-disable-next-line no-console
-                        console.info(`[Hotel] ${h.name} | saved=(${sLat}, ${sLng}) | url=${uStr} | hasUrl=${hasUrlStr}${urlPreview ? ` | rawUrl="${urlPreview}"` : ''}`);
+                        console.info(`[Hotel] ${h.name} | saved=(${sLat}, ${sLng}) | url=${uStr}${urlPreview ? ` | from="${urlPreview}…"` : ''}`);
                     } catch { /* never throw from a log */ }
+
                     if (urlCoords) {
                         finalLat = urlCoords.lat;
                         finalLng = urlCoords.lng;
