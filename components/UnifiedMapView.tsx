@@ -569,20 +569,41 @@ const endpointDistanceKm = (
     return getDistanceKm(endpointLat!, endpointLng!, stop.coords.lat, stop.coords.lng);
 };
 
-const AIRPORT_PROXIMITY_KM = 120;
+// Generous proximity radius — Bangkok metro alone is ~50 km wide, BKK is
+// 25 km out of centre, so 120 km was leaving real flight matches behind.
+// 200 km still rules out flights that aren't part of the same trip leg.
+const AIRPORT_PROXIMITY_KM = 200;
+
+// Minimum leg distance before we'll *infer* flight mode in the absence of
+// any matching transport record. Within Thailand most travel under ~600 km
+// is by road (Bangkok-Pattaya is 150 km, Bangkok-Koh Chang ~315 km — both
+// drives). Above 600 km it's almost always a flight.
+const FLIGHT_INFERENCE_DIST_KM = 600;
+
+const stopCheckTs = (s: RouteStop): number | null => {
+    if (!s.date) return null;
+    const t = new Date(s.date).getTime();
+    return isFinite(t) && t > 0 ? t : null;
+};
 
 const getSegmentTransport = (
     fromStop: RouteStop, toStop: RouteStop, trip: Trip, distKm: number,
     airportCoords: Record<string, { lat: number; lng: number }>,
 ): SegmentTransportInfo => {
-    // 1. Flight match — distance-based. Tries each flight segment: if its
-    //    departure airport is within 120 km of fromStop AND its arrival
-    //    airport is within 120 km of toStop, it's the same leg.
-    //    This catches cases like Trat airport ↔ Koh Chang hotel.
+    // 1. Flight match — multi-signal so a flight record matches even when
+    //    its airport hasn't been geocoded yet:
+    //      • geographic proximity (both endpoints within 200 km of the
+    //        flight's airports)
+    //      • OR an exact city/IATA code string match
+    //      • OR the flight's departure date sits inside the leg window
+    //        (between fromStop's date and toStop's date) AND at least one
+    //        endpoint is geographically close — catches "drive to TDX,
+    //        fly TDX → BKK, drive to Bangkok hotel" where the leg's
+    //        endpoints are the hotels (not the airports).
     const segs = trip.flights?.segments || [];
+    const fromTs = stopCheckTs(fromStop);
+    const toTs = stopCheckTs(toStop);
     const matchedFlight = segs.find(s => {
-        // Prefer coords lookup by IATA code (airportCoords is populated
-        // from the geocode cache keyed on "XXX Airport" or the city name).
         const fromKey = (s.fromCode || s.fromCity || '').toLowerCase();
         const toKey = (s.toCode || s.toCity || '').toLowerCase();
         const fromC = airportCoords[fromKey] || airportCoords[(s.fromCity || '').toLowerCase()];
@@ -593,6 +614,17 @@ const getSegmentTransport = (
 
         // Primary: both endpoints geographically near the stops.
         if (fromDist <= AIRPORT_PROXIMITY_KM && toDist <= AIRPORT_PROXIMITY_KM) return true;
+
+        // Date-window match: when the flight date sits between the stops'
+        // checkInDates (or within ±1 day), accept a one-sided geographic
+        // match. Handles the common case where the leg is hotel-to-hotel
+        // and the flight is one of multiple transport modes inside it.
+        if (s.date && fromTs && toTs) {
+            const sTs = new Date(s.date).getTime();
+            if (isFinite(sTs) && sTs >= fromTs - 24 * 3600 * 1000 && sTs <= toTs + 24 * 3600 * 1000) {
+                if (fromDist <= AIRPORT_PROXIMITY_KM || toDist <= AIRPORT_PROXIMITY_KM) return true;
+            }
+        }
 
         // Fallback: exact city/code string match (kept so flights without
         // geocoded airports still match).
@@ -648,11 +680,21 @@ const getSegmentTransport = (
         };
     }
 
-    // 3. Default: drive. We explicitly do NOT guess "flight?" for long
-    //    distances anymore — the user's convention is "if no flight is
-    //    recorded, assume we're driving". This also removes the noisy
-    //    "חסר מידע" warning badge.
-    return { mode: 'drive', emoji: '🚗', label: 'נסיעה', hasTransportData: true };
+    // 3. Long-haul inference: when no transport record matches BUT the leg
+    //    spans more than ~600 km, treat it as a flight. Within Thailand
+    //    everyone flies that distance (and globally too). Without this the
+    //    final Koh Chang → Bangkok hotel leg shows as a 'drive' even when
+    //    the user took TDX → BKK because the trip records the flight only
+    //    as a date-tagged segment whose airports differ from the hotel
+    //    stops at both ends.
+    if (distKm >= FLIGHT_INFERENCE_DIST_KM) {
+        return { mode: 'flight', emoji: '✈️', label: 'טיסה', hasTransportData: false };
+    }
+
+    // 4. Default: drive. The user's convention is "if no flight is recorded,
+    //    we're driving." We mark `hasTransportData: false` so the renderer
+    //    can choose to soften the colour for unconfirmed inferences.
+    return { mode: 'drive', emoji: '🚗', label: 'נסיעה', hasTransportData: false };
 };
 
 const estimateTravelTime = (distKm: number, mode: string): string => {
@@ -695,32 +737,32 @@ const makeRouteBadge = (
     tier: 1 | 2 | 3 | 4 = 4,
 ): L.DivIcon => {
     const displayTime = transport.duration || estimateTravelTime(distKm, transport.mode);
-    // Tier 1 (regional/zoom~8): tiny emoji-only puck, lighter shadow — keeps
-    //   the trip-overview readable at a glance ("✈️ here, 🚗 there").
-    // Tier 2 (metro): emoji-only chip, no text. Conveys mode without overlap.
-    // Tier 3 (city): emoji + duration. Drops kilometers.
-    // Tier 4 (street): full label "emoji label · time · distance" — original.
+    // Every tier shows the mode emoji + duration so a glance at the route
+    // line answers "by what, how long". Higher tiers add the mode label and
+    // the distance.
+    //   tier 1 (regional, zoom ≥ 8) — bigger emoji + duration
+    //   tier 2 (metro,    zoom ≥ 10) — same as tier 1, slightly larger
+    //   tier 3 (city,     zoom ≥ 12) — adds nothing extra (still emoji + duration)
+    //   tier 4 (street,   zoom ≥ 14) — full label "emoji label · time · distance"
     let inner: string;
-    if (tier === 1) {
-        inner = `<span style="font-size:11px;line-height:1">${transport.emoji}</span>`;
-    } else if (tier === 2) {
-        inner = `<span style="font-size:13px;line-height:1">${transport.emoji}</span>`;
-    } else if (tier === 3) {
+    if (tier === 4) {
         inner = `
-            <span style="font-size:12px;line-height:1">${transport.emoji}</span>
-            <span style="font-size:10px;color:#475569;font-weight:700">${displayTime}</span>
+            <span style="font-size:15px;line-height:1">${transport.emoji}</span>
+            <span style="font-size:11px;font-weight:800;color:${color};letter-spacing:.01em">${transport.label}</span>
+            <span style="color:#cbd5e1;font-size:9px">•</span>
+            <span style="font-size:11px;color:#334155;font-weight:800">${displayTime}</span>
+            <span style="color:#cbd5e1;font-size:9px">•</span>
+            <span style="font-size:11px;color:#475569;font-weight:600">${fmtDistKm(distKm)}</span>
         `;
     } else {
+        const emojiSize = tier === 1 ? 16 : 17;
+        const textSize = tier === 1 ? 11 : 12;
         inner = `
-            <span style="font-size:12px;line-height:1">${transport.emoji}</span>
-            <span style="font-size:10px;font-weight:800;color:${color};letter-spacing:.01em">${transport.label}</span>
-            <span style="color:#cbd5e1;font-size:8px">•</span>
-            <span style="font-size:10px;color:#475569;font-weight:700">${displayTime}</span>
-            <span style="color:#cbd5e1;font-size:8px">•</span>
-            <span style="font-size:10px;color:#475569;font-weight:600">${fmtDistKm(distKm)}</span>
+            <span style="font-size:${emojiSize}px;line-height:1">${transport.emoji}</span>
+            <span style="font-size:${textSize}px;color:#334155;font-weight:800;line-height:1">${displayTime}</span>
         `;
     }
-    const padding = tier === 1 ? '2px 5px' : tier === 2 ? '4px 6px' : '3px 9px 3px 8px';
+    const padding = tier === 1 ? '4px 8px' : tier === 2 ? '5px 9px' : '4px 10px';
     const html = `<div style="
         display:inline-flex;align-items:center;gap:5px;
         background:white;border-radius:999px;
@@ -795,11 +837,19 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     // tier/visibility state.
     const popupOpenRef = useRef(false);
     const [popupRebuildToken, setPopupRebuildToken] = useState(0);
-    // Reset on deliberate context switches: different trip OR different
-    // city filter. The user expects a fresh fit in those cases.
+    // Reset only on a different trip — that's the one context where a
+    // brand-new auto-fit is unambiguously desired. activeCity changes used
+    // to also reset this ref, but doing so caused a race: when a chip click
+    // both (a) bumped activeCity and (b) dispatched a setFlyTo, the reset
+    // ran first → marker effect's applyBounds snapped the camera with the
+    // OLD bounds → then flyTo animated to the right place. Net result was
+    // the user perceiving "needs two taps to zoom in". The chip handlers in
+    // FullTripMapView and UnifiedMapView's own internal handleCityPillClick
+    // already drive the camera explicitly, so applyBounds should NOT also
+    // re-fit on activeCity change.
     useEffect(() => {
         userInteractedRef.current = false;
-    }, [trip?.id, activeCity]);
+    }, [trip?.id]);
 
     // Sync externally-controlled city → internal state. When
     // `controlledActiveCity` is `undefined` the component manages its own
