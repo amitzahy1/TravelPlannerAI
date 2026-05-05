@@ -441,16 +441,16 @@ const makePinIcon = (
 const makeStopPill = (
     num: number,
     name: string,
-    emoji: string,
+    _emoji: string,
     color: string,
     role: 'start' | 'end' | 'middle' = 'middle',
 ) => {
-    // City names are intentionally NOT shown on the route stop pill —
-    // they overlap with the hotel-name labels in the same city. The user
-    // already knows which cities they're visiting (the city filter pill
-    // at the top of the map shows them). We only render the number + an
-    // optional emoji here so the pill stays compact + collision-free.
-    void name; // unused — kept in the signature for API symmetry
+    void _emoji; // dropped — number + city name is enough; emoji is noise
+    // Truncate long city names so the pill stays scannable
+    const safeName = (name || '').trim();
+    const displayName = safeName.length > 16 ? safeName.slice(0, 15) + '…' : safeName;
+    const escapedName = displayName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
     // Role ribbon — appears above stop #1 and the final stop so the user
     // sees the trip's beginning + end at a glance.
     const ribbonText = role === 'start' ? 'התחלה' : role === 'end' ? 'סיום' : '';
@@ -459,43 +459,48 @@ const makeStopPill = (
         <div style="
             background:${ribbonBg};color:#fff;font-size:9px;font-weight:900;
             text-transform:uppercase;letter-spacing:0.4px;
-            padding:2px 8px;border-radius:999px;margin-bottom:3px;
+            padding:2px 8px;border-radius:999px;margin-bottom:4px;
             box-shadow:0 2px 6px rgba(15,23,42,0.25);
             font-family:'Rubik','Inter',sans-serif;
             display:inline-block;
         ">${ribbonText}</div>
     ` : '';
     const ringStyle = role === 'start'
-        ? 'box-shadow:0 0 0 3px #10b981,0 3px 10px rgba(15,23,42,0.18);'
+        ? 'box-shadow:0 0 0 3px #10b981,0 4px 14px rgba(15,23,42,0.22);'
         : role === 'end'
-            ? 'box-shadow:0 0 0 3px #0f172a,0 3px 10px rgba(15,23,42,0.18);'
-            : 'box-shadow:0 3px 10px rgba(15,23,42,0.18),0 1px 3px rgba(15,23,42,0.08);';
+            ? 'box-shadow:0 0 0 3px #0f172a,0 4px 14px rgba(15,23,42,0.22);'
+            : 'box-shadow:0 4px 14px rgba(15,23,42,0.22),0 1px 3px rgba(15,23,42,0.10);';
     const html = `
         <div style="display:inline-flex;flex-direction:column;align-items:center;">
             ${ribbonHtml}
             <div style="
-                display:inline-flex; align-items:center; justify-content:center; gap:3px;
+                display:inline-flex; align-items:center; gap:6px;
                 background:white;
                 border-radius:999px;
-                padding:3px 8px;
+                padding:4px 12px 4px 6px;
                 ${ringStyle}
                 border:1px solid rgba(255,255,255,0.9);
                 white-space:nowrap;
                 font-family:'Rubik','Inter',sans-serif;
+                direction:rtl;
             ">
                 <div style="
-                    width:22px; height:22px; border-radius:50%;
+                    width:28px; height:28px; border-radius:50%;
                     background:linear-gradient(135deg,${color},${color}cc);
-                    color:white; font-weight:900; font-size:11px;
+                    color:white; font-weight:900; font-size:16px; line-height:1;
                     display:flex; align-items:center; justify-content:center;
-                    box-shadow:0 2px 6px ${color}50;
+                    box-shadow:0 2px 6px ${color}66, inset 0 0 0 2px rgba(255,255,255,0.92);
                     flex-shrink:0;
                 ">${num}</div>
-                <span style="font-size:13px;line-height:1;">${emoji}</span>
+                ${displayName ? `<span style="font-size:13px;font-weight:800;color:#0f172a;letter-spacing:-0.01em;">${escapedName}</span>` : ''}
             </div>
         </div>
     `;
-    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [22, role === 'middle' ? 16 : 32] });
+    // Anchor at the bottom-center of the pill so the marker plants on its
+    // actual lat/lng. The new pill is roughly 36 px tall (28 px circle +
+    // 8 px padding); add 22 px when a ribbon is present.
+    const anchorY = role === 'middle' ? 18 : 40;
+    return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [50, anchorY] });
 };
 
 // --- ROUTE INFO BADGE (travel time/distance/mode between stops) ---
@@ -903,6 +908,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     let finalLat = h.lat;
                     let finalLng = h.lng;
                     if (urlCoords) {
+                        // Diagnostic log so the user can verify in DevTools that
+                        // the new chunk is loaded and the override is firing.
+                        // Format: "[Map] HotelName: URL (lat, lng) → override saved (lat, lng)"
+                        try {
+                            const sLat = typeof h.lat === 'number' ? h.lat.toFixed(4) : 'n/a';
+                            const sLng = typeof h.lng === 'number' ? h.lng.toFixed(4) : 'n/a';
+                            // eslint-disable-next-line no-console
+                            console.info(`[Map] ${h.name}: URL coords (${urlCoords.lat.toFixed(4)}, ${urlCoords.lng.toFixed(4)}) override saved (${sLat}, ${sLng})`);
+                        } catch { /* never throw from a log */ }
                         finalLat = urlCoords.lat;
                         finalLng = urlCoords.lng;
                     }
@@ -2396,7 +2410,42 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             }
         }
 
-        // Single tap (or first tap on this city) — let the marker effect refit.
+        // Single tap (or first tap on this city). Compute target bounds and
+        // fly the camera DIRECTLY — don't rely on the marker effect's
+        // applyBounds chain (gated by userInteractedRef and other guards
+        // that can race against the click). The marker effect will still
+        // fire to refresh items, but the camera move is decoupled and
+        // happens immediately.
+        if (map) {
+            const targetItems = cityName === 'ALL'
+                ? mapItems.filter(i => isValidCoordinate(i.lat, i.lng) && i.type !== 'airport')
+                : (() => {
+                    const targetKey = cityKey(cityName);
+                    const keywords = getCityKeywords(cityName);
+                    return mapItems.filter(i => {
+                        if (!isValidCoordinate(i.lat, i.lng)) return false;
+                        if (i.type === 'airport') return false;
+                        if (targetKey && cityKey(i.city || '') === targetKey) return true;
+                        const addr = (i.address || '').toLowerCase();
+                        const iCity = (i.city || '').toLowerCase();
+                        return keywords.some(kw => addr.includes(kw) || iCity.includes(kw));
+                    });
+                })();
+
+            if (targetItems.length > 0) {
+                const targetBounds = L.latLngBounds(targetItems.map(i => [i.lat as number, i.lng as number] as [number, number]));
+                if (targetBounds.isValid()) {
+                    userInteractedRef.current = false;
+                    map.stop();
+                    map.flyToBounds(targetBounds, {
+                        padding: [60, 60],
+                        maxZoom: cityName === 'ALL' ? 11 : 14,
+                        duration: 1.0,
+                    });
+                }
+            }
+        }
+
         setActiveCity(cityName);
         lastCityClickRef.current = { city: cityName, ts: now, idx: -1 };
     };
