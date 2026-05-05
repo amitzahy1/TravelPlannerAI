@@ -907,16 +907,19 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     const urlCoords = extractCoordsFromMapsUrl(h.googleMapsUrl);
                     let finalLat = h.lat;
                     let finalLng = h.lng;
+                    // Verbose per-hotel diagnostic so we can see ALL the inputs
+                    // for any misplaced pin in one console line. Format:
+                    //   [Hotel] Name | saved=(lat,lng) | url=(lat,lng OR none) | hasUrl=Y/N
+                    try {
+                        const sLat = typeof h.lat === 'number' ? h.lat.toFixed(4) : 'n/a';
+                        const sLng = typeof h.lng === 'number' ? h.lng.toFixed(4) : 'n/a';
+                        const uStr = urlCoords ? `(${urlCoords.lat.toFixed(4)}, ${urlCoords.lng.toFixed(4)})` : 'none';
+                        const hasUrlStr = h.googleMapsUrl ? 'Y' : 'N';
+                        const urlPreview = h.googleMapsUrl ? h.googleMapsUrl.slice(0, 80) + (h.googleMapsUrl.length > 80 ? '…' : '') : '';
+                        // eslint-disable-next-line no-console
+                        console.info(`[Hotel] ${h.name} | saved=(${sLat}, ${sLng}) | url=${uStr} | hasUrl=${hasUrlStr}${urlPreview ? ` | rawUrl="${urlPreview}"` : ''}`);
+                    } catch { /* never throw from a log */ }
                     if (urlCoords) {
-                        // Diagnostic log so the user can verify in DevTools that
-                        // the new chunk is loaded and the override is firing.
-                        // Format: "[Map] HotelName: URL (lat, lng) → override saved (lat, lng)"
-                        try {
-                            const sLat = typeof h.lat === 'number' ? h.lat.toFixed(4) : 'n/a';
-                            const sLng = typeof h.lng === 'number' ? h.lng.toFixed(4) : 'n/a';
-                            // eslint-disable-next-line no-console
-                            console.info(`[Map] ${h.name}: URL coords (${urlCoords.lat.toFixed(4)}, ${urlCoords.lng.toFixed(4)}) override saved (${sLat}, ${sLng})`);
-                        } catch { /* never throw from a log */ }
                         finalLat = urlCoords.lat;
                         finalLng = urlCoords.lng;
                     }
@@ -2391,6 +2394,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         const now = Date.now();
         const last = lastCityClickRef.current;
         const map = mapInstanceRef.current;
+        // eslint-disable-next-line no-console
+        console.info(`[CityClick] ${cityName} | mapReady=${!!map} | mapItems=${mapItems.length} | popupOpen=${popupOpenRef.current}`);
 
         // Close any open popup so the marker-render effect can rebuild for
         // the new city (popupOpenRef would otherwise short-circuit it).
@@ -2439,11 +2444,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     });
                 })();
 
+            // eslint-disable-next-line no-console
+            console.info(`[CityClick] ${cityName} → targetItems=${targetItems.length}`, targetItems.slice(0, 5).map(i => ({ name: i.name, type: i.type, lat: i.lat, lng: i.lng, city: i.city })));
             if (targetItems.length > 0) {
                 const targetBounds = L.latLngBounds(targetItems.map(i => [i.lat as number, i.lng as number] as [number, number]));
                 if (targetBounds.isValid()) {
                     userInteractedRef.current = false;
                     map.stop();
+                    // eslint-disable-next-line no-console
+                    console.info(`[CityClick] flyToBounds firing: ${cityName}`, { padding: 60, maxZoom: cityName === 'ALL' ? 11 : 15 });
                     map.flyToBounds(targetBounds, {
                         padding: [60, 60],
                         // City view zooms to 15 (was 14) so we cross the
@@ -2453,7 +2462,13 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         maxZoom: cityName === 'ALL' ? 11 : 15,
                         duration: 1.0,
                     });
+                } else {
+                    // eslint-disable-next-line no-console
+                    console.warn(`[CityClick] ${cityName} → bounds invalid`);
                 }
+            } else {
+                // eslint-disable-next-line no-console
+                console.warn(`[CityClick] ${cityName} → no items matched the filter; check city/address fields`);
             }
         }
 
