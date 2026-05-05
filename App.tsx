@@ -389,7 +389,7 @@ const AppContent: React.FC = () => {
               return <AttractionsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
             case 'itinerary': return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdate} onSwitchTab={setCurrentTab} onRefresh={() => { }} />;
             case 'hotels': return <HotelsView trip={activeTrip} onUpdateTrip={handleUpdate} />;
-            case 'map_full': return <FullTripMapView trip={activeTrip} title="מפת הטיול המלאה" onSwitchTab={setCurrentTab} />;
+            case 'map_full': return <FullTripMapView trip={activeTrip} title="מפת הטיול המלאה" onSwitchTab={setCurrentTab} onUpdateTrip={handleUpdate} />;
             default: return <ItineraryView trip={activeTrip} onUpdateTrip={handleUpdate} onSwitchTab={setCurrentTab} />;
           }
         })()}

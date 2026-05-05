@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, Star, Trophy, Calendar, ChevronLeft, Plus, Check, Hotel, Utensils, Plane, Camera } from 'lucide-react';
+import { MapPin, Star, Trophy, Calendar, ChevronLeft, Plus, Check, Hotel, Utensils, Plane, Camera, Crosshair } from 'lucide-react';
 import { safeMapsUrl } from '../../utils/mapsUrl';
 import { getFoodImage, getAttractionImage } from '../../services/imageMapper';
 import { resolveRealPlaceImage } from '../../services/placeImageService';
@@ -46,6 +46,11 @@ interface Props {
         item: PopupItem;
         onAddToList?: () => void;
         isAdded?: boolean;
+        // Hotel-only — wired by UnifiedMapView when the parent provides
+        // onUpdateTrip. Lets the user paste a Google Maps URL to override
+        // a wrong auto-geocode (e.g. KC Grande Resort Koh Chang showing
+        // south of the island).
+        onFixLocation?: () => void;
 }
 
 const useFallbackImage = (item: PopupItem): string | null => {
@@ -94,7 +99,7 @@ const summarizeNote = (raw: string): { short: string; truncated: boolean } => {
  * four item types (hotel / restaurant / attraction / airport). Type-specific
  * colour comes from TYPE_CONFIG.
  */
-export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = false }) => {
+export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = false, onFixLocation }) => {
         const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.hotel;
         const dateLabel = parseDateLabel(item.date);
         const mapsLink = safeMapsUrl(item.googleMapsUrl, item.name, item.address);
@@ -213,6 +218,16 @@ export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = fal
                                                 >
                                                         {isAdded ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                                                         {isAdded ? 'נשמר' : 'הוסף'}
+                                                </button>
+                                        )}
+                                        {onFixLocation && item.type === 'hotel' && (
+                                                <button
+                                                        onClick={(e) => { e.stopPropagation(); onFixLocation(); }}
+                                                        title="תקן מיקום על ידי הדבקת קישור Google Maps"
+                                                        className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md border bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
+                                                >
+                                                        <Crosshair className="w-3 h-3" />
+                                                        תקן מיקום
                                                 </button>
                                         )}
                                         <a

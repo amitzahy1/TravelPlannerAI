@@ -111,6 +111,15 @@ interface UnifiedMapViewProps {
     // Lowercased name set used by the popup to detect when an AI suggestion
     // is already saved (toggles the CTA into a "✓ saved" state).
     savedNames?: Set<string>;
+    // Wrapper-supplied trip mutation. When set, the hotel popup gets a
+    // "תקן מיקום" pill that opens a Google-Maps-URL paste modal — pasted
+    // coords are written back via this callback (lat / lng / googleMapsUrl).
+    onUpdateTrip?: (trip: Trip) => void;
+    // Fired once the geocoding pipeline produces a snapshot of resolved items
+    // (each with valid lat/lng). Wrappers like FullTripMapView use it to
+    // compute city bounds for the chip-strip click handler without owning
+    // the geocoder themselves.
+    onItemsResolved?: (items: Array<{ id: string; type: string; name: string; lat: number; lng: number; city?: string }>) => void;
 }
 
 const STORAGE_KEY = 'travel_app_geo_cache_v6';
@@ -438,17 +447,19 @@ const makePinIcon = (
 };
 
 // --- ROUTE STOP PILL ---
+// `nums` is an array so a city visited at multiple chronological points
+// (Bangkok start + Bangkok end) renders as ONE pill with two number discs
+// instead of two pills stacked on top of each other (one hiding behind the
+// other).
 const makeStopPill = (
-    num: number,
+    nums: number[],
     name: string,
-    _emoji: string,
     color: string,
     role: 'start' | 'end' | 'middle' = 'middle',
 ) => {
-    void _emoji; // dropped — number + city name is enough; emoji is noise
-    // Truncate long city names so the pill stays scannable
+    // Truncate aggressively so two pills can sit side-by-side without crowding.
     const safeName = (name || '').trim();
-    const displayName = safeName.length > 16 ? safeName.slice(0, 15) + '…' : safeName;
+    const displayName = safeName.length > 11 ? safeName.slice(0, 10) + '…' : safeName;
     const escapedName = displayName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     // Role ribbon — appears above stop #1 and the final stop so the user
@@ -457,49 +468,75 @@ const makeStopPill = (
     const ribbonBg = role === 'start' ? '#10b981' : role === 'end' ? '#0f172a' : '';
     const ribbonHtml = ribbonText ? `
         <div style="
-            background:${ribbonBg};color:#fff;font-size:9px;font-weight:900;
+            background:${ribbonBg};color:#fff;font-size:8px;font-weight:900;
             text-transform:uppercase;letter-spacing:0.4px;
-            padding:2px 8px;border-radius:999px;margin-bottom:4px;
+            padding:1px 6px;border-radius:999px;margin-bottom:3px;
             box-shadow:0 2px 6px rgba(15,23,42,0.25);
             font-family:'Rubik','Inter',sans-serif;
             display:inline-block;
         ">${ribbonText}</div>
     ` : '';
     const ringStyle = role === 'start'
-        ? 'box-shadow:0 0 0 3px #10b981,0 4px 14px rgba(15,23,42,0.22);'
+        ? 'box-shadow:0 0 0 2px #10b981,0 3px 10px rgba(15,23,42,0.20);'
         : role === 'end'
-            ? 'box-shadow:0 0 0 3px #0f172a,0 4px 14px rgba(15,23,42,0.22);'
-            : 'box-shadow:0 4px 14px rgba(15,23,42,0.22),0 1px 3px rgba(15,23,42,0.10);';
+            ? 'box-shadow:0 0 0 2px #0f172a,0 3px 10px rgba(15,23,42,0.20);'
+            : 'box-shadow:0 3px 10px rgba(15,23,42,0.18),0 1px 2px rgba(15,23,42,0.08);';
+
+    // Build the number disc(s). 1 → single disc. 2 → two overlapping discs
+    // (chain-link). 3+ → first…last, with a tooltip listing all numbers.
+    const discStyle = `
+        width:22px; height:22px; border-radius:50%;
+        background:linear-gradient(135deg,${color},${color}cc);
+        color:white; font-weight:900; font-size:12px; line-height:1;
+        display:inline-flex; align-items:center; justify-content:center;
+        box-shadow:0 2px 5px ${color}55, inset 0 0 0 1.5px rgba(255,255,255,0.92);
+        flex-shrink:0;
+    `;
+    const sortedNums = [...nums].sort((a, b) => a - b);
+    let discsHtml: string;
+    if (sortedNums.length === 1) {
+        discsHtml = `<div style="${discStyle}">${sortedNums[0]}</div>`;
+    } else if (sortedNums.length === 2) {
+        // Two discs slightly overlapping (-6 px) so they read as a pair.
+        discsHtml = `
+            <div style="display:inline-flex;align-items:center;flex-shrink:0;">
+                <div style="${discStyle}">${sortedNums[0]}</div>
+                <div style="${discStyle}margin-right:-6px;border:1.5px solid white;">${sortedNums[1]}</div>
+            </div>
+        `;
+    } else {
+        const tooltip = sortedNums.join(', ');
+        discsHtml = `
+            <div title="עצירות ${tooltip}" style="display:inline-flex;align-items:center;flex-shrink:0;">
+                <div style="${discStyle}">${sortedNums[0]}</div>
+                <span style="font-size:10px;font-weight:900;color:#475569;margin:0 -2px;">…</span>
+                <div style="${discStyle}border:1.5px solid white;">${sortedNums[sortedNums.length - 1]}</div>
+            </div>
+        `;
+    }
+
     const html = `
         <div style="display:inline-flex;flex-direction:column;align-items:center;">
             ${ribbonHtml}
             <div style="
-                display:inline-flex; align-items:center; gap:6px;
+                display:inline-flex; align-items:center; gap:4px;
                 background:white;
                 border-radius:999px;
-                padding:4px 12px 4px 6px;
+                padding:3px 8px 3px 4px;
                 ${ringStyle}
                 border:1px solid rgba(255,255,255,0.9);
                 white-space:nowrap;
                 font-family:'Rubik','Inter',sans-serif;
                 direction:rtl;
             ">
-                <div style="
-                    width:28px; height:28px; border-radius:50%;
-                    background:linear-gradient(135deg,${color},${color}cc);
-                    color:white; font-weight:900; font-size:16px; line-height:1;
-                    display:flex; align-items:center; justify-content:center;
-                    box-shadow:0 2px 6px ${color}66, inset 0 0 0 2px rgba(255,255,255,0.92);
-                    flex-shrink:0;
-                ">${num}</div>
-                ${displayName ? `<span style="font-size:13px;font-weight:800;color:#0f172a;letter-spacing:-0.01em;">${escapedName}</span>` : ''}
+                ${discsHtml}
+                ${displayName ? `<span style="font-size:10px;font-weight:800;color:#0f172a;letter-spacing:-0.01em;">${escapedName}</span>` : ''}
             </div>
         </div>
     `;
-    // Anchor at the bottom-center of the pill so the marker plants on its
-    // actual lat/lng. The new pill is roughly 36 px tall (28 px circle +
-    // 8 px padding); add 22 px when a ribbon is present.
-    const anchorY = role === 'middle' ? 18 : 40;
+    // Anchor at the bottom-center of the pill. The new pill is roughly
+    // 28 px tall (22 px disc + 6 px padding); add ~18 px when a ribbon is present.
+    const anchorY = role === 'middle' ? 14 : 32;
     return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [50, anchorY] });
 };
 
@@ -698,6 +735,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     flyTo = null,
     onAddToList,
     savedNames,
+    onUpdateTrip,
+    onItemsResolved,
 }) => {
     // Default every layer flag to TRUE so the existing per-tab callers
     // (RestaurantsView / AttractionsView) keep working without passing
@@ -725,6 +764,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     const [activeCity, setActiveCity] = useState<string | 'ALL'>('ALL');
     const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
     const [activeStop, setActiveStop] = useState<number | null>(null);
+    // "Fix location" modal state — set by the hotel popup's "תקן מיקום" pill.
+    // Only meaningful when `onUpdateTrip` is wired through.
+    const [fixLocationFor, setFixLocationFor] = useState<{ hotelId: string; hotelName: string } | null>(null);
     // Zoom-gated visibility (Issue 2 polish): at low/regional zoom levels
     // only the trip backbone (hotels + flights + route polyline) is shown.
     // Restaurants and attractions appear as the user zooms in, so the
@@ -1212,6 +1254,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         };
         run();
     }, [mapItems.length]);
+
+    // 2a. Notify the wrapper of resolved items so it can compute city bounds
+    //     for the chip-strip click handler. Fires whenever the resolved-coord
+    //     subset of mapItems changes — does NOT fire while geocoding is still
+    //     producing the snapshot (loading=true), to avoid spamming the
+    //     wrapper with partial states.
+    useEffect(() => {
+        if (!onItemsResolved) return;
+        if (loading) return;
+        const resolved = mapItems
+            .filter(i => isValidCoordinate(i.lat, i.lng))
+            .map(i => ({ id: i.id, type: i.type, name: i.name, lat: i.lat as number, lng: i.lng as number, city: i.city }));
+        onItemsResolved(resolved);
+    }, [mapItems, loading, onItemsResolved]);
 
     // 2b. AI sanity check — runs after geocoding settles. The deterministic
     //     bbox check above catches the common case (Photon returning a place
@@ -2003,12 +2059,19 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         marker.closePopup();
                     }
                     : undefined;
+                const handleFix = onUpdateTrip && item.type === 'hotel'
+                    ? () => {
+                        marker.closePopup();
+                        setFixLocationFor({ hotelId: item.id, hotelName: item.name });
+                    }
+                    : undefined;
                 flushSync(() => {
                     popupRoot.render(
                         <MapItemPopup
                             item={item}
                             onAddToList={handleAdd}
                             isAdded={isAlreadySaved}
+                            onFixLocation={handleFix}
                         />
                     );
                 });
@@ -2278,14 +2341,49 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             const stopCoincidesWithHotel = (lat: number, lng: number): boolean =>
                 hotelCoords.some(h => getDistanceKm(lat, lng, h.lat, h.lng) < 0.25);
 
+            // Group stops within ~5 km (0.05° lat/lng) into a single pill so
+            // co-located stops (Bangkok start + Bangkok end, Koh Chang Dinso
+            // + Koh Chang KC) don't render as overlapping markers where one
+            // number hides behind the other.
+            type StopGroup = {
+                coords: { lat: number; lng: number };
+                name: string;
+                nums: number[];
+                role: 'start' | 'end' | 'middle';
+                colorIdx: number;
+            };
+            const stopGroups: StopGroup[] = [];
             visibleStops.forEach((stop, idx) => {
                 if (!stop.coords) return;
-                const color = STOP_COLORS[idx % STOP_COLORS.length];
+                const num = idx + 1;
                 const role: 'start' | 'end' | 'middle' = idx === 0
                     ? 'start'
                     : idx === visibleStops.length - 1
                         ? 'end'
                         : 'middle';
+                const found = stopGroups.find(g =>
+                    Math.abs(g.coords.lat - stop.coords!.lat) < 0.05 &&
+                    Math.abs(g.coords.lng - stop.coords!.lng) < 0.05,
+                );
+                if (found) {
+                    found.nums.push(num);
+                    // 'end' wins (so a Bangkok-start + Bangkok-end group keeps
+                    // the סיום ribbon). Otherwise keep the existing role.
+                    if (role === 'end') found.role = 'end';
+                    else if (role === 'start' && found.role === 'middle') found.role = 'start';
+                } else {
+                    stopGroups.push({
+                        coords: stop.coords,
+                        name: stop.displayName || stop.name,
+                        nums: [num],
+                        role,
+                        colorIdx: idx,
+                    });
+                }
+            });
+
+            stopGroups.forEach(group => {
+                const color = STOP_COLORS[group.colorIdx % STOP_COLORS.length];
 
                 // Skip the standalone stop pill ONLY when (a) it coincides
                 // with a hotel AND (b) the hotel pin is currently visible —
@@ -2293,28 +2391,26 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 // city filter or the matching one. At trip-overview zoom
                 // (tier ≤ 2 with ALL view), hotel pins are hidden by the
                 // declutter rule above, so the stop pill IS the city marker
-                // and must render. Lets the user read "stop 1, stop 2,
-                // stop 3" from the moment the map opens.
-                const isOnHotel = stopCoincidesWithHotel(stop.coords.lat, stop.coords.lng);
+                // and must render.
+                const isOnHotel = stopCoincidesWithHotel(group.coords.lat, group.coords.lng);
                 const hotelVisibleHere = tier >= 3 || activeCity !== 'ALL';
                 if (isOnHotel && hotelVisibleHere) {
-                    bounds.extend([stop.coords.lat, stop.coords.lng]);
+                    bounds.extend([group.coords.lat, group.coords.lng]);
                     return;
                 }
 
-                const icon = makeStopPill(idx + 1, stop.displayName || stop.name, stop.emoji || '📍', color, role);
+                const icon = makeStopPill(group.nums, group.name, color, group.role);
 
-                const stopMarker = L.marker([stop.coords.lat, stop.coords.lng], { icon, zIndexOffset: 2000 })
+                const stopMarker = L.marker([group.coords.lat, group.coords.lng], { icon, zIndexOffset: 2000 })
                     .addTo(routeLayer);
 
                 // Tapping the stop pill = same behaviour as tapping the
-                // city button. Lets the user drill into a city directly
-                // from the map without hunting for the chip strip above.
+                // city button.
                 stopMarker.on('click', () => {
-                    handleCityPillClick(stop.name);
+                    handleCityPillClick(group.name);
                 });
 
-                bounds.extend([stop.coords.lat, stop.coords.lng]);
+                bounds.extend([group.coords.lat, group.coords.lng]);
             });
         }
 
@@ -2733,6 +2829,103 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* "Fix location" modal — opened from a hotel popup's "תקן מיקום"
+                 pill. Lets the user paste a Google Maps URL whose !3d!4d
+                 coords overwrite the hotel's stored lat/lng + googleMapsUrl.
+                 Only mounted when both `onUpdateTrip` and a target are set. */}
+            {onUpdateTrip && fixLocationFor && trip && (
+                <FixLocationModal
+                    hotelName={fixLocationFor.hotelName}
+                    onCancel={() => setFixLocationFor(null)}
+                    onSave={(url) => {
+                        const coords = extractCoordsFromMapsUrl(url.trim());
+                        if (!coords) {
+                            return 'לא הצלחתי לזהות קואורדינטות בקישור — ודא שהעתקת קישור מ-Google Maps';
+                        }
+                        const updated: Trip = {
+                            ...trip,
+                            hotels: (trip.hotels || []).map(h =>
+                                h.id === fixLocationFor.hotelId
+                                    ? { ...h, lat: coords.lat, lng: coords.lng, googleMapsUrl: url.trim() }
+                                    : h,
+                            ),
+                        };
+                        onUpdateTrip(updated);
+                        setFixLocationFor(null);
+                        return null;
+                    }}
+                />
+            )}
+        </div>
+    );
+};
+
+// ============================================================================
+// "Fix location" modal — small inline component because it owns no state
+// outside its own input + error string.
+// ============================================================================
+interface FixLocationModalProps {
+    hotelName: string;
+    onCancel: () => void;
+    /** Returns an error string to display, or null on success. */
+    onSave: (url: string) => string | null;
+}
+
+const FixLocationModal: React.FC<FixLocationModalProps> = ({ hotelName, onCancel, onSave }) => {
+    const [url, setUrl] = useState('');
+    const [error, setError] = useState<string | null>(null);
+
+    const handleSubmit = () => {
+        const result = onSave(url);
+        if (result) setError(result);
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`תקן מיקום עבור ${hotelName}`}
+            dir="rtl"
+            onClick={onCancel}
+        >
+            <div
+                className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm p-4"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <h3 className="text-sm font-black text-slate-900 mb-1">תקן מיקום מלון</h3>
+                <p className="text-xs text-slate-600 mb-3 leading-snug">
+                    הדבק קישור מ-Google Maps עבור <span className="font-bold">{hotelName}</span>. נחלץ מהקישור את הקואורדינטות המדויקות ונעדכן את המלון.
+                </p>
+                <textarea
+                    value={url}
+                    onChange={(e) => { setUrl(e.target.value); setError(null); }}
+                    placeholder="https://www.google.com/maps/place/..."
+                    rows={3}
+                    dir="ltr"
+                    className="w-full text-xs font-mono p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:outline-none resize-none"
+                    autoFocus
+                />
+                {error && (
+                    <p className="text-[11px] text-red-600 mt-2 leading-snug">{error}</p>
+                )}
+                <div className="flex items-center justify-end gap-2 mt-4">
+                    <button
+                        onClick={onCancel}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100"
+                    >
+                        ביטול
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!url.trim()}
+                        className="px-3 py-1.5 rounded-lg text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                    >
+                        שמור
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };

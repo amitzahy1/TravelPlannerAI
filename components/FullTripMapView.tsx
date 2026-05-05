@@ -17,8 +17,9 @@ import { UnifiedMapView } from './UnifiedMapView';
 import { LayersPanel } from './map/LayersPanel';
 import { MissingDataSheet } from './map/MissingDataSheet';
 import { TripStatsBar } from './map/TripStatsBar';
+import { CityChipStrip, CityChipDescriptor } from './map/CityChipStrip';
 import { useMapPreferences } from '../hooks/useMapPreferences';
-import { getTripCities } from '../utils/geoData';
+import { cityKey, displayCityName, extractRobustCity } from '../utils/geoData';
 import { getMissingDataPoints } from '../utils/tripGaps';
 import { useIsMobile } from '../hooks/useMediaQuery';
 
@@ -26,7 +27,15 @@ interface FullTripMapViewProps {
         trip: Trip;
         onSwitchTab?: (tab: string) => void;
         title?: string;
+        onUpdateTrip?: (trip: Trip) => void;
 }
+
+type ResolvedItem = { id: string; type: string; name: string; lat: number; lng: number; city?: string };
+
+const cleanCityName = (s: string): string => (s || '').trim();
+
+const avg = (nums: number[]): number =>
+        nums.reduce((s, n) => s + n, 0) / Math.max(1, nums.length);
 
 type LocateState = 'idle' | 'loading' | 'error';
 
@@ -36,7 +45,7 @@ const SHORTCUTS = [
         { key: 'Esc', desc: 'סגור פאנלים' },
 ];
 
-export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitchTab, title }) => {
+export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitchTab, title, onUpdateTrip }) => {
         const { prefs, setPrefs, view, setView } = useMapPreferences();
         const isMobile = useIsMobile();
         const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
@@ -47,7 +56,50 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
         const [shortcutsOpen, setShortcutsOpen] = useState(false);
         const shortcutsRef = useRef<HTMLDivElement>(null);
 
-        const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true, lang: 'en' }), [trip]);
+        // Snapshot of resolved items from UnifiedMapView's geocoding pipeline.
+        // Used to compute city bounds for the chip-strip click handler — we
+        // can't read the geocoder state directly because it's encapsulated
+        // inside UnifiedMapView.
+        const resolvedItemsRef = useRef<ResolvedItem[]>([]);
+        const lastChipClickRef = useRef<{ city: string; ts: number; idx: number } | null>(null);
+
+        // Chip descriptors — derived from trip.hotels in chronological order
+        // (checkInDate). Each hotel becomes a sequential stop number; cities
+        // visited at multiple chronological points (Bangkok start + Bangkok
+        // end) collect both numbers in one chip. This mirrors the on-map
+        // grouped stop pills so the chip number always matches the pin.
+        const cityDescriptors = useMemo<CityChipDescriptor[]>(() => {
+                const sorted = (trip.hotels || [])
+                        .map((h, originalIdx) => ({ h, originalIdx }))
+                        .sort((a, b) => {
+                                const ta = a.h.checkInDate ? new Date(a.h.checkInDate).getTime() : Number.MAX_SAFE_INTEGER - a.originalIdx;
+                                const tb = b.h.checkInDate ? new Date(b.h.checkInDate).getTime() : Number.MAX_SAFE_INTEGER - b.originalIdx;
+                                return ta - tb;
+                        });
+
+                const byKey = new Map<string, CityChipDescriptor>();
+                sorted.forEach((entry, chronoIdx) => {
+                        const num = chronoIdx + 1;
+                        const cityRaw = cleanCityName(extractRobustCity(entry.h.address || '', entry.h.name || '', trip)) || entry.h.city || '';
+                        if (!cityRaw) return;
+                        const key = cityKey(cityRaw);
+                        if (!key) return;
+                        const display = displayCityName(cityRaw, 'he');
+                        const existing = byKey.get(key);
+                        if (existing) {
+                                existing.nums.push(num);
+                                existing.hotelCount = (existing.hotelCount || 0) + 1;
+                        } else {
+                                byKey.set(key, { name: display, nums: [num], hotelCount: 1 });
+                        }
+                });
+
+                return Array.from(byKey.values());
+        }, [trip]);
+
+        const handleItemsResolved = useCallback((items: ResolvedItem[]) => {
+                resolvedItemsRef.current = items;
+        }, []);
         const missingPoints = useMemo(
                 () => getMissingDataPoints(trip, {
                         aiRestaurants: prefs.aiRestaurants,
@@ -80,8 +132,74 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                 setMobilePanelOpen(false);
         };
 
-        const handleCityFocus = (city: string) => {
-                setView({ city: view.city === city ? 'all' : city });
+        // Smart click contract for city chips:
+        //   • 'all' chip                       → setView('all') + fly to whole-trip bounds
+        //   • Different city chip              → setView(city) + fly to that city's bounds
+        //   • Same active chip, single tap     → setView('all') + fly to whole-trip bounds
+        //   • Same active chip within 1.5 s    → step through that city's hotels (next one)
+        const handleCityPick = (cityName: string | 'all') => {
+                const now = Date.now();
+                const items = resolvedItemsRef.current;
+
+                if (cityName === 'all') {
+                        setView({ city: 'all' });
+                        const candidates = items.filter(i => i.type !== 'airport');
+                        if (candidates.length > 0) {
+                                const lat = avg(candidates.map(c => c.lat));
+                                const lng = avg(candidates.map(c => c.lng));
+                                setFlyTo({ lat, lng, zoom: 8 });
+                        }
+                        lastChipClickRef.current = null;
+                        return;
+                }
+
+                const targetKey = cityKey(cityName);
+                const cityItems = items.filter(i => {
+                        if (i.type === 'airport') return false;
+                        return cityKey(i.city || '') === targetKey;
+                });
+
+                // Same chip tapped twice within 1.5 s while already focused → step through its hotels.
+                const last = lastChipClickRef.current;
+                if (
+                        view.city === cityName &&
+                        last?.city === cityName &&
+                        now - last.ts < 1500
+                ) {
+                        const cityHotels = cityItems.filter(i => i.type === 'hotel');
+                        if (cityHotels.length > 0) {
+                                const nextIdx = (last.idx + 1) % cityHotels.length;
+                                const h = cityHotels[nextIdx];
+                                setFlyTo({ lat: h.lat, lng: h.lng, zoom: 16 });
+                                lastChipClickRef.current = { city: cityName, ts: now, idx: nextIdx };
+                                return;
+                        }
+                }
+
+                // Same chip already active, fresh click → toggle off (back to whole trip).
+                if (view.city === cityName) {
+                        setView({ city: 'all' });
+                        const candidates = items.filter(i => i.type !== 'airport');
+                        if (candidates.length > 0) {
+                                const lat = avg(candidates.map(c => c.lat));
+                                const lng = avg(candidates.map(c => c.lng));
+                                setFlyTo({ lat, lng, zoom: 8 });
+                        }
+                        lastChipClickRef.current = null;
+                        return;
+                }
+
+                // Different city → focus + fly. If the geocoder hasn't produced
+                // any items for that city yet, the marker effect downstream will
+                // fly when items resolve; we still set view so filtering kicks in.
+                setView({ city: cityName });
+                if (cityItems.length > 0) {
+                        const lat = avg(cityItems.map(c => c.lat));
+                        const lng = avg(cityItems.map(c => c.lng));
+                        // Tighter zoom for single-city focus so streets read.
+                        setFlyTo({ lat, lng, zoom: 13 });
+                }
+                lastChipClickRef.current = { city: cityName, ts: now, idx: -1 };
         };
 
         const handleShare = useCallback(() => {
@@ -175,23 +293,11 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
 
                                                 {/* City chips */}
                                                 <div className="flex-1 overflow-x-auto scrollbar-hide pointer-events-auto">
-                                                        <div className="flex items-center gap-2 min-w-max px-1">
-                                                                <button
-                                                                        onClick={() => setView({ city: 'all' })}
-                                                                        className={`px-4 py-2 rounded-full text-xs font-black transition-all border whitespace-nowrap ${view.city === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white/95 backdrop-blur border-slate-200 text-slate-600 hover:bg-white'}`}
-                                                                >
-                                                                        כל הטיול
-                                                                </button>
-                                                                {tripCities.map(city => (
-                                                                        <button
-                                                                                key={city}
-                                                                                onClick={() => handleCityFocus(city)}
-                                                                                className={`px-4 py-2 rounded-full text-xs font-black transition-all border whitespace-nowrap ${view.city === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white/95 backdrop-blur border-slate-200 text-slate-600 hover:bg-white'}`}
-                                                                        >
-                                                                                {city}
-                                                                        </button>
-                                                                ))}
-                                                        </div>
+                                                        <CityChipStrip
+                                                                cities={cityDescriptors}
+                                                                activeCity={view.city === 'all' ? 'all' : view.city}
+                                                                onPick={handleCityPick}
+                                                        />
                                                 </div>
 
                                                 {/* Mobile layers button */}
@@ -225,6 +331,8 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                                         walkingCircles={prefs.walkingCircles}
                                         heatmap={prefs.heatmap}
                                         flyTo={flyTo}
+                                        onItemsResolved={handleItemsResolved}
+                                        onUpdateTrip={onUpdateTrip}
                                 />
 
                                 {/* Bottom row */}
