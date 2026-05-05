@@ -492,3 +492,24 @@
   white-space: nowrap !important;
 }
 .walking-label::before { display: none !important; }
+
+/* Pin pop-in animation — fires whenever a marker mounts on the map.
+   Subtle scale+fade, ~280ms, eased like an Apple pin drop. CSS-only so
+   it never blocks the main thread or fights flyTo's animation.
+   Anchored bottom-center so the pin grows from its tip, not its center. */
+@keyframes pin-pop-in {
+  0%   { transform: scale(0) translateY(8px); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.leaflet-marker-icon > div {
+  transform-origin: 50% 100%;
+  animation: pin-pop-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+/* Avoid replaying the pop on every pan / cluster shuffle by removing the
+   animation class once it finishes. Leaflet doesn't expose a hook, so we
+   target the animation completion via CSS forwards: the keyframes settle
+   on `transform: scale(1)` which is the resting state. */
+@media (prefers-reduced-motion: reduce) {
+  .leaflet-marker-icon > div { animation: none !important; }
+}

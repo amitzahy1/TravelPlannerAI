@@ -342,8 +342,13 @@ const makePinIcon = (
     label?: string,
     source: 'saved' | 'ai' = 'saved',
     wrap: boolean = false,
+    badge?: { text: string; color: 'amber' | 'blue' | 'emerald' | 'rose' | 'slate' },
+    dayHue?: { c1: string; c2: string },
 ) => {
-    const [c1, c2] = config.gradient;
+    // Day-tinted gradient when active filter narrows to a single day. Lets
+    // the same trip "story" through 3 different colors, one per day, so the
+    // map reads chronologically at a glance.
+    const [c1, c2] = dayHue ? [dayHue.c1, dayHue.c2] : config.gradient;
     // When a label is supplied we render a name pill above the pin so the
     // user can read every place's name at a glance without clicking.
     //   - wrap=false (default): single-line, truncated to 26 chars.
@@ -374,29 +379,54 @@ const makePinIcon = (
         ? '2.5px dashed rgba(255,255,255,0.95)'
         : '2.5px solid rgba(255,255,255,0.8)';
     const iconColor = source === 'ai' ? `${c1}` : 'white';
+    // Optional content-bearing badge — small chip overlaid on the upper-right
+    // of the pin showing rating ("⭐ 8.4") or nights count ("3 ל'") so users
+    // can scan quality without clicking. Color-coded.
+    const badgeBg: Record<NonNullable<typeof badge>['color'], string> = {
+        amber: '#f59e0b',
+        blue: '#2563eb',
+        emerald: '#10b981',
+        rose: '#e11d48',
+        slate: '#64748b',
+    };
+    const badgeHtml = badge ? `
+        <div style="
+            position:absolute; top:-6px; left:-10px;
+            background:${badgeBg[badge.color]}; color:white;
+            font-size:9px; font-weight:900; line-height:1;
+            padding:3px 6px; border-radius:999px;
+            border:2px solid white; box-shadow:0 2px 4px rgba(0,0,0,0.25);
+            font-family:'Rubik','Inter',sans-serif; white-space:nowrap;
+            z-index:2; pointer-events:none;
+        ">${badge.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+    ` : '';
+
     // The wrapper needs a known width for proper Leaflet anchoring. We use
     // `min-width:44px` (the pin width) so the icon centers on its lat/lng,
     // and `width:max-content` so the label can grow and wrap above.
     const html = `
         <div style="position:relative; min-width:44px; display:inline-flex; flex-direction:column; align-items:center;">
             ${labelHtml}
-            <div style="
-                width:44px; height:44px; border-radius:50% 50% 50% 0%;
-                transform:rotate(-45deg);
-                background:${fill};
-                box-shadow:0 6px 20px ${c1}${source === 'ai' ? '40' : '60'},0 2px 6px rgba(0,0,0,0.25);
-                display:flex; align-items:center; justify-content:center;
-                border:${borderStyle};
-            ">
-                <div style="transform:rotate(45deg); color:${iconColor}; display:flex; align-items:center; justify-content:center; width:22px; height:22px;">
-                    ${config.svg}
+            <div style="position:relative;">
+                ${badgeHtml}
+                <div style="
+                    width:44px; height:44px; border-radius:50% 50% 50% 0%;
+                    transform:rotate(-45deg);
+                    background:${fill};
+                    box-shadow:0 6px 20px ${c1}${source === 'ai' ? '40' : '60'},0 2px 6px rgba(0,0,0,0.25);
+                    display:flex; align-items:center; justify-content:center;
+                    border:${borderStyle};
+                ">
+                    <div style="transform:rotate(45deg); color:${iconColor}; display:flex; align-items:center; justify-content:center; width:22px; height:22px;">
+                        ${config.svg}
+                    </div>
                 </div>
+                <div style="
+                    width:6px; height:10px; margin:-2px auto 0;
+                    background:linear-gradient(to bottom,${c1}${source === 'ai' ? 'aa' : ''},${c2}${source === 'ai' ? 'aa' : ''});
+                    clip-path:polygon(50% 100%,0 0,100% 0);
+                "></div>
             </div>
-            <div style="
-                width:6px; height:10px; margin-top:-2px;
-                background:linear-gradient(to bottom,${c1}${source === 'ai' ? 'aa' : ''},${c2}${source === 'ai' ? 'aa' : ''});
-                clip-path:polygon(50% 100%,0 0,100% 0);
-            "></div>
         </div>
     `;
     // iconSize=[0,0] lets the divIcon size to its content via inline-flex.
@@ -1831,7 +1861,27 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             // the dense view clean — they only appear at tier ≥ 3 anyway.
             const showLabel = item.type === 'hotel' || tier >= 3;
             const wrapLabel = item.type === 'hotel'; // hotel labels always wrap to 2-3 lines
-            const icon = makePinIcon(cfg, showLabel ? item.name : undefined, pinSource, wrapLabel);
+
+            // Content-bearing badge: rating for hotels/places, nights for
+            // hotels (preferred when available). Lets the user judge quality
+            // before tapping. Hidden at low zoom (the icon-only view is
+            // already busy enough).
+            let badge: { text: string; color: 'amber' | 'blue' | 'emerald' | 'rose' | 'slate' } | undefined;
+            if (tier >= 3) {
+                if (item.type === 'hotel') {
+                    const nights = (item as any).nights;
+                    if (typeof nights === 'number' && nights > 0) {
+                        badge = { text: `${nights} ל'`, color: 'blue' };
+                    } else if (typeof item.rating === 'number' && item.rating > 0) {
+                        const r = item.rating > 5 ? item.rating.toFixed(1) : item.rating.toFixed(1);
+                        badge = { text: `⭐ ${r}`, color: 'amber' };
+                    }
+                } else if (typeof item.rating === 'number' && item.rating > 0) {
+                    badge = { text: `⭐ ${item.rating.toFixed(1)}`, color: 'amber' };
+                }
+            }
+
+            const icon = makePinIcon(cfg, showLabel ? item.name : undefined, pinSource, wrapLabel, badge);
 
             const targetLayer = item.type === 'hotel' ? routeLayer : markerLayer;
             const marker = L.marker([item.lat!, item.lng!], {
