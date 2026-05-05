@@ -904,26 +904,16 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     // !3d!4d had the correct north-island coords). The previous
                     // 2km tolerance let drifted-but-not-by-much saved coords
                     // win — too loose. Now: URL > saved > geocode-cache.
-                    // FULL hotel-record dump so we can see every field stored on
-                    // the trip's hotel — including any URL-like field that
-                    // might NOT be named `googleMapsUrl`. The diagnostic
-                    // showed all hotels reporting hasUrl=N, but the user
-                    // expected URLs to be there — so dump everything and find
-                    // out what's actually stored.
+                    // FULL hotel-record dump as a JSON STRING so the console
+                    // can't collapse fields with "…". Need every field visible
+                    // to find any URL-like data hidden in an unexpected key.
                     try {
-                        const recordSnapshot: Record<string, unknown> = {};
-                        Object.keys(h).forEach(k => {
-                            const v = (h as any)[k];
-                            if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || v == null) {
-                                recordSnapshot[k] = v;
-                            } else if (Array.isArray(v)) {
-                                recordSnapshot[k] = `[Array(${v.length})]`;
-                            } else if (typeof v === 'object') {
-                                recordSnapshot[k] = `[Object: ${Object.keys(v).join(',')}]`;
-                            }
-                        });
+                        const safe = JSON.parse(JSON.stringify(h, (_k, v) => {
+                            if (Array.isArray(v) && v.length > 3) return `[Array(${v.length})]`;
+                            return v;
+                        }));
                         // eslint-disable-next-line no-console
-                        console.info(`[HotelRecord] ${h.name}`, recordSnapshot);
+                        console.info(`[HotelRecord] ${h.name}`, JSON.stringify(safe));
                     } catch { /* never throw from a log */ }
 
                     // Try multiple URL-like fields, not just googleMapsUrl.
@@ -2569,13 +2559,41 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 </div>
             )}
 
-            {/* Geocoding progress bar — thin stripe across the top edge */}
-            {geocodeProgress.total > 0 && geocodeProgress.done < geocodeProgress.total && (
-                <div className="absolute top-0 left-0 right-0 z-[2001] h-0.5 bg-blue-100 pointer-events-none">
-                    <div
-                        className="h-full bg-blue-500 transition-all duration-500 ease-out"
-                        style={{ width: `${(geocodeProgress.done / geocodeProgress.total) * 100}%` }}
-                    />
+            {/* Loading + geocoding overlay — full-map centered card. The
+                previous thin top stripe + bottom-left pill weren't visible
+                enough; users thought the map had hung. This overlay covers
+                the map with a soft scrim + a centered card showing a
+                spinner, the work being done, and a progress counter. The
+                map underneath is still tappable through the scrim only at
+                the card edges (the card itself is non-interactive). */}
+            {(loading || (geocodeProgress.total > 0 && geocodeProgress.done < geocodeProgress.total)) && (
+                <div className="absolute inset-0 z-[2001] flex items-center justify-center bg-white/35 backdrop-blur-[2px] pointer-events-none">
+                    <div className="bg-white/97 backdrop-blur shadow-2xl rounded-2xl px-5 py-4 flex items-center gap-3 border border-slate-200 max-w-[280px]" dir="rtl">
+                        <div className="relative w-10 h-10 flex-shrink-0">
+                            <div className="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                            </div>
+                        </div>
+                        <div className="text-right min-w-0 flex-1">
+                            <div className="text-sm font-black text-brand-navy">מחשב מיקומים על המפה</div>
+                            {geocodeProgress.total > 0 ? (
+                                <>
+                                    <div className="text-xs text-slate-500 mt-0.5 font-bold">
+                                        {geocodeProgress.done} מתוך {geocodeProgress.total} מקומות
+                                    </div>
+                                    <div className="mt-1.5 h-1 rounded-full bg-slate-100 overflow-hidden">
+                                        <div
+                                            className="h-full bg-indigo-500 transition-all duration-500 ease-out"
+                                            style={{ width: `${(geocodeProgress.done / geocodeProgress.total) * 100}%` }}
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="text-xs text-slate-500 mt-0.5">רגע אחד…</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -2619,13 +2637,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 </svg>
             </button>
 
-            {/* Loading indicator */}
-            {loading && (
-                <div className="absolute bottom-28 left-4 z-[1000] bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-gray-100 flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                    <span className="text-xs font-bold text-slate-600">מחשב מיקומים...</span>
-                </div>
-            )}
+            {/* (Loading indicator moved to the centered full-map overlay above) */}
 
             {/* Map */}
             <div ref={mapContainerRef} style={{ height, width: '100%' }} className="z-10 bg-slate-50" />
