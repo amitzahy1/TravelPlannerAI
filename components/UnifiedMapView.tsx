@@ -603,6 +603,8 @@ const getSegmentTransport = (
     const segs = trip.flights?.segments || [];
     const fromTs = stopCheckTs(fromStop);
     const toTs = stopCheckTs(toStop);
+    const fromName = fromStop.name.toLowerCase();
+    const toName = toStop.name.toLowerCase();
     const matchedFlight = segs.find(s => {
         const fromKey = (s.fromCode || s.fromCity || '').toLowerCase();
         const toKey = (s.toCode || s.toCity || '').toLowerCase();
@@ -612,27 +614,43 @@ const getSegmentTransport = (
         const fromDist = endpointDistanceKm(fromC?.lat, fromC?.lng, fromStop);
         const toDist = endpointDistanceKm(toC?.lat, toC?.lng, toStop);
 
+        // Substring matches handle Hebrew vs English city names, "Trat
+        // Airport" vs "Trat", and "Bangkok Hotels" vs "Bangkok".
+        const flightFromCity = (s.fromCity || '').toLowerCase();
+        const flightToCity = (s.toCity || '').toLowerCase();
+        const fromStr =
+            (flightFromCity && (flightFromCity.includes(fromName) || fromName.includes(flightFromCity))) ||
+            (s.fromCode?.toLowerCase() === (fromStop.code?.toLowerCase() || '') && !!s.fromCode);
+        const toStr =
+            (flightToCity && (flightToCity.includes(toName) || toName.includes(flightToCity))) ||
+            (s.toCode?.toLowerCase() === (toStop.code?.toLowerCase() || '') && !!s.toCode);
+
         // Primary: both endpoints geographically near the stops.
         if (fromDist <= AIRPORT_PROXIMITY_KM && toDist <= AIRPORT_PROXIMITY_KM) return true;
 
-        // Date-window match: when the flight date sits between the stops'
-        // checkInDates (or within ±1 day), accept a one-sided geographic
-        // match. Handles the common case where the leg is hotel-to-hotel
-        // and the flight is one of multiple transport modes inside it.
-        if (s.date && fromTs && toTs) {
+        // Two-sided string match (or one geographic + one string).
+        if (fromStr && toStr) return true;
+        if (fromStr && toDist <= AIRPORT_PROXIMITY_KM) return true;
+        if (toStr && fromDist <= AIRPORT_PROXIMITY_KM) return true;
+
+        // Date-window match: when the flight date sits inside the leg
+        // window (or within ±1 day), one strong signal on either side is
+        // enough. Catches "Koh Chang → Bangkok" where the Trat → BKK
+        // flight's fromCity ("Trat") doesn't string-match "Koh Chang"
+        // but its toCity ("Bangkok") matches the toStop, and its date
+        // falls between the stops' check-dates.
+        if (s.date && (fromTs || toTs)) {
             const sTs = new Date(s.date).getTime();
-            if (isFinite(sTs) && sTs >= fromTs - 24 * 3600 * 1000 && sTs <= toTs + 24 * 3600 * 1000) {
-                if (fromDist <= AIRPORT_PROXIMITY_KM || toDist <= AIRPORT_PROXIMITY_KM) return true;
+            const lowTs = (fromTs ?? toTs)! - 24 * 3600 * 1000;
+            const highTs = (toTs ?? fromTs)! + 24 * 3600 * 1000;
+            if (isFinite(sTs) && sTs >= lowTs && sTs <= highTs) {
+                if (fromStr || toStr || fromDist <= AIRPORT_PROXIMITY_KM || toDist <= AIRPORT_PROXIMITY_KM) {
+                    return true;
+                }
             }
         }
 
-        // Fallback: exact city/code string match (kept so flights without
-        // geocoded airports still match).
-        const fromStr = s.fromCity?.toLowerCase() === fromStop.name.toLowerCase() ||
-            s.fromCode?.toLowerCase() === (fromStop.code?.toLowerCase() || '');
-        const toStr = s.toCity?.toLowerCase() === toStop.name.toLowerCase() ||
-            s.toCode?.toLowerCase() === (toStop.code?.toLowerCase() || '');
-        return fromStr && toStr;
+        return false;
     });
     if (matchedFlight) return {
         mode: 'flight', emoji: '✈️',
@@ -2492,19 +2510,22 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // they're just not the focal point.
         const applyBounds = (b: L.LatLngBounds) => {
             // Snap-back gate: once the user has manually panned/zoomed, don't
-            // re-fit them. The user can re-fit by clicking the "↻ trip view"
-            // button or by switching the city filter (which resets the flag).
+            // re-fit them.
             if (userInteractedRef.current) return;
+            // City focus is owned by the parent — chip clicks call setFlyTo
+            // with bounds, and the map's flyTo effect drives the camera. If
+            // we ALSO fit here, the marker effect runs first (effects fire
+            // in source order), snaps the camera to whole-trip bounds, and
+            // the user perceives "needs two clicks" because only the second
+            // click skips this snap (its activeCity didn't change). So:
+            // when a city is focused, only the flyTo effect should move the
+            // camera. applyBounds stays for the whole-trip auto-fit.
+            if (activeCity !== 'ALL') return;
             // Tighter default zoom + less padding on the "ALL" view so the
             // trip's actual geography fills more of the screen.
-            // compactView (FullTripMapView's "whole trip" mode) drops maxZoom
-            // further to 11 so the entire trip fits on one screen with city
-            // pins clearly distinguishable — no manual zoom needed to read
-            // the city names. Existing per-tab callers leave compactView
-            // false to keep the tighter 14/15 zoom they had before.
-            const padding: [number, number] = activeCity !== 'ALL' ? [50, 50] : [40, 40];
-            const fittedMax = activeCity !== 'ALL' ? 15 : 14;
-            const maxZoom = compactView && activeCity === 'ALL' ? 11 : fittedMax;
+            const padding: [number, number] = [40, 40];
+            const fittedMax = 14;
+            const maxZoom = compactView ? 11 : fittedMax;
             map.fitBounds(b, { padding, maxZoom, duration: 1 });
         };
 
