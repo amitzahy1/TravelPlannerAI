@@ -254,7 +254,9 @@ export const MapV2Demo: React.FC = () => {
                         filter: ['has', 'point_count'],
                         layout: {
                                 'text-field': '{point_count_abbreviated}',
-                                'text-font': ['Noto Sans Bold', 'Noto Sans Regular'],
+                                // OpenFreeMap serves each font as a separate stack — combining
+                                // them ('Noto Sans Bold','Noto Sans Regular') 404s.
+                                'text-font': ['Noto Sans Bold'],
                                 'text-size': 13,
                         },
                         paint: { 'text-color': '#ffffff' },
@@ -290,7 +292,7 @@ export const MapV2Demo: React.FC = () => {
                         filter: ['!', ['has', 'point_count']],
                         layout: {
                                 'text-field': ['get', 'name'],
-                                'text-font': ['Noto Sans Bold', 'Noto Sans Regular'],
+                                'text-font': ['Noto Sans Bold'],
                                 'text-size': 12,
                                 'text-anchor': 'top',
                                 'text-offset': [0, 1.2],
