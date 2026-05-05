@@ -34,9 +34,6 @@ type ResolvedItem = { id: string; type: string; name: string; lat: number; lng: 
 
 const cleanCityName = (s: string): string => (s || '').trim();
 
-const avg = (nums: number[]): number =>
-        nums.reduce((s, n) => s + n, 0) / Math.max(1, nums.length);
-
 type LocateState = 'idle' | 'loading' | 'error';
 
 const SHORTCUTS = [
@@ -51,7 +48,11 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
         const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
         const [missingSheetOpen, setMissingSheetOpen] = useState(false);
         const [locateState, setLocateState] = useState<LocateState>('idle');
-        const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | null>(null);
+        const [flyTo, setFlyTo] = useState<
+                | { lat: number; lng: number; zoom?: number; kind?: 'gps' | 'reveal' }
+                | { bounds: [[number, number], [number, number]]; maxZoom?: number; kind?: 'gps' | 'reveal' }
+                | null
+        >(null);
         const [shareToast, setShareToast] = useState(false);
         const [shortcutsOpen, setShortcutsOpen] = useState(false);
         const shortcutsRef = useRef<HTMLDivElement>(null);
@@ -132,32 +133,44 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                 setMobilePanelOpen(false);
         };
 
+        // Build a bounding rectangle from a list of items. Returns null when
+        // the list is empty so the caller can skip the fly.
+        const computeBounds = (
+                items: ResolvedItem[],
+        ): [[number, number], [number, number]] | null => {
+                if (items.length === 0) return null;
+                let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+                items.forEach(i => {
+                        if (i.lat < minLat) minLat = i.lat;
+                        if (i.lat > maxLat) maxLat = i.lat;
+                        if (i.lng < minLng) minLng = i.lng;
+                        if (i.lng > maxLng) maxLng = i.lng;
+                });
+                return [[minLat, minLng], [maxLat, maxLng]];
+        };
+
         // Smart click contract for city chips:
         //   • 'all' chip                       → setView('all') + fly to whole-trip bounds
         //   • Different city chip              → setView(city) + fly to that city's bounds
         //   • Same active chip, single tap     → setView('all') + fly to whole-trip bounds
         //   • Same active chip within 1.5 s    → step through that city's hotels (next one)
+        // All flies use `flyToBounds` (via the bounds shape) so a single tap
+        // tightly fits the city — no race with the marker effect's applyBounds.
         const handleCityPick = (cityName: string | 'all') => {
                 const now = Date.now();
                 const items = resolvedItemsRef.current;
+                const tripItems = items.filter(i => i.type !== 'airport');
 
                 if (cityName === 'all') {
                         setView({ city: 'all' });
-                        const candidates = items.filter(i => i.type !== 'airport');
-                        if (candidates.length > 0) {
-                                const lat = avg(candidates.map(c => c.lat));
-                                const lng = avg(candidates.map(c => c.lng));
-                                setFlyTo({ lat, lng, zoom: 8 });
-                        }
+                        const b = computeBounds(tripItems);
+                        if (b) setFlyTo({ bounds: b, maxZoom: 11, kind: 'reveal' });
                         lastChipClickRef.current = null;
                         return;
                 }
 
                 const targetKey = cityKey(cityName);
-                const cityItems = items.filter(i => {
-                        if (i.type === 'airport') return false;
-                        return cityKey(i.city || '') === targetKey;
-                });
+                const cityItems = tripItems.filter(i => cityKey(i.city || '') === targetKey);
 
                 // Same chip tapped twice within 1.5 s while already focused → step through its hotels.
                 const last = lastChipClickRef.current;
@@ -170,7 +183,7 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                         if (cityHotels.length > 0) {
                                 const nextIdx = (last.idx + 1) % cityHotels.length;
                                 const h = cityHotels[nextIdx];
-                                setFlyTo({ lat: h.lat, lng: h.lng, zoom: 16 });
+                                setFlyTo({ lat: h.lat, lng: h.lng, zoom: 16, kind: 'reveal' });
                                 lastChipClickRef.current = { city: cityName, ts: now, idx: nextIdx };
                                 return;
                         }
@@ -179,26 +192,17 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                 // Same chip already active, fresh click → toggle off (back to whole trip).
                 if (view.city === cityName) {
                         setView({ city: 'all' });
-                        const candidates = items.filter(i => i.type !== 'airport');
-                        if (candidates.length > 0) {
-                                const lat = avg(candidates.map(c => c.lat));
-                                const lng = avg(candidates.map(c => c.lng));
-                                setFlyTo({ lat, lng, zoom: 8 });
-                        }
+                        const b = computeBounds(tripItems);
+                        if (b) setFlyTo({ bounds: b, maxZoom: 11, kind: 'reveal' });
                         lastChipClickRef.current = null;
                         return;
                 }
 
-                // Different city → focus + fly. If the geocoder hasn't produced
-                // any items for that city yet, the marker effect downstream will
-                // fly when items resolve; we still set view so filtering kicks in.
+                // Different city → focus + fly. flyToBounds with the city's
+                // items: one click, fits tightly, no race.
                 setView({ city: cityName });
-                if (cityItems.length > 0) {
-                        const lat = avg(cityItems.map(c => c.lat));
-                        const lng = avg(cityItems.map(c => c.lng));
-                        // Tighter zoom for single-city focus so streets read.
-                        setFlyTo({ lat, lng, zoom: 13 });
-                }
+                const b = computeBounds(cityItems);
+                if (b) setFlyTo({ bounds: b, maxZoom: 14, kind: 'reveal' });
                 lastChipClickRef.current = { city: cityName, ts: now, idx: -1 };
         };
 
@@ -215,7 +219,7 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                 navigator.geolocation.getCurrentPosition(
                         pos => {
                                 setLocateState('idle');
-                                setFlyTo({ lat: pos.coords.latitude, lng: pos.coords.longitude, zoom: 15 });
+                                setFlyTo({ lat: pos.coords.latitude, lng: pos.coords.longitude, zoom: 15, kind: 'gps' });
                         },
                         () => {
                                 setLocateState('error');

@@ -69,9 +69,10 @@ export const CityChipStrip: React.FC<Props> = ({ cities, activeCity, onPick }) =
                                 const isActive = activeCity === c.name;
                                 const sortedNums = [...c.nums].sort((a, b) => a - b);
                                 const primaryNum = sortedNums[0];
-                                // Tinted background for active state — anchor on the first stop's colour
-                                // so the chip's hue matches the on-map pill at the same position.
+                                // Disc colour = first stop's STOP_COLORS index. Stays consistent with
+                                // the matching on-map pill at the same position.
                                 const color = STOP_COLORS[(primaryNum - 1) % STOP_COLORS.length];
+                                const multiStop = sortedNums.length > 1;
                                 return (
                                         <button
                                                 key={c.name}
@@ -83,70 +84,46 @@ export const CityChipStrip: React.FC<Props> = ({ cities, activeCity, onPick }) =
                                                 title={isActive ? 'לחץ שוב להחזרה לכל הטיול · הקש פעמיים למעבר למלון הבא' : `התמקד ב-${c.name}`}
                                                 className={[
                                                         'snap-start flex-shrink-0',
-                                                        'inline-flex items-center gap-1.5',
-                                                        'px-2.5 py-1 rounded-full',
-                                                        'text-[11px] font-black',
+                                                        'inline-flex items-center gap-2',
+                                                        'pl-3 pr-1.5 py-1 rounded-full',
+                                                        'text-xs font-black',
                                                         'transition-all duration-150',
                                                         'border whitespace-nowrap',
-                                                        'hover:-translate-y-px',
+                                                        'hover:-translate-y-px active:translate-y-0',
+                                                        isActive
+                                                                ? 'bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/20'
+                                                                : 'bg-white/95 backdrop-blur text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-white shadow-sm',
                                                 ].join(' ')}
-                                                style={{
-                                                        background: isActive ? `${color}14` : 'rgba(255,255,255,0.95)',
-                                                        borderColor: isActive ? `${color}66` : 'rgb(226 232 240)',
-                                                        color: '#0f172a',
-                                                        boxShadow: isActive
-                                                                ? `0 4px 14px ${color}33, 0 1px 2px rgba(15,23,42,0.06)`
-                                                                : '0 1px 3px rgba(15,23,42,0.06)',
-                                                }}
                                         >
-                                                {/* Number disc(s) — match on-map pill */}
-                                                {sortedNums.length === 1 ? (
+                                                <span className="font-black tracking-tight leading-none">{truncate(c.name, 12)}</span>
+
+                                                {/* Number disc — single circle that always shows the FIRST stop number,
+                                                    plus a tiny "·N" suffix when this city is visited multiple times.
+                                                    Cleaner than two stacked circles, easier to read at a glance. */}
+                                                <span className="inline-flex items-center gap-1">
                                                         <span
-                                                                className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-white"
+                                                                className="inline-flex items-center justify-center w-5 h-5 rounded-full text-white text-[11px] leading-none"
                                                                 style={{
                                                                         background: `linear-gradient(135deg,${color},${color}cc)`,
-                                                                        fontSize: 10,
-                                                                        boxShadow: `inset 0 0 0 1.5px rgba(255,255,255,0.92)`,
+                                                                        boxShadow: isActive
+                                                                                ? `inset 0 0 0 1.5px rgba(255,255,255,0.95), 0 0 0 1px ${color}33`
+                                                                                : `inset 0 0 0 1.5px rgba(255,255,255,0.95)`,
                                                                 }}
+                                                                aria-label={multiStop ? `עצירות ${sortedNums.join(', ')}` : `עצירה ${primaryNum}`}
                                                         >
                                                                 {primaryNum}
                                                         </span>
-                                                ) : (
-                                                        <span className="inline-flex items-center" style={{ marginLeft: -2 }}>
+                                                        {multiStop && (
                                                                 <span
-                                                                        className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-white"
-                                                                        style={{
-                                                                                background: `linear-gradient(135deg,${color},${color}cc)`,
-                                                                                fontSize: 10,
-                                                                                boxShadow: `inset 0 0 0 1.5px rgba(255,255,255,0.92)`,
-                                                                        }}
+                                                                        className={[
+                                                                                'text-[10px] font-black leading-none',
+                                                                                isActive ? 'text-white/80' : 'text-slate-500',
+                                                                        ].join(' ')}
                                                                 >
-                                                                        {primaryNum}
+                                                                        ·{sortedNums.length}
                                                                 </span>
-                                                                <span
-                                                                        className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full text-white border-[1.5px] border-white"
-                                                                        style={{
-                                                                                background: `linear-gradient(135deg,${color},${color}cc)`,
-                                                                                fontSize: 8,
-                                                                                marginRight: -5,
-                                                                        }}
-                                                                        aria-label={`כולל עצירה ${sortedNums[1]}`}
-                                                                >
-                                                                        +{sortedNums.length - 1}
-                                                                </span>
-                                                        </span>
-                                                )}
-
-                                                <span className="font-black tracking-tight">{truncate(c.name, 12)}</span>
-
-                                                {typeof c.hotelCount === 'number' && c.hotelCount > 0 && (
-                                                        <span
-                                                                className="inline-flex items-center text-[9px] font-bold opacity-70"
-                                                                aria-label={`${c.hotelCount} מלונות`}
-                                                        >
-                                                                🏨 {c.hotelCount}
-                                                        </span>
-                                                )}
+                                                        )}
+                                                </span>
                                         </button>
                                 );
                         })}
@@ -171,17 +148,17 @@ const ChipAll = React.forwardRef<HTMLButtonElement, AllProps>(({ active, onClick
                 className={[
                         'snap-start flex-shrink-0',
                         'inline-flex items-center gap-1.5',
-                        'px-2.5 py-1 rounded-full',
-                        'text-[11px] font-black',
+                        'px-3 py-1 rounded-full',
+                        'text-xs font-black',
                         'transition-all duration-150',
                         'border whitespace-nowrap',
-                        'hover:-translate-y-px',
+                        'hover:-translate-y-px active:translate-y-0',
                         active
-                                ? 'bg-slate-900 text-white border-slate-900 shadow-md'
-                                : 'bg-white/95 text-slate-700 border-slate-200',
+                                ? 'bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/20'
+                                : 'bg-white/95 backdrop-blur text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-white shadow-sm',
                 ].join(' ')}
         >
-                <Globe className="w-3 h-3" />
+                <Globe className="w-3.5 h-3.5" />
                 כל הטיול
         </button>
 ));

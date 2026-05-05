@@ -101,8 +101,17 @@ interface UnifiedMapViewProps {
     // overlapping semi-transparent circles creating a density-heat visual.
     heatmap?: boolean;
     // When set, the map smooth-flies to these coordinates. Set to a new
-    // object reference each time a fly is desired (e.g. GPS locate).
-    flyTo?: { lat: number; lng: number; zoom?: number } | null;
+    // object reference each time a fly is desired.
+    //   • `{ lat, lng, zoom?, kind? }` flies to a single point.
+    //   • `{ bounds: [[s,w],[n,e]], maxZoom?, kind? }` fits a rectangle —
+    //     used by city chips so one click tightly fits all city items.
+    //   • `kind: 'gps'` additionally renders a "you are here" marker.
+    //     Default (`undefined` / `'reveal'`) renders no marker — used for
+    //     UI-driven flies like chip clicks.
+    flyTo?:
+        | ({ lat: number; lng: number; zoom?: number; kind?: 'gps' | 'reveal' })
+        | ({ bounds: [[number, number], [number, number]]; maxZoom?: number; kind?: 'gps' | 'reveal' })
+        | null;
     // Optional callback wired by RestaurantsView/AttractionsView so the map
     // popup can save an AI suggestion to the user's list. The popup shows
     // an "add to my list" CTA only when this callback is provided AND the
@@ -683,14 +692,18 @@ const makeRouteBadge = (
     distKm: number,
     transport: SegmentTransportInfo,
     color: string,
-    tier: 2 | 3 | 4 = 4,
+    tier: 1 | 2 | 3 | 4 = 4,
 ): L.DivIcon => {
     const displayTime = transport.duration || estimateTravelTime(distKm, transport.mode);
+    // Tier 1 (regional/zoom~8): tiny emoji-only puck, lighter shadow — keeps
+    //   the trip-overview readable at a glance ("✈️ here, 🚗 there").
     // Tier 2 (metro): emoji-only chip, no text. Conveys mode without overlap.
     // Tier 3 (city): emoji + duration. Drops kilometers.
     // Tier 4 (street): full label "emoji label · time · distance" — original.
     let inner: string;
-    if (tier === 2) {
+    if (tier === 1) {
+        inner = `<span style="font-size:11px;line-height:1">${transport.emoji}</span>`;
+    } else if (tier === 2) {
         inner = `<span style="font-size:13px;line-height:1">${transport.emoji}</span>`;
     } else if (tier === 3) {
         inner = `
@@ -707,7 +720,7 @@ const makeRouteBadge = (
             <span style="font-size:10px;color:#475569;font-weight:600">${fmtDistKm(distKm)}</span>
         `;
     }
-    const padding = tier === 2 ? '4px 6px' : '3px 9px 3px 8px';
+    const padding = tier === 1 ? '2px 5px' : tier === 2 ? '4px 6px' : '3px 9px 3px 8px';
     const html = `<div style="
         display:inline-flex;align-items:center;gap:5px;
         background:white;border-radius:999px;
@@ -2260,12 +2273,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                             duration: fmtHours(sub.durationHours),
                             hasTransportData: true,
                         };
-                        // Hide transport badges at low zoom — declutters the
-                        // first-glance view; the polyline + numbered stops are
-                        // enough to communicate the route.
-                        // Tier-driven badge: tier 2 = emoji-only, tier 3 = emoji+duration, tier 4 = full.
+                        // Tier-driven badge: tier 1 = emoji-only mini, tier 2 = emoji-only,
+                        // tier 3 = emoji+duration, tier 4 = full label. Showing at tier 1
+                        // means the trip-overview zoom communicates "✈️ / 🚗 / ⛴" at a
+                        // glance instead of just colored lines.
                         const segTier = labelTier(mapZoom);
-                        const badgeIcon = segTier >= 2 ? makeRouteBadge(subDist, subTransport, subColor, Math.max(2, Math.min(4, segTier)) as 2 | 3 | 4) : null;
+                        const badgeIcon = segTier >= 1 ? makeRouteBadge(subDist, subTransport, subColor, Math.max(1, Math.min(4, segTier)) as 1 | 2 | 3 | 4) : null;
                         drawSubSegment(subPath, subColor, badgeIcon, 0.5);
                         bounds.extend([sub.from.lat, sub.from.lng]);
                         bounds.extend([sub.to.lat, sub.to.lng]);
@@ -2311,9 +2324,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         ? (MODE_COLORS[transport.mode as keyof typeof MODE_COLORS]?.line || lineColor)
                         : NEUTRAL_GRAY;
                     const stagger = 0.45 + (i % 3) * 0.05;
-                    // Hide transport badges at low zoom (matches the multi-segment branch above).
+                    // Render the mode emoji from tier 1 (zoom ≥ 8) so the trip-overview
+                    // shows ✈️ / 🚗 / ⛴ on each leg. Tier-1 puck is small enough that
+                    // even short legs read without overlap; longer legs get richer
+                    // labels at higher zooms.
                     const segTier = labelTier(mapZoom);
-                    const badgeIcon = (dist >= 5 && segTier >= 2) ? makeRouteBadge(dist, transport, modeColor, Math.max(2, Math.min(4, segTier)) as 2 | 3 | 4) : null;
+                    const badgeIcon = (dist >= 5 && segTier >= 1) ? makeRouteBadge(dist, transport, modeColor, Math.max(1, Math.min(4, segTier)) as 1 | 2 | 3 | 4) : null;
                     drawSubSegment(pathPoints, modeColor, badgeIcon, stagger);
                     bounds.extend([start.coords.lat, start.coords.lng]);
                     bounds.extend([end.coords.lat, end.coords.lng]);
@@ -2372,9 +2388,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     if (role === 'end') found.role = 'end';
                     else if (role === 'start' && found.role === 'middle') found.role = 'start';
                 } else {
+                    // Use the CITY name (`stop.name`) for both the pill label
+                    // and the click target — `stop.displayName` is the hotel
+                    // name (e.g. "Holiday Inn Pattaya") which neither fits the
+                    // 11-char pill width nor matches when handleCityPillClick
+                    // filters items by city.
                     stopGroups.push({
                         coords: stop.coords,
-                        name: stop.displayName || stop.name,
+                        name: stop.name,
                         nums: [num],
                         role,
                         colorIdx: idx,
@@ -2627,27 +2648,49 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         userInteractedRef.current = false;
     };
 
-    // Fly to a GPS-located position and show a "you are here" marker.
+    // Fly to a position OR fit a bounds rectangle. Renders a "you are here"
+    // marker only when the caller tags the fly as `kind: 'gps'` — UI-driven
+    // flies (chip clicks) leave the marker layer untouched.
     useEffect(() => {
         const map = mapInstanceRef.current;
         if (!map || !flyTo) return;
 
         map.stop();
-        map.flyTo([flyTo.lat, flyTo.lng], flyTo.zoom ?? 15, { duration: 1.2 });
+        // Suppress the marker effect's applyBounds snap-back so our fly wins.
+        userInteractedRef.current = true;
 
-        // Remove previous locate marker before adding a new one.
+        if ('bounds' in flyTo) {
+            const b = L.latLngBounds(flyTo.bounds);
+            if (b.isValid()) {
+                map.flyToBounds(b, {
+                    padding: [60, 60],
+                    maxZoom: flyTo.maxZoom ?? 14,
+                    duration: 1.0,
+                });
+            }
+        } else {
+            map.flyTo([flyTo.lat, flyTo.lng], flyTo.zoom ?? 15, { duration: 1.2 });
+        }
+
+        // Remove the previous locate marker on every fly so a stale "אתה כאן"
+        // doesn't linger on the wrong spot after a chip-click reveal fly.
         if (locateMarkerRef.current) {
             locateMarkerRef.current.remove();
+            locateMarkerRef.current = null;
         }
-        locateMarkerRef.current = L.circleMarker([flyTo.lat, flyTo.lng], {
-            radius: 10,
-            color: '#2563eb',
-            weight: 3,
-            fillColor: '#fff',
-            fillOpacity: 1,
-        })
-            .bindTooltip('אתה כאן', { direction: 'top', permanent: false })
-            .addTo(map);
+        // Render the marker only when the fly was triggered by GPS — chip
+        // clicks never want a "you are here" pin.
+        if (flyTo.kind === 'gps' && !('bounds' in flyTo)) {
+            locateMarkerRef.current = L.circleMarker([flyTo.lat, flyTo.lng], {
+                radius: 10,
+                color: '#2563eb',
+                weight: 3,
+                fillColor: '#fff',
+                fillOpacity: 1,
+            })
+                .bindTooltip('אתה כאן', { direction: 'top', permanent: false })
+                .addTo(map);
+        }
     }, [flyTo]);
 
     // --- UI ---
