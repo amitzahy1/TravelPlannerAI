@@ -890,25 +890,21 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             if (layerFlags.hotels) {
                 trip.hotels?.forEach(h => {
                     const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
-                    // Prefer coords extracted from the hotel's googleMapsUrl over
-                    // the saved h.lat/h.lng — the URL is the user's source of
-                    // truth (it leads to the right place on Google Maps), while
-                    // the saved coords may be stale results from an old geocode
-                    // run. If both exist and disagree by >2km, the URL wins.
+                    // URL coords ALWAYS win when available. The googleMapsUrl is
+                    // the user's own bookmark — it points to the right place by
+                    // construction. Saved h.lat/h.lng can be stale results from
+                    // an old name-based geocode run that resolved the same name
+                    // to a different place (real-world example: KC Grande
+                    // Resort Koh Chang resolved to a south-island POI; the URL
+                    // !3d!4d had the correct north-island coords). The previous
+                    // 2km tolerance let drifted-but-not-by-much saved coords
+                    // win — too loose. Now: URL > saved > geocode-cache.
                     const urlCoords = extractCoordsFromMapsUrl(h.googleMapsUrl);
                     let finalLat = h.lat;
                     let finalLng = h.lng;
                     if (urlCoords) {
-                        if (!isValidCoordinate(h.lat, h.lng)) {
-                            finalLat = urlCoords.lat;
-                            finalLng = urlCoords.lng;
-                        } else {
-                            const distKm = getDistanceKm(h.lat as number, h.lng as number, urlCoords.lat, urlCoords.lng);
-                            if (distKm > 2) {
-                                finalLat = urlCoords.lat;
-                                finalLng = urlCoords.lng;
-                            }
-                        }
+                        finalLat = urlCoords.lat;
+                        finalLng = urlCoords.lng;
                     }
                     raw.push({
                         id: h.id, type: 'hotel', name: h.name, address: h.address,
@@ -1869,6 +1865,13 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // clusters of restaurants/attractions would otherwise hide them.
         visibleItems.forEach(item => {
             if (item.type === 'airport') return;
+            // DEFAULT-VIEW DECLUTTER (per user spec): at the trip-overview zoom
+            // (tier ≤ 2 with no city filter), the map shows ONLY the route
+            // story — colored polylines + numbered city pills. Hotels reveal
+            // at zoom ≥ 11 (tier ≥ 3) so the regional view stays clean. When
+            // a city filter is active the user has explicitly asked to focus
+            // there, so we render hotels regardless of tier.
+            if (item.type === 'hotel' && tier <= 2 && activeCity === 'ALL') return;
             // Hide restaurants/attractions at low zoom unless a city filter is active.
             if (!showPlaces && (item.type === 'restaurant' || item.type === 'attraction')) return;
             if (item.type !== 'hotel' && !isInTripRegion(item.lat!, item.lng!)) return;
@@ -2244,14 +2247,17 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         ? 'end'
                         : 'middle';
 
-                // Skip the standalone stop pill when it coincides with a
-                // hotel — the hotel pin now carries the stage-number badge
-                // (built into the hotelStopMap above), so a separate pill
-                // would just double-render. For non-hotel transit cities
-                // (no hotel at this stop) the pill renders at ALL zooms so
-                // the trip's chronological story is always readable.
+                // Skip the standalone stop pill ONLY when (a) it coincides
+                // with a hotel AND (b) the hotel pin is currently visible —
+                // i.e. we're at city-level zoom (tier ≥ 3) and either no
+                // city filter or the matching one. At trip-overview zoom
+                // (tier ≤ 2 with ALL view), hotel pins are hidden by the
+                // declutter rule above, so the stop pill IS the city marker
+                // and must render. Lets the user read "stop 1, stop 2,
+                // stop 3" from the moment the map opens.
                 const isOnHotel = stopCoincidesWithHotel(stop.coords.lat, stop.coords.lng);
-                if (isOnHotel) {
+                const hotelVisibleHere = tier >= 3 || activeCity !== 'ALL';
+                if (isOnHotel && hotelVisibleHere) {
                     bounds.extend([stop.coords.lat, stop.coords.lng]);
                     return;
                 }
@@ -2352,6 +2358,49 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles, heatmap, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions, mapZoom, popupRebuildToken]);
 
 
+    // City-pill click handler (Option A + double-tap):
+    //   • Single tap: setActiveCity → marker effect filters items to that
+    //     city + applyBounds smoothly fits the camera. Closes any open
+    //     popup so the marker rebuild fires (popupOpenRef would otherwise
+    //     gate it).
+    //   • Double-tap on the SAME pill within 1.5s: step to the next hotel
+    //     in that city with a tighter flyTo + open its popup. Loops.
+    const lastCityClickRef = useRef<{ city: string; ts: number; idx: number } | null>(null);
+    const handleCityPillClick = (cityName: string | 'ALL') => {
+        const now = Date.now();
+        const last = lastCityClickRef.current;
+        const map = mapInstanceRef.current;
+
+        // Close any open popup so the marker-render effect can rebuild for
+        // the new city (popupOpenRef would otherwise short-circuit it).
+        if (map && popupOpenRef.current) {
+            map.closePopup();
+            popupOpenRef.current = false;
+        }
+
+        // Double-tap on the same NON-ALL pill → step through that city's hotels.
+        if (cityName !== 'ALL' && last?.city === cityName && now - last.ts < 1500 && map && trip?.hotels) {
+            const cityHotels = trip.hotels.filter(h => {
+                if (!isValidCoordinate(h.lat, h.lng)) return false;
+                const itemCity = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
+                return cityKey(itemCity) === cityKey(cityName) || cityKey(h.city || '') === cityKey(cityName);
+            });
+            if (cityHotels.length > 0) {
+                const nextIdx = (last.idx + 1) % cityHotels.length;
+                const h = cityHotels[nextIdx];
+                map.stop();
+                userInteractedRef.current = true; // prevent the marker effect from snapping back
+                map.flyTo([h.lat as number, h.lng as number], 16, { duration: 0.8 });
+                lastCityClickRef.current = { city: cityName, ts: now, idx: nextIdx };
+                return;
+            }
+        }
+
+        // Single tap (or first tap on this city) — let the marker effect refit.
+        setActiveCity(cityName);
+        lastCityClickRef.current = { city: cityName, ts: now, idx: -1 };
+    };
+
     // Fly to a GPS-located position and show a "you are here" marker.
     useEffect(() => {
         const map = mapInstanceRef.current;
@@ -2390,7 +2439,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-center pointer-events-none">
                     <div className="bg-white/97 backdrop-blur-2xl p-1.5 rounded-2xl shadow-2xl border border-white/70 flex gap-1.5 overflow-x-auto max-w-full pointer-events-auto no-scrollbar items-center">
                         <button
-                            onClick={() => setActiveCity('ALL')}
+                            onClick={() => handleCityPillClick('ALL')}
                             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === 'ALL' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                         >
                             <MapIcon className="w-3.5 h-3.5" />
@@ -2400,7 +2449,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         {cities.map(c => (
                             <button
                                 key={c.name}
-                                onClick={() => setActiveCity(c.name)}
+                                onClick={() => handleCityPillClick(c.name)}
+                                title={activeCity === c.name ? 'לחיצה נוספת — מעבר למלון הבא בעיר' : `התמקד ב-${c.name}`}
                                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeCity === c.name ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'}`}
                             >
                                 {c.name}
