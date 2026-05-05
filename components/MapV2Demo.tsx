@@ -23,7 +23,11 @@ import { MapItemPopup, PopupItem } from './map/MapItemPopup';
  * API key needed.
  */
 
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
+// OpenFreeMap is the primary; MapLibre's official demo tiles are the
+// fallback. Both are completely free with no API key. We try OpenFreeMap
+// first and fall back if it errors so the demo always renders.
+const PRIMARY_STYLE = 'https://tiles.openfreemap.org/styles/positron';
+const FALLBACK_STYLE = 'https://demotiles.maplibre.org/style.json';
 
 // Build a flat list of placeable items with lat/lng from the trip
 interface MapItem extends PopupItem {
@@ -119,51 +123,78 @@ export const MapV2Demo: React.FC = () => {
 
         const items = useMemo(() => buildMapItems(activeTrip), [activeTrip]);
         const hotels = useMemo(() => items.filter(i => i.type === 'hotel'), [items]);
+        const [mapError, setMapError] = useState<string | null>(null);
 
-        // Initialize map once
+        // Initialize map once. Wait for items to be available so we can use a
+        // sensible center. We also retry with a fallback style if the primary
+        // tiles fail (CSP, network, regional blocks).
         useEffect(() => {
                 if (!containerRef.current || mapRef.current) return;
-                const initialCenter: [number, number] = items[0] ? [items[0].lng, items[0].lat] : [34.78, 32.08];
-                const map = new maplibregl.Map({
-                        container: containerRef.current,
-                        style: STYLE_URL,
-                        center: initialCenter,
-                        zoom: 9,
-                        pitch: 0,
-                        attributionControl: { compact: true },
-                });
-                mapRef.current = map;
-                map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-                map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
+                if (items.length === 0) return; // wait until we have data so center is right
 
-                map.on('load', () => {
-                        // Hebrew-first label fallback for every label layer in the style.
-                        // Most labels live on layers whose layout `text-field` references
-                        // `name:latin` or `name`. We rewrite to coalesce Hebrew first.
-                        const layers = map.getStyle().layers || [];
-                        layers.forEach(layer => {
-                                if (layer.type === 'symbol' && (layer.layout as any)?.['text-field']) {
-                                        try {
-                                                map.setLayoutProperty(layer.id, 'text-field', [
-                                                        'coalesce',
-                                                        ['get', 'name:he'],
-                                                        ['get', 'name:en'],
-                                                        ['get', 'name:latin'],
-                                                        ['get', 'name'],
-                                                ]);
-                                        } catch { /* style may not allow runtime update for some layers */ }
-                                }
-                        });
-                        setStyleReady(true);
-                });
+                const initialCenter: [number, number] = [items[0].lng, items[0].lat];
+                let cancelled = false;
+
+                const initWithStyle = (style: string) => {
+                        try {
+                                const map = new maplibregl.Map({
+                                        container: containerRef.current!,
+                                        style,
+                                        center: initialCenter,
+                                        zoom: 9,
+                                        pitch: 0,
+                                });
+                                mapRef.current = map;
+                                map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+                                map.on('error', (e: any) => {
+                                        const msg = e?.error?.message || e?.message || 'unknown';
+                                        console.warn('[MapV2] map error:', msg, e);
+                                        if (style === PRIMARY_STYLE && !mapRef.current?.isStyleLoaded()) {
+                                                // Primary style failed — retry with fallback.
+                                                map.remove();
+                                                mapRef.current = null;
+                                                console.info('[MapV2] retrying with fallback style');
+                                                if (!cancelled) initWithStyle(FALLBACK_STYLE);
+                                        } else {
+                                                setMapError(msg);
+                                        }
+                                });
+
+                                map.on('load', () => {
+                                        if (cancelled) return;
+                                        const layers = map.getStyle().layers || [];
+                                        layers.forEach(layer => {
+                                                if (layer.type === 'symbol' && (layer.layout as any)?.['text-field']) {
+                                                        try {
+                                                                map.setLayoutProperty(layer.id, 'text-field', [
+                                                                        'coalesce',
+                                                                        ['get', 'name:he'],
+                                                                        ['get', 'name:en'],
+                                                                        ['get', 'name:latin'],
+                                                                        ['get', 'name'],
+                                                                ]);
+                                                        } catch { /* style may not allow runtime update for some layers */ }
+                                                }
+                                        });
+                                        setStyleReady(true);
+                                });
+                        } catch (err: any) {
+                                console.error('[MapV2] init failed:', err);
+                                setMapError(String(err?.message || err));
+                        }
+                };
+
+                initWithStyle(PRIMARY_STYLE);
 
                 return () => {
+                        cancelled = true;
                         if (popupRef.current) popupRef.current.remove();
-                        map.remove();
+                        if (mapRef.current) mapRef.current.remove();
                         mapRef.current = null;
                 };
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, []);
+        }, [items.length]);
 
         // Add data + layers once the style is ready and items are loaded
         useEffect(() => {
@@ -452,8 +483,24 @@ export const MapV2Demo: React.FC = () => {
                                 </div>
                         </div>
 
-                        {/* The map */}
-                        <div ref={containerRef} className="absolute inset-0 top-[52px]" />
+                        {/* The map — `dir="ltr"` because MapLibre's canvas
+                            transforms assume LTR coordinates; an RTL parent
+                            inverts hit-testing and breaks the canvas. */}
+                        <div
+                                ref={containerRef}
+                                dir="ltr"
+                                className="absolute inset-0 top-[52px] bg-slate-200"
+                                style={{ direction: 'ltr' }}
+                        />
+
+                        {mapError && (
+                                <div className="absolute top-[60px] right-3 left-3 z-20 bg-rose-50 border border-rose-300 text-rose-900 rounded-xl p-3 text-xs font-bold shadow">
+                                        ❌ המפה לא נטענה: {mapError}
+                                        <div className="mt-1 text-2xs font-normal text-rose-700">
+                                                בדוק את ה-Console (F12) לפרטים נוספים.
+                                        </div>
+                                </div>
+                        )}
 
                         {/* HUD: fly-through trip button */}
                         {hotels.length >= 2 && (
