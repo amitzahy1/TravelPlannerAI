@@ -218,6 +218,25 @@ export const MapV2Demo: React.FC = () => {
                         return;
                 }
 
+                // Derive the font stack from whatever the loaded style actually
+                // provides. Hardcoding ['Noto Sans Bold', 'Noto Sans Regular']
+                // 404s on OpenFreeMap because it serves each font as a separate
+                // single-font stack. This sniff loop reuses an existing symbol
+                // layer's text-font so we always pick something valid.
+                const sniffFontStack = (): string[] => {
+                        try {
+                                const layers = map.getStyle().layers || [];
+                                for (const layer of layers) {
+                                        const f = (layer.layout as any)?.['text-font'];
+                                        if (Array.isArray(f) && f.length > 0 && typeof f[0] === 'string') {
+                                                return f as string[];
+                                        }
+                                }
+                        } catch { /* ignore */ }
+                        return ['Noto Sans Regular'];
+                };
+                const FONT_STACK = sniffFontStack();
+
                 map.addSource(SOURCE_ID, {
                         type: 'geojson',
                         data: fc as any,
@@ -254,9 +273,7 @@ export const MapV2Demo: React.FC = () => {
                         filter: ['has', 'point_count'],
                         layout: {
                                 'text-field': '{point_count_abbreviated}',
-                                // OpenFreeMap serves each font as a separate stack — combining
-                                // them ('Noto Sans Bold','Noto Sans Regular') 404s.
-                                'text-font': ['Noto Sans Bold'],
+                                'text-font': FONT_STACK,
                                 'text-size': 13,
                         },
                         paint: { 'text-color': '#ffffff' },
@@ -292,7 +309,7 @@ export const MapV2Demo: React.FC = () => {
                         filter: ['!', ['has', 'point_count']],
                         layout: {
                                 'text-field': ['get', 'name'],
-                                'text-font': ['Noto Sans Bold'],
+                                'text-font': FONT_STACK,
                                 'text-size': 12,
                                 'text-anchor': 'top',
                                 'text-offset': [0, 1.2],
