@@ -18,14 +18,17 @@ const GOOGLE_MODELS = {
   ],
   // Tier 2: Used for SEARCH intent (restaurant/attraction market research).
   // Quality first — stronger models produce better, more nuanced restaurant/attraction lists.
-  // Gemini 3 Pro has the best grounded-search capability; fall through to 3 Flash, then 2.5,
-  // and finally OpenRouter free-tier LLaMA if all Google quota is exhausted.
+  // gemini-3.1-pro-preview often times out on large 60-80 item prompts, so gemini-2.5-pro
+  // (stable GA, grounding-capable, faster) acts as the first Pro-tier fallback.
+  // gemini-3-flash (stable GA) is preferred over the preview variant for reliability.
   RESEARCH_CANDIDATES: [
-    "gemini-3.1-pro-preview",                        // PRIMARY — best quality, Gemini 3 grounded search
-    "gemini-3-flash-preview",                        // FALLBACK 1 — Gemini 3, fast + capable
-    "gemini-2.5-flash",                              // FALLBACK 2 — stable, reliable quota
-    "gemini-2.5-flash-lite",                         // FALLBACK 3 — highest quota tolerance
-    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 4 — OpenRouter free tier (non-Google)
+    "gemini-3.1-pro-preview",                        // PRIMARY — best quality, Gemini 3.1 grounded search
+    "gemini-2.5-pro",                                // FALLBACK 1 — stable Pro, grounding-capable, faster
+    "gemini-3-flash",                                // FALLBACK 2 — Gemini 3 Flash stable GA
+    "gemini-3-flash-preview",                        // FALLBACK 3 — Gemini 3 Flash preview (quota diversity)
+    "gemini-2.5-flash",                              // FALLBACK 4 — stable, reliable quota
+    "gemini-2.5-flash-lite",                         // FALLBACK 5 — highest quota tolerance
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 6 — OpenRouter free tier (non-Google)
   ],
   // Tier 3: Used for FAST intent (chat, quick suggestions)
   FAST_CANDIDATES: [
