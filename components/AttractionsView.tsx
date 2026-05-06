@@ -16,7 +16,6 @@ import { SkeletonCardGrid } from './ui/Skeleton';
 import { canEditTrip, isViewerOnly } from '../utils/tripPermissions';
 import { getLocalAI, setLocalAI } from '../utils/localTripAI';
 import { findClosedPlaces } from '../utils/closedPlaceCheck';
-import { PageIntro } from './ui/PageIntro';
 
 import { cleanTextForMap } from '../utils/textUtils';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
@@ -176,7 +175,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
              OUTPUT JSON ONLY:
             { "results": [{ "name", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl", "business_status", "verification_needed" }] } `;
 
-            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
             const data = JSON.parse(response.text || '{}');
             if (data.results) {
                 const operational = data.results.filter((r: any) => r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search - attr - ${i} `, categoryTitle: 'תוצאות חיפוש' }));
@@ -225,7 +224,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                 try {
                     const prompt = createResearchPrompt(cityEn);
-                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json' }, 'SEARCH');
+                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
                     const rawData = JSON.parse(response.text || '{}');
 
                     // ROBUST PARSER: Handle { categories: [...], categories: {...} }
@@ -525,7 +524,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 ]
             } `;
 
-            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json' }, 'SEARCH');
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
 
             const textContent = response.text;
             console.log("🔍 [AI ATTRACTIONS Raw Response]:", textContent?.substring(0, 500) + "...");
@@ -845,32 +844,97 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     );
 
     return (
-        <div className="space-y-4 animate-fade-in pb-10">
-            <PageIntro
-                icon={<Ticket />}
-                description="מחקר שוק AI על אטרקציות בערי הטיול — אתרי חובה, טבע, היסטוריה ועוד. אפשר לשמור לרשימה ולתזמן לתאריך מתאים."
-            />
-            {/* Search Bar */}
-            <div className="relative z-20">
-                <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-2 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
-                    <Search className="w-5 h-5 text-slate-400 mr-2" />
-                    <input className="flex-grow outline-none text-slate-700 font-medium text-sm" placeholder='חפש אטרקציה...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
-                    {textQuery && <button onClick={clearSearch} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-4 h-4" /></button>}
-                    <button onClick={handleTextSearch} disabled={isSearching || !textQuery.trim()} className="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50">{isSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{isSearching ? '...' : 'חיפוש'}</button>
+        <div className="space-y-3 animate-fade-in pb-10">
+            {/* Row 1 — primary navigation: tabs (right) + free-text search (flex). */}
+            <div className="flex items-center gap-2">
+                <div className="flex-shrink-0">
+                    <Tabs<'my_list' | 'recommended'>
+                        value={activeTab}
+                        onChange={setActiveTab}
+                        size="sm"
+                        ariaLabel="Attractions view mode"
+                        items={[
+                            { value: 'recommended', label: 'המלצות AI', iconLeading: <Sparkles /> },
+                            { value: 'my_list', label: 'הרשימה שלי', iconLeading: <Ticket /> },
+                        ]}
+                    />
                 </div>
-                {trip.customAttractionCategories && trip.customAttractionCategories.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                        {trip.customAttractionCategories.map((cat, idx) => (
-                            <button key={idx} onClick={() => { setTextQuery(cat); handleTextSearch(); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-purple-50 text-slate-600 rounded-full text-xs font-bold border border-slate-200">{cat}</button>
+                <div className="flex-grow relative z-20 min-w-0">
+                    <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-1.5 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
+                        <Search className="w-4 h-4 text-slate-400 mr-1 flex-shrink-0" />
+                        <input className="flex-grow outline-none text-slate-700 font-medium text-sm min-w-0" placeholder='חפש אטרקציה...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
+                        {textQuery && <button onClick={clearSearch} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
+                        <button onClick={handleTextSearch} disabled={isSearching || !textQuery.trim()} className="bg-purple-600 text-white px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors flex items-center gap-1 disabled:opacity-50 flex-shrink-0">{isSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}<span className="hidden sm:inline">{isSearching ? '...' : 'חיפוש'}</span></button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Saved-search chips — only when user has them. */}
+            {trip.customAttractionCategories && trip.customAttractionCategories.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                    {trip.customAttractionCategories.map((cat, idx) => (
+                        <button key={idx} onClick={() => { setTextQuery(cat); handleTextSearch(); }} className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-purple-50 text-slate-600 rounded-full text-2xs font-bold border border-slate-200">{cat}</button>
+                    ))}
+                </div>
+            )}
+
+            {/* Row 2 — context controls: city pills + list/map toggle + refresh/reset icons. */}
+            <div className="flex items-center gap-2">
+                {tripCities.length > 1 ? (
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide flex-grow min-w-0">
+                        {tripCities.map(city => (
+                            <button
+                                key={city}
+                                onClick={() => setSelectedCity(city)}
+                                className={`px-3 py-1 rounded-full text-2xs font-black transition-all border whitespace-nowrap flex-shrink-0 ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                            >
+                                {city}
+                            </button>
                         ))}
                     </div>
+                ) : (
+                    <div className="flex-grow" />
+                )}
+                <div className="inline-flex bg-slate-100 rounded-xl p-0.5 flex-shrink-0">
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-2xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <List className="w-3 h-3" /> רשימה
+                    </button>
+                    <button
+                        onClick={() => setViewMode('map')}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-2xs font-bold transition-all ${viewMode === 'map' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <MapIcon className="w-3 h-3" /> מפה
+                    </button>
+                </div>
+                {aiCategories.length > 0 && (
+                    <>
+                        <button
+                            onClick={() => selectedCity !== 'all' ? initiateResearch(selectedCity) : researchAllCities()}
+                            disabled={loadingRecs || isResearchingAll}
+                            title={isResearchingAll ? `סורק (${researchProgress.current}/${researchProgress.total})` : (selectedCity !== 'all' ? 'רענן עיר' : 'רענן הכל')}
+                            className="flex items-center justify-center w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-500 hover:border-purple-300 hover:text-purple-600 disabled:opacity-50 flex-shrink-0"
+                        >
+                            <RotateCw className={`w-3.5 h-3.5 ${(loadingRecs || isResearchingAll) ? 'animate-spin' : ''}`} />
+                        </button>
+                        <button
+                            onClick={() => setConfirmReset(true)}
+                            disabled={loadingRecs || isResearchingAll}
+                            title="איפוס מחקר"
+                            className="flex items-center justify-center w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-500 hover:border-red-300 hover:text-red-600 disabled:opacity-50 flex-shrink-0"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    </>
                 )}
             </div>
 
-            {/* Search Results */}
+            {/* Free-text search results — shown only when user submitted a query. */}
             {searchResults && (
                 <div className="space-y-3 animate-fade-in">
-                    <div className="flex justify-between items-center"><h3 className="text-lg font-black text-slate-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-xs text-slate-500 underline">נקה</button></div>
+                    <div className="flex justify-between items-center"><h3 className="text-base font-black text-slate-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-2xs text-slate-500 underline">נקה</button></div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {searchResults.map(res => <AttractionRecommendationCard key={res.id} rec={res} tripDestination={trip.destination} isAdded={addedIds.has(res.id) || trip.attractions.some(c => c.attractions.some(a => a.name === res.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(res)} />)}
                     </div>
@@ -879,57 +943,11 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
             {/* Viewer-mode notice — for collaborators joined via the viewer link. */}
             {viewerMode && (
-                <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] font-bold text-slate-600">
+                <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] font-bold text-slate-600">
                     <span className="flex items-center gap-1.5">
                         <span>🔒</span>
                         <span>תוצאות פרטיות — נשמרות רק במכשיר שלך</span>
                     </span>
-                </div>
-            )}
-
-            {/* Tab bar — canonical Tabs primitive. */}
-            <Tabs<'my_list' | 'recommended'>
-                value={activeTab}
-                onChange={setActiveTab}
-                fullWidth
-                className="mb-2"
-                ariaLabel="Attractions view mode"
-                items={[
-                    { value: 'recommended', label: 'מחקר שוק (AI)', iconLeading: <Sparkles /> },
-                    { value: 'my_list', label: 'הרשימה שלי', iconLeading: <Ticket /> },
-                ]}
-            />
-
-            {/* List ↔ Map segmented control */}
-            <div className="inline-flex bg-slate-100 rounded-xl p-1 mb-3">
-                <button
-                    onClick={() => setViewMode('list')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <List className="w-3.5 h-3.5" /> רשימה
-                </button>
-                <button
-                    onClick={() => setViewMode('map')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'map' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                    <MapIcon className="w-3.5 h-3.5" /> מפה
-                </button>
-            </div>
-
-            {/* City Filter Bar — tapping a city only changes the filter,
-                 the user stays on whichever view (list/map) they were on.
-                 The unified-map tab is where snap-to-city behaviour lives. */}
-            {tripCities.length > 1 && (
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    {tripCities.map(city => (
-                        <button
-                            key={city}
-                            onClick={() => setSelectedCity(city)}
-                            className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
-                        >
-                            {city}
-                        </button>
-                    ))}
                 </div>
             )}
 
@@ -1047,33 +1065,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     {/* RECOMMENDED TAB (AI) */}
                     {activeTab === 'recommended' && (
                         <div className="animate-fade-in">
-                            {/* Single compact action row — the top city filter bar (above this
-                                tab block) is already enough for picking a city. Here we offer
-                                'refresh' and 'reset research' (nuke the cached data and start
-                                fresh) when we already have results. Empty state has its own big CTA. */}
-                            {aiCategories.length > 0 && (
-                                <div className="flex items-center justify-end gap-2 mb-4">
-                                    <button
-                                        onClick={() => setConfirmReset(true)}
-                                        disabled={loadingRecs || isResearchingAll}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-500 hover:border-red-300 hover:text-red-600 disabled:opacity-50"
-                                        title="מחק את המחקר הקיים והרץ מחדש"
-                                    >
-                                        <Trash2 className="w-3 h-3" />
-                                        איפוס מחקר
-                                    </button>
-                                    <button
-                                        onClick={() => selectedCity !== 'all' ? initiateResearch(selectedCity) : researchAllCities()}
-                                        disabled={loadingRecs || isResearchingAll}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:border-purple-300 hover:text-purple-600 disabled:opacity-50"
-                                    >
-                                        <RotateCw className={`w-3 h-3 ${(loadingRecs || isResearchingAll) ? 'animate-spin' : ''}`} />
-                                        {isResearchingAll
-                                            ? `סורק (${researchProgress.current}/${researchProgress.total})`
-                                            : loadingRecs
-                                                ? 'טוען...'
-                                                : (selectedCity !== 'all' ? 'רענן עיר' : 'רענן הכל')}
-                                    </button>
+                            {/* Refresh + reset moved to row 2 of the page header. Inline progress
+                                strip surfaces multi-city research progress while it runs. */}
+                            {isResearchingAll && (
+                                <div className="flex items-center gap-2 mb-3 px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 text-2xs font-bold">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>סורק עיר {researchProgress.current} מתוך {researchProgress.total}…</span>
                                 </div>
                             )}
 
@@ -1106,7 +1103,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                             >
                                                 {isResearchingAll
                                                     ? <><Loader2 className="w-5 h-5 animate-spin" /> סורק ({researchProgress.current}/{researchProgress.total})</>
-                                                    : <><BrainCircuit className="w-5 h-5" /> בצע מחקר לכל הטיול (AI)</>}
+                                                    : <><BrainCircuit className="w-5 h-5" /> המלצות AI לכל הטיול</>}
                                             </button>
                                             {tripCities.length > 1 && !isResearchingAll && (
                                                 <div className="pt-3 border-t border-slate-100 w-full max-w-md">

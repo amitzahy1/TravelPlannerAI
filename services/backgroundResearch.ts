@@ -30,9 +30,9 @@ You are a food expert helping someone find the BEST restaurants in
 widespread press, and iconic street-food / hole-in-the-wall legends.
 
 **PART 1: QUOTA & SCOPE**
-- For EACH of the 10 categories below, return 3-5 real restaurants
-  (aim for 5 in a major food city). Empty array ONLY if the category
-  truly has nothing. Total response for a major city = 30-50.
+- For EACH of the 10 categories below, return 6-8 real restaurants
+  (aim for 8 in a major food city). Empty array ONLY if the category
+  truly has nothing. Total response for a major city = 60-80.
 - Every "location" MUST be in or near "${city}".
 
 **PART 2: CATEGORIES (use EXACTLY these Hebrew titles):**
