@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Star, MapIcon, Trophy, Plus, Navigation, AlertTriangle } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
+import { getEnglishName } from '../utils/displayName';
 
 export interface PlaceCardProps {
         type: 'restaurant' | 'attraction';
@@ -46,7 +47,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
 }) => {
         // 1. Get Context-Aware Visual (Isolated Paths)
         const tags = [cuisine || attractionType || '', location];
-        const searchName = nameEnglish || name;
+        const searchName = getEnglishName({ name, nameEnglish, location });
 
         // Strict Isolation: Never call a generic mapper
         const { url: initialUrl, label: visualLabel } = type === 'restaurant'
@@ -86,7 +87,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                         : 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=800&q=80');
         };
 
-        const displayName = nameEnglish || name;
+        const displayName = getEnglishName({ name, nameEnglish, location });
 
         return (
                 <div

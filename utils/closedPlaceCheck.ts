@@ -33,8 +33,8 @@ interface ClosedCheckResult {
         reason?: string;
 }
 
-const CACHE_KEY = 'weTravel.closedPlaceCheck.v1';
-const CACHE_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days
+const CACHE_KEY = 'weTravel.closedPlaceCheck.v2';
+const CACHE_TTL_MS = 7 * 24 * 3600 * 1000; // 7 days — restaurants close without notice
 
 interface CacheEntry { closed: boolean; t: number; reason?: string }
 type Cache = Record<string, CacheEntry>;
@@ -52,21 +52,27 @@ const writeCache = (cache: Cache) => {
 const cacheKey = (p: ClosedCheckPlace): string =>
         `${(p.name || '').trim().toLowerCase()}|${(p.city || '').trim().toLowerCase()}|${(p.country || '').trim().toLowerCase()}`;
 
-const buildPrompt = (places: ClosedCheckPlace[]): string => `
-You are a closed-place verifier. For each item below, determine whether
-the named place is currently CLOSED — either permanently closed, or
-temporarily closed for an extended period. Use Google Maps status as the
-primary signal, plus recent reviews (last 6 months) for closure reports.
+const buildPrompt = (places: ClosedCheckPlace[]): string => {
+        const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        return `
+You are a real-time restaurant and attraction verifier. Today is ${currentDate}.
+Use Google Search to check the CURRENT status of each place listed below.
 
-DO NOT mark seasonal closures (winter / monsoon / regular closed days)
-as closed. We want only places that are NO LONGER A VALID DESTINATION.
+For each place, search Google Maps for its current status and check its
+most recent reviews (last 3-6 months). Mark it closed ONLY if:
+- Google Maps shows "Permanently closed" or "Temporarily closed"
+- Multiple recent reviews (last 6 months) mention it closed
+- The place genuinely no longer exists as a valid destination
 
-Items:
+DO NOT mark seasonal closures (closed Mondays, winter season, monsoon
+season, etc.) as closed — those are temporary scheduled closures.
+
+Items (search Google Maps for each):
 ${places.map((p, i) => `${i + 1}. id=${p.id} | "${p.name}"${p.city ? ` in ${p.city}` : ''}${p.country ? `, ${p.country}` : ''}`).join('\n')}
 
 Return JSON ONLY:
 { "results": [{ "id": string, "is_closed": boolean, "reason"?: string }] }
-`;
+`; };
 
 /**
  * Verify a list of place names against known-closed status. Returns ONLY
@@ -101,11 +107,14 @@ export const findClosedPlaces = async (
         for (let i = 0; i < toAsk.length; i += BATCH) {
                 const batch = toAsk.slice(i, i + BATCH);
                 try {
+                        // SEARCH intent gives the model real-time Google Search access
+                        // so it can check actual current Google Maps status, not
+                        // just training-data knowledge that's 1-2 years stale.
                         const res = await generateWithFallback(
                                 null,
                                 [{ role: 'user', parts: [{ text: buildPrompt(batch) }] }],
-                                { responseMimeType: 'application/json', temperature: 0 },
-                                'FAST',
+                                { temperature: 0 },
+                                'SEARCH',
                         );
                         const parsed = JSON.parse(res?.text || '{}');
                         const results: ClosedCheckResult[] = Array.isArray(parsed?.results) ? parsed.results : [];

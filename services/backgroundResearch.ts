@@ -24,10 +24,24 @@ const inFlightTrips = new Set<string>();
 
 // Build the same prompt the RestaurantsView uses, inlined so this service
 // is self-contained.
-const buildRestaurantPrompt = (city: string) => `
+const buildRestaurantPrompt = (city: string) => {
+const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+return `
 You are a food expert helping someone find the BEST restaurants in
-"${city}". Focus on top-rated places, award winners, spots with recent
-widespread press, and iconic street-food / hole-in-the-wall legends.
+"${city}" as of ${currentDate}. Focus on top-rated places, award winners,
+spots with recent widespread press, and iconic street-food / hole-in-the-wall legends.
+
+**TODAY'S DATE: ${currentDate}** — use this to judge "currently open" and
+"recent reviews". Search Google Maps for each restaurant before including it.
+Do NOT rely on training data alone — verify each place is open right now.
+
+**PART 0: OPERATIONAL VERIFICATION — HARD RULE (READ FIRST)**
+Every place you return MUST currently be operating as of ${currentDate}.
+OMIT any restaurant where:
+- Google Maps shows "Permanently closed" or "Temporarily closed"
+- You are not >90% confident the place is open right now
+- Recent reviews (last 6 months) report closure or prolonged shutdown
+Critical: an empty category is fine; a closed listing is a failure of the system.
 
 **PART 1: QUOTA & SCOPE**
 - For EACH of the 10 categories below, return 6-8 real restaurants
@@ -94,15 +108,21 @@ return an empty array for that category. Better empty than bad.
 For "googleMapsUrl": include the actual URL from your Google Search
 results, not a guessed one. Omit the field if you can't find a real URL.
 
-Descriptions in HEBREW. OUTPUT JSON ONLY:
-{ "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl" } ] } ] }
-`;
+Descriptions in HEBREW. "nameEnglish" REQUIRED = official Latin-script name (not a Hebrew transliteration). OUTPUT JSON ONLY:
+{ "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl", "business_status" } ] } ] }
+`; };
 
-const buildAttractionPrompt = (city: string) => `
-You are a travel expert helping a family plan a trip to "${city}".
+const buildAttractionPrompt = (city: string) => {
+const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+return `
+You are a travel expert helping a family plan a trip to "${city}" as of ${currentDate}.
 Find the best, most-popular, and most-talked-about attractions —
 INCLUDING famous tourist spots (tourists actually want to visit
 iconic commercial attractions). Don't invent places.
+
+**TODAY'S DATE: ${currentDate}** — verify each attraction is still open.
+Omit anything permanently closed or under indefinite renovation.
+Search Google Maps for current operational status before including.
 
 For EACH of the 10 categories below, return 3-5 real attractions
 (aim for 5). Return empty array ONLY if the city genuinely has no
@@ -142,9 +162,10 @@ For each attraction include "googleMapsUrl" — the actual URL from
 your Google Search results, NOT a guessed one. If you cannot find
 a real URL, omit the field entirely; do not fabricate.
 
+"nameEnglish" REQUIRED = official Latin-script name (e.g. "Wat Pho", "Tiffany's Show Pattaya").
 OUTPUT JSON ONLY:
-{ "categories": [ { "id", "title", "attractions": [ { "name", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl" } ] } ] }
-`;
+{ "categories": [ { "id", "title", "attractions": [ { "name", "nameEnglish", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl" } ] } ] }
+`; };
 
 interface ResearchOptions {
         onProgress?: (phase: 'food' | 'attractions', current: number, total: number) => void;

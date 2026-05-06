@@ -3,6 +3,7 @@ import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X, Trophy } from 
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
 import { safeMapsUrl } from '../utils/mapsUrl';
+import { getEnglishName } from '../utils/displayName';
 
 
 interface GlobalPlaceModalProps {
@@ -91,8 +92,8 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
         // Fai'). The card uses nameEnglish — the modal must match, otherwise
         // users see Thai in the popup and an unrelated stock photo because the
         // Thai name doesn't match any Wikipedia title.
-        const displayName: string = item.nameEnglish || item.name || '';
-        const searchName: string = item.nameEnglish || item.name || '';
+        const displayName: string = getEnglishName({ name: item.name || '', nameEnglish: item.nameEnglish, location: item.location });
+        const searchName: string = displayName;
 
         // Smart Tag Logic
         const originalTag = item.cuisine || item.type || item.tags?.[0] || '';

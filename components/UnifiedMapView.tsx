@@ -16,6 +16,7 @@ import { SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 import { toast } from '../stores/useToastStore';
 import { MODE_COLORS } from '../utils/transportColors';
 import { MapItemPopup } from './map/MapItemPopup';
+import { getEnglishName } from '../utils/displayName';
 
 // --- Interfaces ---
 export interface MapItem {
@@ -1073,7 +1074,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 trip.restaurants?.forEach(cat => cat.restaurants?.forEach(r => {
                     const city = r.location?.split(',')?.[1]?.trim() || trip.destination;
                     raw.push({
-                        id: r.id, type: 'restaurant', name: r.name, address: r.location,
+                        id: r.id, type: 'restaurant', name: getEnglishName({ name: r.name, nameEnglish: (r as any).nameEnglish, location: r.location }), address: r.location,
                         lat: r.lat, lng: r.lng, description: r.description,
                         date: r.reservationDate, time: r.reservationTime, city,
                         rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
@@ -1086,7 +1087,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 trip.attractions?.forEach(cat => cat.attractions?.forEach(a => {
                     const city = a.location?.split(',')?.[1]?.trim() || trip.destination;
                     raw.push({
-                        id: a.id, type: 'attraction', name: a.name, address: a.location,
+                        id: a.id, type: 'attraction', name: getEnglishName({ name: a.name, nameEnglish: (a as any).nameEnglish, location: a.location }), address: a.location,
                         lat: a.lat, lng: a.lng, description: a.description,
                         date: a.scheduledDate, time: a.scheduledTime, city,
                         rating: typeof a.rating === 'number' ? a.rating : undefined,
@@ -1107,7 +1108,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     cat.restaurants?.forEach(r => {
                         if (!isPlaceInTripScope(trip, { location: r.location, region: r.region || city })) return;
                         raw.push({
-                            id: r.id, type: 'restaurant', name: r.name, address: r.location,
+                            id: r.id, type: 'restaurant', name: getEnglishName({ name: r.name, nameEnglish: (r as any).nameEnglish, location: r.location }), address: r.location,
                             lat: r.lat, lng: r.lng, description: r.description, city,
                             rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
                             cuisine: r.cuisine, recommendationSource: r.recommendationSource,
@@ -1125,7 +1126,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     cat.attractions?.forEach(a => {
                         if (!isPlaceInTripScope(trip, { location: a.location, region: a.region || city, description: a.description })) return;
                         raw.push({
-                            id: a.id, type: 'attraction', name: a.name, address: a.location,
+                            id: a.id, type: 'attraction', name: getEnglishName({ name: a.name, nameEnglish: (a as any).nameEnglish, location: a.location }), address: a.location,
                             lat: a.lat, lng: a.lng, description: a.description, city,
                             rating: typeof a.rating === 'number' ? a.rating : undefined,
                             category: a.type || a.categoryTitle,

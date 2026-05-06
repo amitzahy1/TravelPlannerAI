@@ -525,11 +525,17 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         ).finally(flush);
     };
 
-    const createResearchPrompt = (specificCity: string) => `
+    const createResearchPrompt = (specificCity: string) => {
+    const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    return `
     You are a food expert helping someone find the BEST restaurants in
-    "${specificCity}". Focus on top-rated places, award winners, and
-    spots with recent widespread press. Include iconic street food and
-    hole-in-the-wall legends locals actually eat at.
+    "${specificCity}" as of ${currentDate}. Focus on top-rated places,
+    award winners, and spots with recent widespread press. Include iconic
+    street food and hole-in-the-wall legends locals actually eat at.
+
+    **TODAY'S DATE: ${currentDate}** — use this to assess "currently open",
+    "recent reviews", and "last 12 months". Search Google Maps for each
+    restaurant's current operational status before including it.
 
     **PART 0: OPERATIONAL VERIFICATION — HARD RULE (READ FIRST)**
     Every place you return MUST currently be operating. The "business_status"
@@ -658,7 +664,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     "business_status" is REQUIRED — must be "OPERATIONAL" for any place you return.
     Set "verification_needed" to true ONLY if you're sharing the place
     but want the user to double-check hours/status before going.
-    `;
+    `; };
 
     const fetchRecommendations = async (forceRefresh = false, specificCity: string) => {
         setLoadingRecs(true);
@@ -671,10 +677,25 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             // Single-city research — lean prompt, aligned with the multi-city
             // createResearchPrompt. Focus: top-rated + award winners + recency
             // check + local-authority sources.
+            const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
             const prompt = `
             You are a food expert helping someone find the BEST restaurants in
-            "${targetCity}". Find top-rated places, award winners, spots
-            with strong recent press, and iconic hole-in-the-wall local legends.
+            "${targetCity}" as of ${currentDate}. Find top-rated places, award winners,
+            spots with strong recent press, and iconic hole-in-the-wall local legends.
+
+            **TODAY'S DATE: ${currentDate}** — use this to judge "currently open",
+            "recent reviews", and "last 12 months". Search Google Maps for each
+            restaurant's current operational status before including it. Do NOT rely
+            on training data alone — verify each place is still open right now.
+
+            **PART 0: OPERATIONAL VERIFICATION — HARD RULE (READ FIRST)**
+            Every place you return MUST currently be operating as of ${currentDate}.
+            If any of the following are true, OMIT the restaurant entirely:
+            - Google Maps shows "Permanently closed" or "Temporarily closed"
+            - You are not >90% confident the place is still open right now
+            - The chef who made it famous left and quality dropped
+            - Reviews in the last 6 months report closure
+            Critical: an empty category is fine; a closed listing is a failure.
 
             **PART 1: QUOTA & SCOPE**
             - For EACH of the 10 categories below, return 6-8 real restaurants
