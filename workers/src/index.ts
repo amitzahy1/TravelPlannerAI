@@ -602,7 +602,7 @@ async function analyzeTripWithGemini(text: string, attachments: any[], existingT
         const CANDIDATES = [
                 "gemini-3.1-pro-preview",  // 1. PRIMARY: best at complex document reasoning
                 "gemini-2.5-pro",          // 2. BACKUP: stable Pro, reliable
-                "gemini-3-flash",          // 3. FALLBACK: Gemini 3 Flash stable GA
+                "gemini-3-flash-preview",  // 3. FALLBACK: Gemini 3 Flash preview
                 "gemini-2.5-flash",        // 4. LAST RESORT: fast fallback
         ];
 

@@ -17,18 +17,20 @@ const GOOGLE_MODELS = {
     "gemini-2.5-pro",
   ],
   // Tier 2: Used for SEARCH intent (restaurant/attraction market research).
-  // Quality first — stronger models produce better, more nuanced restaurant/attraction lists.
-  // gemini-3.1-pro-preview often times out on large 60-80 item prompts, so gemini-2.5-pro
-  // (stable GA, grounding-capable, faster) acts as the first Pro-tier fallback.
-  // gemini-3-flash (stable GA) is preferred over the preview variant for reliability.
+  // Quality first — stronger models produce better results.
+  //
+  // NOTE on quota tiers (free vs paid):
+  //   - gemini-3.1-pro-preview, gemini-2.5-pro → limit: 0 on free tier (needs GEMINI_PREMIUM_KEY)
+  //   - gemini-3-flash → 404 on v1beta API (wrong ID — model not yet publicly available)
+  //   - gemini-3-flash-preview → works but has low per-minute quota
+  //   - gemini-2.5-flash, gemini-2.5-flash-lite → free tier: 20/day each
   RESEARCH_CANDIDATES: [
-    "gemini-3.1-pro-preview",                        // PRIMARY — best quality, Gemini 3.1 grounded search
-    "gemini-2.5-pro",                                // FALLBACK 1 — stable Pro, grounding-capable, faster
-    "gemini-3-flash",                                // FALLBACK 2 — Gemini 3 Flash stable GA
-    "gemini-3-flash-preview",                        // FALLBACK 3 — Gemini 3 Flash preview (quota diversity)
-    "gemini-2.5-flash",                              // FALLBACK 4 — stable, reliable quota
-    "gemini-2.5-flash-lite",                         // FALLBACK 5 — highest quota tolerance
-    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 6 — OpenRouter free tier (non-Google)
+    "gemini-3.1-pro-preview",                        // PRIMARY — best quality (needs paid key; skipped on free)
+    "gemini-2.5-pro",                                // FALLBACK 1 — stable Pro (needs paid key; skipped on free)
+    "gemini-3-flash-preview",                        // FALLBACK 2 — Gemini 3 Flash, grounding-capable
+    "gemini-2.5-flash",                              // FALLBACK 3 — stable, 20 req/day free
+    "gemini-2.5-flash-lite",                         // FALLBACK 4 — highest free-tier quota
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 5 — OpenRouter free tier (non-Google)
   ],
   // Tier 3: Used for FAST intent (chat, quick suggestions)
   FAST_CANDIDATES: [
