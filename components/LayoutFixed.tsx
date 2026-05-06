@@ -4,7 +4,6 @@ import { Trip } from '../types';
 import { Map, Plane, Utensils, Hotel, Globe, Ticket, Compass, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home, Search, Mail } from 'lucide-react';
 import { QuickAccessWallet } from './QuickAccessWallet';
 import LoginButton from './LoginButton';
-import { TripProgress } from './shared';
 import { Mailbox } from './Mailbox';
 import { MailboxButton } from './MailboxButton';
 import { isMailboxTrip, claimMailboxTrip, mergeTripIntoTarget } from '../utils/mailbox';
@@ -168,9 +167,6 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                                                         </div>
                                                                                 </>
                                                                         )}
-                                                                </div>
-                                                                <div className="min-w-0 overflow-hidden flex-shrink">
-                                                                        <TripProgress trip={activeTrip} compact onNavigate={onSwitchTab} />
                                                                 </div>
                                                         </div>
                                                 )}
