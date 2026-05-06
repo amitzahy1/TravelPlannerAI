@@ -1850,7 +1850,16 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             // @ts-ignore
             ? L.markerClusterGroup({
                 showCoverageOnHover: false,
-                maxClusterRadius: 50,
+                // Zoom-aware cluster radius: tight clusters break apart as the
+                // user zooms in so they don't have to tap a "2" bubble at
+                // street level just to see two pins that are clearly
+                // distinguishable. Above zoom 17, clustering stops entirely.
+                maxClusterRadius: (zoom: number) => {
+                    if (zoom >= 16) return 20;
+                    if (zoom >= 14) return 35;
+                    return 50;
+                },
+                disableClusteringAtZoom: 18,
                 // EXPLICIT — these default to true in leaflet.markercluster but
                 // were missing from the original config, and some clusters
                 // (especially groups of items at the same coords) refused to
