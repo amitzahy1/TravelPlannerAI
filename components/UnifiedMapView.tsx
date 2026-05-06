@@ -2133,6 +2133,30 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 zIndexOffset: item.type === 'hotel' ? 3000 : 0,
             }).addTo(targetLayer);
 
+            // Walking-radius rings around each hotel — opt-in via the
+            // "טווח הליכה מהמלון" toggle. Outer 2.4 km ≈ 30 min, inner
+            // 1.2 km ≈ 15 min at a 5 km/h walking pace. interactive=false
+            // so the circles don't swallow taps on pins inside them.
+            if (item.type === 'hotel' && walkingCircles && isValidCoordinate(item.lat, item.lng)) {
+                L.circle([item.lat!, item.lng!], {
+                    radius: 2400,
+                    color: '#10b981',
+                    weight: 1.5,
+                    fillColor: '#10b981',
+                    fillOpacity: 0.05,
+                    dashArray: '6,4',
+                    interactive: false,
+                }).addTo(routeLayer);
+                L.circle([item.lat!, item.lng!], {
+                    radius: 1200,
+                    color: '#10b981',
+                    weight: 2,
+                    fillColor: '#10b981',
+                    fillOpacity: 0.10,
+                    interactive: false,
+                }).addTo(routeLayer);
+            }
+
             // React portal popup — renders MapItemPopup synchronously via
             // flushSync so the DOM is populated before Leaflet opens the popup.
             marker.on('click', () => {
