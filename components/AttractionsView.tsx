@@ -845,13 +845,14 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     return (
         <div className="space-y-3 animate-fade-in pb-10">
-            {/* Row 1 — primary navigation: tabs (right) + free-text search (flex). */}
-            <div className="flex items-center gap-2">
+            {/* Row 1 — primary navigation: bold tabs (right) + free-text search (capped width). */}
+            <div className="flex items-center gap-3">
                 <div className="flex-shrink-0">
                     <Tabs<'my_list' | 'recommended'>
                         value={activeTab}
                         onChange={setActiveTab}
-                        size="sm"
+                        size="md"
+                        className="[&_button]:px-5 [&_button]:font-black [&_button[aria-selected=true]]:text-purple-600 [&_svg]:w-4 [&_svg]:h-4"
                         ariaLabel="Attractions view mode"
                         items={[
                             { value: 'recommended', label: 'המלצות AI', iconLeading: <Sparkles /> },
@@ -859,7 +860,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         ]}
                     />
                 </div>
-                <div className="flex-grow relative z-20 min-w-0">
+                <div className="flex-grow relative z-20 min-w-0 max-w-sm">
                     <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-1.5 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
                         <Search className="w-4 h-4 text-slate-400 mr-1 flex-shrink-0" />
                         <input className="flex-grow outline-none text-slate-700 font-medium text-sm min-w-0" placeholder='חפש אטרקציה...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
