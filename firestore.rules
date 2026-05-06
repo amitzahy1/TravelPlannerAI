@@ -2,6 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // 0. User document itself — currently holds `lastPremiumRunAt` for
+    //    monthly Gemini Pro gating. Owners read/write their own doc only.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     // 1. Personal Trips (ללא שינוי)
     match /users/{userId}/trips/{tripId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;

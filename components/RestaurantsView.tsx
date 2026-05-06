@@ -1223,7 +1223,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 <div className="flex-grow relative z-20 min-w-0 max-w-sm">
                     <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-1.5 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100 transition-all">
                         <Search className="w-4 h-4 text-slate-400 mr-1 flex-shrink-0" />
-                        <input className="flex-grow outline-none text-slate-700 font-medium text-sm min-w-0" placeholder='חפש מסעדה...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
+                        <input className="flex-grow outline-none text-slate-700 font-medium text-sm min-w-0" placeholder='נסה: מישלן בבנגקוק, ראמן, בר קוקטיילים, בית קפה...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
                         {textQuery && (<button onClick={clearSearch} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 flex-shrink-0"><X className="w-3.5 h-3.5" /></button>)}
                         <button onClick={handleTextSearch} disabled={isSearching || !textQuery.trim()} className="bg-orange-600 text-white px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-orange-700 transition-colors flex items-center gap-1 disabled:opacity-50 flex-shrink-0">{isSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}<span className="hidden sm:inline">{isSearching ? '...' : 'חיפוש'}</span></button>
                     </div>
