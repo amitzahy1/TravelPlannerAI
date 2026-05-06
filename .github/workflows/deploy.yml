@@ -92,6 +92,16 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # Premium (billing-enabled) Gemini key. Used only when the request
+      # body has tier='paid' (the trip owner's monthly first run on
+      # restaurants/attractions). All other calls keep using GEMINI_API_KEY.
+      - name: Push GEMINI_PREMIUM_KEY secret
+        run: echo -n "${{ secrets.GEMINI_PREMIUM_KEY }}" | npx wrangler secret put GEMINI_PREMIUM_KEY
+        working-directory: workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:

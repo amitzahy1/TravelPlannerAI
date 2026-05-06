@@ -13,10 +13,12 @@ import { PlaceCard } from './PlaceCard';
 import { GlobalPlaceModal } from './GlobalPlaceModal';
 import { ConfirmModal } from './ConfirmModal';
 import { stripChainRestaurants } from '../utils/chainRestaurants';
-import { canEditTrip, isViewerOnly } from '../utils/tripPermissions';
+import { canEditTrip, isTripOwner, isViewerOnly } from '../utils/tripPermissions';
 import { getLocalAI, setLocalAI, clearLocalAI, hasLocalAI } from '../utils/localTripAI';
 import { findClosedPlaces } from '../utils/closedPlaceCheck';
 import { toast } from '../stores/useToastStore';
+import { useAuth } from '../contexts/AuthContext';
+import { getUserPremiumState, markPremiumRunUsed } from '../services/firestoreService';
 
 // Extended interface for internal use
 interface ExtendedRestaurant extends Restaurant {
@@ -147,6 +149,34 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // through to the shared trip as before.
     const viewerMode = isViewerOnly(trip);
     const userCanEdit = canEditTrip(trip);
+    const ownerOnly = isTripOwner(trip);
+
+    // Premium-tier gating — only the trip OWNER gets one Gemini Pro
+    // call per 30 days, on the very first AI Recommendations click of
+    // a calendar window. Collaborators always run on the free chain.
+    const { user } = useAuth();
+    const userId = user?.uid;
+    const [premiumLastUsedAt, setPremiumLastUsedAt] = useState<number | null>(null);
+    useEffect(() => {
+        if (!userId || !ownerOnly) {
+            setPremiumLastUsedAt(0);
+            return;
+        }
+        getUserPremiumState(userId)
+            .then(s => setPremiumLastUsedAt(s.lastPremiumRunAt ?? 0))
+            .catch(() => setPremiumLastUsedAt(0));
+    }, [userId, ownerOnly]);
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const resolvePreferTier = (): 'paid' | 'free' => {
+        if (!ownerOnly || !userId || premiumLastUsedAt === null) return 'free';
+        return Date.now() - premiumLastUsedAt > THIRTY_DAYS_MS ? 'paid' : 'free';
+    };
+    const stampPremiumIfUsed = async (preferTier: 'paid' | 'free', producedResults: boolean) => {
+        if (preferTier === 'paid' && producedResults && userId) {
+            await markPremiumRunUsed(userId);
+            setPremiumLastUsedAt(Date.now());
+        }
+    };
 
     // Centralised AI-persistence helper. Editors → shared Firestore trip.
     // Viewers → browser localStorage. Same call signature for callers.
@@ -292,6 +322,11 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         const cities = tripCities;
         setResearchProgress({ current: 0, total: cities.length });
 
+        // Lock premium tier ONCE for the whole multi-city run so every
+        // city in this click gets the same model. Stamping happens after
+        // the loop, so cancellations / errors don't burn the monthly slot.
+        const preferTier = resolvePreferTier();
+
         try {
             let accumulatedCategories: RestaurantCategory[] = [...baseCategories];
 
@@ -303,7 +338,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                 try {
                     const prompt = createResearchPrompt(cityEn);
-                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
+                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH', preferTier);
                     const rawData = JSON.parse(response.text || '{}');
                     let categoriesList: any[] = [];
                     if (rawData.categories) {
@@ -370,6 +405,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             setAiCategories(accumulatedCategories);
             persistAiRestaurants(accumulatedCategories);
             setSelectedCity('all');
+
+            // Burn the monthly premium slot only if the run actually produced results.
+            await stampPremiumIfUsed(preferTier, accumulatedCategories.length > 0);
 
             // Closed-place safety net: ask a fast model "is each of these
             // permanently/temporarily closed?" and drop anything flagged.
@@ -723,7 +761,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
               ]
             }`;
 
-            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
+            const preferTier = resolvePreferTier();
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH', preferTier);
 
             const textContent = response.text;
             console.log("🔍 [AI Raw Response Preview]:", textContent?.substring(0, 500) + "...");
@@ -783,6 +822,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     setAiCategories(merged);
                     setSelectedCategory('all');
                     persistAiRestaurants(merged);
+                    await stampPremiumIfUsed(preferTier, processed.length > 0);
                 } else {
                     console.warn("⚠️ [AI Warning] Response was valid JSON but contained no results.", rawData);
                     setRecError('לא נמצאו המלצות מסעדות עבור יעד זה. המודל לא הצליח לאתר תוצאות איכותיות.');

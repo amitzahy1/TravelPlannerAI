@@ -148,6 +148,38 @@ export const userHasTrips = async (userId: string): Promise<boolean> => {
   }
 };
 
+// --- USER-LEVEL PREMIUM STATE ---
+
+/**
+ * Read the user-doc fields that gate the monthly premium AI run.
+ * Returns {} if the user doc doesn't exist yet (= eligible).
+ */
+export const getUserPremiumState = async (
+  userId: string,
+): Promise<{ lastPremiumRunAt?: number }> => {
+  try {
+    const ref = doc(db, USERS_COLLECTION, userId);
+    const snap = await getDoc(ref);
+    return snap.exists() ? (snap.data() as { lastPremiumRunAt?: number }) : {};
+  } catch (error) {
+    console.error('Error reading user premium state:', error);
+    return {};
+  }
+};
+
+/**
+ * Stamp `now` as the user's last premium-run time. Merge-write so it
+ * doesn't clobber the trips subcollection / future user-doc fields.
+ */
+export const markPremiumRunUsed = async (userId: string): Promise<void> => {
+  try {
+    const ref = doc(db, USERS_COLLECTION, userId);
+    await setDoc(ref, { lastPremiumRunAt: Date.now() }, { merge: true });
+  } catch (error) {
+    console.error('Error marking premium run used:', error);
+  }
+};
+
 // --- SHARING FUNCTIONS ---
 
 /**

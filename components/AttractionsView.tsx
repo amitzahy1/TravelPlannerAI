@@ -13,7 +13,9 @@ import { GlobalPlaceModal } from './GlobalPlaceModal';
 import { ConfirmModal } from './ConfirmModal';
 import { Tabs } from './ui/Tabs';
 import { SkeletonCardGrid } from './ui/Skeleton';
-import { canEditTrip, isViewerOnly } from '../utils/tripPermissions';
+import { canEditTrip, isTripOwner, isViewerOnly } from '../utils/tripPermissions';
+import { useAuth } from '../contexts/AuthContext';
+import { getUserPremiumState, markPremiumRunUsed } from '../services/firestoreService';
 import { getLocalAI, setLocalAI } from '../utils/localTripAI';
 import { findClosedPlaces } from '../utils/closedPlaceCheck';
 
@@ -96,6 +98,34 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // Permission gate — viewers run AI but their results stay local-only.
     const viewerMode = isViewerOnly(trip);
     const userCanEdit = canEditTrip(trip);
+    const ownerOnly = isTripOwner(trip);
+
+    // Premium-tier gating — only the trip OWNER gets one Gemini Pro
+    // call per 30 days, on the very first AI Recommendations click.
+    // Collaborators always run on the free chain.
+    const { user } = useAuth();
+    const userId = user?.uid;
+    const [premiumLastUsedAt, setPremiumLastUsedAt] = useState<number | null>(null);
+    useEffect(() => {
+        if (!userId || !ownerOnly) {
+            setPremiumLastUsedAt(0);
+            return;
+        }
+        getUserPremiumState(userId)
+            .then(s => setPremiumLastUsedAt(s.lastPremiumRunAt ?? 0))
+            .catch(() => setPremiumLastUsedAt(0));
+    }, [userId, ownerOnly]);
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const resolvePreferTier = (): 'paid' | 'free' => {
+        if (!ownerOnly || !userId || premiumLastUsedAt === null) return 'free';
+        return Date.now() - premiumLastUsedAt > THIRTY_DAYS_MS ? 'paid' : 'free';
+    };
+    const stampPremiumIfUsed = async (preferTier: 'paid' | 'free', producedResults: boolean) => {
+        if (preferTier === 'paid' && producedResults && userId) {
+            await markPremiumRunUsed(userId);
+            setPremiumLastUsedAt(Date.now());
+        }
+    };
 
     // AI State — for viewers, hydrate from local-AI store on top of shared.
     const [aiCategories, setAiCategories] = useState<AttractionCategory[]>(() => {
@@ -213,6 +243,9 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         const cities = tripCities;
         setResearchProgress({ current: 0, total: cities.length });
 
+        // Lock premium tier ONCE for the whole multi-city run.
+        const preferTier = resolvePreferTier();
+
         try {
             let accumulatedCategories: AttractionCategory[] = [...baseCategories];
 
@@ -224,7 +257,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
                 try {
                     const prompt = createResearchPrompt(cityEn);
-                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
+                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH', preferTier);
                     const rawData = JSON.parse(response.text || '{}');
 
                     // ROBUST PARSER: Handle { categories: [...], categories: {...} }
@@ -293,6 +326,9 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             setAiCategories(accumulatedCategories);
             persistAiAttractions(accumulatedCategories);
             setSelectedCity('all');
+
+            // Burn the monthly premium slot only if the run actually produced results.
+            await stampPremiumIfUsed(preferTier, accumulatedCategories.length > 0);
 
             // Closed-place safety net (same pattern as Restaurants).
             (async () => {
@@ -524,7 +560,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 ]
             } `;
 
-            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
+            const preferTier = resolvePreferTier();
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: promptWithJsonInstruction }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH', preferTier);
 
             const textContent = response.text;
             console.log("🔍 [AI ATTRACTIONS Raw Response]:", textContent?.substring(0, 500) + "...");
@@ -577,6 +614,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     setAiCategories(merged);
                     setSelectedCategory('all');
                     persistAiAttractions(merged);
+                    await stampPremiumIfUsed(preferTier, processed.length > 0);
                 } else {
                     console.warn("⚠️ [AI Warning] Response was valid JSON but contained no attraction results.", rawData);
                     setRecError('לא נמצאו אטרקציות עבור יעד זה.');

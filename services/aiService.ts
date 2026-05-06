@@ -230,7 +230,8 @@ export const generateWithFallback = async (
   _unused: any,
   contents: any,
   config: any = {},
-  intent: AIIntent = 'SMART'
+  intent: AIIntent = 'SMART',
+  preferTier: 'paid' | 'free' = 'free'
 ): Promise<any> => {
   // Build model chain WITHOUT mutating the originals.
   // - SEARCH: market research (food / attractions) — depth matters, pro first.
@@ -301,6 +302,7 @@ export const generateWithFallback = async (
             prompt: adaptedContents,    // Backward compat with old worker
             Model: modelId,
             intent,                     // Worker uses this to enable googleSearch tool for SEARCH
+            tier: preferTier,           // 'paid' → Worker uses GEMINI_PREMIUM_KEY when set
             generationConfig,
           })
         });
@@ -339,6 +341,7 @@ export const generateWithFallback = async (
             prompt: adaptedContents,
             Model: modelId,
             intent,
+            tier: preferTier,
             generationConfig,
           })
         });

@@ -15,6 +15,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // --- INTERFACES ---
 interface Env {
         GEMINI_API_KEY?: string;
+        GEMINI_PREMIUM_KEY?: string;   // Billing-enabled key — used only when request body has tier='paid'
         OPENROUTER_API_KEY?: string;
         FIREBASE_SERVICE_ACCOUNT: string;
         FIREBASE_PROJECT_ID: string;
@@ -126,7 +127,7 @@ export default {
                         // Secure API Endpoint for Frontend (supports multimodal content)
                         if (url.pathname === "/api/generate" && request.method === "POST") {
                                 const body = await request.json() as any;
-                                const { contents, prompt, Model, generationConfig, intent } = body;
+                                const { contents, prompt, Model, generationConfig, intent, tier } = body;
 
                                 // Accept either structured 'contents' (new) or flat 'prompt' (backward compat)
                                 const requestContent = contents || prompt;
@@ -150,16 +151,21 @@ export default {
                                         });
                                 }
 
-                                if (!env.GEMINI_API_KEY) {
+                                // Pick the API key. tier='paid' uses GEMINI_PREMIUM_KEY when set;
+                                // otherwise falls through to the free key (or rejects if neither exists).
+                                const usePremiumKey = tier === 'paid' && !!env.GEMINI_PREMIUM_KEY;
+                                const apiKey = usePremiumKey ? env.GEMINI_PREMIUM_KEY! : env.GEMINI_API_KEY;
+                                if (!apiKey) {
                                         throw new Error("Missing GEMINI_API_KEY");
                                 }
+                                console.log(`[Worker] ${modelId} tier=${tier ?? 'free'} ${usePremiumKey ? '(using PREMIUM key)' : '(using free key)'}`);
 
                                 // SEARCH intent → ground via Google Search + low temperature.
                                 // Tools and structured-JSON output are mutually exclusive in the
                                 // Gemini API, so when grounding we drop responseMimeType /
                                 // responseSchema and ask the model for free-form text. The frontend
                                 // re-extracts JSON via cleanJSON().
-                                const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
+                                const genAI = new GoogleGenerativeAI(apiKey);
                                 const modelOptions: any = {
                                         model: modelId,
                                         generationConfig: finalGenConfig,
