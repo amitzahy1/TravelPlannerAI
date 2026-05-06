@@ -259,6 +259,7 @@ export interface RestaurantCategory {
 export interface Attraction {
   id: string;
   name: string;
+  nameEnglish?: string; // Original Latin-script name — used for the map and any English UI surface
   description: string;
   location: string;
   googleMapsUrl?: string;

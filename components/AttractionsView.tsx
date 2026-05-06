@@ -518,6 +518,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     CRITICAL — "location" field MUST be in English (used by a geocoding API). Format: "Attraction or Neighbourhood, City". Example: "Chatuchak Weekend Market, Bangkok".
 
+    CRITICAL — "nameEnglish" is REQUIRED for every attraction. Rules:
+    - It MUST be the attraction's original/official Latin-script name as it appears on Google Maps, the official website, or English press (e.g. "Tiffany's Show Pattaya", "Wat Pho", "Chatuchak Weekend Market").
+    - DO NOT transliterate the Hebrew name into Latin letters — find the real English name.
+    - DO NOT translate it word-by-word; use the real proper name.
+    - "name" stays in Hebrew for the UI; "nameEnglish" is what we render on the map and in any English surface.
+
     CRITICAL — "recommendationSource" MUST be a SHORT platform/publication name only (max 40 chars).
     Use one of: "TripAdvisor", "Lonely Planet", "Atlas Obscura", "UNESCO", "TimeOut",
     "YouTube (channel name)", "Google", "Wongnai", "Klook", "National Geographic",
@@ -527,7 +533,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     If no authoritative source applies, use "Local Favorite".
 
     OUTPUT JSON ONLY:
-    { "categories": [ { "id", "title", "attractions": [ { "name", "description",
+    { "categories": [ { "id", "title", "attractions": [ { "name", "nameEnglish", "description",
     "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl",
     "business_status", "verification_needed" } ] } ] }
     "business_status" is REQUIRED — must be "OPERATIONAL" for any attraction you return.
@@ -554,7 +560,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         "id": "string",
                         "title": "string",
                         "attractions": [
-                            { "name", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl" }
+                            { "name", "nameEnglish", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl" }
                         ]
                     }
                 ]

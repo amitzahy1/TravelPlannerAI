@@ -37,10 +37,27 @@ interface MapPlace {
 }
 
 const PIN_COLORS = {
-        food:   { bg: '#ea580c', ring: '#ffedd5', emoji: '🍽',  label: 'מסעדה' },
-        sights: { bg: '#7c3aed', ring: '#ede9fe', emoji: '📍', label: 'אטרקציה' },
-        hotel:  { bg: '#0891b2', ring: '#cffafe', emoji: '🏨', label: 'מלון' },
+        food:   { bg: '#ea580c', ring: '#ffedd5', emoji: '🍽',  label: 'Restaurant' },
+        sights: { bg: '#7c3aed', ring: '#ede9fe', emoji: '📍', label: 'Attraction' },
+        hotel:  { bg: '#0891b2', ring: '#cffafe', emoji: '🏨', label: 'Hotel' },
 } as const;
+
+const HEBREW_RE = /[֐-׿]/;
+const containsHebrew = (s?: string) => !!s && HEBREW_RE.test(s);
+
+// Pick the best English label for a map pin. Priority:
+//   1. nameEnglish if it's actually Latin script
+//   2. name if it's Latin script (older data sometimes has the English
+//      name in `name` directly)
+//   3. first segment of `location` (the AI prompt requires English here)
+//   4. last-resort fall back to whatever name we have
+const englishLabel = (p: { name: string; nameEnglish?: string; location?: string }): string => {
+        if (p.nameEnglish && !containsHebrew(p.nameEnglish)) return p.nameEnglish;
+        if (p.name && !containsHebrew(p.name)) return p.name;
+        const fromLocation = (p.location || '').split(',')[0]?.trim();
+        if (fromLocation && !containsHebrew(fromLocation)) return fromLocation;
+        return p.nameEnglish || p.name || '';
+};
 
 const makePinIcon = (kind: Kind, rating?: number, isSelected?: boolean): L.DivIcon => {
         const cfg = PIN_COLORS[kind];
@@ -122,7 +139,7 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                 (trip.aiAttractions || []).forEach(cat => cat.attractions.forEach(a => {
                         items.push({
                                 id: `sights:${a.id}`, kind: 'sights',
-                                name: a.name, location: a.location || '',
+                                name: a.name, nameEnglish: (a as any).nameEnglish, location: a.location || '',
                                 lat: a.lat, lng: a.lng,
                                 rating: a.rating, recommendationSource: a.recommendationSource,
                                 type: a.type, description: a.description, imageUrl: a.imageUrl,
@@ -273,14 +290,16 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                                 ? `<div style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;padding:2px 6px;border-radius:6px;margin-top:3px;display:inline-block;">🏆 ${p.recommendationSource.replace(/Bib/i, 'Michelin')}</div>`
                                 : '';
                         const kindLabel = `<span style="display:inline-block;font-size:9px;font-weight:700;color:${PIN_COLORS[p.kind].bg};background:${PIN_COLORS[p.kind].ring};padding:1px 5px;border-radius:6px;margin-bottom:3px;">${PIN_COLORS[p.kind].emoji} ${PIN_COLORS[p.kind].label}</span>`;
+                        const label = englishLabel(p);
+                        const locationLine = !containsHebrew(p.location) ? (p.location || '') : '';
                         const tooltipHtml = `
-                            <div style="font-family:'Rubik','Inter',sans-serif;direction:rtl;text-align:right;min-width:140px;max-width:240px;padding:2px 0;">
+                            <div style="font-family:'Inter','Rubik',sans-serif;direction:ltr;text-align:left;min-width:140px;max-width:240px;padding:2px 0;">
                                 ${kindLabel}
                                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-                                    <span style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.2;flex:1;">${p.nameEnglish || p.name}</span>
+                                    <span style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.2;flex:1;">${label}</span>
                                     ${ratingChip}
                                 </div>
-                                <div style="font-size:11px;color:#64748b;line-height:1.3;">${p.location || ''}</div>
+                                <div style="font-size:11px;color:#64748b;line-height:1.3;">${locationLine}</div>
                                 ${sourceChip}
                             </div>
                         `;

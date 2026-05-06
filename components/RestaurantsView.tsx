@@ -639,6 +639,12 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     CRITICAL — "location" field MUST be in English (used by a geocoding API). Format: "Street or Neighbourhood, City". Example: "Silom Road, Bangkok".
 
+    CRITICAL — "nameEnglish" is REQUIRED for every restaurant. Rules:
+    - It MUST be the restaurant's actual official Latin-script name as it appears on its sign, website, or Google Maps (e.g. "Paste", "Gaggan Anand", "Jay Fai", "Sorn").
+    - DO NOT write a Hebrew transliteration in Latin letters. Find the real English name.
+    - DO NOT translate it. Use the proper name.
+    - "name" stays in Hebrew for the UI; "nameEnglish" is what the map and English surfaces render.
+
     CRITICAL — "recommendationSource" MUST be a SHORT platform/publication name only (max 40 chars).
     Use one of: "Wongnai", "Michelin Guide", "TripAdvisor", "TimeOut", "Eater",
     "YouTube (channel name)", "Tabelog", "OpenRice", "Asia's 50 Best", "Google",
