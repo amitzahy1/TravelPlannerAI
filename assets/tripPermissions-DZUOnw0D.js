@@ -1,0 +1,1 @@
+const o=r=>{var e;return!r.isShared||((e=r.sharing)==null?void 0:e.role)==="owner"},n=r=>{var e,s,a;return!r.isShared||((e=r.sharing)==null?void 0:e.role)==="owner"||((s=r.sharing)==null?void 0:s.role)==="editor"||((a=r.sharing)==null?void 0:a.role)==="collaborator"},i=r=>{var e;return r.isShared===!0&&((e=r.sharing)==null?void 0:e.role)==="viewer"};export{i as a,n as c,o as i};
