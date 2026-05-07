@@ -33,6 +33,7 @@ import { InviteeWelcome } from './components/onboarding/InviteeWelcome';
 import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
 import { DemoWelcomePage } from './pages/DemoWelcomePage';
+import { GuestTripView } from './components/GuestTripView';
 
 const getJoinShareIdFromHash = (): { shareId: string; role: 'editor' | 'viewer' } | null => {
   const hash = window.location.hash;
@@ -164,8 +165,13 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Not Logged In
+  // Not Logged In — but if they have a /join/ link, let them browse as guest.
+  // Writes are blocked client-side (viewerMode) and server-side (Firestore rules
+  // require auth + collaborators membership). Login is offered via top banner.
   if (!user) {
+    if (joinShareId) {
+      return <GuestTripView shareId={joinShareId.shareId} role={joinShareId.role} onSignIn={signIn} />;
+    }
     return <LandingPage onLogin={signIn} />;
   }
 

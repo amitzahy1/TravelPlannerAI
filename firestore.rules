@@ -18,12 +18,10 @@ service cloud.firestore {
       // יצירה: כל משתמש מחובר
       allow create: if request.auth != null;
 
-      // קריאה: הבעלים, משתתפים, או מיילים מורשים
-      allow read: if request.auth != null && (
-        resource.data.owner == request.auth.uid ||
-        (resource.data.collaborators is list && request.auth.uid in resource.data.collaborators) ||
-        (resource.data.allowedEmails is list && request.auth.token.email in resource.data.allowedEmails)
-      );
+      // קריאה: כל מי שמכיר את ה-shareId (UUID לא ניחושי) יכול לצפות.
+      // זה מאפשר guest viewing דרך הקישור, כמו Google Docs. כתיבה עדיין
+      // דורשת auth + רשימת collaborators (ראה allow update למטה).
+      allow read: if true;
 
       // עדכון (הצטרפות לטיול):
       // מותר אם: אתה הבעלים, או משתתף קיים, או...
