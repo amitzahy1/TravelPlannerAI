@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, Star, Trophy, Calendar, ChevronLeft, Plus, Check, Hotel, Utensils, Plane, Camera, Crosshair, Navigation } from 'lucide-react';
+import { MapPin, Star, Trophy, Calendar, ChevronLeft, Plus, Check, Hotel, Utensils, Plane, Camera, Crosshair, Navigation, Trash2 } from 'lucide-react';
 import { safeMapsUrl } from '../../utils/mapsUrl';
 import { getFoodImage, getAttractionImage } from '../../services/imageMapper';
 import { resolveRealPlaceImage } from '../../services/placeImageService';
@@ -51,6 +51,10 @@ interface Props {
         // a wrong auto-geocode (e.g. KC Grande Resort Koh Chang showing
         // south of the island).
         onFixLocation?: () => void;
+        // Restaurant / attraction — present only for items the user owns
+        // (saved entries, edit-permission). Removes the place from the
+        // saved list directly from the map popup.
+        onRemoveFromList?: () => void;
 }
 
 const useFallbackImage = (item: PopupItem): string | null => {
@@ -99,7 +103,7 @@ const summarizeNote = (raw: string): { short: string; truncated: boolean } => {
  * four item types (hotel / restaurant / attraction / airport). Type-specific
  * colour comes from TYPE_CONFIG.
  */
-export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = false, onFixLocation }) => {
+export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = false, onFixLocation, onRemoveFromList }) => {
         const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.hotel;
         const dateLabel = parseDateLabel(item.date);
         const mapsLink = safeMapsUrl(item.googleMapsUrl, item.name, item.address);
@@ -223,9 +227,22 @@ export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = fal
                                         <button
                                                 onClick={(e) => { e.stopPropagation(); onFixLocation(); }}
                                                 title="תקן מיקום על ידי הדבקת קישור Google Maps"
-                                                className="inline-flex items-center justify-center gap-1 text-xs font-black py-2 rounded-xl border bg-white text-slate-700 border-slate-300 hover:bg-slate-50 transition-all active:scale-95"
+                                                className="inline-flex items-center justify-center gap-1 text-xs font-black py-2 px-2.5 rounded-xl border bg-white text-slate-700 border-slate-300 hover:bg-slate-50 transition-all active:scale-95"
                                         >
                                                 <Crosshair className="w-3.5 h-3.5" />
+                                        </button>
+                                )}
+                                {onRemoveFromList && (item.type === 'restaurant' || item.type === 'attraction') && (
+                                        <button
+                                                onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (window.confirm(`להסיר את "${item.name}" מהרשימה?`)) onRemoveFromList();
+                                                }}
+                                                title="הסר מהרשימה"
+                                                aria-label="הסר מהרשימה"
+                                                className="inline-flex items-center justify-center py-2 px-2.5 rounded-xl border bg-white text-slate-500 border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all active:scale-95"
+                                        >
+                                                <Trash2 className="w-3.5 h-3.5" />
                                         </button>
                                 )}
                                 <a

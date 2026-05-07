@@ -224,7 +224,6 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // price level, max walking minutes from any hotel.
     const [filterCuisines, setFilterCuisines] = useState<Set<string>>(new Set());
     const [filterPrices, setFilterPrices] = useState<Set<string>>(new Set());
-    const [filterMaxWalkMin, setFilterMaxWalkMin] = useState<number | null>(null);
     const [textQuery, setTextQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<Restaurant[] | null>(null);
@@ -363,9 +362,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         };
     }, [trip.restaurants, trip.aiRestaurants]);
 
-    // Single predicate combining cuisine / price / distance filters. Scoped
-    // to the MAP view — list view ignores them, so the card UI can live
-    // inside the map block where it's discoverable.
+    // Single predicate combining cuisine / price filters. Scoped to the
+    // MAP view — list view ignores them, so the card UI can live inside
+    // the map block where it's discoverable.
     const passesItemFilters = useCallback((r: Restaurant): boolean => {
         if (viewMode !== 'map') return true;
         if (filterCuisines.size > 0) {
@@ -376,12 +375,8 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             const bucket = priceToBucket(r.priceLevel || (r as any).price || (r as any).priceRange);
             if (!bucket || !filterPrices.has(bucket.key)) return false;
         }
-        if (filterMaxWalkMin !== null) {
-            const m = itemWalkingMinutes(r);
-            if (m === null || m > filterMaxWalkMin) return false;
-        }
         return true;
-    }, [viewMode, filterCuisines, filterPrices, filterMaxWalkMin, itemWalkingMinutes]);
+    }, [viewMode, filterCuisines, filterPrices]);
 
     const toggleSetMember = (set: Set<string>, value: string): Set<string> => {
         const next = new Set(set);
@@ -391,12 +386,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     };
     const activeFilterCount =
         (filterCuisines.size > 0 ? 1 : 0) +
-        (filterPrices.size > 0 ? 1 : 0) +
-        (filterMaxWalkMin !== null ? 1 : 0);
+        (filterPrices.size > 0 ? 1 : 0);
     const clearAllFilters = () => {
         setFilterCuisines(new Set());
         setFilterPrices(new Set());
-        setFilterMaxWalkMin(null);
     };
 
     // --- Search Logic ---
@@ -1463,9 +1456,18 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
 
         // Saved layer
         const savedNameKeys = new Set<string>();
+        const savedCoordKeys = new Set<string>();   // ~110m bucket of saved-item coords
+        const coordKey = (lat?: number, lng?: number) =>
+            (typeof lat === 'number' && typeof lng === 'number')
+                ? `${Math.round(lat * 1000)}|${Math.round(lng * 1000)}`
+                : '';
         const savedFlat = trip.restaurants.flatMap(cat =>
             cat.restaurants.map(r => ({ ...r, categoryTitle: r.categoryTitle || cat.title }))
         );
+        savedFlat.forEach(r => {
+            const k = coordKey(r.lat, r.lng);
+            if (k) savedCoordKeys.add(k);
+        });
         // Map markers track the active source tab so the tabs aren't dead
         // controls when the user is on map view. "הרשימה שלי" = saved only,
         // "המלצות AI" = AI research only. Marker style still differentiates
@@ -1502,6 +1504,10 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         if (includeAi) filteredRestaurants.forEach(r => {
             if (selectedCity !== 'all' && !restaurantMatchesCity(r, selectedCity)) return;
             if (savedNameKeys.has(r.name.toLowerCase())) return;
+            // Coord-bucket dedupe — same place with slightly different name
+            // ("Alcazar" vs "Alcazar Cabaret Show") at the same coords.
+            const ck = coordKey(r.lat, r.lng);
+            if (ck && savedCoordKeys.has(ck)) return;
             items.push({
                 id: `ai-${r.id}`, type: 'restaurant', name: r.name, nameEnglish: r.nameEnglish,
                 address: r.location, lat: r.lat, lng: r.lng,
@@ -1801,7 +1807,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 <div className="space-y-3">
                     {/* Filter card — map-only. Collapsed by default on mobile,
                         expanded on desktop. Affects only the markers on the map. */}
-                    {(filterOptions.cuisines.length > 0 || filterOptions.prices.length > 0 || (trip.hotels || []).some(h => typeof h.lat === 'number')) && (
+                    {(filterOptions.cuisines.length > 0 || filterOptions.prices.length > 0) && (
                         <div className="border border-slate-200 bg-slate-50 rounded-2xl overflow-hidden">
                             <button
                                 type="button"
@@ -1853,24 +1859,6 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                             maxVisible={6}
                                         />
                                     )}
-                                    {(trip.hotels || []).some(h => typeof h.lat === 'number') && (
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-2xs font-bold text-slate-500 shrink-0 ms-0.5">מרחק מהמלון:</span>
-                                            {([
-                                                { val: null as number | null, label: 'הכל' },
-                                                { val: 15, label: 'עד 15 דקות הליכה' },
-                                                { val: 30, label: 'עד 30 דקות הליכה' },
-                                            ]).map(opt => (
-                                                <button
-                                                    key={String(opt.val)}
-                                                    onClick={() => setFilterMaxWalkMin(opt.val)}
-                                                    className={`min-h-9 px-3 py-1 rounded-full text-2xs font-bold border transition-all ${filterMaxWalkMin === opt.val ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'}`}
-                                                >
-                                                    {opt.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </div>
@@ -1892,12 +1880,18 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                         trip={trip}
                         activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
                         title="מפת מסעדות"
+                        embedded
                         savedNames={savedRestaurantNames}
                         onAddToList={(item) => {
                             const r = (item as any).raw as Restaurant | undefined;
                             if (!r) return;
                             handleToggleRec(r, (item as any).categoryTitle || 'AI');
                         }}
+                        onRemoveFromList={userCanEdit ? (item) => {
+                            const r = (item as any).raw as Restaurant | undefined;
+                            if (!r) return;
+                            performDeleteRestaurant(r.id);
+                        } : undefined}
                     />
                 </div>
             ) : (

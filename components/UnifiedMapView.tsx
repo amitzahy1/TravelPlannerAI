@@ -119,6 +119,11 @@ interface UnifiedMapViewProps {
     // an "add to my list" CTA only when this callback is provided AND the
     // item's source is 'ai'.
     onAddToList?: (item: MapItem) => void;
+    // Optional — when provided, the popup of a saved restaurant/attraction
+    // shows a small "remove from list" CTA so the trip owner can drop a
+    // place that's closed / irrelevant directly from the map without
+    // hunting for it in the list view.
+    onRemoveFromList?: (item: MapItem) => void;
     // Lowercased name set used by the popup to detect when an AI suggestion
     // is already saved (toggles the CTA into a "✓ saved" state).
     savedNames?: Set<string>;
@@ -768,6 +773,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     heatmap = false,
     flyTo = null,
     onAddToList,
+    onRemoveFromList,
     savedNames,
     onUpdateTrip,
     onItemsResolved,
@@ -2197,6 +2203,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         marker.closePopup();
                     }
                     : undefined;
+                const handleRemove = onRemoveFromList && item.source === 'saved' && (item.type === 'restaurant' || item.type === 'attraction')
+                    ? () => {
+                        onRemoveFromList(item);
+                        marker.closePopup();
+                    }
+                    : undefined;
                 const handleFix = onUpdateTrip && item.type === 'hotel'
                     ? () => {
                         marker.closePopup();
@@ -2208,6 +2220,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         <MapItemPopup
                             item={item}
                             onAddToList={handleAdd}
+                            onRemoveFromList={handleRemove}
                             isAdded={isAlreadySaved}
                             onFixLocation={handleFix}
                         />

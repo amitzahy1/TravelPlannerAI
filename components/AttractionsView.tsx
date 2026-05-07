@@ -78,6 +78,7 @@ const AttractionRecommendationCard: React.FC<{
         <PlaceCard
             type="attraction"
             name={rec.name}
+            nameEnglish={rec.nameEnglish}
             description={rec.description}
             location={rec.location}
             rating={rec.rating}
@@ -165,7 +166,6 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [selectedCity, setSelectedCity] = useState<string>('all');
     const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set());
     const [filterPrices, setFilterPrices] = useState<Set<string>>(new Set());
-    const [filterMaxWalkMin, setFilterMaxWalkMin] = useState<number | null>(null);
     const [textQuery, setTextQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<Attraction[] | null>(null);
@@ -305,12 +305,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             const bucket = priceToBucket(a.price);
             if (!bucket || !filterPrices.has(bucket.key)) return false;
         }
-        if (filterMaxWalkMin !== null) {
-            const m = itemWalkingMinutes(a);
-            if (m === null || m > filterMaxWalkMin) return false;
-        }
         return true;
-    }, [viewMode, filterTypes, filterPrices, filterMaxWalkMin, itemWalkingMinutes]);
+    }, [viewMode, filterTypes, filterPrices]);
 
     const toggleSetMember = (set: Set<string>, value: string): Set<string> => {
         const next = new Set(set);
@@ -320,12 +316,10 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     };
     const activeFilterCount =
         (filterTypes.size > 0 ? 1 : 0) +
-        (filterPrices.size > 0 ? 1 : 0) +
-        (filterMaxWalkMin !== null ? 1 : 0);
+        (filterPrices.size > 0 ? 1 : 0);
     const clearAllFilters = () => {
         setFilterTypes(new Set());
         setFilterPrices(new Set());
-        setFilterMaxWalkMin(null);
     };
 
     // --- AI Logic ---
@@ -1143,9 +1137,18 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
         const includeAi = activeTab === 'recommended';
 
         const savedNameKeys = new Set<string>();
+        const savedCoordKeys = new Set<string>();
+        const coordKey = (lat?: number, lng?: number) =>
+            (typeof lat === 'number' && typeof lng === 'number')
+                ? `${Math.round(lat * 1000)}|${Math.round(lng * 1000)}`
+                : '';
         const savedFlat = attractionsData.flatMap(c =>
             c.attractions.map(a => ({ ...a, region: a.region || c.region, categoryTitle: a.categoryTitle || c.title }))
         );
+        savedFlat.forEach(a => {
+            const k = coordKey(a.lat, a.lng);
+            if (k) savedCoordKeys.add(k);
+        });
         savedFlat.forEach(a => {
             if (!includeSaved) return;
             if (selectedCity !== 'all' && !attractionMatchesCity(a, selectedCity)) return;
@@ -1172,6 +1175,11 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
         if (includeAi) (filteredRecommendations as Attraction[]).forEach(a => {
             if (selectedCity !== 'all' && !attractionMatchesCity(a, selectedCity)) return;
             if (savedNameKeys.has(a.name.toLowerCase())) return;
+            // Coord-bucket dedupe — drop an AI marker that lands at the
+            // same ~110m bucket as a saved place even when the names differ
+            // ("Alcazar" vs "Alcazar Cabaret Show").
+            const ck = coordKey(a.lat, a.lng);
+            if (ck && savedCoordKeys.has(ck)) return;
             items.push({
                 id: `ai-${a.id}`, type: 'attraction', name: a.name, nameEnglish: a.nameEnglish,
                 address: a.location, lat: a.lat, lng: a.lng,
@@ -1393,7 +1401,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 <div className="space-y-3">
                     {/* Filter card — map-only. Collapsible on mobile, expanded
                         on desktop. Affects only the markers on the map. */}
-                    {(filterOptions.types.length > 0 || filterOptions.prices.length > 0 || (trip.hotels || []).some(h => typeof h.lat === 'number')) && (
+                    {(filterOptions.types.length > 0 || filterOptions.prices.length > 0) && (
                         <div className="border border-slate-200 bg-slate-50 rounded-2xl overflow-hidden">
                             <button
                                 type="button"
@@ -1445,24 +1453,6 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                             maxVisible={6}
                                         />
                                     )}
-                                    {(trip.hotels || []).some(h => typeof h.lat === 'number') && (
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-2xs font-bold text-slate-500 shrink-0 ms-0.5">מרחק מהמלון:</span>
-                                            {([
-                                                { val: null as number | null, label: 'הכל' },
-                                                { val: 15, label: 'עד 15 דקות הליכה' },
-                                                { val: 30, label: 'עד 30 דקות הליכה' },
-                                            ]).map(opt => (
-                                                <button
-                                                    key={String(opt.val)}
-                                                    onClick={() => setFilterMaxWalkMin(opt.val)}
-                                                    className={`min-h-9 px-3 py-1 rounded-full text-2xs font-bold border transition-all ${filterMaxWalkMin === opt.val ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'}`}
-                                                >
-                                                    {opt.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </div>
@@ -1478,12 +1468,18 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                         trip={trip}
                         activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
                         title="מפת אטרקציות"
+                        embedded
                         savedNames={savedAttractionNames}
                         onAddToList={(item) => {
                             const a = (item as any).raw as Attraction | undefined;
                             if (!a) return;
                             handleToggleRec(a, (item as any).categoryTitle || 'תכנון טיול');
                         }}
+                        onRemoveFromList={userCanEdit ? (item) => {
+                            const a = (item as any).raw as Attraction | undefined;
+                            if (!a) return;
+                            performDeleteAttraction(a.id);
+                        } : undefined}
                     />
                 </div>
             ) : (
