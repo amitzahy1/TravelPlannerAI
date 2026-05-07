@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, Eye, AlertTriangle } from 'lucide-react';
 import { Trip } from '../types';
 import { getSharedTrip } from '../services/firestoreService';
 import { LayoutFixed as Layout } from './LayoutFixed';
 import { ViewSkeleton } from './shared';
 import { LandingPage } from './LandingPage';
+import { InviteeWelcome } from './onboarding/InviteeWelcome';
 
 const FlightsView = React.lazy(() => import('./FlightsView').then(m => ({ default: m.FlightsView })));
 const ItineraryView = React.lazy(() => import('./ItineraryView').then(m => ({ default: m.ItineraryView })));
@@ -26,6 +27,7 @@ export const GuestTripView: React.FC<GuestTripViewProps> = ({ shareId, role, onS
     const [error, setError] = useState<string | null>(null);
     const [currentTab, setCurrentTab] = useState('itinerary');
     const [signingIn, setSigningIn] = useState(false);
+    const [showWelcome, setShowWelcome] = useState(false);
 
     useEffect(() => {
         let mounted = true;
@@ -41,6 +43,13 @@ export const GuestTripView: React.FC<GuestTripViewProps> = ({ shareId, role, onS
                         isShared: true,
                         sharing: { ...(t.sharing || {}), role: 'viewer', shareId },
                     } as Trip);
+                    // Show the welcome carousel once per shareId per device
+                    try {
+                        const seenKey = `seenInviteeWelcome:${shareId}`;
+                        if (!localStorage.getItem(seenKey)) setShowWelcome(true);
+                    } catch {
+                        setShowWelcome(true);
+                    }
                 }
             } catch (e: any) {
                 console.error('Guest trip load failed:', e);
@@ -149,6 +158,18 @@ export const GuestTripView: React.FC<GuestTripViewProps> = ({ shareId, role, onS
                     {renderContent()}
                 </main>
             </Layout>
+
+            <AnimatePresence>
+                {showWelcome && (
+                    <InviteeWelcome
+                        trip={trip}
+                        onDismiss={() => {
+                            try { localStorage.setItem(`seenInviteeWelcome:${shareId}`, '1'); } catch { /* noop */ }
+                            setShowWelcome(false);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
         </>
     );
 };
