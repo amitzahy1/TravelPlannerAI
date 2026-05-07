@@ -438,7 +438,7 @@ const StandardHero: React.FC<{ slide: SlideDef }> = ({ slide }) => (
                                 initial={{ opacity: 0, y: -6 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.15, duration: 0.35 }}
-                                className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2 text-center"
+                                className="text-xs font-black text-blue-600 uppercase tracking-widest mb-2 text-center"
                         >
                                 {slide.eyebrow}
                         </motion.div>
