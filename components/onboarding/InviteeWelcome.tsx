@@ -71,7 +71,7 @@ export const InviteeWelcome: React.FC<InviteeWelcomeProps> = ({ trip, onDismiss 
                         body: 'מסעדות מומלצות בכל עיר, אטרקציות לפי קטגוריה, וסינון חכם — אוכל מקומי, מישלן, חיי לילה ועוד.',
                         glyph: <Sparkles className="w-11 h-11 text-white" strokeWidth={1.6} />,
                         bullets: [
-                                { icon: <Utensils className="w-4 h-4" />, text: 'מסעדות עם מקור המלצה: Michelin, מקומיים, Eater' },
+                                { icon: <Utensils className="w-4 h-4" />, text: 'מסעדות עם מקור המלצה: Michelin, מקומיים, גוגל' },
                                 { icon: <Ticket className="w-4 h-4" />, text: 'אטרקציות לפי טבע, היסטוריה, חיי לילה' },
                                 { icon: <Search className="w-4 h-4" />, text: 'חיפוש חופשי שמבין עברית ואנגלית' },
                         ],
@@ -238,7 +238,7 @@ const WelcomeHero: React.FC<{ destination: string; year: string; body: string }>
         return (
                 <div className="relative overflow-hidden">
                         {/* Animated mesh gradient hero */}
-                        <div className="relative h-[300px] overflow-hidden bg-gradient-to-br from-indigo-700 via-violet-600 to-fuchsia-600">
+                        <div className="relative h-[210px] overflow-hidden bg-gradient-to-br from-indigo-700 via-violet-600 to-fuchsia-600">
                                 {/* Mesh blobs */}
                                 <motion.div
                                         className="absolute -top-24 -right-16 w-72 h-72 rounded-full"
@@ -327,7 +327,7 @@ const WelcomeHero: React.FC<{ destination: string; year: string; body: string }>
                                         initial={{ opacity: 0, y: 12 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.25, duration: 0.5 }}
-                                        className="text-xs font-bold text-slate-500 mb-1.5"
+                                        className="text-sm font-bold text-slate-500 mb-2"
                                 >
                                         ברוכים הבאים לטיול ל
                                 </motion.div>
@@ -336,7 +336,7 @@ const WelcomeHero: React.FC<{ destination: string; year: string; body: string }>
                                         initial={{ opacity: 0, y: 14 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.35, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                                        className="text-3xl md:text-4xl font-black leading-tight mb-1"
+                                        className="text-4xl md:text-5xl font-black leading-tight mb-1"
                                 >
                                         <span className="bg-gradient-to-l from-indigo-600 via-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
                                                 {destination}
@@ -347,7 +347,7 @@ const WelcomeHero: React.FC<{ destination: string; year: string; body: string }>
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ delay: 0.5, duration: 0.4 }}
-                                        className="text-sm font-bold text-slate-400 mb-3"
+                                        className="text-base font-bold text-slate-400 mb-3"
                                 >
                                         {year}
                                 </motion.div>
@@ -356,7 +356,7 @@ const WelcomeHero: React.FC<{ destination: string; year: string; body: string }>
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.55, duration: 0.5 }}
-                                        className="text-[14px] text-slate-600 leading-relaxed mb-4 max-w-[300px] mx-auto"
+                                        className="text-base text-slate-600 leading-relaxed mb-4 max-w-[320px] mx-auto"
                                 >
                                         {body}
                                 </motion.p>
@@ -372,9 +372,11 @@ const WelcomeHero: React.FC<{ destination: string; year: string; body: string }>
                                         className="flex items-center justify-center gap-1.5 flex-wrap"
                                 >
                                         {[
-                                                { icon: <Sparkles className="w-3 h-3" />, label: 'מחקר AI', color: 'from-amber-50 to-orange-50 text-orange-700 border-orange-100' },
-                                                { icon: <MapIcon className="w-3 h-3" />, label: 'מפה חיה', color: 'from-emerald-50 to-teal-50 text-teal-700 border-teal-100' },
+                                                { icon: <Sparkles className="w-3 h-3" />, label: 'מסעדות ואטרקציות AI', color: 'from-amber-50 to-orange-50 text-orange-700 border-orange-100' },
+                                                { icon: <ListChecks className="w-3 h-3" />, label: 'יומן יום-יום', color: 'from-blue-50 to-indigo-50 text-indigo-700 border-indigo-100' },
+                                                { icon: <Hotel className="w-3 h-3" />, label: 'טיסות ומלונות ביומן', color: 'from-emerald-50 to-teal-50 text-teal-700 border-teal-100' },
                                                 { icon: <Users className="w-3 h-3" />, label: 'תכנון משותף', color: 'from-pink-50 to-rose-50 text-rose-700 border-rose-100' },
+                                                { icon: <Compass className="w-3 h-3" />, label: 'AI שמסדר הכל', color: 'from-violet-50 to-fuchsia-50 text-fuchsia-700 border-fuchsia-100' },
                                         ].map((pill, i) => (
                                                 <motion.div
                                                         key={i}
