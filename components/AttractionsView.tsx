@@ -1135,9 +1135,11 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 ? (displayCityName(selectedCity, 'en') || selectedCity)
                 : (region ? displayCityName(region, 'en') : undefined);
 
-        // Map always shows BOTH saved + AI markers; pin style differentiates them.
-        const includeSaved = true;
-        const includeAi = true;
+        // Map markers track the active source tab so the tabs aren't dead
+        // controls when the user is on map view. Marker style still
+        // distinguishes saved (solid) from AI (dashed).
+        const includeSaved = activeTab === 'my_list';
+        const includeAi = activeTab === 'recommended';
 
         const savedNameKeys = new Set<string>();
         const savedFlat = attractionsData.flatMap(c =>
@@ -1259,11 +1261,11 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
 
             {/* Row 3 — city chips on their own row, wrap on mobile. */}
             {presentCities.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-2">
                     <button
                         key="__all__"
                         onClick={() => setSelectedCity('all')}
-                        className={`min-h-9 px-3.5 py-1.5 rounded-full text-2xs font-black transition-all border whitespace-nowrap ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                        className={`min-h-10 px-4 py-2 rounded-full text-xs font-black transition-all border-2 whitespace-nowrap ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
                     >
                         כל המסלול
                     </button>
@@ -1275,16 +1277,16 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 key={key}
                                 onClick={() => setSelectedCity(display)}
                                 title={isEmpty ? 'אין כאן עדיין אטרקציות. בחר את העיר ולחץ על "מצא באזור המלון" / רענן.' : undefined}
-                                className={`min-h-9 px-3.5 py-1.5 rounded-full text-2xs font-black transition-all border whitespace-nowrap inline-flex items-center gap-1.5 ${
+                                className={`min-h-10 px-4 py-2 rounded-full text-xs font-black transition-all border-2 whitespace-nowrap inline-flex items-center gap-2 ${
                                     isActive
-                                        ? 'bg-slate-900 border-slate-900 text-white shadow'
+                                        ? 'bg-slate-900 border-slate-900 text-white shadow-md'
                                         : isEmpty
                                             ? 'bg-white border-dashed border-slate-300 text-slate-400 hover:bg-slate-50'
-                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                                 }`}
                             >
                                 <span>{display}</span>
-                                <span className={`text-[10px] font-bold ${isActive ? 'text-white/80' : isEmpty ? 'text-slate-300' : 'text-slate-400'}`}>{count}</span>
+                                <span className={`text-[11px] font-bold ${isActive ? 'text-white/80' : isEmpty ? 'text-slate-300' : 'text-slate-400'}`}>{count}</span>
                             </button>
                         );
                     })}

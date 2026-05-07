@@ -20,6 +20,7 @@ import { TripStatsBar } from './map/TripStatsBar';
 import { CityChipStrip, CityChipDescriptor } from './map/CityChipStrip';
 import { useMapPreferences } from '../hooks/useMapPreferences';
 import { cityKey, displayCityName, extractRobustCity } from '../utils/geoData';
+import { normalizeCityForChip, isProvinceOrCountryName } from '../utils/cityNormalize';
 import { getMissingDataPoints } from '../utils/tripGaps';
 import { useIsMobile } from '../hooks/useMediaQuery';
 
@@ -82,7 +83,11 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                         const num = chronoIdx + 1;
                         const cityRaw = cleanCityName(extractRobustCity(entry.h.address || '', entry.h.name || '', trip)) || entry.h.city || '';
                         if (!cityRaw) return;
-                        const key = cityKey(cityRaw);
+                        // Drop province / country names (e.g. "Thailand", "Chon Buri")
+                        // and use aggressive normalization so "Bangkok" / "בנגקוק"
+                        // and "Ko Chang" / "Koh Chang" / "קו צ'אנג" collapse to one chip.
+                        if (isProvinceOrCountryName(cityRaw)) return;
+                        const key = normalizeCityForChip(cityRaw) || cityKey(cityRaw);
                         if (!key) return;
                         const display = displayCityName(cityRaw, 'he');
                         const existing = byKey.get(key);
@@ -237,16 +242,10 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
 
                                 {/* Top floating bar */}
                                 <div className="absolute top-3 right-3 left-3 z-[1000] flex flex-col gap-2 pointer-events-none">
-                                        <div className="flex items-center gap-2">
-
-                                                {/* City chips */}
-                                                <div className="flex-1 overflow-x-auto scrollbar-hide pointer-events-auto">
-                                                        <CityChipStrip
-                                                                cities={cityDescriptors}
-                                                                activeCity={view.city === 'all' ? 'all' : view.city}
-                                                                onPick={handleCityPick}
-                                                        />
-                                                </div>
+                                        <div className="flex items-center gap-2 justify-end">
+                                                {/* City chip strip removed — was causing duplicate
+                                                    Bangkok / Ko Chang variants. City filtering lives
+                                                    on the food / attractions pages where it's clean. */}
 
                                                 {/* Mobile layers button */}
                                                 {isMobile && (

@@ -33,8 +33,11 @@ import { InviteeWelcome } from './components/onboarding/InviteeWelcome';
 import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
 import { DemoWelcomePage } from './pages/DemoWelcomePage';
+import { MenuLayoutDemo } from './pages/MenuLayoutDemo';
 import { GuestTripView } from './components/GuestTripView';
 import { withActivityLog } from './services/activityLog';
+
+const isMenuDemoRoute = (): boolean => window.location.hash.startsWith('#/demo/menu');
 
 const getJoinShareIdFromHash = (): { shareId: string; role: 'editor' | 'viewer' } | null => {
   const hash = window.location.hash;
@@ -62,6 +65,19 @@ const getJoinShareIdFromHash = (): { shareId: string; role: 'editor' | 'viewer' 
 
 // --- MAIN APP CONTENT (Decoupled) ---
 const AppContent: React.FC = () => {
+  // Standalone menu-layout demo route — bypasses auth and trip loading so
+  // the user can preview the 3 layout options without needing to log in.
+  // Reload-friendly: re-renders when the hash changes.
+  const [isDemoRoute, setIsDemoRoute] = useState(isMenuDemoRoute());
+  useEffect(() => {
+    const onHash = () => setIsDemoRoute(isMenuDemoRoute());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  if (isDemoRoute) {
+    return <MenuLayoutDemo />;
+  }
+
   const { user, signIn, loading: authLoading } = useAuth();
 
   // New Architecture Hooks
