@@ -21,6 +21,8 @@ export interface PlaceCardProps {
         recommendationSource?: string;
         isHotelRestaurant?: boolean;
         verification_needed?: boolean;
+        geocodeFailed?: boolean;
+        verificationStatus?: 'verified' | 'ambiguous' | 'not_found' | 'manual';
 }
 
 /**
@@ -44,7 +46,13 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         recommendationSource,
         isHotelRestaurant,
         verification_needed,
+        geocodeFailed,
+        verificationStatus,
 }) => {
+        // Same OR as the modal banner so the badge and the "כדאי לבדוק" panel
+        // appear together — never one without the other.
+        const showVerificationBadge = !!verification_needed || !!geocodeFailed
+                || verificationStatus === 'not_found' || verificationStatus === 'ambiguous';
         // 1. Get Context-Aware Visual (Isolated Paths)
         const tags = [cuisine || attractionType || '', location];
         const searchName = getEnglishName({ name, nameEnglish, location });
@@ -118,9 +126,10 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                         <span dir="ltr" className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[9px] font-black text-white uppercase tracking-wide truncate text-center">
                                                 {visualLabel}
                                         </span>
-                                        {verification_needed && (
+                                        {showVerificationBadge && (
                                                 <span
                                                         title="כדאי לוודא שעות פתיחה / זמינות לפני הביקור"
+                                                        aria-label="כדאי לבדוק לפני הביקור"
                                                         className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md backdrop-blur-md bg-amber-500/85 border border-amber-300/70 text-[8.5px] font-black text-white uppercase tracking-wide flex-shrink-0"
                                                 >
                                                         <AlertTriangle className="w-2.5 h-2.5" />

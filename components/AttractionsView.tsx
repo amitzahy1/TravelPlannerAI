@@ -27,6 +27,7 @@ import { toast } from '../stores/useToastStore';
 import { walkingMinutesBetween } from '../utils/walkingDistance';
 import { attractionTypeToHebrew, priceToBucket, sortPriceKeys } from '../utils/cuisineLabels';
 import { FilterChipGroup } from './FilterChipGroup';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 
 // Enhanced Visuals with Gradients for Attractions
@@ -85,6 +86,8 @@ const AttractionRecommendationCard: React.FC<{
             onClick={onClick}
             recommendationSource={rec.recommendationSource}
             verification_needed={rec.verification_needed}
+            geocodeFailed={rec.geocodeFailed}
+            verificationStatus={rec.verificationStatus}
         />
     );
 };
@@ -169,7 +172,9 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
     const [confirmReset, setConfirmReset] = useState(false);
     const [confirmNearHotel, setConfirmNearHotel] = useState(false);
-    const [filtersExpanded, setFiltersExpanded] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const isMobile = useIsMobile();
+    const [filtersExpanded, setFiltersExpanded] = useState(!isMobile);
     // Background-geocoding progress so the map view can show a loading
     // banner when AI results are still being resolved to lat/lng. Failed
     // items (`geocodeFailed: true`) live on the attractions themselves
@@ -341,7 +346,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH');
             const data = JSON.parse(response.text || '{}');
             if (data.results) {
-                const operational = data.results.filter((r: any) => r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search - attr - ${i} `, categoryTitle: 'תוצאות חיפוש' }));
+                const operational = data.results.filter((r: any) => r.business_status === 'OPERATIONAL').map((r: any, i: number) => ({ ...r, id: `search-attr-${i}`, categoryTitle: 'תוצאות חיפוש' }));
                 // Trip-scope filter — same logic as RestaurantsView. Drops are
                 // toast-flagged; if every result is out of scope we show them
                 // anyway since the user explicitly searched for it.
@@ -1051,10 +1056,12 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
     };
 
     const handleDeleteAttraction = (id: string) => {
-        if (window.confirm("להסיר?")) {
-            const updated = attractionsData.map(c => ({ ...c, attractions: c.attractions.filter(a => a.id !== id) })).filter(c => c.attractions.length > 0);
-            onUpdateTrip({ ...trip, attractions: updated });
-        }
+        setConfirmDeleteId(id);
+    };
+    const performDeleteAttraction = (id: string) => {
+        const updated = attractionsData.map(c => ({ ...c, attractions: c.attractions.filter(a => a.id !== id) })).filter(c => c.attractions.length > 0);
+        onUpdateTrip({ ...trip, attractions: updated });
+        setConfirmDeleteId(null);
     };
 
     // Client-side translation for legacy/cached English titles
@@ -1339,6 +1346,83 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 </div>
             )}
 
+            {/* Filter card — visible on BOTH list and map views. Collapsed by
+                default on mobile, expanded on desktop. */}
+            {(filterOptions.types.length > 0 || filterOptions.prices.length > 0 || (trip.hotels || []).some(h => typeof h.lat === 'number')) && (
+                <div className="border border-slate-200 bg-slate-50 rounded-2xl overflow-hidden">
+                    <button
+                        type="button"
+                        onClick={() => setFiltersExpanded(v => !v)}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 md:py-2 text-end hover:bg-slate-100/60 transition-colors"
+                        aria-expanded={filtersExpanded}
+                    >
+                        <span className="flex items-center gap-2">
+                            <FilterIcon className="w-4 h-4 text-slate-500" />
+                            <span className="text-xs font-black text-slate-700">סינון</span>
+                            {activeFilterCount > 0 && (
+                                <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-slate-700 text-white text-[10px] font-black">{activeFilterCount}</span>
+                            )}
+                        </span>
+                        <span className="flex items-center gap-2">
+                            {activeFilterCount > 0 && (
+                                <span
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => { e.stopPropagation(); clearAllFilters(); }}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); clearAllFilters(); } }}
+                                    className="text-[11px] font-bold text-slate-500 hover:text-red-600 underline underline-offset-2"
+                                >
+                                    נקה הכל
+                                </span>
+                            )}
+                            <ChevronLeftIcon className={`w-4 h-4 text-slate-400 transition-transform ${filtersExpanded ? '-rotate-90' : ''}`} />
+                        </span>
+                    </button>
+                    {filtersExpanded && (
+                        <div className="px-3 pb-3 pt-1 space-y-2.5 border-t border-slate-200/70">
+                            {filterOptions.types.length > 0 && (
+                                <FilterChipGroup
+                                    label="סוג"
+                                    options={filterOptions.types.map(([k, n]) => ({ key: k, label: k, count: n }))}
+                                    selected={filterTypes}
+                                    onToggle={(k) => setFilterTypes(prev => toggleSetMember(prev, k))}
+                                    colorClass="purple"
+                                    maxVisible={6}
+                                />
+                            )}
+                            {filterOptions.prices.length > 0 && (
+                                <FilterChipGroup
+                                    label="מחיר"
+                                    options={filterOptions.prices.map(p => ({ key: p.key, label: p.label, count: p.count }))}
+                                    selected={filterPrices}
+                                    onToggle={(k) => setFilterPrices(prev => toggleSetMember(prev, k))}
+                                    colorClass="emerald"
+                                    maxVisible={6}
+                                />
+                            )}
+                            {(trip.hotels || []).some(h => typeof h.lat === 'number') && (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-2xs font-bold text-slate-500 shrink-0 ms-0.5">מרחק מהמלון:</span>
+                                    {([
+                                        { val: null as number | null, label: 'הכל' },
+                                        { val: 15, label: 'עד 15 דקות הליכה' },
+                                        { val: 30, label: 'עד 30 דקות הליכה' },
+                                    ]).map(opt => (
+                                        <button
+                                            key={String(opt.val)}
+                                            onClick={() => setFilterMaxWalkMin(opt.val)}
+                                            className={`min-h-9 px-3 py-1 rounded-full text-2xs font-bold border transition-all ${filterMaxWalkMin === opt.val ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'}`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {viewMode === 'map' ? (
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -1358,80 +1442,6 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                             ))}
                         </div>
                     </div>
-                    {(filterOptions.types.length > 0 || filterOptions.prices.length > 0 || (trip.hotels || []).some(h => typeof h.lat === 'number')) && (
-                        <div className="border border-slate-200 bg-slate-50 rounded-2xl overflow-hidden">
-                            <button
-                                type="button"
-                                onClick={() => setFiltersExpanded(v => !v)}
-                                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 md:py-2 text-right hover:bg-slate-100/60 transition-colors"
-                                aria-expanded={filtersExpanded}
-                            >
-                                <span className="flex items-center gap-2">
-                                    <FilterIcon className="w-4 h-4 text-slate-500" />
-                                    <span className="text-xs font-black text-slate-700">סינון</span>
-                                    {activeFilterCount > 0 && (
-                                        <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-purple-600 text-white text-[10px] font-black">{activeFilterCount}</span>
-                                    )}
-                                </span>
-                                <span className="flex items-center gap-2">
-                                    {activeFilterCount > 0 && (
-                                        <span
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={(e) => { e.stopPropagation(); clearAllFilters(); }}
-                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); clearAllFilters(); } }}
-                                            className="text-[11px] font-bold text-slate-500 hover:text-red-600 underline underline-offset-2"
-                                        >
-                                            נקה הכל
-                                        </span>
-                                    )}
-                                    <ChevronLeftIcon className={`w-4 h-4 text-slate-400 transition-transform ${filtersExpanded ? '-rotate-90' : ''}`} />
-                                </span>
-                            </button>
-                            {filtersExpanded && (
-                                <div className="px-3 pb-3 pt-1 space-y-2.5 border-t border-slate-200/70">
-                                    {filterOptions.types.length > 0 && (
-                                        <FilterChipGroup
-                                            label="סוג"
-                                            options={filterOptions.types.map(([k, n]) => ({ key: k, label: k, count: n }))}
-                                            selected={filterTypes}
-                                            onToggle={(k) => setFilterTypes(prev => toggleSetMember(prev, k))}
-                                            colorClass="purple"
-                                            maxVisible={6}
-                                        />
-                                    )}
-                                    {filterOptions.prices.length > 0 && (
-                                        <FilterChipGroup
-                                            label="מחיר"
-                                            options={filterOptions.prices.map(p => ({ key: p.key, label: p.label, count: p.count }))}
-                                            selected={filterPrices}
-                                            onToggle={(k) => setFilterPrices(prev => toggleSetMember(prev, k))}
-                                            colorClass="emerald"
-                                            maxVisible={6}
-                                        />
-                                    )}
-                                    {(trip.hotels || []).some(h => typeof h.lat === 'number') && (
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-2xs font-bold text-slate-500 shrink-0 ms-0.5">מרחק מהמלון:</span>
-                                            {([
-                                                { val: null as number | null, label: 'הכל' },
-                                                { val: 15, label: 'עד 15 דקות הליכה' },
-                                                { val: 30, label: 'עד 30 דקות הליכה' },
-                                            ]).map(opt => (
-                                                <button
-                                                    key={String(opt.val)}
-                                                    onClick={() => setFilterMaxWalkMin(opt.val)}
-                                                    className={`min-h-9 px-3 py-1 rounded-full text-2xs font-bold border transition-all ${filterMaxWalkMin === opt.val ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'}`}
-                                                >
-                                                    {opt.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
                     {geocodingInFlight > 0 && (
                         <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-sm">
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -1704,6 +1714,16 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 cancelText="ביטול"
                 onConfirm={() => setShowRefreshLimitModal(false)}
                 onClose={() => setShowRefreshLimitModal(false)}
+            />
+            <ConfirmModal
+                isOpen={!!confirmDeleteId}
+                title="להסיר את האטרקציה מהרשימה?"
+                message="האטרקציה תוסר מהרשימה השמורה שלך. ניתן יהיה להוסיף אותה שוב מ-המלצות AI."
+                confirmText="הסר"
+                cancelText="ביטול"
+                isDangerous
+                onConfirm={() => confirmDeleteId && performDeleteAttraction(confirmDeleteId)}
+                onClose={() => setConfirmDeleteId(null)}
             />
             <ConfirmModal
                 isOpen={confirmNearHotel}

@@ -79,6 +79,7 @@ import { safeMapsUrl } from '../utils/mapsUrl';
 import { walkingMinutesBetween } from '../utils/walkingDistance';
 import { cuisineToHebrew, priceToBucket, sortPriceKeys } from '../utils/cuisineLabels';
 import { FilterChipGroup } from './FilterChipGroup';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 
 // Sorting helper: Favorites first, then Rating
@@ -131,6 +132,8 @@ const RestaurantCard: React.FC<{
             recommendationSource={rec.recommendationSource}
             isHotelRestaurant={rec.isHotelRestaurant}
             verification_needed={(rec as any).verification_needed}
+            geocodeFailed={rec.geocodeFailed}
+            verificationStatus={rec.verificationStatus}
         />
     );
 };
@@ -228,7 +231,11 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [selectedPlace, setSelectedPlace] = useState<ExtendedRestaurant | null>(null);
     const [confirmReset, setConfirmReset] = useState(false);
     const [confirmNearHotel, setConfirmNearHotel] = useState(false);
-    const [filtersExpanded, setFiltersExpanded] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const isMobile = useIsMobile();
+    // Default expanded on desktop, collapsed on mobile so the wall-of-chips
+    // doesn't push the list/map down on small screens.
+    const [filtersExpanded, setFiltersExpanded] = useState(!isMobile);
     // Background-geocoding progress so the map view can show a loading
     // banner while AI results are still being resolved to lat/lng. Failed
     // items (`geocodeFailed: true`) live on the restaurant objects and
@@ -1544,7 +1551,9 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
     };
 
     const handleDeleteRestaurant = (id: string) => {
-        if (!window.confirm("להסיר את המסעדה מהרשימה?")) return;
+        setConfirmDeleteId(id);
+    };
+    const performDeleteRestaurant = (id: string) => {
         const newRestaurants = trip.restaurants.map(cat => ({
             ...cat,
             restaurants: cat.restaurants.filter(r => r.id !== id)
@@ -1555,6 +1564,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
             next.delete(id);
             return next;
         });
+        setConfirmDeleteId(null);
     };
 
     return (
@@ -1744,6 +1754,83 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 </div>
             )}
 
+            {/* Filter card — visible on BOTH list and map views. Collapsed by
+                default on mobile, expanded on desktop. */}
+            {(filterOptions.cuisines.length > 0 || filterOptions.prices.length > 0 || (trip.hotels || []).some(h => typeof h.lat === 'number')) && (
+                <div className="border border-slate-200 bg-slate-50 rounded-2xl overflow-hidden">
+                    <button
+                        type="button"
+                        onClick={() => setFiltersExpanded(v => !v)}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 md:py-2 text-end hover:bg-slate-100/60 transition-colors"
+                        aria-expanded={filtersExpanded}
+                    >
+                        <span className="flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-slate-500" />
+                            <span className="text-xs font-black text-slate-700">סינון</span>
+                            {activeFilterCount > 0 && (
+                                <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-slate-700 text-white text-[10px] font-black">{activeFilterCount}</span>
+                            )}
+                        </span>
+                        <span className="flex items-center gap-2">
+                            {activeFilterCount > 0 && (
+                                <span
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => { e.stopPropagation(); clearAllFilters(); }}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); clearAllFilters(); } }}
+                                    className="text-[11px] font-bold text-slate-500 hover:text-red-600 underline underline-offset-2"
+                                >
+                                    נקה הכל
+                                </span>
+                            )}
+                            <ChevronLeft className={`w-4 h-4 text-slate-400 transition-transform ${filtersExpanded ? '-rotate-90' : ''}`} />
+                        </span>
+                    </button>
+                    {filtersExpanded && (
+                        <div className="px-3 pb-3 pt-1 space-y-2.5 border-t border-slate-200/70">
+                            {filterOptions.cuisines.length > 0 && (
+                                <FilterChipGroup
+                                    label="סוג"
+                                    options={filterOptions.cuisines.map(([k, n]) => ({ key: k, label: k, count: n }))}
+                                    selected={filterCuisines}
+                                    onToggle={(k) => setFilterCuisines(prev => toggleSetMember(prev, k))}
+                                    colorClass="orange"
+                                    maxVisible={6}
+                                />
+                            )}
+                            {filterOptions.prices.length > 0 && (
+                                <FilterChipGroup
+                                    label="מחיר"
+                                    options={filterOptions.prices.map(p => ({ key: p.key, label: p.label, count: p.count }))}
+                                    selected={filterPrices}
+                                    onToggle={(k) => setFilterPrices(prev => toggleSetMember(prev, k))}
+                                    colorClass="emerald"
+                                    maxVisible={6}
+                                />
+                            )}
+                            {(trip.hotels || []).some(h => typeof h.lat === 'number') && (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-2xs font-bold text-slate-500 shrink-0 ms-0.5">מרחק מהמלון:</span>
+                                    {([
+                                        { val: null as number | null, label: 'הכל' },
+                                        { val: 15, label: 'עד 15 דקות הליכה' },
+                                        { val: 30, label: 'עד 30 דקות הליכה' },
+                                    ]).map(opt => (
+                                        <button
+                                            key={String(opt.val)}
+                                            onClick={() => setFilterMaxWalkMin(opt.val)}
+                                            className={`min-h-9 px-3 py-1 rounded-full text-2xs font-bold border transition-all ${filterMaxWalkMin === opt.val ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'}`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {viewMode === 'map' ? (
                 <div className="space-y-3">
                     {/* Map source toggle — saved vs AI vs both. Independent of the
@@ -1766,82 +1853,6 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                             ))}
                         </div>
                     </div>
-                    {/* Filter card — collapsible on mobile, always-expanded on desktop.
-                        Header + filter chip groups (cuisine, price, distance). */}
-                    {(filterOptions.cuisines.length > 0 || filterOptions.prices.length > 0 || (trip.hotels || []).some(h => typeof h.lat === 'number')) && (
-                        <div className="border border-slate-200 bg-slate-50 rounded-2xl overflow-hidden">
-                            <button
-                                type="button"
-                                onClick={() => setFiltersExpanded(v => !v)}
-                                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 md:py-2 text-right hover:bg-slate-100/60 transition-colors"
-                                aria-expanded={filtersExpanded}
-                            >
-                                <span className="flex items-center gap-2">
-                                    <Filter className="w-4 h-4 text-slate-500" />
-                                    <span className="text-xs font-black text-slate-700">סינון</span>
-                                    {activeFilterCount > 0 && (
-                                        <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-orange-600 text-white text-[10px] font-black">{activeFilterCount}</span>
-                                    )}
-                                </span>
-                                <span className="flex items-center gap-2">
-                                    {activeFilterCount > 0 && (
-                                        <span
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={(e) => { e.stopPropagation(); clearAllFilters(); }}
-                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); clearAllFilters(); } }}
-                                            className="text-[11px] font-bold text-slate-500 hover:text-red-600 underline underline-offset-2"
-                                        >
-                                            נקה הכל
-                                        </span>
-                                    )}
-                                    <ChevronLeft className={`w-4 h-4 text-slate-400 transition-transform ${filtersExpanded ? '-rotate-90' : ''}`} />
-                                </span>
-                            </button>
-                            {filtersExpanded && (
-                                <div className="px-3 pb-3 pt-1 space-y-2.5 border-t border-slate-200/70">
-                                    {filterOptions.cuisines.length > 0 && (
-                                        <FilterChipGroup
-                                            label="סוג"
-                                            options={filterOptions.cuisines.map(([k, n]) => ({ key: k, label: k, count: n }))}
-                                            selected={filterCuisines}
-                                            onToggle={(k) => setFilterCuisines(prev => toggleSetMember(prev, k))}
-                                            colorClass="orange"
-                                            maxVisible={6}
-                                        />
-                                    )}
-                                    {filterOptions.prices.length > 0 && (
-                                        <FilterChipGroup
-                                            label="מחיר"
-                                            options={filterOptions.prices.map(p => ({ key: p.key, label: p.label, count: p.count }))}
-                                            selected={filterPrices}
-                                            onToggle={(k) => setFilterPrices(prev => toggleSetMember(prev, k))}
-                                            colorClass="emerald"
-                                            maxVisible={6}
-                                        />
-                                    )}
-                                    {(trip.hotels || []).some(h => typeof h.lat === 'number') && (
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-2xs font-bold text-slate-500 shrink-0 ms-0.5">מרחק מהמלון:</span>
-                                            {([
-                                                { val: null as number | null, label: 'הכל' },
-                                                { val: 15, label: 'עד 15 דקות הליכה' },
-                                                { val: 30, label: 'עד 30 דקות הליכה' },
-                                            ]).map(opt => (
-                                                <button
-                                                    key={String(opt.val)}
-                                                    onClick={() => setFilterMaxWalkMin(opt.val)}
-                                                    className={`min-h-9 px-3 py-1 rounded-full text-2xs font-bold border transition-all ${filterMaxWalkMin === opt.val ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'}`}
-                                                >
-                                                    {opt.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
                     {(() => {
                         return (
                             <>
@@ -2130,6 +2141,16 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 cancelText=""
                 onConfirm={() => setShowRefreshLimitModal(false)}
                 onClose={() => setShowRefreshLimitModal(false)}
+            />
+            <ConfirmModal
+                isOpen={!!confirmDeleteId}
+                title="להסיר את המסעדה מהרשימה?"
+                message="המסעדה תוסר מהרשימה השמורה שלך. ניתן יהיה להוסיף אותה שוב מ-המלצות AI."
+                confirmText="הסר"
+                cancelText="ביטול"
+                isDangerous
+                onConfirm={() => confirmDeleteId && performDeleteRestaurant(confirmDeleteId)}
+                onClose={() => setConfirmDeleteId(null)}
             />
             <ConfirmModal
                 isOpen={confirmNearHotel}
