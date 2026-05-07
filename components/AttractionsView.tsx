@@ -1304,8 +1304,9 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 </div>
             )}
 
-            {/* Row 3 — city chips on their own row, wrap on mobile. */}
-            {presentCities.length > 0 && (
+            {/* Row 3 — city chips on list view only. The map view has its
+                own on-map chip strip (UnifiedMapView) for camera zoom. */}
+            {presentCities.length > 0 && viewMode === 'list' && (
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         key="__all__"
@@ -1487,7 +1488,6 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                         trip={trip}
                         activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
                         title="מפת אטרקציות"
-                        embedded
                         savedNames={savedAttractionNames}
                         onAddToList={(item) => {
                             const a = (item as any).raw as Attraction | undefined;

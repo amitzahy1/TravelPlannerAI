@@ -9,6 +9,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
 import { Loader2, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
+import { normalizeCityForChip, isProvinceOrCountryName } from '../utils/cityNormalize';
 import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl, toEnglishCountryName } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, getTripCountryBbox, getTripCountries, getTripCountryBboxes, placeInTripCountries, getCountryForHotel, coordInTripCountries, coordInTripCities, getTripCityBboxes } from '../utils/tripScope';
 import { classifyTripRoute, transportEmojiForMode, transportLabelForMode, LegClassification } from '../services/routeClassifier';
@@ -1944,28 +1945,34 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     }, [tileTheme]);
 
     // Cities for filter bar
+    // Cities for the on-map chip strip. Canonicalised so "Bangkok" /
+    // "בנגקוק" / "Bangkok, Thailand" collapse to one chip and the
+    // "Koh Chang" / "Ko Chang" / "קו צ'אנג" variants collapse to one.
+    // Province / country names ("Thailand", "Chon Buri") dropped.
     const cities = useMemo(() => {
-        const cityMap = new Map<string, number>();
-
+        const byKey = new Map<string, { name: string }>();
+        const consider = (raw?: string) => {
+            const n = (raw || '').trim();
+            if (!n || isProvinceOrCountryName(n)) return;
+            const k = normalizeCityForChip(n) || cityKey(n);
+            if (!k) return;
+            if (!byKey.has(k)) byKey.set(k, { name: n });
+        };
         if (trip?.destination) {
-            trip.destination.split(/[-–,]/).forEach(c => {
-                const n = c.trim();
-                if (n) cityMap.set(n, 0);
-            });
+            trip.destination.split(/[-–,]/).forEach(c => consider(c));
         }
+        mapItems.forEach(item => consider(item.city));
 
-        mapItems.forEach(item => {
-            const city = item.city?.trim();
-            if (city && !cityMap.has(city)) cityMap.set(city, 0);
-        });
-
-        return Array.from(cityMap.keys()).map(cityName => {
-            const keywords = getCityKeywords(cityName);
+        return Array.from(byKey.entries()).map(([key, { name }]) => {
+            const keywords = getCityKeywords(name);
             const count = mapItems.filter(i => {
+                if (i.type === 'hotel') return false; // hotel pins aren't "results"
+                const itemKey = normalizeCityForChip(i.city || '') || cityKey(i.city || '');
+                if (itemKey && itemKey === key) return true;
                 const str = (i.address || i.city || i.name || '').toLowerCase();
                 return keywords.some(kw => str.includes(kw));
             }).length;
-            return { name: cityName, count };
+            return { name, count };
         }).filter(c => c.count > 0);
     }, [mapItems, trip]);
 

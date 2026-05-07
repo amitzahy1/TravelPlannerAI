@@ -1683,11 +1683,10 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 </div>
             )}
 
-            {/* Row 3 — city chips on their own row, wrap on mobile.
-                Each chip = canonical trip city; counts come from items present.
-                Sized larger here than the inline filter chips so it reads as
-                the primary scoping control of the page. */}
-            {presentCities.length > 0 && (
+            {/* Row 3 — city chips. On list view this drives the list filter.
+                On map view we hide it because UnifiedMapView renders its own
+                on-map chip strip there (which also handles camera zoom). */}
+            {presentCities.length > 0 && viewMode === 'list' && (
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         key="__all__"
@@ -1901,7 +1900,6 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                         trip={trip}
                         activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
                         title="מפת מסעדות"
-                        embedded
                         savedNames={savedRestaurantNames}
                         onAddToList={(item) => {
                             const r = (item as any).raw as Restaurant | undefined;
