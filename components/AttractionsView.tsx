@@ -1202,9 +1202,14 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
             const hCity = h.city || h.address || '';
             if (selectedCity !== 'all' && !locationMatchesCity(hCity, selectedCity)) return;
             if (!h.address && (typeof h.lat !== 'number' || typeof h.lng !== 'number')) return;
+            // Include `city` (English) so UnifiedMapView's city-flyTo effect
+            // can match hotels for the active city via cityKey().
+            const hCityRaw = h.city || (h.address || '');
+            const hCityEn = displayCityName(hCityRaw, 'en') || h.city || '';
             items.push({
                 id: `hotel-${h.id}`, type: 'hotel', name: h.name,
                 address: h.address, lat: h.lat, lng: h.lng,
+                city: hCityEn,
                 description: h.city || h.address,
                 source: 'saved',
             });
@@ -1353,12 +1358,26 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                     <ActionsMenu
                         align="end"
                         items={[
-                            {
-                                icon: <RotateCw className={`w-4 h-4 ${(loadingRecs || isResearchingAll) ? 'animate-spin' : ''}`} />,
-                                label: selectedCity !== 'all' ? `רענן את ${selectedCity}` : 'רענן את כל הערים',
-                                onSelect: () => selectedCity !== 'all' ? initiateResearch(selectedCity) : researchAllCities(),
-                                disabled: loadingRecs || isResearchingAll,
-                            },
+                            (() => {
+                                const activeCat = selectedCategory !== 'all'
+                                    ? aiCategories.find(c => c.id === selectedCategory)
+                                    : null;
+                                const isBusy = loadingRecs || isResearchingAll || refreshingCategoryId !== null;
+                                return {
+                                    icon: <RotateCw className={`w-4 h-4 ${isBusy ? 'animate-spin' : ''}`} />,
+                                    label: activeCat
+                                        ? `רענן את "${displayTitle(activeCat.title)}"`
+                                        : selectedCity !== 'all'
+                                            ? `רענן את ${selectedCity}`
+                                            : 'רענן את כל הערים',
+                                    onSelect: () => activeCat
+                                        ? refreshSingleCategory(activeCat)
+                                        : selectedCity !== 'all'
+                                            ? initiateResearch(selectedCity)
+                                            : researchAllCities(),
+                                    disabled: isBusy,
+                                };
+                            })(),
                             {
                                 icon: <Hotel className="w-4 h-4" />,
                                 label: 'מצא אטרקציות באזור המלון',
