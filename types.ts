@@ -456,6 +456,10 @@ export interface Trip {
   // NEW: Dynamic Categories (Task 3)
   customFoodCategories?: string[];       // User-created food search categories
   customAttractionCategories?: string[]; // User-created attraction search categories
+
+  // Collaborative audit + soft delete (Phase 2)
+  activityLog?: any[]; // ActivityEntry[] from services/activityLog.ts — kept loose to avoid circular import
+  trash?: any[];       // TrashEntry[]
 }
 
 export interface AppState {

@@ -34,6 +34,7 @@ import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
 import { DemoWelcomePage } from './pages/DemoWelcomePage';
 import { GuestTripView } from './components/GuestTripView';
+import { withActivityLog } from './services/activityLog';
 
 const getJoinShareIdFromHash = (): { shareId: string; role: 'editor' | 'viewer' } | null => {
   const hash = window.location.hash;
@@ -374,7 +375,17 @@ const AppContent: React.FC = () => {
       );
     }
 
-    const handleUpdate = (updatedTrip: Trip) => updateTripMutation.mutate(updatedTrip);
+    const handleUpdate = (updatedTrip: Trip) => {
+      const prev = trips.find(t => t.id === updatedTrip.id);
+      let next = updatedTrip;
+      if (prev && user) {
+        next = withActivityLog(prev, updatedTrip, {
+          uid: user.uid,
+          name: user.displayName || user.email?.split('@')[0] || 'משתמש',
+        });
+      }
+      updateTripMutation.mutate(next);
+    };
 
     return (
       <React.Suspense fallback={

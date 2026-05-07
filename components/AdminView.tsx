@@ -24,6 +24,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { MagicalWizard } from './onboarding/MagicalWizard';
 import { UnifiedMapView } from './UnifiedMapView';
 import { DataHealthPanel } from './admin/DataHealthPanel';
+import { ActivityPanel } from './admin/ActivityPanel';
 
 
 interface TripSettingsModalProps {
@@ -1169,6 +1170,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />
                                     </div>
                                 </div>
+
+                                {/* Activity log + soft-delete recovery */}
+                                <ActivityPanel
+                                    trip={activeTrip}
+                                    onUpdateTrip={(t) => handleUpdateTrip(t)}
+                                    actorUid={user?.uid || ''}
+                                    actorName={user?.displayName || user?.email?.split('@')[0] || 'משתמש'}
+                                />
 
                                 {/* Data health & logs */}
                                 <DataHealthPanel trip={activeTrip} onUpdateTrip={(t) => handleUpdateTrip(t)} />
