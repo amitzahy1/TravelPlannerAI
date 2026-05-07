@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, Star, Trophy, Calendar, ChevronLeft, Plus, Check, Hotel, Utensils, Plane, Camera, Crosshair } from 'lucide-react';
+import { MapPin, Star, Trophy, Calendar, ChevronLeft, Plus, Check, Hotel, Utensils, Plane, Camera, Crosshair, Navigation } from 'lucide-react';
 import { safeMapsUrl } from '../../utils/mapsUrl';
 import { getFoodImage, getAttractionImage } from '../../services/imageMapper';
 import { resolveRealPlaceImage } from '../../services/placeImageService';
 
 const TYPE_CONFIG = {
-        hotel: { color: '#0ea5e9', accent: 'bg-sky-500', accentText: 'text-sky-600', label: 'מלון', Icon: Hotel },
-        restaurant: { color: '#f97316', accent: 'bg-orange-500', accentText: 'text-orange-600', label: 'מסעדה', Icon: Utensils },
-        attraction: { color: '#8b5cf6', accent: 'bg-violet-500', accentText: 'text-violet-600', label: 'אטרקציה', Icon: Camera },
-        airport: { color: '#6366f1', accent: 'bg-indigo-500', accentText: 'text-indigo-600', label: 'שדה תעופה', Icon: Plane },
+        hotel: { color: '#0ea5e9', gradient: 'linear-gradient(135deg,#0ea5e9,#0284c7)', accent: 'bg-sky-500', accentText: 'text-sky-700', tint: 'bg-sky-50 border-sky-100', label: 'מלון', Icon: Hotel },
+        restaurant: { color: '#f97316', gradient: 'linear-gradient(135deg,#fb923c,#ea580c)', accent: 'bg-orange-500', accentText: 'text-orange-700', tint: 'bg-orange-50 border-orange-100', label: 'מסעדה', Icon: Utensils },
+        attraction: { color: '#8b5cf6', gradient: 'linear-gradient(135deg,#a78bfa,#7c3aed)', accent: 'bg-violet-500', accentText: 'text-violet-700', tint: 'bg-violet-50 border-violet-100', label: 'אטרקציה', Icon: Camera },
+        airport: { color: '#6366f1', gradient: 'linear-gradient(135deg,#818cf8,#4f46e5)', accent: 'bg-indigo-500', accentText: 'text-indigo-700', tint: 'bg-indigo-50 border-indigo-100', label: 'שדה תעופה', Icon: Plane },
 } as const;
 
 export interface PopupItem {
@@ -112,137 +112,134 @@ export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = fal
         return (
                 <div
                         className="bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200"
-                        style={{ width: 300, fontFamily: "'Rubik','Inter',sans-serif" }}
+                        style={{ width: 280, fontFamily: "'Rubik','Inter',sans-serif" }}
                         dir="rtl"
                 >
-                        {/* Top row: image (right in RTL) + info column (left) */}
-                        <div className="flex">
-                                {/* Image / gradient block */}
-                                <div
-                                        className="w-[88px] h-[88px] flex-shrink-0 relative"
-                                        style={imageUrl
-                                                ? { backgroundImage: `url('${imageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                                                : { background: `linear-gradient(135deg,${cfg.color},${cfg.color}cc)` }
-                                        }
-                                >
-                                        {!imageUrl && (
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                        <Icon className="w-9 h-9 text-white/85" />
-                                                </div>
-                                        )}
-                                        {/* Type pill at the top of image */}
-                                        <span className={`absolute top-1.5 right-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded ${cfg.accent} text-white text-[9px] font-black shadow-sm`}>
-                                                {cfg.label}
-                                        </span>
-                                </div>
+                        {/* Hero image */}
+                        <div
+                                className="relative w-full h-[120px]"
+                                style={imageUrl
+                                        ? { backgroundImage: `url('${imageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                                        : { background: cfg.gradient }
+                                }
+                        >
+                                {!imageUrl && (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                                <Icon className="w-10 h-10 text-white/85" />
+                                        </div>
+                                )}
+                                {/* Bottom scrim for legibility */}
+                                <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/55 to-transparent" />
 
-                                {/* Info column */}
-                                <div className="flex-1 p-2.5 min-w-0">
-                                        <div className="flex items-start justify-between gap-1.5">
-                                                <h3 className="text-sm font-black text-brand-navy leading-tight truncate flex-1" dir="ltr">
-                                                        {item.name}
-                                                </h3>
-                                                {typeof item.rating === 'number' && item.rating > 0 && (
-                                                        <span className="inline-flex items-center gap-0.5 text-2xs font-black text-amber-700 shrink-0">
-                                                                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                                                                {item.rating.toFixed(1)}
+                                {/* Type pill */}
+                                <span className={`absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md ${cfg.accent} text-white text-[10px] font-black shadow-md tracking-wide`}>
+                                        <Icon className="w-3 h-3" />
+                                        {cfg.label}
+                                </span>
+
+                                {/* Rating chip */}
+                                {typeof item.rating === 'number' && item.rating > 0 && (
+                                        <span className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/95 backdrop-blur-sm text-amber-700 text-[10px] font-black shadow-md">
+                                                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                                                {item.rating.toFixed(1)}
+                                        </span>
+                                )}
+
+                                {/* Date pill */}
+                                {dateLabel && (
+                                        <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/95 backdrop-blur-sm text-slate-700 text-[10px] font-black shadow-md">
+                                                <Calendar className="w-3 h-3 text-slate-500" />
+                                                {dateLabel}
+                                        </span>
+                                )}
+                        </div>
+
+                        {/* Body */}
+                        <div className="px-3 pt-2.5 pb-2.5">
+                                <h3 className="text-[15px] font-black text-slate-900 leading-tight line-clamp-2 mb-1" dir="ltr">
+                                        {item.name}
+                                </h3>
+
+                                {item.address && (
+                                        <div className="flex items-start gap-1 text-[11px] text-slate-500 mb-2 leading-snug" dir="ltr">
+                                                <MapPin className="w-3 h-3 shrink-0 text-slate-400 mt-0.5" />
+                                                <span className="line-clamp-2">{item.address}</span>
+                                        </div>
+                                )}
+
+                                {(tagLabel || item.priceRange || item.recommendationSource) && (
+                                        <div className="flex items-center gap-1 flex-wrap mb-1">
+                                                {item.recommendationSource && (
+                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 text-[10px] font-black border border-amber-200">
+                                                                <Trophy className="w-2.5 h-2.5" />
+                                                                <span className="max-w-[100px] truncate">{item.recommendationSource}</span>
+                                                        </span>
+                                                )}
+                                                {item.priceRange && (
+                                                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-black border border-emerald-200">
+                                                                {item.priceRange}
+                                                        </span>
+                                                )}
+                                                {tagLabel && (
+                                                        <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black border ${cfg.tint} ${cfg.accentText} max-w-[110px] truncate`} dir="ltr">
+                                                                {tagLabel}
                                                         </span>
                                                 )}
                                         </div>
+                                )}
 
-                                        {item.address && (
-                                                <div className="flex items-center gap-1 text-2xs text-slate-500 mt-0.5" dir="ltr">
-                                                        <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
-                                                        <span className="truncate">{item.address}</span>
-                                                </div>
-                                        )}
-
-                                        {(tagLabel || item.priceRange || item.recommendationSource) && (
-                                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                                                        {tagLabel && (
-                                                                <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-700 text-[10px] font-bold border border-slate-200 max-w-[110px] truncate" dir="ltr">
-                                                                        {tagLabel}
-                                                                </span>
-                                                        )}
-                                                        {item.priceRange && (
-                                                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
-                                                                        {item.priceRange}
-                                                                </span>
-                                                        )}
-                                                        {item.recommendationSource && (
-                                                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
-                                                                        <Trophy className="w-2.5 h-2.5" />
-                                                                        <span className="max-w-[90px] truncate">{item.recommendationSource}</span>
-                                                                </span>
-                                                        )}
-                                                </div>
-                                        )}
-                                </div>
+                                {noteSummary.short && (
+                                        <div
+                                                title={noteSummary.truncated ? item.notes : undefined}
+                                                className="text-[11px] text-slate-600 leading-snug bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 mt-1"
+                                                style={{
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden',
+                                                }}
+                                                dir="rtl"
+                                        >
+                                                <span className="font-black text-slate-700">📝 </span>{noteSummary.short}
+                                        </div>
+                                )}
                         </div>
 
-                        {/* Optional note row — only when there's a meaningful summary */}
-                        {noteSummary.short && (
-                                <div
-                                        title={noteSummary.truncated ? item.notes : undefined}
-                                        className="px-2.5 pb-2 text-[10px] text-slate-600 leading-snug"
-                                        style={{
-                                                display: '-webkit-box',
-                                                WebkitLineClamp: 2,
-                                                WebkitBoxOrient: 'vertical',
-                                                overflow: 'hidden',
-                                        }}
-                                        dir="rtl"
-                                >
-                                        <span className="font-bold text-slate-700">📝 </span>{noteSummary.short}
-                                </div>
-                        )}
-
-                        {/* Action strip */}
-                        <div className="border-t border-slate-100 px-2.5 py-2 flex items-center justify-between gap-2 bg-slate-50">
-                                <span className="text-[10px] text-slate-500 font-bold inline-flex items-center gap-1 min-w-0">
-                                        {dateLabel ? (
-                                                <>
-                                                        <Calendar className="w-3 h-3 shrink-0" />
-                                                        <span className="truncate">{dateLabel}</span>
-                                                </>
-                                        ) : (
-                                                <span className="text-slate-400">—</span>
-                                        )}
-                                </span>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                        {showAddButton && (
-                                                <button
-                                                        onClick={(e) => { e.stopPropagation(); onAddToList!(); }}
-                                                        disabled={isAdded}
-                                                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md border ${isAdded ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'} ${isAdded ? 'cursor-default' : 'cursor-pointer'}`}
-                                                >
-                                                        {isAdded ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                                                        {isAdded ? 'נשמר' : 'הוסף'}
-                                                </button>
-                                        )}
-                                        {onFixLocation && item.type === 'hotel' && (
-                                                <button
-                                                        onClick={(e) => { e.stopPropagation(); onFixLocation(); }}
-                                                        title="תקן מיקום על ידי הדבקת קישור Google Maps"
-                                                        className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md border bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
-                                                >
-                                                        <Crosshair className="w-3 h-3" />
-                                                        תקן מיקום
-                                                </button>
-                                        )}
-                                        <a
-                                                href={mapsLink}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-md text-white shadow-sm"
-                                                style={{ background: cfg.color }}
+                        {/* Action row */}
+                        <div className="px-3 pb-3 pt-0 flex items-center gap-2">
+                                {showAddButton && (
+                                        <button
+                                                onClick={(e) => { e.stopPropagation(); onAddToList!(); }}
+                                                disabled={isAdded}
+                                                className={`inline-flex items-center justify-center gap-1 text-xs font-black py-2 rounded-xl border flex-1 transition-all active:scale-95 ${isAdded
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                        : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800 shadow-sm'}`}
                                         >
-                                                <MapPin className="w-3 h-3" />
-                                                ניווט
-                                                <ChevronLeft className="w-3 h-3" />
-                                        </a>
-                                </div>
+                                                {isAdded ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                                                {isAdded ? 'נשמר' : 'הוסף'}
+                                        </button>
+                                )}
+                                {onFixLocation && item.type === 'hotel' && (
+                                        <button
+                                                onClick={(e) => { e.stopPropagation(); onFixLocation(); }}
+                                                title="תקן מיקום על ידי הדבקת קישור Google Maps"
+                                                className="inline-flex items-center justify-center gap-1 text-xs font-black py-2 rounded-xl border bg-white text-slate-700 border-slate-300 hover:bg-slate-50 transition-all active:scale-95"
+                                        >
+                                                <Crosshair className="w-3.5 h-3.5" />
+                                        </button>
+                                )}
+                                <a
+                                        href={mapsLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center justify-center gap-1.5 text-xs font-black py-2 rounded-xl shadow-md flex-1 transition-all active:scale-95 hover:brightness-110"
+                                        style={{ background: cfg.gradient, color: '#ffffff' }}
+                                >
+                                        <Navigation className="w-3.5 h-3.5" style={{ color: '#ffffff' }} />
+                                        <span style={{ color: '#ffffff' }}>ניווט</span>
+                                        <ChevronLeft className="w-3.5 h-3.5" style={{ color: '#ffffff' }} />
+                                </a>
                         </div>
                 </div>
         );
