@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X, Trophy } from 'lucide-react';
+import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X, Trophy, AlertTriangle } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
 import { safeMapsUrl } from '../utils/mapsUrl';
@@ -188,6 +188,16 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                                                 {String(item.recommendationSource).replace(/Bib/i, 'Michelin')}
                                                         </span>
                                                         <span className="text-2xs font-bold text-slate-400">מקור המלצה</span>
+                                                </div>
+                                        )}
+
+                                        {((item.verification_needed) || item.geocodeFailed || item.verificationStatus === 'not_found' || item.verificationStatus === 'ambiguous') && (
+                                                <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
+                                                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                                        <div className="text-xs text-amber-900 leading-relaxed">
+                                                                <div className="font-black mb-0.5">כדאי לבדוק לפני הביקור</div>
+                                                                <div className="font-medium text-amber-800">לא הצלחנו לאמת את המקום אוטומטית — בדוק שעות פתיחה וכתובת ב-Google Maps לפני שתבקר.</div>
+                                                        </div>
                                                 </div>
                                         )}
 
