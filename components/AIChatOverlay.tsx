@@ -91,10 +91,10 @@ export const AIChatOverlay: React.FC<AIChatOverlayProps> = ({ trip }) => {
                 return (
                         <button
                                 onClick={() => setIsOpen(true)}
-                                className="fixed bottom-20 md:bottom-6 left-4 md:left-auto md:right-6 z-[200] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-2.5 md:p-4 rounded-full shadow-xl md:shadow-2xl shadow-blue-300/50 transition-all hover:scale-110 active:scale-95"
+                                className="fixed bottom-20 md:bottom-6 left-4 md:left-auto md:right-6 z-[200] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-1.5 md:p-2 rounded-full shadow-md shadow-blue-300/40 transition-all hover:scale-110 active:scale-95 opacity-75 hover:opacity-100"
                                 title="עוזר AI"
                         >
-                                <Sparkles className="w-5 h-5 md:w-8 md:h-8" />
+                                <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         </button>
                 );
         }
