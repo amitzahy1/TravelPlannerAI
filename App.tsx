@@ -489,8 +489,19 @@ const AppContent: React.FC = () => {
   );
 };
 
+const isDemoWelcomeHash = () => {
+  const h = (window.location.hash || '').toLowerCase().replace(/\/$/, '');
+  return h === '#/demo-welcome' || h === '#demo-welcome';
+};
+
 const App: React.FC = () => {
-  if (window.location.hash === '#/demo-welcome') {
+  const [isDemo, setIsDemo] = useState(isDemoWelcomeHash());
+  useEffect(() => {
+    const onHash = () => setIsDemo(isDemoWelcomeHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  if (isDemo) {
     return <DemoWelcomePage />;
   }
   return (
