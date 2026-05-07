@@ -27,7 +27,10 @@ import { toast } from '../stores/useToastStore';
 import { walkingMinutesBetween } from '../utils/walkingDistance';
 import { attractionTypeToHebrew, priceToBucket, sortPriceKeys } from '../utils/cuisineLabels';
 import { FilterChipGroup } from './FilterChipGroup';
+import { ActionsMenu } from './ActionsMenu';
+import { CategoryChip } from './CategoryChip';
 import { useIsMobile } from '../hooks/useMediaQuery';
+import { normalizeCityForChip, isProvinceOrCountryName } from '../utils/cityNormalize';
 
 
 // Enhanced Visuals with Gradients for Attractions
@@ -160,7 +163,6 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [researchProgress, setResearchProgress] = useState({ current: 0, total: 0 });
 
     const [selectedCity, setSelectedCity] = useState<string>('all');
-    const [mapSource, setMapSource] = useState<'all' | 'saved' | 'ai'>('all');
     const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set());
     const [filterPrices, setFilterPrices] = useState<Set<string>>(new Set());
     const [filterMaxWalkMin, setFilterMaxWalkMin] = useState<number | null>(null);
@@ -211,10 +213,9 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // the user actually visits, so they shouldn't pollute the attraction-research scope.
     const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true, lang: 'en' }), [trip]);
 
-    // City chip strip — source of truth is trip.hotels (canonical user-defined
-    // trip cities), so all destinations show as chips even if 0 items have
-    // been researched. Per-city counts come from saved + AI items via
-    // locationMatchesCity. AI-only cities not represented by a hotel are dropped.
+    // City chip strip — same approach as RestaurantsView. Aggressive
+    // canonical normalization collapses Bangkok / Ko Chang variants to a
+    // single chip; province / country names are dropped.
     const presentCities = useMemo<{ display: string; count: number; key: string }[]>(() => {
         const cityByKey = new Map<string, { display: string; count: number }>();
         const sortedHotels = (trip.hotels || [])
@@ -227,7 +228,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         const orderedKeys: string[] = [];
         sortedHotels.forEach(({ h }) => {
             const raw = extractRobustCity(h.address || '', h.name || '', trip) || h.city || '';
-            const k = cityKey(raw);
+            if (!raw || isProvinceOrCountryName(raw)) return;
+            const k = normalizeCityForChip(raw);
             if (!k || cityByKey.has(k)) return;
             const display = displayCityName(raw, 'he') || raw;
             cityByKey.set(k, { display, count: 0 });
@@ -293,6 +295,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     }, [trip.attractions, trip.aiAttractions]);
 
     const passesItemFilters = useCallback((a: Attraction): boolean => {
+        if (viewMode !== 'map') return true; // filters scoped to map only
         if (filterTypes.size > 0) {
             const t = attractionTypeToHebrew(a.type || a.activity_type);
             if (!filterTypes.has(t)) return false;
@@ -306,7 +309,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             if (m === null || m > filterMaxWalkMin) return false;
         }
         return true;
-    }, [filterTypes, filterPrices, filterMaxWalkMin, itemWalkingMinutes]);
+    }, [viewMode, filterTypes, filterPrices, filterMaxWalkMin, itemWalkingMinutes]);
 
     const toggleSetMember = (set: Set<string>, value: string): Set<string> => {
         const next = new Set(set);
@@ -1132,8 +1135,9 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 ? (displayCityName(selectedCity, 'en') || selectedCity)
                 : (region ? displayCityName(region, 'en') : undefined);
 
-        const includeSaved = mapSource !== 'ai';
-        const includeAi = mapSource !== 'saved';
+        // Map always shows BOTH saved + AI markers; pin style differentiates them.
+        const includeSaved = true;
+        const includeAi = true;
 
         const savedNameKeys = new Set<string>();
         const savedFlat = attractionsData.flatMap(c =>
@@ -1145,7 +1149,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
             if (!passesItemFilters(a)) return;
             savedNameKeys.add(a.name.toLowerCase());
             items.push({
-                id: a.id, type: 'attraction', name: a.name,
+                id: a.id, type: 'attraction', name: a.name, nameEnglish: a.nameEnglish,
                 address: a.location, lat: a.lat, lng: a.lng,
                 city: cityEnFor(a.region),
                 description: a.description,
@@ -1166,7 +1170,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
             if (selectedCity !== 'all' && !attractionMatchesCity(a, selectedCity)) return;
             if (savedNameKeys.has(a.name.toLowerCase())) return;
             items.push({
-                id: `ai-${a.id}`, type: 'attraction', name: a.name,
+                id: `ai-${a.id}`, type: 'attraction', name: a.name, nameEnglish: a.nameEnglish,
                 address: a.location, lat: a.lat, lng: a.lng,
                 city: cityEnFor(a.region),
                 description: a.description,
@@ -1194,7 +1198,20 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 source: 'saved',
             });
         });
-        return items;
+
+        // Final dedupe by (name, lat~3dp, lng~3dp) so attractions appearing
+        // in multiple categories don't render as overlapping pins.
+        const seen = new Set<string>();
+        return items.filter(it => {
+            if (it.type === 'hotel') return true;
+            const lat = typeof it.lat === 'number' ? Math.round(it.lat * 1000) : 'x';
+            const lng = typeof it.lng === 'number' ? Math.round(it.lng * 1000) : 'x';
+            const name = (it.name || '').toLowerCase().trim().replace(/\s+/g, ' ');
+            const key = `${name}|${lat}|${lng}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
     };
 
     const savedAttractionNames = useMemo(
@@ -1240,90 +1257,82 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 </div>
             )}
 
-            {/* Row 2 — context controls: city pills + list/map toggle + refresh/reset icons.
-                Mobile: chips wrap to multiple rows so all trip cities are visible. */}
-            <div className="flex flex-col md:flex-row md:items-center md:gap-2 gap-2">
-                {presentCities.length > 0 ? (
-                    <div className="flex flex-wrap md:flex-nowrap md:overflow-x-auto md:scrollbar-hide items-center gap-1.5 pb-1 flex-grow min-w-0">
-                        <button
-                            key="__all__"
-                            onClick={() => setSelectedCity('all')}
-                            className={`min-h-9 px-3.5 py-1.5 rounded-full text-2xs font-black transition-all border whitespace-nowrap flex-shrink-0 ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
-                        >
-                            כל המסלול
-                        </button>
-                        {presentCities.map(({ display, count, key }) => {
-                            const isActive = selectedCity === display;
-                            const isEmpty = count === 0;
-                            return (
-                                <button
-                                    key={key}
-                                    onClick={() => setSelectedCity(display)}
-                                    title={isEmpty ? 'אין כאן עדיין אטרקציות. בחר את העיר ולחץ על "מצא באזור המלון" / רענן.' : undefined}
-                                    className={`min-h-9 px-3.5 py-1.5 rounded-full text-2xs font-black transition-all border whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 ${
-                                        isActive
-                                            ? 'bg-slate-900 border-slate-900 text-white shadow'
-                                            : isEmpty
-                                                ? 'bg-white border-dashed border-slate-300 text-slate-400 hover:bg-slate-50'
-                                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                                    }`}
-                                >
-                                    <span>{display}</span>
-                                    <span className={`text-[10px] font-bold ${isActive ? 'text-white/80' : isEmpty ? 'text-slate-300' : 'text-slate-400'}`}>{count}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <div className="flex-grow" />
-                )}
-                <div className="flex items-center gap-2 flex-shrink-0 self-start md:self-auto">
-                    <div className="inline-flex bg-slate-100 rounded-xl p-0.5 flex-shrink-0">
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`flex items-center gap-1 min-h-9 px-3 py-1.5 rounded-lg text-2xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            <List className="w-3.5 h-3.5" /> רשימה
-                        </button>
-                        <button
-                            onClick={() => setViewMode('map')}
-                            className={`flex items-center gap-1 min-h-9 px-3 py-1.5 rounded-lg text-2xs font-bold transition-all ${viewMode === 'map' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            <MapIcon className="w-3.5 h-3.5" /> מפה
-                        </button>
-                    </div>
-                    {aiCategories.length > 0 && !viewerMode && (
-                        <>
+            {/* Row 3 — city chips on their own row, wrap on mobile. */}
+            {presentCities.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                        key="__all__"
+                        onClick={() => setSelectedCity('all')}
+                        className={`min-h-9 px-3.5 py-1.5 rounded-full text-2xs font-black transition-all border whitespace-nowrap ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                    >
+                        כל המסלול
+                    </button>
+                    {presentCities.map(({ display, count, key }) => {
+                        const isActive = selectedCity === display;
+                        const isEmpty = count === 0;
+                        return (
                             <button
-                                onClick={() => selectedCity !== 'all' ? initiateResearch(selectedCity) : researchAllCities()}
-                                disabled={loadingRecs || isResearchingAll}
-                                title={isResearchingAll ? `סורק (${researchProgress.current}/${researchProgress.total})` : (selectedCity !== 'all' ? 'רענן עיר' : 'רענן הכל')}
-                                aria-label="רענן מחקר"
-                                className="flex items-center justify-center w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-500 hover:border-purple-300 hover:text-purple-600 disabled:opacity-50 flex-shrink-0"
+                                key={key}
+                                onClick={() => setSelectedCity(display)}
+                                title={isEmpty ? 'אין כאן עדיין אטרקציות. בחר את העיר ולחץ על "מצא באזור המלון" / רענן.' : undefined}
+                                className={`min-h-9 px-3.5 py-1.5 rounded-full text-2xs font-black transition-all border whitespace-nowrap inline-flex items-center gap-1.5 ${
+                                    isActive
+                                        ? 'bg-slate-900 border-slate-900 text-white shadow'
+                                        : isEmpty
+                                            ? 'bg-white border-dashed border-slate-300 text-slate-400 hover:bg-slate-50'
+                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                                }`}
                             >
-                                <RotateCw className={`w-4 h-4 ${(loadingRecs || isResearchingAll) ? 'animate-spin' : ''}`} />
+                                <span>{display}</span>
+                                <span className={`text-[10px] font-bold ${isActive ? 'text-white/80' : isEmpty ? 'text-slate-300' : 'text-slate-400'}`}>{count}</span>
                             </button>
-                            <button
-                                onClick={() => setConfirmNearHotel(true)}
-                                disabled={loadingRecs || isResearchingAll || (trip.hotels || []).filter(h => typeof h.lat === 'number').length === 0}
-                                title="מצא אטרקציות באזור המלון (15 דק׳ הליכה)"
-                                aria-label="מצא אטרקציות באזור המלון"
-                                className="flex items-center justify-center w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-50 flex-shrink-0"
-                            >
-                                <Hotel className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => setConfirmReset(true)}
-                                disabled={loadingRecs || isResearchingAll}
-                                title="איפוס מחקר"
-                                aria-label="אפס מחקר"
-                                className="flex items-center justify-center w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-500 hover:border-red-300 hover:text-red-600 disabled:opacity-50 flex-shrink-0"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                        </>
-                    )}
+                        );
+                    })}
                 </div>
+            )}
+
+            {/* Row 4 — view toggle on the start, actions menu on the end. */}
+            <div className="flex items-center justify-between gap-2">
+                <div className="inline-flex bg-slate-100 rounded-xl p-0.5">
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={`flex items-center gap-1.5 min-h-9 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <List className="w-3.5 h-3.5" /> רשימה
+                    </button>
+                    <button
+                        onClick={() => setViewMode('map')}
+                        className={`flex items-center gap-1.5 min-h-9 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'map' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <MapIcon className="w-3.5 h-3.5" /> מפה
+                    </button>
+                </div>
+                {aiCategories.length > 0 && !viewerMode && (
+                    <ActionsMenu
+                        align="end"
+                        items={[
+                            {
+                                icon: <RotateCw className={`w-4 h-4 ${(loadingRecs || isResearchingAll) ? 'animate-spin' : ''}`} />,
+                                label: selectedCity !== 'all' ? `רענן את ${selectedCity}` : 'רענן את כל הערים',
+                                onSelect: () => selectedCity !== 'all' ? initiateResearch(selectedCity) : researchAllCities(),
+                                disabled: loadingRecs || isResearchingAll,
+                            },
+                            {
+                                icon: <Hotel className="w-4 h-4" />,
+                                label: 'מצא אטרקציות באזור המלון',
+                                onSelect: () => setConfirmNearHotel(true),
+                                disabled: loadingRecs || isResearchingAll || (trip.hotels || []).filter(h => typeof h.lat === 'number').length === 0,
+                            },
+                            {
+                                icon: <Trash2 className="w-4 h-4" />,
+                                label: 'אפס מחקר',
+                                onSelect: () => setConfirmReset(true),
+                                disabled: loadingRecs || isResearchingAll,
+                                danger: true,
+                            },
+                        ]}
+                    />
+                )}
             </div>
 
             {/* Free-text search results — shown only when user submitted a query. */}
@@ -1346,102 +1355,84 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 </div>
             )}
 
-            {/* Filter card — visible on BOTH list and map views. Collapsed by
-                default on mobile, expanded on desktop. */}
-            {(filterOptions.types.length > 0 || filterOptions.prices.length > 0 || (trip.hotels || []).some(h => typeof h.lat === 'number')) && (
-                <div className="border border-slate-200 bg-slate-50 rounded-2xl overflow-hidden">
-                    <button
-                        type="button"
-                        onClick={() => setFiltersExpanded(v => !v)}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 md:py-2 text-end hover:bg-slate-100/60 transition-colors"
-                        aria-expanded={filtersExpanded}
-                    >
-                        <span className="flex items-center gap-2">
-                            <FilterIcon className="w-4 h-4 text-slate-500" />
-                            <span className="text-xs font-black text-slate-700">סינון</span>
-                            {activeFilterCount > 0 && (
-                                <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-slate-700 text-white text-[10px] font-black">{activeFilterCount}</span>
-                            )}
-                        </span>
-                        <span className="flex items-center gap-2">
-                            {activeFilterCount > 0 && (
-                                <span
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={(e) => { e.stopPropagation(); clearAllFilters(); }}
-                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); clearAllFilters(); } }}
-                                    className="text-[11px] font-bold text-slate-500 hover:text-red-600 underline underline-offset-2"
-                                >
-                                    נקה הכל
+            {viewMode === 'map' ? (
+                <div className="space-y-3">
+                    {/* Filter card — map-only. Collapsible on mobile, expanded
+                        on desktop. Affects only the markers on the map. */}
+                    {(filterOptions.types.length > 0 || filterOptions.prices.length > 0 || (trip.hotels || []).some(h => typeof h.lat === 'number')) && (
+                        <div className="border border-slate-200 bg-slate-50 rounded-2xl overflow-hidden">
+                            <button
+                                type="button"
+                                onClick={() => setFiltersExpanded(v => !v)}
+                                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 md:py-2 text-end hover:bg-slate-100/60 transition-colors"
+                                aria-expanded={filtersExpanded}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <FilterIcon className="w-4 h-4 text-slate-500" />
+                                    <span className="text-xs font-black text-slate-700">סינון מפה</span>
+                                    {activeFilterCount > 0 && (
+                                        <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-slate-700 text-white text-[10px] font-black">{activeFilterCount}</span>
+                                    )}
                                 </span>
-                            )}
-                            <ChevronLeftIcon className={`w-4 h-4 text-slate-400 transition-transform ${filtersExpanded ? '-rotate-90' : ''}`} />
-                        </span>
-                    </button>
-                    {filtersExpanded && (
-                        <div className="px-3 pb-3 pt-1 space-y-2.5 border-t border-slate-200/70">
-                            {filterOptions.types.length > 0 && (
-                                <FilterChipGroup
-                                    label="סוג"
-                                    options={filterOptions.types.map(([k, n]) => ({ key: k, label: k, count: n }))}
-                                    selected={filterTypes}
-                                    onToggle={(k) => setFilterTypes(prev => toggleSetMember(prev, k))}
-                                    colorClass="purple"
-                                    maxVisible={6}
-                                />
-                            )}
-                            {filterOptions.prices.length > 0 && (
-                                <FilterChipGroup
-                                    label="מחיר"
-                                    options={filterOptions.prices.map(p => ({ key: p.key, label: p.label, count: p.count }))}
-                                    selected={filterPrices}
-                                    onToggle={(k) => setFilterPrices(prev => toggleSetMember(prev, k))}
-                                    colorClass="emerald"
-                                    maxVisible={6}
-                                />
-                            )}
-                            {(trip.hotels || []).some(h => typeof h.lat === 'number') && (
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-2xs font-bold text-slate-500 shrink-0 ms-0.5">מרחק מהמלון:</span>
-                                    {([
-                                        { val: null as number | null, label: 'הכל' },
-                                        { val: 15, label: 'עד 15 דקות הליכה' },
-                                        { val: 30, label: 'עד 30 דקות הליכה' },
-                                    ]).map(opt => (
-                                        <button
-                                            key={String(opt.val)}
-                                            onClick={() => setFilterMaxWalkMin(opt.val)}
-                                            className={`min-h-9 px-3 py-1 rounded-full text-2xs font-bold border transition-all ${filterMaxWalkMin === opt.val ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'}`}
+                                <span className="flex items-center gap-2">
+                                    {activeFilterCount > 0 && (
+                                        <span
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={(e) => { e.stopPropagation(); clearAllFilters(); }}
+                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); clearAllFilters(); } }}
+                                            className="text-[11px] font-bold text-slate-500 hover:text-red-600 underline underline-offset-2"
                                         >
-                                            {opt.label}
-                                        </button>
-                                    ))}
+                                            נקה הכל
+                                        </span>
+                                    )}
+                                    <ChevronLeftIcon className={`w-4 h-4 text-slate-400 transition-transform ${filtersExpanded ? '-rotate-90' : ''}`} />
+                                </span>
+                            </button>
+                            {filtersExpanded && (
+                                <div className="px-3 pb-3 pt-1 space-y-2.5 border-t border-slate-200/70">
+                                    {filterOptions.types.length > 0 && (
+                                        <FilterChipGroup
+                                            label="סוג"
+                                            options={filterOptions.types.map(([k, n]) => ({ key: k, label: k, count: n }))}
+                                            selected={filterTypes}
+                                            onToggle={(k) => setFilterTypes(prev => toggleSetMember(prev, k))}
+                                            colorClass="purple"
+                                            maxVisible={6}
+                                        />
+                                    )}
+                                    {filterOptions.prices.length > 0 && (
+                                        <FilterChipGroup
+                                            label="מחיר"
+                                            options={filterOptions.prices.map(p => ({ key: p.key, label: p.label, count: p.count }))}
+                                            selected={filterPrices}
+                                            onToggle={(k) => setFilterPrices(prev => toggleSetMember(prev, k))}
+                                            colorClass="emerald"
+                                            maxVisible={6}
+                                        />
+                                    )}
+                                    {(trip.hotels || []).some(h => typeof h.lat === 'number') && (
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-2xs font-bold text-slate-500 shrink-0 ms-0.5">מרחק מהמלון:</span>
+                                            {([
+                                                { val: null as number | null, label: 'הכל' },
+                                                { val: 15, label: 'עד 15 דקות הליכה' },
+                                                { val: 30, label: 'עד 30 דקות הליכה' },
+                                            ]).map(opt => (
+                                                <button
+                                                    key={String(opt.val)}
+                                                    onClick={() => setFilterMaxWalkMin(opt.val)}
+                                                    className={`min-h-9 px-3 py-1 rounded-full text-2xs font-bold border transition-all ${filterMaxWalkMin === opt.val ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'}`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
                     )}
-                </div>
-            )}
-
-            {viewMode === 'map' ? (
-                <div className="space-y-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <div className="inline-flex bg-slate-100 rounded-xl p-0.5">
-                            {([
-                                { id: 'all', label: 'הכל' },
-                                { id: 'saved', label: 'הרשימה שלי' },
-                                { id: 'ai', label: 'מחקר AI' },
-                            ] as const).map(opt => (
-                                <button
-                                    key={opt.id}
-                                    onClick={() => setMapSource(opt.id)}
-                                    className={`min-h-9 px-3 py-1.5 rounded-lg text-2xs font-bold transition-all ${mapSource === opt.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                >
-                                    {opt.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
                     {geocodingInFlight > 0 && (
                         <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-sm">
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -1628,23 +1619,19 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                                 return (
                                                     <div className="mb-3 overflow-x-auto pb-2 scrollbar-hide">
                                                         <div className="flex gap-2">
-                                                            <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === 'all' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
+                                                            <button onClick={() => setSelectedCategory('all')} className={`min-h-9 px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === 'all' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
                                                             {uniqueCats.map(c => (
-                                                                <div key={c.id} className="inline-flex items-center gap-0.5">
-                                                                    <button onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === c.id ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200'}`}>{displayTitle(c.title)}</button>
-                                                                    {!viewerMode && (
-                                                                        <button
-                                                                            onClick={() => refreshSingleCategory(c)}
-                                                                            disabled={refreshingCategoryId !== null}
-                                                                            title={`רענן ${displayTitle(c.title)}`}
-                                                                            className="w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-40"
-                                                                        >
-                                                                            {refreshingCategoryId === c.id
-                                                                                ? <Loader2 className="w-3 h-3 animate-spin" />
-                                                                                : <RotateCw className="w-3 h-3" />}
-                                                                        </button>
-                                                                    )}
-                                                                </div>
+                                                                <CategoryChip
+                                                                    key={c.id}
+                                                                    label={displayTitle(c.title)}
+                                                                    isActive={selectedCategory === c.id}
+                                                                    isRefreshing={refreshingCategoryId === c.id}
+                                                                    canRefresh={!viewerMode}
+                                                                    refreshDisabled={refreshingCategoryId !== null}
+                                                                    onSelect={() => setSelectedCategory(c.id)}
+                                                                    onRefresh={() => refreshSingleCategory(c)}
+                                                                    theme="purple"
+                                                                />
                                                             ))}
                                                         </div>
                                                     </div>

@@ -2130,7 +2130,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 }
             }
 
-            const icon = makePinIcon(cfg, showLabel ? item.name : undefined, pinSource, wrapLabel, badge);
+            // Prefer the English/Latin name on the map label so AI-generated
+            // Hebrew transliterations like "פיג קפה" don't show up where the
+            // place's actual signage reads "Pig Café".
+            const labelText = (item as any).nameEnglish || item.name;
+            const icon = makePinIcon(cfg, showLabel ? labelText : undefined, pinSource, wrapLabel, badge);
 
             const targetLayer = item.type === 'hotel' ? routeLayer : markerLayer;
             const marker = L.marker([item.lat!, item.lng!], {

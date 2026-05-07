@@ -196,6 +196,7 @@ export interface HotelBooking {
 export interface Restaurant {
   id: string;
   name: string;
+  nameEnglish?: string; // Original Latin-script name — used for map markers / popups
   description: string;
   priceRange?: string; // Optional now
   location: string;

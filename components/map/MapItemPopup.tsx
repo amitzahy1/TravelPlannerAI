@@ -157,7 +157,7 @@ export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = fal
                         {/* Body */}
                         <div className="px-3 pt-2.5 pb-2.5">
                                 <h3 className="text-[15px] font-black text-slate-900 leading-tight line-clamp-2 mb-1" dir="ltr">
-                                        {item.name}
+                                        {(item as any).nameEnglish || item.name}
                                 </h3>
 
                                 {item.address && (
