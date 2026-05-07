@@ -1,9 +1,9 @@
-const f=t=>t?t.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):"",Q=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"],B=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"],V=["ינו׳","פבר׳","מרץ","אפר׳","מאי","יוני","יולי","אוג׳","ספט׳","אוק׳","נוב׳","דצמ׳"],R=t=>{if(!t)return"";if(/^\d{1,2}:\d{2}$/.test(t))return t;if(t.includes("T"))return t.split("T")[1].substring(0,5);try{const a=new Date(t);return isNaN(a.getTime())?t:a.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",hour12:!1})}catch{return t}},k=t=>{try{return(typeof t=="string"?new Date(t):t).toISOString().split("T")[0]}catch{return""}},P=(t,a)=>{const s=new Date(t);return s.setDate(s.getDate()+a),s},q=(t,a)=>{try{return Math.max(0,Math.ceil((new Date(a).getTime()-new Date(t).getTime())/864e5))}catch{return 0}},A=t=>`${t.getDate()} ${V[t.getMonth()]}`,X=t=>{var x,y,O,C,S,L,w,I;const a=[],s=e=>e&&!isNaN(new Date(e).getTime())&&a.push(new Date(e).getTime());if((y=(x=t.flights)==null?void 0:x.segments)==null||y.forEach(e=>s(e.date)),(O=t.hotels)==null||O.forEach(e=>{s(e.checkInDate),s(e.checkOutDate)}),(C=t.itinerary)==null||C.forEach(e=>s(e.date)),t.dates&&a.length===0&&t.dates.split(/[-–]/).forEach(e=>s(e.trim())),a.length===0)return[];const n=new Date(Math.min(...a));n.setHours(12,0,0,0);const r=new Date(Math.max(...a));r.setHours(12,0,0,0);const p={},b=Math.round((r.getTime()-n.getTime())/864e5)+1;for(let e=0;e<b;e++){const d=P(n,e),c=k(d);p[c]={date:d,iso:c,dayNum:d.getDate(),month:B[d.getMonth()],dow:Q[d.getDay()],events:[]}}const l=(e,d)=>{p[e]&&p[e].events.push(d)};return(L=(S=t.flights)==null?void 0:S.segments)==null||L.forEach((e,d)=>{var m;const c=k(e.date);l(c,{id:`f-${d}-d`,type:"flight_dep",time:R(e.departureTime)||"—",title:`טיסה ל-${e.toCity||e.toCode}`,subtitle:`${e.airline||""} ${e.flightNumber||""}`.trim(),icon:"✈️",flightData:e});let h=c;const v=R(e.departureTime),u=R(e.arrivalTime);if((m=e.arrivalTime)!=null&&m.includes("T"))h=k(e.arrivalTime);else if(v&&u&&u<v){const M=new Date(e.date);M.setDate(M.getDate()+1),h=k(M)}l(h,{id:`f-${d}-a`,type:"flight_arr",time:u||"—",title:`נחיתה ב-${e.toCity||e.toCode}`,subtitle:e.duration?`${e.duration}`:"",icon:"🛬",flightData:e})}),(w=t.hotels)==null||w.forEach((e,d)=>{const c=k(e.checkInDate),h=k(e.checkOutDate),v=q(e.checkInDate,e.checkOutDate);l(c,{id:`h-${d}-i`,type:"hotel_in",time:"15:00",title:"צ׳ק-אין",subtitle:e.name,icon:"🏨",hotelData:e,nightsCount:v}),l(h,{id:`h-${d}-o`,type:"hotel_out",time:"11:00",title:"צ׳ק-אאוט",subtitle:e.name,icon:"👋",hotelData:e})}),(I=t.itinerary)==null||I.forEach((e,d)=>{var h;const c=k(e.date);p[c]&&(e.title&&e.title!=="טיול חופשי"&&e.title!=="יום טיסה"&&(p[c].title=e.title),(h=e.activities)==null||h.forEach((v,u)=>{const m=v.match(/^(\d{1,2}:\d{2})(?:-\d{1,2}:\d{2})?\s*(.*)/),M=m?m[1]:"",i=m?m[2]:v,o=/הסעה|נסיעה|טרנספר|transfer|מונית|taxi/i.test(i),g=i.match(/\((.*?)\)$/),D=g?i.replace(/\s*\(.*?\)$/,"").trim():i,z=g?g[1]:"";l(c,{id:`a-${d}-${u}`,type:o?"transfer":"activity",time:M,title:D,subtitle:z,icon:o?"🚕":"📍"})}),e.notes&&l(c,{id:`n-${d}`,type:"activity",time:"",title:"הערה",details:e.notes,icon:"📝"}))}),Object.values(p).forEach(e=>{var h;const d=k(e.date),c=(h=t.hotels)==null?void 0:h.find(v=>d>k(v.checkInDate)&&d<k(v.checkOutDate));c&&(e.events.length===0&&(e.title=`נופש ב-${c.name}`),e.events.unshift({id:`s-${d}`,type:"hotel_stay",time:"",title:c.name,subtitle:"יום חופשי במלון",icon:"🛏️",hotelData:c}))}),Object.values(p).sort((e,d)=>e.date.getTime()-d.date.getTime()).map((e,d,c)=>{var h,v;if(e.events.sort((u,m)=>!u.time&&!m.time?0:u.time?m.time?u.time.localeCompare(m.time):-1:1),!e.title){const u=e.events.find(m=>m.type==="flight_dep");u?e.title=`טיסה ל-${((h=u.flightData)==null?void 0:h.toCity)||((v=u.flightData)==null?void 0:v.toCode)||""}`:e.events.length===0?e.title="יום חופשי":e.title=d===0?"יום ראשון":d===c.length-1?"יום אחרון":"יום פעילות"}return e})},ee=t=>{const a=t.time?`<span class="evt-t">${t.time}</span>`:'<span class="evt-t evt-t-empty"></span>';let s=`evt evt-${t.type}`,n=`<span class="evt-i">${t.icon}</span><span class="evt-x"><span class="evt-title">${f(t.title)}</span>`;return t.subtitle&&(n+=`<span class="evt-sub">${f(t.subtitle)}</span>`),t.details&&(n+=`<span class="evt-sub">${f(t.details)}</span>`),n+="</span>",`<div class="${s}">${a}${n}</div>`},te=(t,a,s)=>{const n=a===0,r=a===s-1,p=n?"first":r?"last":"",b=t.events.length===0?'<div class="empty">☀️ יום פנוי</div>':t.events.map(ee).join("");return`
+const f=t=>t?t.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):"",Q=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"],Y=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"],q=["ינו׳","פבר׳","מרץ","אפר׳","מאי","יוני","יולי","אוג׳","ספט׳","אוק׳","נוב׳","דצמ׳"],R=t=>{if(!t)return"";if(/^\d{1,2}:\d{2}$/.test(t))return t;if(t.includes("T"))return t.split("T")[1].substring(0,5);try{const a=new Date(t);return isNaN(a.getTime())?t:a.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",hour12:!1})}catch{return t}},k=t=>{try{return(typeof t=="string"?new Date(t):t).toISOString().split("T")[0]}catch{return""}},j=(t,a)=>{const s=new Date(t);return s.setDate(s.getDate()+a),s},V=(t,a)=>{try{return Math.max(0,Math.ceil((new Date(a).getTime()-new Date(t).getTime())/864e5))}catch{return 0}},P=t=>`${t.getDate()} ${q[t.getMonth()]}`,X=t=>{var x,y,_,C,S,L,w,I;const a=[],s=e=>e&&!isNaN(new Date(e).getTime())&&a.push(new Date(e).getTime());if((y=(x=t.flights)==null?void 0:x.segments)==null||y.forEach(e=>s(e.date)),(_=t.hotels)==null||_.forEach(e=>{s(e.checkInDate),s(e.checkOutDate)}),(C=t.itinerary)==null||C.forEach(e=>s(e.date)),t.dates&&a.length===0&&t.dates.split(/[-–]/).forEach(e=>s(e.trim())),a.length===0)return[];const n=new Date(Math.min(...a));n.setHours(12,0,0,0);const r=new Date(Math.max(...a));r.setHours(12,0,0,0);const p={},b=Math.round((r.getTime()-n.getTime())/864e5)+1;for(let e=0;e<b;e++){const d=j(n,e),c=k(d);p[c]={date:d,iso:c,dayNum:d.getDate(),month:Y[d.getMonth()],dow:Q[d.getDay()],events:[]}}const l=(e,d)=>{p[e]&&p[e].events.push(d)};return(L=(S=t.flights)==null?void 0:S.segments)==null||L.forEach((e,d)=>{var m;const c=k(e.date);l(c,{id:`f-${d}-d`,type:"flight_dep",time:R(e.departureTime)||"—",title:`טיסה ל-${e.toCity||e.toCode}`,subtitle:`${e.airline||""} ${e.flightNumber||""}`.trim(),icon:"✈️",flightData:e});let h=c;const v=R(e.departureTime),u=R(e.arrivalTime);if((m=e.arrivalTime)!=null&&m.includes("T"))h=k(e.arrivalTime);else if(v&&u&&u<v){const N=new Date(e.date);N.setDate(N.getDate()+1),h=k(N)}l(h,{id:`f-${d}-a`,type:"flight_arr",time:u||"—",title:`נחיתה ב-${e.toCity||e.toCode}`,subtitle:e.duration?`${e.duration}`:"",icon:"🛬",flightData:e})}),(w=t.hotels)==null||w.forEach((e,d)=>{const c=k(e.checkInDate),h=k(e.checkOutDate),v=V(e.checkInDate,e.checkOutDate);l(c,{id:`h-${d}-i`,type:"hotel_in",time:"15:00",title:"צ׳ק-אין",subtitle:e.name,icon:"🏨",hotelData:e,nightsCount:v}),l(h,{id:`h-${d}-o`,type:"hotel_out",time:"11:00",title:"צ׳ק-אאוט",subtitle:e.name,icon:"👋",hotelData:e})}),(I=t.itinerary)==null||I.forEach((e,d)=>{var h;const c=k(e.date);p[c]&&(e.title&&e.title!=="טיול חופשי"&&e.title!=="יום טיסה"&&(p[c].title=e.title),(h=e.activities)==null||h.forEach((v,u)=>{const m=v.match(/^(\d{1,2}:\d{2})(?:-\d{1,2}:\d{2})?\s*(.*)/),N=m?m[1]:"",i=m?m[2]:v,o=/הסעה|נסיעה|טרנספר|transfer|מונית|taxi/i.test(i),g=i.match(/\((.*?)\)$/),D=g?i.replace(/\s*\(.*?\)$/,"").trim():i,z=g?g[1]:"";l(c,{id:`a-${d}-${u}`,type:o?"transfer":"activity",time:N,title:D,subtitle:z,icon:o?"🚕":"📍"})}),e.notes&&l(c,{id:`n-${d}`,type:"activity",time:"",title:"הערה",details:e.notes,icon:"📝"}))}),Object.values(p).forEach(e=>{var h;const d=k(e.date),c=(h=t.hotels)==null?void 0:h.find(v=>d>k(v.checkInDate)&&d<k(v.checkOutDate));c&&(e.events.length===0&&(e.title=`נופש ב-${c.name}`),e.events.unshift({id:`s-${d}`,type:"hotel_stay",time:"",title:c.name,subtitle:"יום חופשי במלון",icon:"🛏️",hotelData:c}))}),Object.values(p).sort((e,d)=>e.date.getTime()-d.date.getTime()).map((e,d,c)=>{var h,v;if(e.events.sort((u,m)=>!u.time&&!m.time?0:u.time?m.time?u.time.localeCompare(m.time):-1:1),!e.title){const u=e.events.find(m=>m.type==="flight_dep");u?e.title=`טיסה ל-${((h=u.flightData)==null?void 0:h.toCity)||((v=u.flightData)==null?void 0:v.toCode)||""}`:e.events.length===0?e.title="יום חופשי":e.title=d===0?"יום ראשון":d===c.length-1?"יום אחרון":"יום פעילות"}return e})},ee=t=>{const a=t.time?`<span class="evt-t">${t.time}</span>`:'<span class="evt-t evt-t-empty"></span>';let s=`evt evt-${t.type}`,n=`<span class="evt-i">${t.icon}</span><span class="evt-x"><span class="evt-title">${f(t.title)}</span>`;return t.subtitle&&(n+=`<span class="evt-sub">${f(t.subtitle)}</span>`),t.details&&(n+=`<span class="evt-sub">${f(t.details)}</span>`),n+="</span>",`<div class="${s}">${a}${n}</div>`},te=(t,a,s)=>{const n=a===0,r=a===s-1,p=n?"first":r?"last":"",b=t.events.length===0?'<div class="empty">☀️ יום פנוי</div>':t.events.map(ee).join("");return`
     <article class="day-card ${p}">
       <header class="day-head">
         <div class="day-num">
           <span class="dn">${t.dayNum}</span>
-          <span class="dm">${V[t.date.getMonth()]}</span>
+          <span class="dm">${q[t.date.getMonth()]}</span>
         </div>
         <div class="day-info">
           <span class="day-dow">יום ${t.dow}</span>
@@ -16,7 +16,7 @@ const f=t=>t?t.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").r
   `},ae=t=>{var n;const a=((n=t.flights)==null?void 0:n.segments)||[];if(a.length===0)return"";const s=a.map(r=>{const p=R(r.departureTime),b=R(r.arrivalTime);return`
       <div class="ov-flight">
         <div class="ovf-top">
-          <span class="ovf-date">${r.date?A(new Date(r.date)):""}</span>
+          <span class="ovf-date">${r.date?P(new Date(r.date)):""}</span>
           <span class="ovf-num">${f(r.flightNumber||"")}</span>
         </div>
         <div class="ovf-route">
@@ -40,7 +40,7 @@ const f=t=>t?t.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").r
       <h2 class="ov-title">✈️ טיסות <span class="ov-count">${a.length}</span></h2>
       <div class="ov-flights-grid">${s}</div>
     </section>
-  `},ie=t=>{const a=t.hotels||[];if(a.length===0)return"";const s=a.map(n=>{var x;const r=q(n.checkInDate,n.checkOutDate),p=n.checkInDate?A(new Date(n.checkInDate)):"",b=n.checkOutDate?A(new Date(n.checkOutDate)):"",l=((x=n.rooms)==null?void 0:x.length)||0;return`
+  `},ie=t=>{const a=t.hotels||[];if(a.length===0)return"";const s=a.map(n=>{var x;const r=V(n.checkInDate,n.checkOutDate),p=n.checkInDate?P(new Date(n.checkInDate)):"",b=n.checkOutDate?P(new Date(n.checkOutDate)):"",l=((x=n.rooms)==null?void 0:x.length)||0;return`
       <div class="ov-hotel">
         <div class="ovh-name">${f(n.name)}</div>
         ${n.address?`<div class="ovh-addr">📍 ${f(n.address)}</div>`:""}
@@ -434,8 +434,46 @@ body {
   .cal-more { font-size: 8px; }
 }
 @media print {
-  .calendar-section { break-inside: avoid; page-break-inside: avoid; }
-  .cal-cell { break-inside: avoid; }
+  /* A6 — calendar must always fit on ONE landscape page, regardless of trip
+     length. We give it a dedicated @page (landscape A4), force a hard
+     page-break before AND after, and clamp the calendar to the page height
+     so cells autofit instead of overflowing. */
+  @page calendar { size: A4 landscape; margin: 6mm; }
+  .calendar-section {
+    page: calendar;
+    page-break-before: always;
+    page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    height: 195mm;            /* A4 landscape height (210mm) − 2× 6mm margin − header room */
+    max-height: 195mm;
+    box-shadow: none;
+    border: none;
+    padding: 4mm 4mm 6mm;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .calendar-section .ov-title { margin: 0 0 6px; font-size: 14px; }
+  .calendar-section .calendar-grid {
+    flex: 1 1 auto;
+    grid-auto-rows: 1fr;       /* every week-row gets equal share of remaining height */
+    gap: 2px;
+    min-height: 0;             /* lets flex children shrink */
+  }
+  .cal-cell {
+    break-inside: avoid;
+    min-height: 0;             /* override the 110px default — let flex distribute */
+    height: 100%;
+    padding: 2px 3px 3px;
+    border-radius: 3px;
+  }
+  .cal-num { font-size: 10px; padding: 0; }
+  .cal-chip { font-size: 8px; padding: 1px 4px; line-height: 1.2; }
+  .cal-more { font-size: 7.5px; }
+  .cal-header { font-size: 9px; padding: 4px 2px; }
+  .cal-legend { margin-top: 6px; padding: 4px 8px; gap: 4px; flex: 0 0 auto; }
+  .cal-legend-title, .cal-legend-chip { font-size: 8.5px; }
 }
 
 /* ═══ PREMIUM PDF OVERRIDES ═══ */
@@ -812,14 +850,14 @@ body {
     page-break-inside: avoid;
   }
 }
-`,re=["יום א׳","יום ב׳","יום ג׳","יום ד׳","יום ה׳","יום ו׳","שבת"],W=[{bg:"#ccfbf1",fg:"#115e59"},{bg:"#fce7f3",fg:"#9d174d"},{bg:"#fef3c7",fg:"#854d0e"},{bg:"#dbeafe",fg:"#1e40af"},{bg:"#ede9fe",fg:"#5b21b6"},{bg:"#fed7aa",fg:"#9a3412"},{bg:"#dcfce7",fg:"#166534"},{bg:"#fee2e2",fg:"#991b1b"}],K=[{bg:"#e0f2fe",fg:"#0c4a6e"},{bg:"#f3e8ff",fg:"#581c87"},{bg:"#ffedd5",fg:"#7c2d12"},{bg:"#dcfce7",fg:"#14532d"},{bg:"#fef9c3",fg:"#713f12"},{bg:"#cffafe",fg:"#155e75"},{bg:"#fae8ff",fg:"#701a75"}],ne=(t,a)=>{var m,M;if(a.length===0)return"";const s=new Date(a[0].date);s.setHours(12,0,0,0);const n=new Date(a[a.length-1].date);n.setHours(12,0,0,0);const r=k(new Date),p=P(s,-1),b=P(n,1),l=new Date(p);l.setDate(l.getDate()-l.getDay());const x=new Date(b);x.setDate(x.getDate()+(6-x.getDay()));const y={};let O=0;(t.hotels||[]).forEach(i=>{const o=(i.name||"").trim().toLowerCase();!o||y[o]||(y[o]=W[O%W.length],O++)});const C={};let S=0;const L=i=>{const o=(i||"").trim().toLowerCase();!o||C[o]||(C[o]=K[S%K.length],S++)};(M=(m=t.flights)==null?void 0:m.segments)==null||M.forEach(i=>{i.toCity&&L(i.toCity)}),(t.hotels||[]).forEach(i=>{i.city&&L(i.city)});const w={};a.forEach(i=>{w[i.iso]||(w[i.iso]=[]),i.events.forEach(o=>{var _,j,F,Y,$;let g="activity";o.type==="flight_dep"||o.type==="flight_arr"?g="flight":o.type==="hotel_in"||o.type==="hotel_out"||o.type==="hotel_stay"?g="hotel":o.type==="food"?g="food":o.type==="transfer"&&(g="transfer");const D=o.title;let z,E=`${g}::${D}`,N,H;if(g==="hotel"){const T=(((_=o.hotelData)==null?void 0:_.name)||"").trim().toLowerCase();T&&y[T]&&(z=y[T]),E=`hotel::${T}`,N=((j=o.hotelData)==null?void 0:j.city)||"",H=((F=o.hotelData)==null?void 0:F.name)||""}else if(g==="flight"){const T=(((Y=o.flightData)==null?void 0:Y.toCity)||(($=o.flightData)==null?void 0:$.fromCity)||"").trim().toLowerCase();T&&C[T]&&(z=C[T]),E=`flight::${T}`}w[i.iso].push({kind:g,label:D,runKey:E,color:z,hotelCity:N,hotelName:H})})});const I={},e=Math.round((x.getTime()-l.getTime())/864e5)+1,d=[];for(let i=0;i<e;i++)d.push(k(P(l,i)));for(let i=0;i<d.length;i++){const o=d[i],g=w[o]||[];I[o]=g.map(D=>{const z=i>0?w[d[i-1]]:void 0,E=i<d.length-1?w[d[i+1]]:void 0,N=!!(z!=null&&z.some(j=>j.runKey===D.runKey)),H=!!(E!=null&&E.some(j=>j.runKey===D.runKey));let _="single";return N&&H?_="mid":H?_="start":N&&(_="end"),{...D,runPos:_}})}const c=[];for(let i=0;i<e;i++){const o=P(l,i),g=k(o),D=o>=s&&o<=n,z=o.getDay(),E=I[g]||[],N=E.slice(0,4),H=E.length-N.length,_=N.map($=>{const T=$.color?` style="background:${$.color.bg};color:${$.color.fg}"`:"",U=$.runPos==="single"?"":` cal-chip-run-${$.runPos}`,G=$.runPos==="mid"||$.runPos==="end",Z=f($.label),J=G?" cal-chip-run-cont":"";return`<span class="cal-chip cal-chip-${$.kind}${U}${J}"${T} title="${f($.label)}">${Z}</span>`}).join(""),j=H>0?`<span class="cal-more">+${H} נוסף</span>`:"",F=`cal-num${z===5?" cal-num-fri":""}${z===6?" cal-num-sat":""}`,Y=`cal-cell${D?"":" cal-padding"}${g===r?" cal-today":""}`;c.push(`<div class="${Y}"><span class="${F}">${o.getDate()}</span>${_}${j}</div>`)}const h=re.map((i,o)=>`<div class="${`cal-header${o===5?" cal-header-fri":""}${o===6?" cal-header-sat":""}`}">${i}</div>`).join(""),v=s.getMonth()===n.getMonth()&&s.getFullYear()===n.getFullYear()?`${B[s.getMonth()]} ${s.getFullYear()}`:`${B[s.getMonth()]}–${B[n.getMonth()]} ${n.getFullYear()}`,u=Object.keys(y).length>0?`<div class="cal-legend">
+`,re=["יום א׳","יום ב׳","יום ג׳","יום ד׳","יום ה׳","יום ו׳","שבת"],B=[{bg:"#ccfbf1",fg:"#115e59"},{bg:"#fce7f3",fg:"#9d174d"},{bg:"#fef3c7",fg:"#854d0e"},{bg:"#dbeafe",fg:"#1e40af"},{bg:"#ede9fe",fg:"#5b21b6"},{bg:"#fed7aa",fg:"#9a3412"},{bg:"#dcfce7",fg:"#166534"},{bg:"#fee2e2",fg:"#991b1b"}],K=[{bg:"#e0f2fe",fg:"#0c4a6e"},{bg:"#f3e8ff",fg:"#581c87"},{bg:"#ffedd5",fg:"#7c2d12"},{bg:"#dcfce7",fg:"#14532d"},{bg:"#fef9c3",fg:"#713f12"},{bg:"#cffafe",fg:"#155e75"},{bg:"#fae8ff",fg:"#701a75"}],ne=(t,a)=>{var m,N;if(a.length===0)return"";const s=new Date(a[0].date);s.setHours(12,0,0,0);const n=new Date(a[a.length-1].date);n.setHours(12,0,0,0);const r=k(new Date),p=j(s,-1),b=j(n,1),l=new Date(p);l.setDate(l.getDate()-l.getDay());const x=new Date(b);x.setDate(x.getDate()+(6-x.getDay()));const y={};let _=0;(t.hotels||[]).forEach(i=>{const o=(i.name||"").trim().toLowerCase();!o||y[o]||(y[o]=B[_%B.length],_++)});const C={};let S=0;const L=i=>{const o=(i||"").trim().toLowerCase();!o||C[o]||(C[o]=K[S%K.length],S++)};(N=(m=t.flights)==null?void 0:m.segments)==null||N.forEach(i=>{i.toCity&&L(i.toCity)}),(t.hotels||[]).forEach(i=>{i.city&&L(i.city)});const w={};a.forEach(i=>{w[i.iso]||(w[i.iso]=[]),i.events.forEach(o=>{var O,H,F,W,$;let g="activity";o.type==="flight_dep"||o.type==="flight_arr"?g="flight":o.type==="hotel_in"||o.type==="hotel_out"||o.type==="hotel_stay"?g="hotel":o.type==="food"?g="food":o.type==="transfer"&&(g="transfer");const D=o.title;let z,E=`${g}::${D}`,M,A;if(g==="hotel"){const T=(((O=o.hotelData)==null?void 0:O.name)||"").trim().toLowerCase();T&&y[T]&&(z=y[T]),E=`hotel::${T}`,M=((H=o.hotelData)==null?void 0:H.city)||"",A=((F=o.hotelData)==null?void 0:F.name)||""}else if(g==="flight"){const T=(((W=o.flightData)==null?void 0:W.toCity)||(($=o.flightData)==null?void 0:$.fromCity)||"").trim().toLowerCase();T&&C[T]&&(z=C[T]),E=`flight::${T}`}w[i.iso].push({kind:g,label:D,runKey:E,color:z,hotelCity:M,hotelName:A})})});const I={},e=Math.round((x.getTime()-l.getTime())/864e5)+1,d=[];for(let i=0;i<e;i++)d.push(k(j(l,i)));for(let i=0;i<d.length;i++){const o=d[i],g=w[o]||[];I[o]=g.map(D=>{const z=i>0?w[d[i-1]]:void 0,E=i<d.length-1?w[d[i+1]]:void 0,M=!!(z!=null&&z.some(H=>H.runKey===D.runKey)),A=!!(E!=null&&E.some(H=>H.runKey===D.runKey));let O="single";return M&&A?O="mid":A?O="start":M&&(O="end"),{...D,runPos:O}})}const c=[];for(let i=0;i<e;i++){const o=j(l,i),g=k(o),D=o>=s&&o<=n,z=o.getDay(),E=I[g]||[],M=E.slice(0,4),A=E.length-M.length,O=M.map($=>{const T=$.color?` style="background:${$.color.bg};color:${$.color.fg}"`:"",U=$.runPos==="single"?"":` cal-chip-run-${$.runPos}`,G=$.runPos==="mid"||$.runPos==="end",Z=f($.label),J=G?" cal-chip-run-cont":"";return`<span class="cal-chip cal-chip-${$.kind}${U}${J}"${T} title="${f($.label)}">${Z}</span>`}).join(""),H=A>0?`<span class="cal-more">+${A} נוסף</span>`:"",F=`cal-num${z===5?" cal-num-fri":""}${z===6?" cal-num-sat":""}`,W=`cal-cell${D?"":" cal-padding"}${g===r?" cal-today":""}`;c.push(`<div class="${W}"><span class="${F}">${o.getDate()}</span>${O}${H}</div>`)}const h=re.map((i,o)=>`<div class="${`cal-header${o===5?" cal-header-fri":""}${o===6?" cal-header-sat":""}`}">${i}</div>`).join(""),v=s.getMonth()===n.getMonth()&&s.getFullYear()===n.getFullYear()?`${Y[s.getMonth()]} ${s.getFullYear()}`:`${Y[s.getMonth()]}–${Y[n.getMonth()]} ${n.getFullYear()}`,u=Object.keys(y).length>0?`<div class="cal-legend">
         <span class="cal-legend-title">מלונות</span>
         ${(t.hotels||[]).filter((i,o,g)=>g.findIndex(D=>(D.name||"").toLowerCase()===(i.name||"").toLowerCase())===o).map(i=>{const o=y[(i.name||"").toLowerCase()];return o?`<span class="cal-legend-chip" style="background:${o.bg};color:${o.fg}">${f(i.name||"")}</span>`:""}).join("")}
       </div>`:"";return`<section class="calendar-section">
     <h2 class="ov-title">📅 לוח הטיול — ${f(v)}</h2>
     <div class="calendar-grid">${h}${c.join("")}</div>
     ${u}
-  </section>`},se=t=>{var O,C,S,L;const a=X(t),s=t.coverImage||"https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1600&q=80",n=new Date().toLocaleDateString("he-IL"),r=((C=(O=t.flights)==null?void 0:O.segments)==null?void 0:C.length)||0,p=((S=t.hotels)==null?void 0:S.length)||0,b=((L=t.itinerary)==null?void 0:L.reduce((w,I)=>{var e;return w+(((e=I.activities)==null?void 0:e.length)||0)},0))||0,l=a.length,x=t.dates||(a.length?`${A(a[0].date)} - ${A(a[a.length-1].date)}`:""),y=a.map((w,I)=>te(w,I,a.length)).join("");return`<!DOCTYPE html>
+  </section>`},se=t=>{var _,C,S,L;const a=X(t),s=t.coverImage||"https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1600&q=80",n=new Date().toLocaleDateString("he-IL"),r=((C=(_=t.flights)==null?void 0:_.segments)==null?void 0:C.length)||0,p=((S=t.hotels)==null?void 0:S.length)||0,b=((L=t.itinerary)==null?void 0:L.reduce((w,I)=>{var e;return w+(((e=I.activities)==null?void 0:e.length)||0)},0))||0,l=a.length,x=t.dates||(a.length?`${P(a[0].date)} - ${P(a[a.length-1].date)}`:""),y=a.map((w,I)=>te(w,I,a.length)).join("");return`<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -834,7 +872,7 @@ body {
   <header class="hero" style="background-image:url('${s}')">
     <div class="hero-c">
       <div class="hero-topline">
-        <div class="brand-mark">✈ Travel Planner Pro</div>
+        <div class="brand-mark">✈ WeTravel</div>
         <div class="doc-label">Trip PDF</div>
       </div>
       <div class="hero-main">
@@ -868,7 +906,7 @@ body {
   </section>
 
   <div class="footer">
-    <div class="footer-logo">✈ Travel Planner Pro</div>
+    <div class="footer-logo">✈ WeTravel</div>
     נוצר ב-${n}
   </div>
 
