@@ -376,13 +376,13 @@ const FlightRow: React.FC<{
     <div className={`group/row ${isStale ? 'opacity-70' : ''}`}>
       {/* ── Main row — date is the hero ── */}
       <div
-        className={`px-4 sm:px-5 py-4 cursor-pointer select-none transition-colors ${isStale ? 'bg-amber-50/70 hover:bg-amber-50' : 'hover:bg-slate-50/50'}`}
+        className={`px-3.5 sm:px-4 py-3 cursor-pointer select-none transition-colors ${isStale ? 'bg-amber-50/70 hover:bg-amber-50' : 'hover:bg-slate-50/50'}`}
         onClick={() => setIsExpanded(v => !v)}
       >
         {/* Row 1 — hero date + actions */}
-        <div className="flex items-center justify-between gap-3 mb-3" dir="rtl">
+        <div className="flex items-center justify-between gap-3 mb-2.5" dir="rtl">
           <div className="min-w-0 flex-1">
-            <div className="text-lg sm:text-xl font-black text-slate-900 leading-tight truncate">
+            <div className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">
               {heroDate || 'תאריך לא זמין'}
             </div>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -757,12 +757,13 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
         )}
       </div>
 
-      {/* Flight Segments List */}
+      {/* Flight Segments — ticket-style cards in a responsive grid so several
+          flights are visible at once on desktop. 1 col mobile, 2 col tablet,
+          3 col on wide screens. */}
       <section>
         {activeSegments.length > 0 ? (
-          <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
             {activeSegments.map((seg, i) => {
-              // find real index in flights.segments for edit/delete handlers
               const realIndex = flights.segments.indexOf(seg);
               const isMissingData = !seg.departureTime || !seg.arrivalTime || seg.departureTime === 'INVALID DATE';
               return (
