@@ -262,14 +262,21 @@ export const loadTrips = async (userId?: string, userEmail?: string): Promise<Tr
       try {
         const trip = await getSharedTrip(ref.sharedTripId);
         if (trip) {
+          // If the logged-in user is the actual owner of the shared doc,
+          // override the ref's role (which may be 'viewer' from an old
+          // /join/ link) so they get full edit/owner powers and writes
+          // go to the shared Firestore doc, not localStorage.
+          const isActualOwner = !!trip.ownerUid && trip.ownerUid === userId;
+          const effectiveRole = isActualOwner ? 'owner' : ref.role;
           return {
             ...trip,
             id: ref.sharedTripId, // CRITICAL: Use ShareID as the specific ID to prevent duplicates with private trips
             isShared: true,
+            ownerUid: trip.ownerUid,
             sharing: {
               shareId: ref.sharedTripId,
-              role: ref.role,
-              owner: 'fetched',
+              role: effectiveRole,
+              owner: trip.ownerUid || 'fetched',
               collaborators: [],
               createdAt: new Date(),
               updatedAt: new Date(),

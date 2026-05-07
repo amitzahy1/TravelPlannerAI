@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Trip, Restaurant, RestaurantIconType, RestaurantCategory } from '../types';
 import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel, Heart } from 'lucide-react';
 // cleaned imports
@@ -72,10 +72,11 @@ const getCuisineVisuals = (cuisine: string = '') => {
 };
 
 import { cleanTextForMap } from '../utils/textUtils';
-import { getTripCities, locationMatchesCity, displayCityName } from '../utils/geoData';
+import { getTripCities, locationMatchesCity, displayCityName, cityKey, extractRobustCity } from '../utils/geoData';
 import { geocodePlacesBatch } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
 import { safeMapsUrl } from '../utils/mapsUrl';
+import { walkingMinutesBetween } from '../utils/walkingDistance';
 
 
 // Sorting helper: Favorites first, then Rating
@@ -144,18 +145,19 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const tripRef = useRef(trip);
     useEffect(() => { tripRef.current = trip; }, [trip]);
 
-    // Permission gate — viewers run AI but their results stay local-only
-    // (in browser localStorage scoped by trip.id). Editors / owners write
-    // through to the shared trip as before.
-    const viewerMode = isViewerOnly(trip);
-    const userCanEdit = canEditTrip(trip);
-    const ownerOnly = isTripOwner(trip);
-
     // Premium-tier gating — only the trip OWNER gets one Gemini Pro
     // call per 30 days, on the very first AI Recommendations click of
     // a calendar window. Collaborators always run on the free chain.
     const { user } = useAuth();
     const userId = user?.uid;
+
+    // Permission gate — viewers run AI but their results stay local-only
+    // (in browser localStorage scoped by trip.id). Editors / owners write
+    // through to the shared trip as before. Pass the current UID so the
+    // actual owner is recognized even when they joined via a viewer link.
+    const viewerMode = isViewerOnly(trip, userId);
+    const userCanEdit = canEditTrip(trip, userId);
+    const ownerOnly = isTripOwner(trip, userId);
     const [premiumLastUsedAt, setPremiumLastUsedAt] = useState<number | null>(null);
     useEffect(() => {
         if (!userId || !ownerOnly) {
@@ -210,6 +212,14 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
     const [selectedCity, setSelectedCity] = useState<string>('all');
+    // Map-only source filter — saved vs AI vs both. Independent of the list
+    // tab so the user can be on "My list" while the map shows full research.
+    const [mapSource, setMapSource] = useState<'all' | 'saved' | 'ai'>('all');
+    // New cross-cutting filters (apply to both list and map): cuisine/type,
+    // price level, max walking minutes from any hotel.
+    const [filterCuisines, setFilterCuisines] = useState<Set<string>>(new Set());
+    const [filterPrices, setFilterPrices] = useState<Set<string>>(new Set());
+    const [filterMaxWalkMin, setFilterMaxWalkMin] = useState<number | null>(null);
     const [textQuery, setTextQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<Restaurant[] | null>(null);
@@ -250,6 +260,132 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // Exclude flight-only cities (layovers like AUH) — they're not travel destinations
     // the user actually stays in, so they shouldn't pollute the food-research scope.
     const tripCities = useMemo(() => getTripCities(trip, { excludeFlightOnly: true, lang: 'en' }), [trip]);
+
+    // Chips strip on the map header — derived from cities that ACTUALLY have
+    // saved or AI-researched items. Avoids the bug where trip.destination /
+    // flights / hotels seeded chips for cities with zero items, and where
+    // English/Hebrew variants of the same city appeared as separate chips.
+    // Items per cityKey are counted; first-seen Hebrew display name is used.
+    // Order: chronological by hotel order, leftovers alphabetical.
+    const presentCities = useMemo<{ display: string; count: number; key: string }[]>(() => {
+        const counts = new Map<string, { display: string; count: number }>();
+        const recordCity = (raw?: string) => {
+            if (!raw) return;
+            const k = cityKey(raw);
+            if (!k) return;
+            const display = displayCityName(raw, 'he') || raw;
+            const existing = counts.get(k);
+            if (existing) existing.count += 1;
+            else counts.set(k, { display, count: 1 });
+        };
+
+        const walkCategories = (cats?: { region?: string; restaurants: { region?: string; location?: string }[] }[]) => {
+            (cats || []).forEach(cat => cat.restaurants.forEach(r => {
+                recordCity(r.region || cat.region || r.location);
+            }));
+        };
+        walkCategories(trip.restaurants);
+        walkCategories(trip.aiRestaurants);
+
+        // Order chronological by hotel sequence: walk hotels in check-in
+        // order, attribute each to a cityKey, push that key first if it has
+        // items. Leftover cities (research-only with no hotel) trail alphabetical.
+        const hotelOrder: string[] = [];
+        const seen = new Set<string>();
+        const sortedHotels = (trip.hotels || [])
+            .map((h, i) => ({ h, i }))
+            .sort((a, b) => {
+                const ta = a.h.checkInDate ? new Date(a.h.checkInDate).getTime() : Number.MAX_SAFE_INTEGER - a.i;
+                const tb = b.h.checkInDate ? new Date(b.h.checkInDate).getTime() : Number.MAX_SAFE_INTEGER - b.i;
+                return ta - tb;
+            });
+        sortedHotels.forEach(({ h }) => {
+            const raw = extractRobustCity(h.address || '', h.name || '', trip) || h.city || '';
+            const k = cityKey(raw);
+            if (k && counts.has(k) && !seen.has(k)) {
+                hotelOrder.push(k);
+                seen.add(k);
+            }
+        });
+        const leftovers = Array.from(counts.keys())
+            .filter(k => !seen.has(k))
+            .sort((a, b) => (counts.get(a)!.display).localeCompare(counts.get(b)!.display, 'he'));
+
+        return [...hotelOrder, ...leftovers].map(k => ({
+            key: k,
+            display: counts.get(k)!.display,
+            count: counts.get(k)!.count,
+        }));
+    }, [trip.restaurants, trip.aiRestaurants, trip.hotels]);
+
+    // Walking minutes from a place to its NEAREST hotel — null when either
+    // the place or every hotel is missing coords. Used by the distance filter
+    // and by the "Near Hotel" category logic.
+    const itemWalkingMinutes = useCallback((r: { lat?: number; lng?: number }): number | null => {
+        if (typeof r.lat !== 'number' || typeof r.lng !== 'number') return null;
+        let best = Infinity;
+        (trip.hotels || []).forEach(h => {
+            if (typeof h.lat === 'number' && typeof h.lng === 'number') {
+                const m = walkingMinutesBetween({ lat: r.lat!, lng: r.lng! }, { lat: h.lat, lng: h.lng });
+                if (m < best) best = m;
+            }
+        });
+        return Number.isFinite(best) ? best : null;
+    }, [trip.hotels]);
+
+    // Available filter options — derived from the union of saved + AI items
+    // so chips with zero matches don't render. Counts per option support
+    // future "(N)" badges.
+    const filterOptions = useMemo(() => {
+        const cuisines = new Map<string, number>();
+        const prices = new Map<string, number>();
+        const consider = (r: Restaurant) => {
+            const cuisineRaw = (r.cuisine || r.iconType || '').trim();
+            if (cuisineRaw) cuisines.set(cuisineRaw, (cuisines.get(cuisineRaw) || 0) + 1);
+            const price = (r.priceLevel || '').trim();
+            if (price) prices.set(price, (prices.get(price) || 0) + 1);
+        };
+        trip.restaurants.forEach(c => c.restaurants.forEach(consider));
+        (trip.aiRestaurants || []).forEach(c => c.restaurants.forEach(consider));
+        return {
+            cuisines: Array.from(cuisines.entries()).sort((a, b) => b[1] - a[1]),
+            prices: Array.from(prices.entries()).sort((a, b) => a[0].length - b[0].length),
+        };
+    }, [trip.restaurants, trip.aiRestaurants]);
+
+    // Single predicate combining cuisine / price / distance filters. The list
+    // and map both call this so the two stay in sync.
+    const passesItemFilters = useCallback((r: Restaurant): boolean => {
+        if (filterCuisines.size > 0) {
+            const c = (r.cuisine || r.iconType || '').trim();
+            if (!filterCuisines.has(c)) return false;
+        }
+        if (filterPrices.size > 0) {
+            const p = (r.priceLevel || '').trim();
+            if (!filterPrices.has(p)) return false;
+        }
+        if (filterMaxWalkMin !== null) {
+            const m = itemWalkingMinutes(r);
+            if (m === null || m > filterMaxWalkMin) return false;
+        }
+        return true;
+    }, [filterCuisines, filterPrices, filterMaxWalkMin, itemWalkingMinutes]);
+
+    const toggleSetMember = (set: Set<string>, value: string): Set<string> => {
+        const next = new Set(set);
+        if (next.has(value)) next.delete(value);
+        else next.add(value);
+        return next;
+    };
+    const activeFilterCount =
+        (filterCuisines.size > 0 ? 1 : 0) +
+        (filterPrices.size > 0 ? 1 : 0) +
+        (filterMaxWalkMin !== null ? 1 : 0);
+    const clearAllFilters = () => {
+        setFilterCuisines(new Set());
+        setFilterPrices(new Set());
+        setFilterMaxWalkMin(null);
+    };
 
     // --- Search Logic ---
     const handleTextSearch = async () => {
@@ -318,6 +454,103 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     };
 
     const clearSearch = () => { setTextQuery(''); setSearchResults(null); };
+
+    // --- Near-Hotel Research ---
+    // Asks the AI for the best places of ANY cuisine within a 15-minute walk
+    // of each hotel. Saves one category per hotel into trip.aiRestaurants so
+    // the result behaves like any other AI category (filterable, mappable,
+    // savable to "My list").
+    const researchNearHotel = async () => {
+        const hotels = (trip.hotels || []).filter(h => typeof h.lat === 'number' && typeof h.lng === 'number');
+        if (hotels.length === 0) {
+            toast.warning('לא נמצא מלון עם קואורדינטות. הוסף כתובת למלון כדי לחפש מסעדות בקרבת מקום.');
+            return;
+        }
+
+        if (hotels.length > 1 && !window.confirm(`לחקור ${hotels.length} מלונות? זה ייקח עד ~${hotels.length * 8} שניות.`)) {
+            return;
+        }
+
+        setIsResearchingAll(true);
+        setRecError('');
+        setResearchProgress({ current: 0, total: hotels.length });
+        const preferTier = resolvePreferTier();
+        let accumulated: RestaurantCategory[] = [...aiCategories];
+
+        try {
+            for (let i = 0; i < hotels.length; i++) {
+                const hotel = hotels[i];
+                setResearchProgress({ current: i + 1, total: hotels.length });
+                const cityEn = displayCityName(hotel.city || trip.destination || '', 'en') || hotel.city || trip.destination || '';
+                const titleSuffix = hotels.length > 1 ? ` ליד ${hotel.name}` : ' ליד המלון';
+                const catTitle = `🏨${titleSuffix} — עד 15 דק׳ הליכה`;
+                const catId = `near-hotel-${hotel.id}`;
+
+                const prompt = `Find ~10 BEST places to EAT within a 15-minute walk (≈1.2 km radius) of "${hotel.name}" at "${hotel.address}" (lat ${hotel.lat}, lng ${hotel.lng}) in ${cityEn}.
+
+Include a WIDE VARIETY of cuisines and price points (DO NOT return all the same type):
+- Local street food and stalls
+- Casual local restaurants
+- Mid-range / family dining
+- Fine dining if any walkable nearby
+- Cafés, bakeries, dessert shops
+- Bars, cocktail lounges, beer halls
+
+HARD RULES:
+- Walking distance ≤ 1.2 km from the hotel coordinates above.
+- Each place MUST currently be operational. Omit closed/relocated places. Set "business_status" to "OPERATIONAL".
+- Cuisine MUST VARY across the list. No more than 3 places of the same cuisine.
+- Description in Hebrew, 1–2 sentences.
+- Return JSON ONLY:
+  { "restaurants": [{ "name", "description", "location", "cuisine", "priceLevel" ("$"|"$$"|"$$$"|"$$$$"), "googleMapsUrl", "googleRating" (number), "recommendationSource", "business_status" }] }`;
+
+                try {
+                    const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.2 }, 'SEARCH', preferTier);
+                    const data = JSON.parse(response.text || '{}');
+                    const rawList: any[] = Array.isArray(data.restaurants) ? data.restaurants : (Array.isArray(data) ? data : []);
+                    const cleaned = stripChainRestaurants(rawList)
+                        .filter((r: any) => !r.business_status || r.business_status === 'OPERATIONAL')
+                        .map((r: any, j: number) => ({
+                            ...r,
+                            id: `near-hotel-${hotel.id}-${Date.now()}-${j}`,
+                            region: hotel.city || cityEn,
+                            categoryTitle: catTitle,
+                        }));
+
+                    if (cleaned.length > 0) {
+                        const newCat: RestaurantCategory = {
+                            id: catId,
+                            title: catTitle,
+                            region: hotel.city || cityEn,
+                            restaurants: cleaned,
+                        };
+                        const existingIdx = accumulated.findIndex(c => c.id === catId);
+                        if (existingIdx >= 0) accumulated[existingIdx] = newCat;
+                        else accumulated = [newCat, ...accumulated];
+                    }
+                } catch (e: any) {
+                    console.error(`Near-hotel research failed for ${hotel.name}:`, e);
+                    const msg = e?.message || '';
+                    if (/PerDay/i.test(msg) || /per_day/i.test(msg)) {
+                        setRecError('מכסת ה-AI היומית מוצתה. נסה שוב מחר.');
+                        break;
+                    }
+                }
+            }
+
+            setAiCategories(accumulated);
+            persistAiRestaurants(accumulated);
+            await stampPremiumIfUsed(preferTier, accumulated.length > aiCategories.length);
+            geocodeAndPersistRestaurants(accumulated);
+            toast.success('סיימנו לחפש מסעדות באזור המלון');
+        } catch (e) {
+            console.error('Critical error in researchNearHotel:', e);
+            setRecError('שגיאה בחיפוש בקרבת המלון.');
+        } finally {
+            setIsResearchingAll(false);
+            setResearchProgress({ current: 0, total: 0 });
+        }
+    };
 
     // --- AI Market Research Logic ---
     const initiateResearch = (city?: string) => {
@@ -1165,9 +1398,11 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
             list = list.filter(r => normalizeSource(r.recommendationSource || '') === selectedRater);
         }
 
+        list = list.filter(passesItemFilters);
+
         // Global dedupe by place name — collapses 4×Sorn into 1
         return dedupeByName(list);
-    }, [aiCategories, selectedCategory, selectedRater, selectedCity, allAiRestaurants, tripCities, inTripScope]);
+    }, [aiCategories, selectedCategory, selectedRater, selectedCity, allAiRestaurants, tripCities, inTripScope, passesItemFilters]);
 
     // Stale data: there are cached results but ALL of them are out of trip scope
     const hasStaleData = useMemo(() => {
@@ -1184,8 +1419,9 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         // Apply Filters
         let filtered = flatList;
         if (selectedCity !== 'all') {
-            filtered = flatList.filter(r => restaurantMatchesCity(r, selectedCity));
+            filtered = filtered.filter(r => restaurantMatchesCity(r, selectedCity));
         }
+        filtered = filtered.filter(passesItemFilters);
 
         // Group by Category (User Request: "Food Categories", not streets)
         const groups: Record<string, Restaurant[]> = {};
@@ -1202,7 +1438,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         });
 
         return groups;
-    }, [trip.restaurants, selectedCity]);
+    }, [trip.restaurants, selectedCity, passesItemFilters]);
 
 
     const getMapItems = () => {
@@ -1221,8 +1457,12 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         const savedFlat = trip.restaurants.flatMap(cat =>
             cat.restaurants.map(r => ({ ...r, categoryTitle: r.categoryTitle || cat.title }))
         );
+        const includeSaved = mapSource !== 'ai';
+        const includeAi = mapSource !== 'saved';
         savedFlat.forEach(r => {
+            if (!includeSaved) return;
             if (selectedCity !== 'all' && !restaurantMatchesCity(r, selectedCity)) return;
+            if (!passesItemFilters(r)) return;
             savedNameKeys.add(r.name.toLowerCase());
             items.push({
                 id: r.id, type: 'restaurant', name: r.name,
@@ -1244,8 +1484,9 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
 
         // AI-suggestions layer — dedupe by name against saved so a place
         // present in both lists doesn't get a hollow pin stacked on top
-        // of its solid saved pin.
-        filteredRestaurants.forEach(r => {
+        // of its solid saved pin. (passesItemFilters already applied
+        // upstream in filteredRestaurants.)
+        if (includeAi) filteredRestaurants.forEach(r => {
             if (selectedCity !== 'all' && !restaurantMatchesCity(r, selectedCity)) return;
             if (savedNameKeys.has(r.name.toLowerCase())) return;
             items.push({
@@ -1372,15 +1613,23 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
 
             {/* Row 2 — context controls: city pills + list/map toggle + refresh/reset icons. */}
             <div className="flex items-center gap-2">
-                {tripCities.length > 1 ? (
+                {presentCities.length > 0 ? (
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide flex-grow min-w-0">
-                        {tripCities.map(city => (
+                        <button
+                            key="__all__"
+                            onClick={() => setSelectedCity('all')}
+                            className={`px-3 py-1 rounded-full text-2xs font-black transition-all border whitespace-nowrap flex-shrink-0 ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                        >
+                            כל המסלול
+                        </button>
+                        {presentCities.map(({ display, count, key }) => (
                             <button
-                                key={city}
-                                onClick={() => setSelectedCity(city)}
-                                className={`px-3 py-1 rounded-full text-2xs font-black transition-all border whitespace-nowrap flex-shrink-0 ${selectedCity === city ? 'bg-slate-900 border-slate-900 text-white shadow' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                                key={key}
+                                onClick={() => setSelectedCity(display)}
+                                className={`px-3 py-1 rounded-full text-2xs font-black transition-all border whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 ${selectedCity === display ? 'bg-slate-900 border-slate-900 text-white shadow' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                             >
-                                {city}
+                                <span>{display}</span>
+                                <span className={`text-[10px] font-bold ${selectedCity === display ? 'text-white/80' : 'text-slate-400'}`}>{count}</span>
                             </button>
                         ))}
                     </div>
@@ -1410,6 +1659,14 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                             className="flex items-center justify-center w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-500 hover:border-orange-300 hover:text-orange-600 disabled:opacity-50 flex-shrink-0"
                         >
                             <RotateCw className={`w-3.5 h-3.5 ${(loadingRecs || isResearchingAll) ? 'animate-spin' : ''}`} />
+                        </button>
+                        <button
+                            onClick={researchNearHotel}
+                            disabled={loadingRecs || isResearchingAll || (trip.hotels || []).filter(h => typeof h.lat === 'number').length === 0}
+                            title="מצא הכי טוב באזור המלון (15 דק׳ הליכה)"
+                            className="flex items-center justify-center w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-50 flex-shrink-0"
+                        >
+                            <Hotel className="w-3.5 h-3.5" />
                         </button>
                         <button
                             onClick={() => setConfirmReset(true)}
@@ -1467,6 +1724,85 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
 
             {viewMode === 'map' ? (
                 <div className="space-y-3">
+                    {/* Map source toggle — saved vs AI vs both. Independent of the
+                        list tab so the user can be on "My list" but still see all
+                        AI-researched markers on the map. */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="inline-flex bg-slate-100 rounded-xl p-0.5">
+                            {([
+                                { id: 'all', label: 'הכל' },
+                                { id: 'saved', label: 'הרשימה שלי' },
+                                { id: 'ai', label: 'מחקר AI' },
+                            ] as const).map(opt => (
+                                <button
+                                    key={opt.id}
+                                    onClick={() => setMapSource(opt.id)}
+                                    className={`px-3 py-1 rounded-lg text-2xs font-bold transition-all ${mapSource === opt.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                        {activeFilterCount > 0 && (
+                            <button
+                                onClick={clearAllFilters}
+                                className="text-2xs text-slate-500 hover:text-red-600 underline underline-offset-2"
+                            >
+                                נקה סינון ({activeFilterCount})
+                            </button>
+                        )}
+                    </div>
+                    {/* Filter chips — cuisine, price, distance from hotel. Hidden
+                        when no options exist for the current data set. */}
+                    {(filterOptions.cuisines.length > 0 || filterOptions.prices.length > 0 || (trip.hotels || []).some(h => typeof h.lat === 'number')) && (
+                        <div className="space-y-1.5 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+                            {filterOptions.cuisines.length > 0 && (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-2xs font-bold text-slate-500 shrink-0">סוג:</span>
+                                    {filterOptions.cuisines.slice(0, 10).map(([cuisine, n]) => (
+                                        <button
+                                            key={cuisine}
+                                            onClick={() => setFilterCuisines(prev => toggleSetMember(prev, cuisine))}
+                                            className={`px-2.5 py-0.5 rounded-full text-2xs font-bold border transition-all ${filterCuisines.has(cuisine) ? 'bg-orange-600 border-orange-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300'}`}
+                                        >
+                                            {cuisine} <span className="opacity-60">{n}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {filterOptions.prices.length > 0 && (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-2xs font-bold text-slate-500 shrink-0">מחיר:</span>
+                                    {filterOptions.prices.map(([price, n]) => (
+                                        <button
+                                            key={price}
+                                            onClick={() => setFilterPrices(prev => toggleSetMember(prev, price))}
+                                            className={`px-2.5 py-0.5 rounded-full text-2xs font-bold border transition-all ${filterPrices.has(price) ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300'}`}
+                                        >
+                                            {price} <span className="opacity-60">{n}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {(trip.hotels || []).some(h => typeof h.lat === 'number') && (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-2xs font-bold text-slate-500 shrink-0">מרחק מהמלון:</span>
+                                    {([
+                                        { val: 15, label: '≤ 15 דק׳' },
+                                        { val: 30, label: '≤ 30 דק׳' },
+                                    ] as const).map(opt => (
+                                        <button
+                                            key={opt.val}
+                                            onClick={() => setFilterMaxWalkMin(prev => prev === opt.val ? null : opt.val)}
+                                            className={`px-2.5 py-0.5 rounded-full text-2xs font-bold border transition-all ${filterMaxWalkMin === opt.val ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'}`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                     {(() => {
                         return (
                             <>

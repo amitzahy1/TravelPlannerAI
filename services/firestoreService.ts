@@ -367,7 +367,12 @@ export const getSharedTrip = async (shareId: string): Promise<Trip | null> => {
     const tripSnap = await getDoc(tripRef);
 
     if (tripSnap.exists()) {
-      return tripSnap.data().tripData as Trip;
+      const data = tripSnap.data();
+      const trip = data.tripData as Trip;
+      if (trip && data.owner) {
+        return { ...trip, ownerUid: data.owner } as Trip;
+      }
+      return trip;
     }
     return null;
   } catch (error) {

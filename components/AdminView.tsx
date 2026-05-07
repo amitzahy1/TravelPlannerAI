@@ -164,7 +164,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
     // When active trip changes, sync local form state
     const activeTrip = trips.find(t => t.id === activeTripId) || trips[0];
-    const isOwner = !!activeTrip && isTripOwner(activeTrip);
+    const isOwner = !!activeTrip && isTripOwner(activeTrip, user?.uid);
 
     // Load premium timestamps for owner panel
     useEffect(() => {
