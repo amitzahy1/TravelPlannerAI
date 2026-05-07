@@ -175,6 +175,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [confirmReset, setConfirmReset] = useState(false);
     const [confirmNearHotel, setConfirmNearHotel] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [searchExpanded, setSearchExpanded] = useState(false);
     const isMobile = useIsMobile();
     const [filtersExpanded, setFiltersExpanded] = useState(!isMobile);
     // Background-geocoding progress so the map view can show a loading
@@ -1223,10 +1224,9 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
 
     return (
         <div className="space-y-3 animate-fade-in pb-10">
-            {/* Row 1 — primary navigation. Mobile: tabs on top row, search full
-                width below so the AI sparkles button doesn't collide with the
-                magnifying-glass icon. Desktop: side by side as before. */}
-            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+            {/* Row 1 — source tabs. Search lives only in the AI tab and is
+                collapsed by default; tap the 🔍 icon to expand. */}
+            <div className="flex items-center justify-between gap-2">
                 <div className="flex-shrink-0">
                     <Tabs<'my_list' | 'recommended'>
                         value={activeTab}
@@ -1240,15 +1240,47 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                         ]}
                     />
                 </div>
-                <div className="flex-grow relative z-20 min-w-0 md:max-w-sm w-full">
+                {activeTab === 'recommended' && (
+                    <button
+                        type="button"
+                        onClick={() => setSearchExpanded(v => !v)}
+                        aria-label={searchExpanded ? 'סגור חיפוש' : 'חפש אטרקציה'}
+                        aria-expanded={searchExpanded}
+                        className={`flex items-center justify-center w-9 h-9 rounded-full border transition-all ${searchExpanded ? 'bg-purple-600 border-purple-600 text-white shadow' : 'bg-white border-slate-200 text-slate-500 hover:border-purple-300 hover:text-purple-600'}`}
+                    >
+                        {searchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+                    </button>
+                )}
+            </div>
+
+            {/* Search input — expands only when the user opens it from the AI tab. */}
+            {activeTab === 'recommended' && searchExpanded && (
+                <div className="relative z-20">
                     <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-1.5 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
                         <Search className="w-4 h-4 text-slate-400 ms-1 flex-shrink-0" />
-                        <input className="flex-grow outline-none text-slate-700 font-medium text-sm min-w-0 bg-transparent" placeholder='נסה: מוזיאונים, חופים, ילדים, שווקים...' value={textQuery} onChange={(e) => setTextQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()} />
-                        {textQuery && <button onClick={clearSearch} aria-label="נקה חיפוש" className="p-1 hover:bg-slate-100 rounded-full text-slate-400 flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
-                        <button onClick={handleTextSearch} disabled={isSearching || !textQuery.trim()} aria-label="חפש" className="bg-purple-600 text-white px-3 min-h-9 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors flex items-center gap-1 disabled:opacity-50 flex-shrink-0">{isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}<span className="hidden sm:inline">{isSearching ? '...' : 'חיפוש'}</span></button>
+                        <input
+                            autoFocus
+                            className="flex-grow outline-none text-slate-700 font-medium text-sm min-w-0 bg-transparent"
+                            placeholder='נסה: מוזיאונים, חופים, ילדים, שווקים...'
+                            value={textQuery}
+                            onChange={(e) => setTextQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleTextSearch()}
+                        />
+                        {textQuery && (
+                            <button onClick={clearSearch} aria-label="נקה חיפוש" className="p-1 hover:bg-slate-100 rounded-full text-slate-400 flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+                        )}
+                        <button
+                            onClick={handleTextSearch}
+                            disabled={isSearching || !textQuery.trim()}
+                            aria-label="חפש"
+                            className="bg-purple-600 text-white px-3 min-h-9 rounded-xl font-bold text-xs hover:bg-purple-700 transition-colors flex items-center gap-1 disabled:opacity-50 flex-shrink-0"
+                        >
+                            {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                            <span className="hidden sm:inline">{isSearching ? '...' : 'חיפוש'}</span>
+                        </button>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Saved-search chips — only when user has them. */}
             {trip.customAttractionCategories && trip.customAttractionCategories.length > 0 && (
