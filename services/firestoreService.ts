@@ -12,7 +12,8 @@ import {
   arrayUnion,
   arrayRemove,
   onSnapshot,
-  Unsubscribe
+  Unsubscribe,
+  deleteField
 } from 'firebase/firestore';
 import { db, auth } from './firebaseConfig';
 import { Trip, SharedTripMetadata, UserTripRef, TripInvite } from '../types';
@@ -156,11 +157,11 @@ export const userHasTrips = async (userId: string): Promise<boolean> => {
  */
 export const getUserPremiumState = async (
   userId: string,
-): Promise<{ lastPremiumRunAt?: number }> => {
+): Promise<{ lastPremiumRunAt?: number; lastPremiumRunAt_food?: number; lastPremiumRunAt_attractions?: number }> => {
   try {
     const ref = doc(db, USERS_COLLECTION, userId);
     const snap = await getDoc(ref);
-    return snap.exists() ? (snap.data() as { lastPremiumRunAt?: number }) : {};
+    return snap.exists() ? (snap.data() as { lastPremiumRunAt?: number; lastPremiumRunAt_food?: number; lastPremiumRunAt_attractions?: number }) : {};
   } catch (error) {
     console.error('Error reading user premium state:', error);
     return {};
@@ -168,15 +169,77 @@ export const getUserPremiumState = async (
 };
 
 /**
- * Stamp `now` as the user's last premium-run time. Merge-write so it
- * doesn't clobber the trips subcollection / future user-doc fields.
+ * Stamp `now` as the user's last premium-run time for the given research type.
+ * Separate food and attractions counters so each gets one paid run per month.
  */
-export const markPremiumRunUsed = async (userId: string): Promise<void> => {
+export const markPremiumRunUsed = async (userId: string, type: 'food' | 'attractions' = 'food'): Promise<void> => {
   try {
     const ref = doc(db, USERS_COLLECTION, userId);
-    await setDoc(ref, { lastPremiumRunAt: Date.now() }, { merge: true });
+    const field = type === 'food' ? 'lastPremiumRunAt_food' : 'lastPremiumRunAt_attractions';
+    await setDoc(ref, { [field]: Date.now() }, { merge: true });
   } catch (error) {
     console.error('Error marking premium run used:', error);
+  }
+};
+
+/**
+ * Reset the premium run timestamp for food or attractions so the owner can
+ * run a paid-tier research again before the 30-day window expires.
+ */
+export const resetPremiumRunUsed = async (userId: string, type: 'food' | 'attractions'): Promise<void> => {
+  try {
+    const ref = doc(db, USERS_COLLECTION, userId);
+    const field = type === 'food' ? 'lastPremiumRunAt_food' : 'lastPremiumRunAt_attractions';
+    await updateDoc(ref, { [field]: deleteField() });
+  } catch (error) {
+    console.error('Error resetting premium run:', error);
+  }
+};
+
+// --- CATEGORY REFRESH RATE LIMITING ---
+
+const CATEGORY_REFRESHES_FIELD = 'categoryRefreshes';
+
+export interface CategoryRefreshEntry {
+  paid: number;   // # paid-model runs this month
+  free: number;   // # free-model runs this month
+  month: string;  // "2026-05"
+}
+
+export const getCategoryRefreshes = async (
+  userId: string,
+): Promise<Record<string, CategoryRefreshEntry>> => {
+  try {
+    const ref = doc(db, USERS_COLLECTION, userId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return {};
+    const data = snap.data() as Record<string, unknown>;
+    return (data[CATEGORY_REFRESHES_FIELD] as Record<string, CategoryRefreshEntry>) || {};
+  } catch { return {}; }
+};
+
+const currentMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+export const incrementCategoryRefresh = async (
+  userId: string,
+  key: string, // `${tripId}:${categorySlug}`
+  tier: 'paid' | 'free',
+): Promise<void> => {
+  try {
+    const ref = doc(db, USERS_COLLECTION, userId);
+    const snap = await getDoc(ref);
+    const existing = (snap.exists() ? (snap.data() as Record<string, unknown>)[CATEGORY_REFRESHES_FIELD] : {}) as Record<string, CategoryRefreshEntry> || {};
+    const month = currentMonth();
+    const prev = existing[key] && existing[key].month === month
+      ? existing[key]
+      : { paid: 0, free: 0, month };
+    const updated = { ...prev, [tier]: prev[tier] + 1, month };
+    await setDoc(ref, { [CATEGORY_REFRESHES_FIELD]: { ...existing, [key]: updated } }, { merge: true });
+  } catch (error) {
+    console.error('Error incrementing category refresh:', error);
   }
 };
 

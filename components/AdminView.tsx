@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment, HotelRoom, Transport } from '../types';
-import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble } from 'lucide-react';
+import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble, ShieldCheck, RefreshCw } from 'lucide-react';
+import { isTripOwner } from '../utils/tripPermissions';
+import { getUserPremiumState, resetPremiumRunUsed } from '../services/firestoreService';
+import { useAuth } from '../contexts/AuthContext';
 import { generateWithFallback } from '../services/aiService';
 import { parseFreeTextTrip } from '../services/freeTextImportService';
 import { toast } from '../stores/useToastStore';
@@ -118,7 +121,10 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     const [isSaving, setIsSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'health' | 'logs'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'owner' | 'health' | 'logs'>('overview');
+    const { user } = useAuth();
+    const [premiumFood, setPremiumFood] = useState<number | null>(null);
+    const [premiumAttractions, setPremiumAttractions] = useState<number | null>(null);
     const [logisticsTab, setLogisticsTab] = useState<'flights' | 'hotels'>('flights');
     const [freeText, setFreeText] = useState('');
     const [isFreeTextProcessing, setIsFreeTextProcessing] = useState(false);
@@ -157,6 +163,16 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
     // When active trip changes, sync local form state
     const activeTrip = trips.find(t => t.id === activeTripId) || trips[0];
+    const isOwner = !!activeTrip && isTripOwner(activeTrip);
+
+    // Load premium timestamps for owner panel
+    useEffect(() => {
+        if (!isOwner || !user?.uid) return;
+        getUserPremiumState(user.uid).then(s => {
+            setPremiumFood(s.lastPremiumRunAt_food ?? s.lastPremiumRunAt ?? null);
+            setPremiumAttractions(s.lastPremiumRunAt_attractions ?? s.lastPremiumRunAt ?? null);
+        }).catch(() => {});
+    }, [isOwner, user?.uid, activeTripId]);
 
     useEffect(() => {
         if (activeTrip) {
@@ -874,9 +890,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             {[
                                 { id: 'overview' as const, label: 'פרטים כלליים', icon: Layout },
                                 { id: 'logistics' as const, label: 'טיסות ומלונות', icon: Plane },
-                                { id: 'ai' as const, label: 'Magic Import', icon: Sparkles },
-                                ...(auth.currentUser?.email === 'amitzahy1@gmail.com' ? [{ id: 'health' as const, label: 'בריאות נתונים', icon: CheckCircle }] : []),
-                                ...(auth.currentUser?.email === 'amitzahy1@gmail.com' ? [{ id: 'logs' as const, label: 'System Logs', icon: Terminal }] : []),
+                                ...(isOwner ? [{ id: 'owner' as const, label: 'ניהול מתקדם', icon: ShieldCheck }] : []),
                             ].map(tab => {
                                 const Icon = tab.icon;
                                 return (
@@ -1056,8 +1070,56 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             </div>
                         )}
 
-                        {activeTab === 'ai' && (
+                        {activeTab === 'owner' && isOwner && (
                             <div className="space-y-6 animate-fade-in">
+                                {/* Share & Export */}
+                                <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                                    <h3 className="text-base font-black text-slate-800 mb-4 flex items-center gap-2"><Share2 className="w-4 h-4 text-blue-500" /> שיתוף וייצוא</h3>
+                                    <div className="flex gap-3 flex-wrap">
+                                        <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-sm">
+                                            <Share2 className="w-4 h-4" /> שתף טיול
+                                        </button>
+                                        <button onClick={() => exportTripPDF(activeTrip)} className="flex items-center gap-2 px-5 py-3 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-bold border border-indigo-200 hover:bg-indigo-100 transition-all">
+                                            <FileText className="w-4 h-4" /> ייצא PDF
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Premium Override */}
+                                <div className="bg-white border border-amber-200 rounded-xl p-6 shadow-sm">
+                                    <h3 className="text-base font-black text-slate-800 mb-1 flex items-center gap-2"><Sparkles className="w-4 h-4 text-amber-500" /> מגבלות AI פרימיום</h3>
+                                    <p className="text-xs text-slate-500 mb-4">כל קטגוריה מורשית להרצה אחת עם מודל פרימיום בחודש. אפס כדי לאפשר הרצה נוספת.</p>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between bg-amber-50 rounded-lg px-4 py-3">
+                                            <div>
+                                                <div className="text-sm font-bold text-slate-700">מחקר מסעדות</div>
+                                                <div className="text-xs text-slate-500">{premiumFood ? `הורץ ב-${new Date(premiumFood).toLocaleDateString('he-IL')}` : 'טרם הורץ'}</div>
+                                            </div>
+                                            <button
+                                                onClick={async () => { if (!user?.uid) return; await resetPremiumRunUsed(user.uid, 'food'); setPremiumFood(null); toast.success('מגבלת מסעדות אופסה'); }}
+                                                disabled={!premiumFood}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-white border border-amber-300 text-amber-700 rounded-lg hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                            >
+                                                <RefreshCw className="w-3 h-3" /> אפס
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center justify-between bg-purple-50 rounded-lg px-4 py-3">
+                                            <div>
+                                                <div className="text-sm font-bold text-slate-700">מחקר אטרקציות</div>
+                                                <div className="text-xs text-slate-500">{premiumAttractions ? `הורץ ב-${new Date(premiumAttractions).toLocaleDateString('he-IL')}` : 'טרם הורץ'}</div>
+                                            </div>
+                                            <button
+                                                onClick={async () => { if (!user?.uid) return; await resetPremiumRunUsed(user.uid, 'attractions'); setPremiumAttractions(null); toast.success('מגבלת אטרקציות אופסה'); }}
+                                                disabled={!premiumAttractions}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-white border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                            >
+                                                <RefreshCw className="w-3 h-3" /> אפס
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Magic Import */}
                                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                     <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-7">
                                         <div className="flex items-center gap-4">
@@ -1107,18 +1169,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />
                                     </div>
                                 </div>
+
+                                {/* Data health & logs */}
+                                <DataHealthPanel trip={activeTrip} onUpdateTrip={(t) => handleUpdateTrip(t)} />
+                                <SystemLogs />
                             </div>
-                        )}
-
-                        {activeTab === 'health' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (
-                            <DataHealthPanel
-                                trip={activeTrip}
-                                onUpdateTrip={(t) => handleUpdateTrip(t)}
-                            />
-                        )}
-
-                        {activeTab === 'logs' && auth.currentUser?.email === 'amitzahy1@gmail.com' && (
-                            <SystemLogs />
                         )}
                     </div>
                 </div>

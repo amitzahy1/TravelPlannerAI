@@ -18,7 +18,7 @@ import { getLocalAI, setLocalAI, clearLocalAI, hasLocalAI } from '../utils/local
 import { findClosedPlaces } from '../utils/closedPlaceCheck';
 import { toast } from '../stores/useToastStore';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserPremiumState, markPremiumRunUsed } from '../services/firestoreService';
+import { getUserPremiumState, markPremiumRunUsed, getCategoryRefreshes, incrementCategoryRefresh, CategoryRefreshEntry } from '../services/firestoreService';
 
 // Extended interface for internal use
 interface ExtendedRestaurant extends Restaurant {
@@ -163,7 +163,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             return;
         }
         getUserPremiumState(userId)
-            .then(s => setPremiumLastUsedAt(s.lastPremiumRunAt ?? 0))
+            .then(s => setPremiumLastUsedAt(s.lastPremiumRunAt_food ?? s.lastPremiumRunAt ?? 0))
             .catch(() => setPremiumLastUsedAt(0));
     }, [userId, ownerOnly]);
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -173,7 +173,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     };
     const stampPremiumIfUsed = async (preferTier: 'paid' | 'free', producedResults: boolean) => {
         if (preferTier === 'paid' && producedResults && userId) {
-            await markPremiumRunUsed(userId);
+            await markPremiumRunUsed(userId, 'food');
             setPremiumLastUsedAt(Date.now());
         }
     };
@@ -220,6 +220,15 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // items (`geocodeFailed: true`) live on the restaurant objects and
     // surface as a separate warning banner.
     const [geocodingInFlight, setGeocodingInFlight] = useState(0);
+
+    // Per-category refresh state
+    const [categoryRefreshes, setCategoryRefreshes] = useState<Record<string, CategoryRefreshEntry>>({});
+    const [refreshingCategoryId, setRefreshingCategoryId] = useState<string | null>(null);
+    const [showRefreshLimitModal, setShowRefreshLimitModal] = useState(false);
+    useEffect(() => {
+        if (!userId) return;
+        getCategoryRefreshes(userId).then(setCategoryRefreshes).catch(() => {});
+    }, [userId]);
 
     // Wipe cached AI restaurants — user starts fresh research manually
     const handleResetResearch = () => {
@@ -445,6 +454,81 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         } finally {
             setIsResearchingAll(false);
             setResearchProgress({ current: 0, total: 0 });
+        }
+    };
+
+    const refreshSingleCategory = async (cat: RestaurantCategory) => {
+        if (!userId || viewerMode) return;
+        const currentMonth = new Date().toISOString().slice(0, 7); // "2026-05"
+        const key = `${trip.id}:${cat.id}`;
+        const entry = categoryRefreshes[key];
+        const PAID_LIMIT = 1;
+        const FREE_LIMIT = 3;
+        const entryInCurrentMonth = entry && entry.month === currentMonth;
+        const paidUsed = entryInCurrentMonth ? entry.paid : 0;
+        const freeUsed = entryInCurrentMonth ? entry.free : 0;
+
+        const canUsePaid = ownerOnly && paidUsed < PAID_LIMIT;
+        const canUseFree = freeUsed < FREE_LIMIT;
+        if (!canUsePaid && !canUseFree) {
+            setShowRefreshLimitModal(true);
+            return;
+        }
+
+        const tier: 'paid' | 'free' = canUsePaid ? 'paid' : 'free';
+        setRefreshingCategoryId(cat.id);
+        try {
+            const cityEn = cat.region
+                ? displayCityName(cat.region as string, 'en')
+                : (trip.destinationEnglish || displayCityName(tripCities[0], 'en'));
+            const catTitle = cat.title;
+            const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+            const prompt = `You are a food expert. As of ${currentDate}, find the BEST restaurants in "${cityEn}" for the category: "${catTitle}".
+Return 6-8 currently operating restaurants. Apply the same strict operational check as always — omit any closed place.
+Respond in the same JSON format:
+{ "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl", "business_status", "verification_needed" } ] }
+Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be in English.`;
+
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH', tier);
+            const rawData = JSON.parse(response.text || '{}');
+            const freshRestaurants = (rawData.restaurants || [])
+                .filter((r: any) => r.business_status === 'OPERATIONAL')
+                .map((r: any, j: number) => ({
+                    ...r,
+                    region: r.region || cat.region,
+                    id: `ai-rec-${cat.id}-refresh-${Date.now()}-${j}`,
+                    categoryTitle: catTitle,
+                }));
+
+            if (freshRestaurants.length > 0) {
+                const updated = aiCategories.map(c =>
+                    c.id === cat.id ? { ...c, restaurants: freshRestaurants } : c
+                );
+                setAiCategories(updated);
+                persistAiRestaurants(updated);
+                await incrementCategoryRefresh(userId, key, tier);
+                setCategoryRefreshes(prev => {
+                    const prevEntry = prev[key];
+                    const inMonth = prevEntry && prevEntry.month === currentMonth;
+                    return {
+                        ...prev,
+                        [key]: {
+                            paid: (inMonth ? prevEntry.paid : 0) + (tier === 'paid' ? 1 : 0),
+                            free: (inMonth ? prevEntry.free : 0) + (tier === 'free' ? 1 : 0),
+                            month: currentMonth,
+                        },
+                    };
+                });
+                toast.success(`${catTitle} עודכן בהצלחה`);
+                geocodeAndPersistRestaurants(updated);
+            } else {
+                toast.warning(`לא נמצאו תוצאות חדשות עבור ${catTitle}`);
+            }
+        } catch (e) {
+            console.error('refreshSingleCategory error:', e);
+            toast.error('שגיאה בעדכון הקטגוריה');
+        } finally {
+            setRefreshingCategoryId(null);
         }
     };
 
@@ -1317,7 +1401,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         <MapIcon className="w-3 h-3" /> מפה
                     </button>
                 </div>
-                {aiCategories.length > 0 && (
+                {aiCategories.length > 0 && !viewerMode && (
                     <>
                         <button
                             onClick={() => selectedCity !== 'all' ? initiateResearch(selectedCity) : researchAllCities()}
@@ -1426,6 +1510,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                             אל תבזבז זמן על חיפושים ידניים.
                                         </p>
                                     </div>
+                                    {!viewerMode && (
                                     <button
                                         onClick={() => {
                                             setActiveTab('recommended');
@@ -1444,6 +1529,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                             {isResearchingAll ? 'מחפש מסעדות…' : 'התחל המלצות AI'}
                                         </span>
                                     </button>
+                                    )}
                                 </div>
                             ) : (
                                 <>
@@ -1575,7 +1661,23 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                                     <div className="mb-3 overflow-x-auto pb-2 scrollbar-hide">
                                                         <div className="flex gap-2">
                                                             <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === 'all' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
-                                                            {uniqueCats.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === c.id ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200'}`}>{displayTitle(c.title)}</button>)}
+                                                            {uniqueCats.map(c => (
+                                                                <div key={c.id} className="inline-flex items-center gap-0.5">
+                                                                    <button onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === c.id ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200'}`}>{displayTitle(c.title)}</button>
+                                                                    {!viewerMode && (
+                                                                        <button
+                                                                            onClick={() => refreshSingleCategory(c)}
+                                                                            disabled={refreshingCategoryId !== null}
+                                                                            title={`רענן ${displayTitle(c.title)}`}
+                                                                            className="w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-orange-600 hover:bg-orange-50 transition-colors disabled:opacity-40"
+                                                                        >
+                                                                            {refreshingCategoryId === c.id
+                                                                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                                                                : <RotateCw className="w-3 h-3" />}
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 );
@@ -1644,6 +1746,15 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 isDangerous
                 onConfirm={handleResetResearch}
                 onClose={() => setConfirmReset(false)}
+            />
+            <ConfirmModal
+                isOpen={showRefreshLimitModal}
+                title="הגעת למכסה החודשית"
+                message="הגעת למכסת הרענון החודשית לקטגוריה זו (1 רענון בתשלום + 3 רענונים חינמיים). המכסה מתאפסת בתחילת כל חודש."
+                confirmText="הבנתי"
+                cancelText=""
+                onConfirm={() => setShowRefreshLimitModal(false)}
+                onClose={() => setShowRefreshLimitModal(false)}
             />
         </div>
     );

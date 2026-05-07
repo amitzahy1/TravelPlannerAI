@@ -789,8 +789,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     const locateMarkerRef = useRef<L.CircleMarker | null>(null);
     // Mirror of geocodedCache as a ref so the mapItems-building useEffect can
     // pre-populate coordinates from cache without listing it as a dependency
-    // (which would cause infinite render loops).
-    const geocodedCacheRef = useRef<Record<string, { lat: number; lng: number }>>({});
+    // (which would cause infinite render loops). Initialized directly from
+    // localStorage so it's populated before any effect fires on first mount.
+    const geocodedCacheRef = useRef<Record<string, { lat: number; lng: number }>>(loadGeoCache());
 
     const [mapItems, setMapItems] = useState<MapItem[]>([]);
     const [loading, setLoading] = useState(false);
@@ -1253,6 +1254,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     // 2. Geocode missing items — batched 5-concurrent to cut wait from 7s → ~2s.
     //    Items appear on the map progressively as each batch resolves.
     useEffect(() => {
+        let cancelled = false;
         const run = async () => {
             const pending = mapItems.filter(i => !isValidCoordinate(i.lat, i.lng) && i.address);
             if (pending.length === 0) return;
@@ -1295,6 +1297,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     return { itemId: item.id, cacheKey, coords };
                 }));
 
+                if (cancelled) return;
+
                 // Apply resolved coords immediately so pins appear as each batch lands
                 const newEntries: Record<string, { lat: number; lng: number }> = {};
                 batchResults.forEach(r => { if (r.coords) newEntries[r.cacheKey] = r.coords; });
@@ -1312,16 +1316,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     }));
                 }
 
+                if (cancelled) return;
                 setGeocodeProgress(p => ({ ...p, done: Math.min(p.total, p.done + batch.length) }));
                 if (batchStart + BATCH_SIZE < pending.length) {
                     await new Promise(r => setTimeout(r, 200));
                 }
             }
 
-            setLoading(false);
-            setGeocodeProgress({ done: 0, total: 0 });
+            if (!cancelled) {
+                setLoading(false);
+                setGeocodeProgress({ done: 0, total: 0 });
+            }
         };
         run();
+        return () => { cancelled = true; };
     }, [mapItems.length]);
 
     // 2a. Notify the wrapper of resolved items so it can compute city bounds
@@ -1860,7 +1868,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     if (zoom >= 14) return 35;
                     return 50;
                 },
-                disableClusteringAtZoom: 18,
+                disableClusteringAtZoom: 16,
                 // EXPLICIT — these default to true in leaflet.markercluster but
                 // were missing from the original config, and some clusters
                 // (especially groups of items at the same coords) refused to

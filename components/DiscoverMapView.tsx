@@ -87,6 +87,10 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
         const containerRef = useRef<HTMLDivElement>(null);
         const mapRef = useRef<L.Map | null>(null);
         const layerRef = useRef<L.MarkerClusterGroup | null>(null);
+        // id → Leaflet marker — lets the selection effect swap icons without clearing all layers
+        const markersMapRef = useRef<Map<string, L.Marker>>(new Map());
+        const selectedRef = useRef<MapPlace | null>(null);
+        const prevSelectedIdRef = useRef<string | null>(null);
         const [filter, setFilter] = useState<'all' | Kind>('all');
         const [selectedCity, setSelectedCity] = useState<string>('all');
         const [selected, setSelected] = useState<MapPlace | null>(null);
@@ -165,12 +169,15 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                 };
 
                 const cityAll = cityFiltered(withCoords);
-                const filtered = filter === 'all' ? cityAll : cityAll.filter(p => p.kind === filter);
+                // Dedup by id — same place may appear in multiple AI categories
+                const seen = new Set<string>();
+                const unique = (filter === 'all' ? cityAll : cityAll.filter(p => p.kind === filter))
+                        .filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
                 const missingCount = items.length - withCoords.filter(Boolean).length;
 
                 return {
                         allPlaces: items,
-                        mappable: filtered,
+                        mappable: unique,
                         missing: missingCount,
                 };
         }, [trip.aiRestaurants, trip.aiAttractions, trip.hotels, resolvedCoords, filter, selectedCity]);
@@ -197,7 +204,12 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                 // overlapping tooltips. Tapping a cluster zooms in, finally
                 // breaking it into individual pins.
                 const cluster = (L as any).markerClusterGroup({
-                        maxClusterRadius: 48,
+                        maxClusterRadius: (zoom: number) => {
+                                if (zoom >= 16) return 20;
+                                if (zoom >= 14) return 30;
+                                return 48;
+                        },
+                        disableClusteringAtZoom: 17,
                         spiderfyOnMaxZoom: true,
                         showCoverageOnHover: false,
                         zoomToBoundsOnClick: true,
@@ -256,17 +268,24 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                 // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [trip.id, trip.aiRestaurants?.length, trip.aiAttractions?.length, trip.hotels?.length]);
 
-        // 3. Render pins on every visible-set change.
+        // Keep selectedRef in sync so the data effect can read current selection without a dep loop
+        useEffect(() => { selectedRef.current = selected; }, [selected]);
+
+        // 3a. Render pins when data changes — does NOT depend on `selected` so a pin
+        //     click won't clear/rebuild all layers (which fired fitBounds and caused the
+        //     modal backdrop to receive pointer events ~1–2s after opening).
         useEffect(() => {
                 const map = mapRef.current;
                 const layer = layerRef.current;
                 if (!map || !layer) return;
                 layer.clearLayers();
+                markersMapRef.current.clear();
                 if (mappable.length === 0) return;
 
+                const curSelected = selectedRef.current;
                 const bounds = L.latLngBounds([]);
                 mappable.forEach(p => {
-                        const isSel = selected?.id === p.id;
+                        const isSel = curSelected?.id === p.id;
                         const icon = makePinIcon(p.kind, p.rating, isSel);
                         const marker = L.marker([p.lat, p.lng], { icon, riseOnHover: true });
 
@@ -294,15 +313,38 @@ export const DiscoverMapView: React.FC<DiscoverMapViewProps> = ({ trip, onUpdate
                         });
                         marker.on('click', () => setSelected(p));
                         marker.addTo(layer);
+                        markersMapRef.current.set(p.id, marker);
                         bounds.extend([p.lat, p.lng]);
                 });
+                // Reset prevSelectedId since all markers were just recreated
+                prevSelectedIdRef.current = curSelected?.id ?? null;
 
                 if (mappable.length === 1) {
                         map.setView([mappable[0].lat, mappable[0].lng], 14, { animate: true });
                 } else if (bounds.isValid()) {
                         map.fitBounds(bounds, { padding: [50, 40], maxZoom: 14, animate: true });
                 }
-        }, [mappable, selected]);
+        }, [mappable]); // eslint-disable-line react-hooks/exhaustive-deps
+
+        // 3b. Selection highlight — only swaps marker icons, no layer rebuild or fitBounds.
+        //     This is what runs when a user clicks a pin so the modal never gets a fitBounds
+        //     animation racing with it.
+        useEffect(() => {
+                const prevId = prevSelectedIdRef.current;
+                const nextId = selected?.id ?? null;
+                if (prevId === nextId) return;
+                prevSelectedIdRef.current = nextId;
+
+                if (prevId) {
+                        const prevMarker = markersMapRef.current.get(prevId);
+                        const prevPlace = mappable.find(p => p.id === prevId);
+                        if (prevMarker && prevPlace) prevMarker.setIcon(makePinIcon(prevPlace.kind, prevPlace.rating, false));
+                }
+                if (nextId && selected) {
+                        const nextMarker = markersMapRef.current.get(nextId);
+                        if (nextMarker) nextMarker.setIcon(makePinIcon(selected.kind, selected.rating, true));
+                }
+        }, [selected, mappable]);
 
         // City flyTo fallback — when a city is selected but mappable is empty
         // (geocoding not yet complete), fly to a well-known city centre so the

@@ -279,8 +279,9 @@ export const generateWithFallback = async (
       }
 
       const controller = new AbortController();
-      // SEARCH with grounding can take longer than regular generation — give it 90s
-      const timeoutMs = intent === 'SEARCH' ? 90000 : 60000;
+      // Pro models are slower on large grounding prompts; give them more time
+      const isProModel = modelId.includes('pro');
+      const timeoutMs = intent === 'SEARCH' ? (isProModel ? 150000 : 90000) : 60000;
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       // SEARCH intent uses Google Search grounding on the Worker side.

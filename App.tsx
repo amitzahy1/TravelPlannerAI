@@ -32,6 +32,7 @@ import { MagicalWizard } from './components/onboarding/MagicalWizard';
 import { InviteeWelcome } from './components/onboarding/InviteeWelcome';
 import { TripListSkeleton, ViewSkeleton } from './components/shared';
 import { getDestinationCover } from './utils/destinationCover';
+import { DemoWelcomePage } from './pages/DemoWelcomePage';
 
 const getJoinShareIdFromHash = (): { shareId: string; role: 'editor' | 'viewer' } | null => {
   const hash = window.location.hash;
@@ -489,6 +490,9 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  if (window.location.hash === '#/demo-welcome') {
+    return <DemoWelcomePage />;
+  }
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>

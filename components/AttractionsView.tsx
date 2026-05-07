@@ -15,7 +15,7 @@ import { Tabs } from './ui/Tabs';
 import { SkeletonCardGrid } from './ui/Skeleton';
 import { canEditTrip, isTripOwner, isViewerOnly } from '../utils/tripPermissions';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserPremiumState, markPremiumRunUsed } from '../services/firestoreService';
+import { getUserPremiumState, markPremiumRunUsed, getCategoryRefreshes, incrementCategoryRefresh, CategoryRefreshEntry } from '../services/firestoreService';
 import { getLocalAI, setLocalAI } from '../utils/localTripAI';
 import { findClosedPlaces } from '../utils/closedPlaceCheck';
 
@@ -112,7 +112,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             return;
         }
         getUserPremiumState(userId)
-            .then(s => setPremiumLastUsedAt(s.lastPremiumRunAt ?? 0))
+            .then(s => setPremiumLastUsedAt(s.lastPremiumRunAt_attractions ?? s.lastPremiumRunAt ?? 0))
             .catch(() => setPremiumLastUsedAt(0));
     }, [userId, ownerOnly]);
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -122,7 +122,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     };
     const stampPremiumIfUsed = async (preferTier: 'paid' | 'free', producedResults: boolean) => {
         if (preferTier === 'paid' && producedResults && userId) {
-            await markPremiumRunUsed(userId);
+            await markPremiumRunUsed(userId, 'attractions');
             setPremiumLastUsedAt(Date.now());
         }
     };
@@ -164,6 +164,15 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // items (`geocodeFailed: true`) live on the attractions themselves
     // and surface as a separate warning banner.
     const [geocodingInFlight, setGeocodingInFlight] = useState(0);
+
+    // Per-category refresh state
+    const [categoryRefreshes, setCategoryRefreshes] = useState<Record<string, CategoryRefreshEntry>>({});
+    const [refreshingCategoryId, setRefreshingCategoryId] = useState<string | null>(null);
+    const [showRefreshLimitModal, setShowRefreshLimitModal] = useState(false);
+    useEffect(() => {
+        if (!userId) return;
+        getCategoryRefreshes(userId).then(setCategoryRefreshes).catch(() => {});
+    }, [userId]);
 
     // Nuke the saved AI research for this trip and start a fresh multi-city run
     // Wipe cached AI attractions — user starts fresh research manually
@@ -362,6 +371,81 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         } finally {
             setIsResearchingAll(false);
             setResearchProgress({ current: 0, total: 0 });
+        }
+    };
+
+    const refreshSingleCategory = async (cat: AttractionCategory) => {
+        if (!userId || viewerMode) return;
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const key = `${trip.id}:${cat.id}`;
+        const entry = categoryRefreshes[key];
+        const PAID_LIMIT = 1;
+        const FREE_LIMIT = 3;
+        const entryInCurrentMonth = entry && entry.month === currentMonth;
+        const paidUsed = entryInCurrentMonth ? entry.paid : 0;
+        const freeUsed = entryInCurrentMonth ? entry.free : 0;
+
+        const canUsePaid = ownerOnly && paidUsed < PAID_LIMIT;
+        const canUseFree = freeUsed < FREE_LIMIT;
+        if (!canUsePaid && !canUseFree) {
+            setShowRefreshLimitModal(true);
+            return;
+        }
+
+        const tier: 'paid' | 'free' = canUsePaid ? 'paid' : 'free';
+        setRefreshingCategoryId(cat.id);
+        try {
+            const cityEn = cat.region
+                ? displayCityName(cat.region as string, 'en')
+                : (trip.destinationEnglish || displayCityName(tripCities[0], 'en'));
+            const catTitle = cat.title;
+            const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+            const prompt = `You are a travel expert. As of ${currentDate}, find the BEST attractions in "${cityEn}" for the category: "${catTitle}".
+Return 6-8 currently operating places. Omit any permanently or temporarily closed attraction.
+Respond in JSON:
+{ "attractions": [ { "name", "nameEnglish", "description", "location", "type", "rating", "recommendationSource", "googleMapsUrl", "business_status", "verification_needed" } ] }
+Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be in English.`;
+
+            const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH', tier);
+            const rawData = JSON.parse(response.text || '{}');
+            const freshAttractions = (rawData.attractions || [])
+                .filter((a: any) => a.business_status === 'OPERATIONAL')
+                .map((a: any, j: number) => ({
+                    ...a,
+                    region: a.region || cat.region,
+                    id: `ai-attr-${cat.id}-refresh-${Date.now()}-${j}`,
+                    categoryTitle: catTitle,
+                }));
+
+            if (freshAttractions.length > 0) {
+                const updated = aiCategories.map(c =>
+                    c.id === cat.id ? { ...c, attractions: freshAttractions } : c
+                );
+                setAiCategories(updated);
+                persistAiAttractions(updated);
+                await incrementCategoryRefresh(userId, key, tier);
+                setCategoryRefreshes(prev => {
+                    const prevEntry = prev[key];
+                    const inMonth = prevEntry && prevEntry.month === currentMonth;
+                    return {
+                        ...prev,
+                        [key]: {
+                            paid: (inMonth ? prevEntry.paid : 0) + (tier === 'paid' ? 1 : 0),
+                            free: (inMonth ? prevEntry.free : 0) + (tier === 'free' ? 1 : 0),
+                            month: currentMonth,
+                        },
+                    };
+                });
+                toast.success(`${catTitle} עודכן בהצלחה`);
+                geocodeAndPersistAttractions(updated);
+            } else {
+                toast.warning(`לא נמצאו תוצאות חדשות עבור ${catTitle}`);
+            }
+        } catch (e) {
+            console.error('refreshSingleCategory error:', e);
+            toast.error('שגיאה בעדכון הקטגוריה');
+        } finally {
+            setRefreshingCategoryId(null);
         }
     };
 
@@ -954,7 +1038,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                         <MapIcon className="w-3 h-3" /> מפה
                     </button>
                 </div>
-                {aiCategories.length > 0 && (
+                {aiCategories.length > 0 && !viewerMode && (
                     <>
                         <button
                             onClick={() => selectedCity !== 'all' ? initiateResearch(selectedCity) : researchAllCities()}
@@ -1036,6 +1120,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                             בלי חיפושים, רק תוצאות.
                                         </p>
                                     </div>
+                                    {!viewerMode && (
                                     <button
                                         onClick={() => {
                                             setActiveTab('recommended');
@@ -1054,6 +1139,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                             {isResearchingAll ? 'מחפש אטרקציות…' : 'מצא לי אטרקציות (AI)'}
                                         </span>
                                     </button>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="space-y-4 mt-4">
@@ -1183,7 +1269,23 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                                                     <div className="mb-3 overflow-x-auto pb-2 scrollbar-hide">
                                                         <div className="flex gap-2">
                                                             <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === 'all' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
-                                                            {uniqueCats.map(c => <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === c.id ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200'}`}>{displayTitle(c.title)}</button>)}
+                                                            {uniqueCats.map(c => (
+                                                                <div key={c.id} className="inline-flex items-center gap-0.5">
+                                                                    <button onClick={() => setSelectedCategory(c.id)} className={`px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === c.id ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200'}`}>{displayTitle(c.title)}</button>
+                                                                    {!viewerMode && (
+                                                                        <button
+                                                                            onClick={() => refreshSingleCategory(c)}
+                                                                            disabled={refreshingCategoryId !== null}
+                                                                            title={`רענן ${displayTitle(c.title)}`}
+                                                                            className="w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-40"
+                                                                        >
+                                                                            {refreshingCategoryId === c.id
+                                                                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                                                                : <RotateCw className="w-3 h-3" />}
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 );
@@ -1243,6 +1345,15 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 isDangerous
                 onConfirm={handleResetResearch}
                 onClose={() => setConfirmReset(false)}
+            />
+            <ConfirmModal
+                isOpen={showRefreshLimitModal}
+                title="הגעת למכסה החודשית"
+                message="הגעת למכסת הרענון החודשית לקטגוריה זו (1 רענון בתשלום + 3 רענונים חינמיים). המכסה מתאפסת בתחילת כל חודש."
+                confirmText="הבנתי"
+                cancelText="ביטול"
+                onConfirm={() => setShowRefreshLimitModal(false)}
+                onClose={() => setShowRefreshLimitModal(false)}
             />
         </div>
     );
