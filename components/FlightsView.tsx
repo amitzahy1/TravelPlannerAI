@@ -48,11 +48,13 @@ const getAirlineLogo = (airlineName: string, flightNumber: string) => {
 // --- Edit Modal ---
 interface EditFlightModalProps {
   segment: FlightSegment;
-  onSave: (updated: FlightSegment) => void;
+  bookingPnr?: string;
+  passengers?: string[];
+  onSave: (updated: FlightSegment, ticketPatch?: { pnr?: string; passengers?: string[] }) => void;
   onClose: () => void;
 }
 
-const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onClose }) => {
+const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, bookingPnr, passengers, onSave, onClose }) => {
   const [form, setForm] = useState({
     fromCity: segment.fromCity || '',
     fromCode: segment.fromCode || '',
@@ -64,7 +66,10 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onCl
     arrivalDate: parseDateToIso(segment.arrivalTime) || parseDateToIso(segment.date) || '', // Initialize Arrival Date
     airline: segment.airline || '',
     flightNumber: segment.flightNumber || '',
-    duration: segment.duration || ''
+    duration: segment.duration || '',
+    pnr: bookingPnr || '',
+    confirmationCode: (segment as any).confirmationCode || '',
+    passengers: (passengers || []).join(', '),
   });
 
   const handleSave = () => {
@@ -83,9 +88,17 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onCl
       date: form.date,
       airline: form.airline,
       flightNumber: form.flightNumber,
-      duration: form.duration
+      duration: form.duration,
     };
-    onSave(updated);
+    if (form.confirmationCode.trim()) (updated as any).confirmationCode = form.confirmationCode.trim();
+    const parsedPassengers = form.passengers
+      .split(/[,\n]/)
+      .map(s => s.trim())
+      .filter(Boolean);
+    onSave(updated, {
+      pnr: form.pnr.trim(),
+      passengers: parsedPassengers,
+    });
     onClose();
   };
 
@@ -229,6 +242,50 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onCl
               dir="ltr"
             />
           </div>
+
+          {/* Booking essentials — shared across all segments of this ticket */}
+          <div className="border-t border-slate-100 pt-4 space-y-4">
+            <div className="text-xs font-black text-slate-700">פרטי הזמנה</div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">קוד הזמנה (PNR)</label>
+                <input
+                  type="text"
+                  value={form.pnr}
+                  onChange={e => setForm({ ...form, pnr: e.target.value.toUpperCase() })}
+                  placeholder="ABC123"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono uppercase tracking-widest"
+                  dir="ltr"
+                  maxLength={10}
+                />
+                <div className="text-2xs text-slate-400 mt-1 leading-snug">משותף לכל הקטעים בהזמנה</div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">קוד אישור לקטע (אופציונלי)</label>
+                <input
+                  type="text"
+                  value={form.confirmationCode}
+                  onChange={e => setForm({ ...form, confirmationCode: e.target.value.toUpperCase() })}
+                  placeholder="עבור הזמנות עם PNR נפרד לכל קטע"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono uppercase tracking-widest"
+                  dir="ltr"
+                  maxLength={10}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">שמות נוסעים</label>
+              <input
+                type="text"
+                value={form.passengers}
+                onChange={e => setForm({ ...form, passengers: e.target.value })}
+                placeholder="שם פרטי + משפחה (מופרדים בפסיק)"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                dir="rtl"
+              />
+              <div className="text-2xs text-slate-400 mt-1 leading-snug">חשוב לציין שם משפחה — נדרש לצ'ק-אין מקוון</div>
+            </div>
+          </div>
         </div>
 
         {/* Actions */}
@@ -256,11 +313,12 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, onSave, onCl
 
 const FlightRow: React.FC<{
   segment: FlightSegment;
+  bookingPnr?: string;
   onEdit?: () => void;
   onDelete?: () => void;
   onApplyDuration?: (d: string) => void;
   isStale?: boolean;
-}> = ({ segment, onEdit, onDelete, onApplyDuration, isStale }) => {
+}> = ({ segment, bookingPnr, onEdit, onDelete, onApplyDuration, isStale }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAskingAi, setIsAskingAi] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -388,6 +446,23 @@ const FlightRow: React.FC<{
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {airline && <span className="text-xs font-bold text-slate-500">{airline}</span>}
               {flightNumber && <span className="text-xs font-mono font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{flightNumber}</span>}
+              {(() => {
+                // Prefer a per-segment confirmation code (some bookings split
+                // outbound/return into different PNRs); fall back to the
+                // ticket-level PNR shared across all segments.
+                const pnr = (segment as any).confirmationCode || bookingPnr || '';
+                if (!pnr) return null;
+                return (
+                  <span
+                    className="inline-flex items-center gap-1 text-2xs font-mono font-black text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md"
+                    title="קוד הזמנה (PNR)"
+                    dir="ltr"
+                  >
+                    <span className="text-2xs font-bold text-blue-400">PNR</span>
+                    <span>{pnr}</span>
+                  </span>
+                );
+              })()}
               {segment.status && segment.status !== 'SCHEDULED' && (
                 <span className={`text-2xs font-black px-2 py-0.5 rounded-md ${statusConfig[segment.status]?.cls || 'bg-slate-100 text-slate-600'}`}>
                   {statusConfig[segment.status]?.label}
@@ -694,11 +769,21 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
     }
   };
 
-  const handleSaveSegment = (index: number, updatedSegment: FlightSegment) => {
+  const handleSaveSegment = (
+    index: number,
+    updatedSegment: FlightSegment,
+    ticketPatch?: { pnr?: string; passengers?: string[] },
+  ) => {
     if (!onUpdateTrip) return;
     const newSegments = [...flights.segments];
     newSegments[index] = updatedSegment;
-    onUpdateTrip({ ...trip, flights: { ...trip.flights, segments: newSegments } });
+    const nextFlights = {
+      ...trip.flights,
+      segments: newSegments,
+      ...(ticketPatch?.pnr !== undefined ? { pnr: ticketPatch.pnr } : {}),
+      ...(ticketPatch?.passengers !== undefined ? { passengers: ticketPatch.passengers } : {}),
+    };
+    onUpdateTrip({ ...trip, flights: nextFlights });
     setEditingIndex(null);
   };
 
@@ -779,6 +864,7 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
                   )}
                   <FlightRow
                     segment={seg}
+                    bookingPnr={flights.pnr}
                     onEdit={onUpdateTrip ? () => setEditingIndex(realIndex) : undefined}
                     onDelete={onUpdateTrip ? () => setDeletingIndex(realIndex) : undefined}
                     onApplyDuration={onUpdateTrip ? (d) => handleApplyDuration(realIndex, d) : undefined}
@@ -936,7 +1022,9 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
       {editingIndex !== null && flights.segments[editingIndex] && (
         <EditFlightModal
           segment={flights.segments[editingIndex]}
-          onSave={(updated) => handleSaveSegment(editingIndex, updated)}
+          bookingPnr={flights.pnr}
+          passengers={flights.passengers}
+          onSave={(updated, ticketPatch) => handleSaveSegment(editingIndex, updated, ticketPatch)}
           onClose={() => setEditingIndex(null)}
         />
       )}

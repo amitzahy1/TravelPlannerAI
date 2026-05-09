@@ -20,7 +20,7 @@ import {
     ChevronDown, ChevronUp, AlertCircle, Clock, Check,
     Plane, Car, Globe, Hotel, Utensils, Ticket, Plus, Sparkles, X,
     ArrowLeft, Edit2, BedDouble, Map as MapIcon, Trash2, DollarSign, User, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, CheckCircle2,
-    LayoutGrid, List, Lightbulb
+    LayoutGrid, List, Lightbulb, Wallet
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 import { safeMapsUrl } from '../utils/mapsUrl';
@@ -1133,10 +1133,19 @@ export const ItineraryView: React.FC<{
                 className="hidden md:flex"
             />
 
-            {/* 2.4 Compact actions — single row, two pills. Cities now
-                 live on the hero so this strip only carries the
+            {/* 2.4 Compact actions — single row. Wallet first (most prominent
+                 — primary CTA, always visible on mobile because the desktop
+                 header's wallet button is gated to ≥1024px), then the
                  recommendations toggle + the timeline density toggle. */}
             <div className="px-1 flex items-center gap-2">
+                <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('tp:openWallet'))}
+                    aria-label="פתח ארנק"
+                    className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 bg-gradient-to-br from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-black px-3 py-2 rounded-pill shadow-md shadow-indigo-200/60 hover:shadow-lg active:scale-95 transition-all"
+                >
+                    <Wallet className="w-3.5 h-3.5" />
+                    <span>ארנק</span>
+                </button>
                 <button
                     onClick={() => setShowRecommendations(v => !v)}
                     className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 text-xs font-black px-3 py-2 rounded-pill hover:bg-amber-100 transition-colors"

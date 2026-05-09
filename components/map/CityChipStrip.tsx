@@ -47,7 +47,7 @@ export const CityChipStrip: React.FC<Props> = ({ cities, activeCity, onPick }) =
                         role="tablist"
                         aria-label="סנן לפי עיר"
                         dir="rtl"
-                        className="flex items-center gap-1.5 min-w-max px-1 snap-x snap-mandatory"
+                        className="flex items-center gap-1 md:gap-1.5 min-w-max px-1 snap-x snap-mandatory"
                         onKeyDown={(e) => {
                                 if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
                                 const buttons = Array.from(stripRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]') || []);
@@ -84,9 +84,9 @@ export const CityChipStrip: React.FC<Props> = ({ cities, activeCity, onPick }) =
                                                 title={isActive ? 'לחץ שוב להחזרה לכל הטיול · הקש פעמיים למעבר למלון הבא' : `התמקד ב-${c.name}`}
                                                 className={[
                                                         'snap-start flex-shrink-0',
-                                                        'inline-flex items-center gap-2',
-                                                        'pl-3 pr-1.5 py-1 rounded-full',
-                                                        'text-xs font-black',
+                                                        'inline-flex items-center gap-1 md:gap-2',
+                                                        'pl-2 pr-1 py-0.5 md:pl-3 md:pr-1.5 md:py-1 rounded-full',
+                                                        'text-[10px] md:text-xs font-black',
                                                         'transition-all duration-150',
                                                         'border whitespace-nowrap',
                                                         'hover:-translate-y-px active:translate-y-0',
@@ -95,14 +95,14 @@ export const CityChipStrip: React.FC<Props> = ({ cities, activeCity, onPick }) =
                                                                 : 'bg-white/95 backdrop-blur text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-white shadow-sm',
                                                 ].join(' ')}
                                         >
-                                                <span className="font-black tracking-tight leading-none">{truncate(c.name, 12)}</span>
+                                                <span className="font-black tracking-tight leading-none">{truncate(c.name, 10)}</span>
 
                                                 {/* Number disc — single circle that always shows the FIRST stop number,
                                                     plus a tiny "·N" suffix when this city is visited multiple times.
                                                     Cleaner than two stacked circles, easier to read at a glance. */}
                                                 <span className="inline-flex items-center gap-1">
                                                         <span
-                                                                className="inline-flex items-center justify-center w-5 h-5 rounded-full text-white text-[11px] leading-none"
+                                                                className="inline-flex items-center justify-center w-4 h-4 md:w-5 md:h-5 rounded-full text-white text-[9px] md:text-[11px] leading-none"
                                                                 style={{
                                                                         background: `linear-gradient(135deg,${color},${color}cc)`,
                                                                         boxShadow: isActive
@@ -147,9 +147,9 @@ const ChipAll = React.forwardRef<HTMLButtonElement, AllProps>(({ active, onClick
                 onClick={onClick}
                 className={[
                         'snap-start flex-shrink-0',
-                        'inline-flex items-center gap-1.5',
-                        'px-3 py-1 rounded-full',
-                        'text-xs font-black',
+                        'inline-flex items-center gap-1 md:gap-1.5',
+                        'px-2 py-0.5 md:px-3 md:py-1 rounded-full',
+                        'text-[10px] md:text-xs font-black',
                         'transition-all duration-150',
                         'border whitespace-nowrap',
                         'hover:-translate-y-px active:translate-y-0',
@@ -158,7 +158,7 @@ const ChipAll = React.forwardRef<HTMLButtonElement, AllProps>(({ active, onClick
                                 : 'bg-white/95 backdrop-blur text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-white shadow-sm',
                 ].join(' ')}
         >
-                <Globe className="w-3.5 h-3.5" />
+                <Globe className="w-3 h-3 md:w-3.5 md:h-3.5" />
                 כל הטיול
         </button>
 ));

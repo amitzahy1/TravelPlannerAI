@@ -77,7 +77,7 @@ import { geocodePlacesBatch, photonGeocodeRich } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
 import { safeMapsUrl } from '../utils/mapsUrl';
 import { detectCountryCode } from '../utils/countryCodes';
-import { normalizeNearHotelTitle } from '../utils/categoryTitle';
+import { normalizeNearHotelTitle, isNearHotelTitle } from '../utils/categoryTitle';
 import { walkingMinutesBetween } from '../utils/walkingDistance';
 import { cuisineToHebrew, priceToBucket, sortPriceKeys } from '../utils/cuisineLabels';
 import { FilterChipGroup } from './FilterChipGroup';
@@ -563,8 +563,15 @@ HARD RULES:
                             restaurants: cleaned,
                         };
                         const existingIdx = accumulated.findIndex(c => c.id === catId);
-                        if (existingIdx >= 0) accumulated[existingIdx] = newCat;
-                        else accumulated = [newCat, ...accumulated];
+                        if (existingIdx >= 0) {
+                            accumulated[existingIdx] = newCat;
+                        } else {
+                            // Place near-hotel at position 5 (or end). Same
+                            // reasoning as AttractionsView: useful filter but
+                            // not the headline.
+                            const insertAt = Math.min(4, accumulated.length);
+                            accumulated = [...accumulated.slice(0, insertAt), newCat, ...accumulated.slice(insertAt)];
+                        }
                     }
                 } catch (e: any) {
                     console.error(`Near-hotel research failed for ${hotel.name}:`, e);
@@ -2103,17 +2110,20 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Dedupe categories at render — protects against legacy
-                                                data from before the single-city merge fix that may
-                                                still have duplicate titles like 'תאילנדי' twice. */}
+                                            {/* Dedupe + reorder categories at render — legacy duplicates
+                                                are dropped, and near-hotel categories are demoted to
+                                                the END of the list (per-user request). */}
                                             {(() => {
                                                 const seen = new Set<string>();
-                                                const uniqueCats = aiCategories.filter(c => {
+                                                const dedup = aiCategories.filter(c => {
                                                     const key = displayTitle(c.title);
                                                     if (seen.has(key)) return false;
                                                     seen.add(key);
                                                     return true;
                                                 });
+                                                const main = dedup.filter(c => !isNearHotelTitle(c.title));
+                                                const nearHotel = dedup.filter(c => isNearHotelTitle(c.title));
+                                                const uniqueCats = [...main, ...nearHotel];
                                                 return (
                                                     <div className="mb-3 overflow-x-auto pb-2 scrollbar-hide">
                                                         <div className="flex gap-2">

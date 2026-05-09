@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trip } from '../types';
 import { Map, Plane, Utensils, Hotel, Globe, Ticket, Compass, ChevronDown, MapPin, Wallet, X, Sparkles, Check, List, Calendar, Plus, Settings, ArrowRight, Home, Search, Mail } from 'lucide-react';
@@ -50,6 +50,16 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
         const [isTripMenuOpen, setIsTripMenuOpen] = useState(false);
         const [isTripDropdownOpen, setIsTripDropdownOpen] = useState(false);
         const [isMailboxOpen, setIsMailboxOpen] = useState(false);
+
+        // Listen for the cross-component "open wallet" event so any view
+        // (e.g. the home recommendations bar on mobile, where the desktop
+        // header button is hidden) can request the wallet without
+        // prop-drilling through ItineraryView.
+        useEffect(() => {
+                const handler = () => setIsWalletOpen(true);
+                window.addEventListener('tp:openWallet', handler);
+                return () => window.removeEventListener('tp:openWallet', handler);
+        }, []);
 
         const mailboxCount = useMemo(() => trips.filter(isMailboxTrip).length, [trips]);
 

@@ -24,7 +24,7 @@ import { geocodePlacesBatch, photonGeocodeRich } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
 import { safeMapsUrl } from '../utils/mapsUrl';
 import { detectCountryCode } from '../utils/countryCodes';
-import { normalizeNearHotelTitle } from '../utils/categoryTitle';
+import { normalizeNearHotelTitle, isNearHotelTitle } from '../utils/categoryTitle';
 import { toast } from '../stores/useToastStore';
 import { walkingMinutesBetween } from '../utils/walkingDistance';
 import { attractionTypeToHebrew, priceToBucket, sortPriceKeys } from '../utils/cuisineLabels';
@@ -478,8 +478,16 @@ HARD RULES:
                             attractions: cleaned,
                         };
                         const existingIdx = accumulated.findIndex(c => c.id === catId);
-                        if (existingIdx >= 0) accumulated[existingIdx] = newCat;
-                        else accumulated = [newCat, ...accumulated];
+                        if (existingIdx >= 0) {
+                            accumulated[existingIdx] = newCat;
+                        } else {
+                            // Place near-hotel categories at position 5 (or end if
+                            // there are fewer than 4 existing categories). They're
+                            // a useful filter but not the headline; the main
+                            // research categories should appear first.
+                            const insertAt = Math.min(4, accumulated.length);
+                            accumulated = [...accumulated.slice(0, insertAt), newCat, ...accumulated.slice(insertAt)];
+                        }
                     }
                 } catch (e: any) {
                     console.error(`Near-hotel attractions research failed for ${hotel.name}:`, e);
@@ -1694,16 +1702,21 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Dedupe categories at render time — catches legacy data from
-                                                before the merge fix that still has duplicate titles. */}
+                                            {/* Dedupe + reorder categories at render time — catches
+                                                legacy data with duplicate titles, and demotes near-hotel
+                                                categories so they sit AFTER the main research categories
+                                                (per-user request: not the headline). */}
                                             {(() => {
                                                 const seenTitles = new Set<string>();
-                                                const uniqueCats = aiCategories.filter(c => {
+                                                const dedup = aiCategories.filter(c => {
                                                     const key = displayTitle(c.title);
                                                     if (seenTitles.has(key)) return false;
                                                     seenTitles.add(key);
                                                     return true;
                                                 });
+                                                const main = dedup.filter(c => !isNearHotelTitle(c.title));
+                                                const nearHotel = dedup.filter(c => isNearHotelTitle(c.title));
+                                                const uniqueCats = [...main, ...nearHotel];
                                                 return (
                                                     <div className="mb-3 overflow-x-auto pb-2 scrollbar-hide">
                                                         <div className="flex gap-2">

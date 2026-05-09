@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Trip, Restaurant, Attraction, DayPlan } from '../types';
 import {
-        Lightbulb, Utensils, MapPin, Hotel, Car, X, Calendar, Star, ChevronLeft, ChevronRight, Sparkles, AlertTriangle, Clock, ChevronDown
+        Lightbulb, Utensils, MapPin, Hotel, Car, X, Calendar, Star, ChevronLeft, ChevronRight, Sparkles, AlertTriangle, Clock, ChevronDown, Wallet
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 import {

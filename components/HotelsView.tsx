@@ -107,7 +107,8 @@ const RoomFormModal: React.FC<{
     initialData?: HotelRoom;
     onClose: () => void;
     onSave: (room: HotelRoom) => void;
-}> = ({ initialData, onClose, onSave }) => {
+    onDelete?: () => void;
+}> = ({ initialData, onClose, onSave, onDelete }) => {
     const [form, setForm] = useState<Partial<HotelRoom>>(
         initialData || { adults: 2, children: 0, label: '', roomType: '', beds: '', notes: '' }
     );
@@ -216,9 +217,25 @@ const RoomFormModal: React.FC<{
                         />
                     </div>
 
-                    <button type="submit" className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-bold text-base shadow-xl shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                        שמור חדר
-                    </button>
+                    <div className="flex flex-col gap-2">
+                        <button type="submit" className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-bold text-base shadow-xl shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                            שמור חדר
+                        </button>
+                        {initialData && onDelete && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (window.confirm('למחוק את החדר?')) {
+                                        onDelete();
+                                        onClose();
+                                    }
+                                }}
+                                className="w-full py-2.5 text-red-600 hover:bg-red-50 rounded-2xl font-bold text-sm transition-colors"
+                            >
+                                מחק חדר
+                            </button>
+                        )}
+                    </div>
                 </form>
             </div>
         </div>,
@@ -555,10 +572,22 @@ Address: "${primary.address}"`;
                                 {mergedRooms.map((room, idx) => {
                                     const color = ROOM_COLORS[idx % ROOM_COLORS.length];
                                     return (
-                                        <button
+                                        // role=button (not <button>) because we need a nested
+                                        // delete <button> inside, and nested <button>s are invalid
+                                        // HTML — the invisible inner X used to fire a delete when
+                                        // the user tapped near the chip's edge on mobile.
+                                        <div
                                             key={room.id}
+                                            role="button"
+                                            tabIndex={0}
                                             onClick={() => setEditingRoom(room)}
-                                            className={`group/room flex items-center gap-1.5 ${color.bg} border ${color.border} rounded-xl px-2.5 py-1.5 hover:shadow-sm active:scale-95 transition-all`}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    setEditingRoom(room);
+                                                }
+                                            }}
+                                            className={`group/room flex items-center gap-1.5 ${color.bg} border ${color.border} rounded-xl px-2.5 py-1.5 cursor-pointer hover:shadow-sm active:scale-95 transition-all`}
                                         >
                                             <div className={`w-5 h-5 rounded-lg ${color.badge} flex items-center justify-center flex-shrink-0`}>
                                                 <BedDouble className={`w-2.5 h-2.5 ${color.num}`} />
@@ -571,13 +600,19 @@ Address: "${primary.address}"`;
                                                     {room.adults}{room.children > 0 ? `+${room.children}` : ''} אנשים
                                                 </div>
                                             </div>
+                                            {/* Delete shortcut — desktop only. On mobile this used
+                                                to be opacity-0 but with an active hit area, so a
+                                                tap on the chip's left edge accidentally deleted
+                                                the room. Mobile users delete via the edit modal. */}
                                             <button
+                                                type="button"
                                                 onClick={e => { e.stopPropagation(); handleDeleteRoom(room.id); }}
-                                                className="opacity-0 group-hover/room:opacity-100 p-0.5 hover:bg-red-100 rounded transition-all"
+                                                className="hidden md:block opacity-0 group-hover/room:opacity-100 p-0.5 hover:bg-red-100 rounded transition-all"
+                                                aria-label="מחק חדר"
                                             >
                                                 <X className="w-2.5 h-2.5 text-red-400" />
                                             </button>
-                                        </button>
+                                        </div>
                                     );
                                 })}
                                 <button
@@ -746,6 +781,7 @@ Address: "${primary.address}"`;
                     initialData={editingRoom ?? undefined}
                     onClose={() => setEditingRoom(undefined)}
                     onSave={handleSaveRoom}
+                    onDelete={editingRoom?.id ? () => handleDeleteRoom(editingRoom.id) : undefined}
                 />
             )}
         </div>

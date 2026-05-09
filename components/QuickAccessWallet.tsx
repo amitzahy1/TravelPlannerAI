@@ -192,12 +192,21 @@ export const QuickAccessWallet: React.FC<QuickAccessWalletProps> = ({ trip, onCl
                                                 </div>
                                             </div>
 
-                                            {seg._passengers && seg._passengers.length > 0 && (
-                                                <div className="flex items-center gap-2 text-xs text-slate-600">
-                                                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="font-bold">{seg._passengers.slice(0, 2).join(', ')}{seg._passengers.length > 2 ? ` +${seg._passengers.length - 2}` : ''}</span>
-                                                </div>
-                                            )}
+                                            {(() => {
+                                                // Show passengers only when we actually have a meaningful
+                                                // name — at least one of them needs to look like a full
+                                                // name (i.e. has a space → first + last). A bare first
+                                                // name like "Amit" provides no value for check-in and
+                                                // looks like noise.
+                                                const passengers = (seg._passengers || []).filter(p => /\S\s+\S/.test((p || '').trim()));
+                                                if (passengers.length === 0) return null;
+                                                return (
+                                                    <div className="flex items-center gap-2 text-xs text-slate-600">
+                                                        <Users className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="font-bold">{passengers.slice(0, 2).join(', ')}{passengers.length > 2 ? ` +${passengers.length - 2}` : ''}</span>
+                                                    </div>
+                                                );
+                                            })()}
 
                                             {(seg.seat || seg.class || seg.terminal || seg.gate) && (
                                                 <div className="flex flex-wrap gap-2">

@@ -300,7 +300,11 @@ const AppContent: React.FC = () => {
       dates,
       coverImage: getDestinationCover(dest),
       flights: {
-        passengers: user?.displayName ? [user.displayName] : [],
+        // Don't auto-fill from user.displayName — that's usually just the
+        // first name ("Amit"), but airline check-in needs a LAST name.
+        // Leave empty and let the user fill it in via FlightsView's edit
+        // modal (or let AI extraction populate it from a booking PDF).
+        passengers: [],
         pnr: flightPnr,
         segments: flightSegments
       },
