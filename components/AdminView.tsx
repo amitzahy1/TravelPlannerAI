@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment, HotelRoom, Transport } from '../types';
-import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble, ShieldCheck, RefreshCw, Search } from 'lucide-react';
 import { isTripOwner } from '../utils/tripPermissions';
 import { getUserPremiumState, resetPremiumRunUsed } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
@@ -123,7 +123,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     const [isSaving, setIsSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'owner' | 'health' | 'logs'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'deep_research' | 'owner' | 'health' | 'logs'>('overview');
     const { user } = useAuth();
     const [premiumFood, setPremiumFood] = useState<number | null>(null);
     const [premiumAttractions, setPremiumAttractions] = useState<number | null>(null);
@@ -892,6 +892,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             {[
                                 { id: 'overview' as const, label: 'פרטים כלליים', icon: Layout },
                                 { id: 'logistics' as const, label: 'טיסות ומלונות', icon: Plane },
+                                ...(isOwner ? [{ id: 'deep_research' as const, label: 'מחקר מעמיק', icon: Search }] : []),
                                 ...(isOwner ? [{ id: 'owner' as const, label: 'ניהול מתקדם', icon: ShieldCheck }] : []),
                             ].map(tab => {
                                 const Icon = tab.icon;
@@ -1072,6 +1073,12 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             </div>
                         )}
 
+                        {activeTab === 'deep_research' && isOwner && (
+                            <div className="space-y-6 animate-fade-in">
+                                <DeepResearchPanel trip={activeTrip} onUpdateTrip={(t) => handleUpdateTrip(t)} />
+                            </div>
+                        )}
+
                         {activeTab === 'owner' && isOwner && (
                             <div className="space-y-6 animate-fade-in">
                                 {/* Share & Export */}
@@ -1171,9 +1178,6 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />
                                     </div>
                                 </div>
-
-                                {/* External Deep Research — generate prompt + import results */}
-                                <DeepResearchPanel trip={activeTrip} onUpdateTrip={(t) => handleUpdateTrip(t)} />
 
                                 {/* Activity log + soft-delete recovery */}
                                 <ActivityPanel

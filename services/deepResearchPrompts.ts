@@ -28,8 +28,6 @@ const nightsBetween = (a?: Date, b?: Date): number | null => {
   return days > 0 ? days : null;
 };
 
-// Strip the hotel name from its address if the address starts with the same name —
-// avoids "Holiday Inn Pattaya — Holiday Inn Pattaya, Pattaya, Thailand" duplication.
 const cleanAddress = (name: string, address?: string): string => {
   if (!address) return '';
   const lcAddr = address.toLowerCase().trim();
@@ -41,42 +39,42 @@ const cleanAddress = (name: string, address?: string): string => {
   return address;
 };
 
-const COUNTRY_RESTAURANT_HINTS: Record<string, string[]> = {
-  thailand: [
-    'אוכל רחוב תאילנדי',
-    'מסעדות ים תאילנדיות',
-    'אוכל איסאן (צפון-מזרחי)',
-    'אוכל דרומי-תאילנדי',
-    'בתי קפה בוטיק',
-    'ברים על החוף',
-  ],
-  italy: ['פיצרייה נאפוליטנה', 'טראטוריה משפחתית', 'אנוטקה / יין', 'גלידריה'],
-  japan: ['ראמן אזורי', 'סושי שוק / קונבייר', 'איזקאיה', 'בית תה מסורתי'],
-};
-const COUNTRY_ATTRACTION_HINTS: Record<string, string[]> = {
-  thailand: ['מקדשים והיסטוריה', 'שווקי לילה', 'איים ושנירקול', 'פילים וחיות בר', 'פעילויות מים', 'תרבות וטקסים'],
-  italy: ['מוזיאוני אומנות', 'אתרי UNESCO', 'גני יין וטוסקנה'],
-  japan: ['גני זן ומקדשים', 'תצפיות וגורד שחקים', 'פסטיבלים וחוויות תרבות'],
-};
-
-const detectCountry = (destination?: string): keyof typeof COUNTRY_RESTAURANT_HINTS | null => {
-  if (!destination) return null;
-  if (/(thailand|תאילנד|בנגקוק|פטאיה|פוקט|קו צ|chiang|krabi|samui|chang|bangkok|pattaya)/i.test(destination)) return 'thailand';
-  if (/(italy|איטליה|רומא|פלרמו|מילאן|ונציה|טוסקנה|sicily|rome|milan|venice)/i.test(destination)) return 'italy';
-  if (/(japan|יפן|טוקיו|קיוטו|אוסקה|tokyo|kyoto|osaka)/i.test(destination)) return 'japan';
-  return null;
-};
+// Canonical Hebrew categories used elsewhere in the app. The Deep Research
+// model should aim to populate as many of these as the destination supports,
+// and may add new ones for clearly distinct local clusters.
+const CANONICAL_RESTAURANT_CATEGORIES_HE = [
+  'אוכל מקומי אותנטי',
+  'יוקרה ומישלן',
+  'ברי קוקטיילים',
+  'מסעדות משפחתיות',
+  'ראמן',
+  'פיצה',
+  'המבורגר',
+  'בתי קפה וקינוחים',
+  'תאילנדי',
+  'יפני',
+];
+const CANONICAL_ATTRACTION_CATEGORIES_HE = [
+  'אתרי חובה',
+  'טבע ונופים',
+  'מוזיאונים ותרבות',
+  'קניות ושווקים',
+  'אקסטרים ופעילויות',
+  'חופים ומים',
+  'למשפחות וילדים',
+  'היסטוריה ודת',
+  'חיי לילה ואווירה',
+  'פינות נסתרות',
+];
 
 interface SharedContext {
-  header: string;
   dateLine: string;
   nights: number | null;
   destination: string;
   travelers: string;
+  cities: string[];
   hotelsBlock: string;
-  restaurantCats: string[];
-  attractionCats: string[];
-  country: keyof typeof COUNTRY_RESTAURANT_HINTS | null;
+  hasKids: boolean;
 }
 
 const buildSharedContext = (trip: Trip): SharedContext => {
@@ -85,18 +83,17 @@ const buildSharedContext = (trip: Trip): SharedContext => {
   const nights = nightsBetween(from, to) ?? trip.days ?? null;
 
   const t = trip.travelers;
-  let travelers = 'one or more adult travelers (composition not specified — plan as flexible adult-friendly)';
+  let travelers = 'one or more adult travelers (composition not specified)';
+  let hasKids = false;
   if (t) {
     const parts: string[] = [];
     if (t.adults) parts.push(`${t.adults} adult${t.adults > 1 ? 's' : ''}`);
-    if (t.children) parts.push(`${t.children} child${t.children > 1 ? 'ren' : ''}`);
-    if (t.babies) parts.push(`${t.babies} bab${t.babies > 1 ? 'ies' : 'y'}`);
-    if (parts.length) {
-      travelers = parts.join(', ');
-      if (t.children || t.babies) travelers += ' — favor stroller-friendly, kid-friendly picks';
-    }
-  } else if (trip.groupType) {
-    travelers = `group type: ${trip.groupType}`;
+    if (t.children) { parts.push(`${t.children} child${t.children > 1 ? 'ren' : ''}`); hasKids = true; }
+    if (t.babies) { parts.push(`${t.babies} bab${t.babies > 1 ? 'ies' : 'y'}`); hasKids = true; }
+    if (parts.length) travelers = parts.join(', ');
+  } else if (trip.groupType === 'family') {
+    travelers = 'family';
+    hasKids = true;
   }
 
   const hotels = (trip.hotels || []).filter(h => h.name);
@@ -117,43 +114,24 @@ const buildSharedContext = (trip: Trip): SharedContext => {
   const formatHotel = (h: any): string => {
     const cleanedAddr = cleanAddress(h.name, h.address);
     const coords = (h.lat && h.lng) ? ` (${h.lat.toFixed(4)}, ${h.lng.toFixed(4)})` : '';
-    const dates = (h.checkInDate && h.checkOutDate) ? `   Stay: ${h.checkInDate} → ${h.checkOutDate}` : '';
-    return [
-      `   • ${h.name}`,
-      cleanedAddr ? `     ${cleanedAddr}${coords}` : (coords ? `     ${coords.trim()}` : ''),
-      dates,
-    ].filter(Boolean).join('\n');
+    const dates = (h.checkInDate && h.checkOutDate) ? `, stay ${h.checkInDate}→${h.checkOutDate}` : '';
+    return `   • ${h.name}${cleanedAddr ? ` — ${cleanedAddr}` : ''}${coords}${dates}`;
   };
+  const cityList = Array.from(hotelsByCity.keys());
   const hotelsBlock = Array.from(hotelsByCity.entries())
     .map(([city, list]) => `- ${city}\n${list.map(formatHotel).join('\n')}`)
     .join('\n');
 
-  const restaurantCats = (trip.aiRestaurants || trip.restaurants || []).map(c => c.title).filter(Boolean);
-  const attractionCats = (trip.aiAttractions || trip.attractions || []).map(c => c.title).filter(Boolean);
-  const country = detectCountry(trip.destination);
-
   return {
-    header: '',
     dateLine,
     nights,
-    destination: trip.destination || 'unknown',
+    destination: trip.destination || cityList.join(', ') || 'unknown',
     travelers,
-    hotelsBlock: hotelsBlock || '   (no hotels yet — use the destination cities only)',
-    restaurantCats,
-    attractionCats,
-    country,
+    cities: cityList.length ? cityList : (trip.destination ? trip.destination.split(/[-–,]+/).map(s => s.trim()).filter(Boolean) : []),
+    hotelsBlock: hotelsBlock || '   (no hotels yet)',
+    hasKids,
   };
 };
-
-const tripContextBlock = (ctx: SharedContext): string => `═══════════════════════════════════════════════════════════════════════════════
-TRIP CONTEXT
-═══════════════════════════════════════════════════════════════════════════════
-- Dates: ${ctx.dateLine}${ctx.nights ? `  (${ctx.nights} nights)` : ''}
-- Destination(s): ${ctx.destination}
-- Travelers: ${ctx.travelers}
-
-- Hotels (group by city — find walkable picks for EACH hotel):
-${ctx.hotelsBlock}`;
 
 // ===========================================================================
 // 🍽  RESTAURANTS PROMPT
@@ -161,72 +139,104 @@ ${ctx.hotelsBlock}`;
 
 export const buildDeepRestaurantPrompt = (trip: Trip): string => {
   const ctx = buildSharedContext(trip);
-  const hints = ctx.country ? COUNTRY_RESTAURANT_HINTS[ctx.country] : [];
-  const existing = ctx.restaurantCats.length ? ctx.restaurantCats.map(c => `"${c}"`).join(', ') : '(none yet)';
+  const existing = (trip.aiRestaurants || trip.restaurants || []).map(c => c.title).filter(Boolean);
+  const categoriesToTarget = existing.length ? existing : CANONICAL_RESTAURANT_CATEGORIES_HE;
+  const categoriesList = categoriesToTarget.map((c, i) => `   ${i + 1}. "${c}"`).join('\n');
+  const cityCount = ctx.cities.length || 1;
 
-  return `You are a senior food critic and restaurant researcher with deep web access
-(Google Maps, Time Out, Eater, Michelin Guide, Atlas Obscura, local food blogs,
-Reddit r/<city>, Wongnai/Tabelog/OpenRice). You think like a local resident
-who happens to be a great editor. Your goal is the BEST possible restaurant
-list for this specific trip — biased toward walkable picks near each hotel,
-plus a few iconic must-eats per city.
+  return `MISSION
+You are building a curated, deeply-researched RESTAURANT GUIDE for a real
+multi-city trip. The output goes directly into a travel-planner app where
+the user will browse restaurants by Hebrew category, pick favorites for
+each day, and walk to them from their hotels. Your job is to produce the
+richest, most accurate, most useful restaurant list a trip planner could
+ask for — organized by category, with enough detail per entry that the
+user never needs to open another tab to decide where to eat.
 
-${tripContextBlock(ctx)}
-
-- Existing restaurant categories (Hebrew — REUSE WHEN POSSIBLE):
-   ${existing}
-${hints.length ? `- If you must propose new categories, draw from these regional staples:\n   ${hints.map(c => `"${c}"`).join(', ')}` : ''}
-
-═══════════════════════════════════════════════════════════════════════════════
-RESEARCH METHODOLOGY  — follow this order, do not skip steps
-═══════════════════════════════════════════════════════════════════════════════
-For EACH hotel above, in turn:
-  1. Open Google Maps. Search "best restaurants near {hotel address}".
-     Note candidates with rating ≥ 4.4 AND review count ≥ 200.
-  2. Cross-reference each candidate against editorial sources:
-     Time Out, Eater, Michelin Guide, local food blogs, Reddit r/<city>.
-  3. Read the LATEST 3–5 Google reviews (last 6 months). Skip places
-     where recent reviews indicate decline, closure, or chef departure.
-  4. Verify each pick is currently OPERATIONAL — not "Permanently closed",
-     not "Temporarily closed", not >12 months without a review.
-
-For each city as a whole (not just per-hotel):
-  5. Add 3–5 ICONIC must-eat restaurants — places worth a 30-minute taxi
-     from any hotel in the city.
+ROLE
+You are a senior food critic and restaurant researcher with deep web
+access (Google Maps, Time Out, Eater, Michelin Guide, Atlas Obscura,
+local Hebrew/English food blogs, Reddit r/<city>, Wongnai/Tabelog/OpenRice).
+Think like a local resident who happens to be a great editor.
 
 ═══════════════════════════════════════════════════════════════════════════════
-PRIORITY HIERARCHY  &  TARGETS
+WHAT "GREAT OUTPUT" LOOKS LIKE
 ═══════════════════════════════════════════════════════════════════════════════
-Priority 1 — WALKABLE: within ~1.2 km / 15-min walk of the assigned hotel.
-              The user wants to walk back tipsy or with tired kids.
-              Target: 8–12 walkable per hotel.
-Priority 2 — CITY-ICONIC: anywhere in the city, but world-famous or
-              award-winning enough to taxi for. Target: 3–5 per city.
-
-Set "nearestHotel" to the hotel within 1.2 km, OR (Priority 2 picks) the
-hotel that is geographically closest.
+✓ Every category has 6–10 strong picks (or honestly empty if the destination
+  has nothing for that category — e.g. "ראמן" in Tel Aviv).
+✓ Mix of price points within each category (some $, some $$$).
+✓ Mix of iconic must-eats AND insider/local hidden gems.
+✓ Every entry verified currently OPERATIONAL (not closed, not under year-long
+  renovation, last reviews ≤ 6 months old).
+✓ Real Google Maps URLs, real ratings, real coordinates — never fabricated.
+✓ Hebrew descriptions that tell the user WHY this place is worth a visit
+  (not generic "great food" — specific: "the larb has more chili than rice").
 
 ═══════════════════════════════════════════════════════════════════════════════
-DIVERSITY  &  EXCLUSIONS
+TRIP DETAILS
 ═══════════════════════════════════════════════════════════════════════════════
-Mix cuisines per hotel — don't return all 10 picks of the same type.
-For a Thai city, aim 50% Thai (street + sit-down), 20% other Asian,
-20% international, 10% bars / cafés / dessert. Adjust per country.
+Cities to cover: ${ctx.destination}
+Dates: ${ctx.dateLine}${ctx.nights ? `  (${ctx.nights} nights)` : ''}
+Travelers: ${ctx.travelers}${ctx.hasKids ? '  — favor kid-friendly when relevant' : ''}
 
-EXCLUDE global / regional fast chains — McDonald's, KFC, Burger King, Subway,
+Hotels (used to tag the closest hotel per entry — NOT the main organizing axis):
+${ctx.hotelsBlock}
+
+═══════════════════════════════════════════════════════════════════════════════
+CATEGORIES TO POPULATE  (Hebrew titles — use EXACTLY these strings)
+═══════════════════════════════════════════════════════════════════════════════
+${categoriesList}
+
+If the destination has a clearly distinct food cluster that doesn't fit any
+of the above (e.g. "מסעדות שוק לח" in Bangkok, "אוכל איסאן" in northeastern
+Thailand), propose a NEW Hebrew category — short (≤ 5 words) — and list it
+under \`newRestaurantCategories\`.
+
+For non-applicable categories (e.g. "ראמן" in a non-Asian destination),
+return an empty entry list rather than padding with weak picks.
+
+═══════════════════════════════════════════════════════════════════════════════
+COVERAGE TARGETS
+═══════════════════════════════════════════════════════════════════════════════
+Per CITY: at least 50 strong restaurant picks across all categories.
+Per CATEGORY (in a city that supports it): 6–10 picks.
+Total for ${cityCount}-city trip: 60–${Math.max(120, cityCount * 50)} restaurants.
+
+Within each city, ensure geographic spread — don't dump 30 picks in one
+neighborhood and 2 in another. Every entry should set \`nearestHotel\` to
+the closest hotel from the list above (use straight-line distance).
+
+═══════════════════════════════════════════════════════════════════════════════
+RESEARCH METHODOLOGY  — work CITY by CITY
+═══════════════════════════════════════════════════════════════════════════════
+For each city above:
+  1. Open Google Maps. For each category, search "best <category> in <city>".
+     Pull top results with rating ≥ 4.4 AND ≥ 200 reviews.
+  2. Cross-reference against editorial sources: Time Out, Eater, Michelin,
+     local food blogs, Reddit r/<city>, regional aggregators (Wongnai for
+     Thailand, Tabelog for Japan, Burpple for Singapore, etc.).
+  3. Read the latest 3–5 reviews. Skip places where recent reviews indicate
+     decline, closure, or a chef departure that hurt quality.
+  4. Verify operational status — not "Permanently closed", not >12 months
+     without a review.
+
+═══════════════════════════════════════════════════════════════════════════════
+QUALITY BAR
+═══════════════════════════════════════════════════════════════════════════════
+EXCLUDE global / regional fast chains: McDonald's, KFC, Burger King, Subway,
 Pizza Hut, Domino's, Papa John's, Pizza Company, Pizza Marzano, Starbucks,
-Costa, Krispy Kreme, Dunkin'. Better an empty pick than chain padding.
+Costa, Krispy Kreme, Dunkin', Tim Hortons. Better an empty pick than chain padding.
 
 NAME INTEGRITY (CRITICAL): "name" / "nameEnglish" must be the establishment's
 display name. NEVER use a street address, "Moo X", "Soi Y", "464/12", or
 coordinates as the name. If you only have an address — OMIT the entry.
 
 ═══════════════════════════════════════════════════════════════════════════════
-FIELDS  (omit if you cannot fill with HIGH confidence — never guess)
+FIELDS PER ENTRY  (omit if you cannot fill with HIGH confidence — never guess)
 ═══════════════════════════════════════════════════════════════════════════════
   name              original-script display name (Thai / Arabic / Hebrew / etc)
   nameEnglish       Latin-script display name
-  description       2–3 Hebrew sentences, vivid + specific (what makes it special)
+  description       2–3 Hebrew sentences. Vivid + specific (what makes it special).
   location          full address: street + district + city
   lat, lng          decimal degrees, only if explicitly known
   priceLevel        "$" | "$$" | "$$$" | "$$$$"
@@ -236,20 +246,20 @@ FIELDS  (omit if you cannot fill with HIGH confidence — never guess)
   recommendedDishes up to 5, lowercase English ("som tam", "moo ping")
   vibe              short phrase ("street-side, plastic stools, no English menu")
   bestTime          "Breakfast" | "Lunch" | "Dinner" | "Late Night"
-  reservationRequired  true ONLY if the source explicitly says reservations needed
-  googleRating      0.0–5.0 number
+  reservationRequired  true ONLY if the source explicitly says so
+  googleRating      0.0–5.0
   reviewCount       integer
   michelin          true ONLY for Michelin star or Bib Gourmand
   tags              up to 5 short markers ("Spicy", "View", "Romantic",
                     "Family-Friendly")
-  recommendationSource  verbatim source name ("Time Out Bangkok",
-                    "Michelin Guide", "r/Thailand", "Eater", "Wongnai")
-  categoryTitle     reuse one of the existing Hebrew categories above when it
-                    fits, OR propose a short Hebrew category name (≤ 5 words)
-  nearestHotel      the hotel name from above this entry is closest to
-  googleMapsUrl     the actual URL from Google Maps results — never fabricate
+  recommendationSource  verbatim source ("Time Out Bangkok", "Michelin Guide",
+                    "r/Thailand", "Eater", "Wongnai")
+  categoryTitle     EXACTLY one of the Hebrew categories above (or one of
+                    your proposed new categories — same string in both places)
+  nearestHotel      hotel name from above this entry is geographically closest to
+  googleMapsUrl     actual URL from Google Maps results — NEVER fabricated
 
-EXAMPLE of one PERFECT entry (use the SHAPE, not the specifics):
+EXAMPLE OF ONE PERFECT ENTRY (use the SHAPE, not the specifics):
 {
   "name": "ส้มตำนัว",
   "nameEnglish": "Som Tum Nua",
@@ -275,19 +285,44 @@ EXAMPLE of one PERFECT entry (use the SHAPE, not the specifics):
 }
 
 ═══════════════════════════════════════════════════════════════════════════════
-OUTPUT FORMAT — exactly one JSON object, no markdown fences, no prose
+OUTPUT FORMAT — STRICT
 ═══════════════════════════════════════════════════════════════════════════════
+Your reply must be a single, valid JSON object — and NOTHING ELSE.
+
+Specifically forbidden:
+  ✗ NO opening prose ("Here is the JSON…", "I researched…", etc.)
+  ✗ NO closing prose ("Let me know if you need more…")
+  ✗ NO markdown code fences (\`\`\`json … \`\`\` or \`\`\` … \`\`\`)
+  ✗ NO markdown headers (## Restaurants, etc.)
+  ✗ NO inline citations / "Sources" section OUTSIDE the JSON.
+     (citations belong inside each entry's "recommendationSource" field)
+  ✗ NO XML tags like <result> or <response>
+  ✗ NO comments
+
+The first character of your reply must be \`{\` and the last must be \`}\`.
+
+Required shape:
 {
-  "restaurants": [ /* 60–120 entries across all hotels + city-iconic */ ],
+  "restaurants": [ /* 60–${Math.max(120, cityCount * 50)} entries */ ],
   "newRestaurantCategories": [ /* any new Hebrew category titles you proposed */ ]
 }
+
+COMMON MISTAKES TO AVOID  (especially for Gemini Deep Research / Gemini 2.5 Pro)
+- Do NOT prepend "Here is the deep research result:" or any preamble.
+- Do NOT append a "Sources" / "References" / "Citations" section after the JSON.
+- Do NOT wrap in \`\`\`json … \`\`\` or any code fence.
+- Do NOT add ## headers, **bold**, bullet lists, or executive summaries OUTSIDE
+  the JSON. ALL prose must live inside the JSON \`description\` fields.
+- Do NOT emit XML tags like <result> or <response> around the JSON.
 
 FINAL RULES
 1. OMIT any field you cannot fill with HIGH confidence. Don't write "" or null.
 2. Don't fabricate Google Maps URLs, ratings, lat/lng, or prices.
-3. Aim for breadth — don't dump 50 entries on one hotel and 2 on another.
-4. Hebrew descriptions only. Field NAMES stay English.
-5. Return JSON ONLY. No prose. No markdown code fences.
+3. Aim for breadth across all cities AND across all categories — don't dump
+   most picks in one city or one category.
+4. Hebrew \`description\`s. Field NAMES stay English.
+5. Return JSON ONLY. The very first character of your reply MUST be \`{\`
+   and the very last MUST be \`}\`. Anything else breaks the import.
 `;
 };
 
@@ -297,79 +332,112 @@ FINAL RULES
 
 export const buildDeepAttractionPrompt = (trip: Trip): string => {
   const ctx = buildSharedContext(trip);
-  const hints = ctx.country ? COUNTRY_ATTRACTION_HINTS[ctx.country] : [];
-  const existing = ctx.attractionCats.length ? ctx.attractionCats.map(c => `"${c}"`).join(', ') : '(none yet)';
-  const hasKids = /child|kid|family|בילד|children/i.test(ctx.travelers) || /family/i.test(trip.groupType || '');
+  const existing = (trip.aiAttractions || trip.attractions || []).map(c => c.title).filter(Boolean);
+  const categoriesToTarget = existing.length ? existing : CANONICAL_ATTRACTION_CATEGORIES_HE;
+  const categoriesList = categoriesToTarget.map((c, i) => `   ${i + 1}. "${c}"`).join('\n');
+  const cityCount = ctx.cities.length || 1;
 
-  return `You are a senior travel researcher specializing in attractions, culture and
-activities, with deep web access (Google Maps, TripAdvisor, Lonely Planet,
-Atlas Obscura, UNESCO, official tourism boards, Reddit r/<city>, local
-travel blogs). You think like a local guide who has shown around hundreds
-of travelers and knows when a famous site is overrated, when a "hidden gem"
-is genuinely worth the detour, and how families pace a day differently
-from solo travelers.
+  return `MISSION
+You are building a curated, deeply-researched ATTRACTIONS GUIDE for a real
+multi-city trip. The output goes directly into a travel-planner app where
+the user will browse attractions by Hebrew category, pick what to do each
+day, and tag them onto their itinerary. Your job is to produce the richest,
+most accurate, most useful attractions list a trip planner could ask for —
+organized by category, with enough detail per entry that the user never
+needs to open another tab to decide what to do.
 
-${tripContextBlock(ctx)}
-
-- Existing attraction categories (Hebrew — REUSE WHEN POSSIBLE):
-   ${existing}
-${hints.length ? `- If you must propose new categories, draw from these regional staples:\n   ${hints.map(c => `"${c}"`).join(', ')}` : ''}
-${hasKids ? '- TRAVELERS INCLUDE CHILDREN — boost kid-friendly picks (zoos, aquariums, family-friendly water parks). Mark such entries with "Family-Friendly" in tags or note kid-suitability in the description.' : ''}
-
-═══════════════════════════════════════════════════════════════════════════════
-RESEARCH METHODOLOGY  — follow this order, do not skip steps
-═══════════════════════════════════════════════════════════════════════════════
-For EACH hotel above, in turn:
-  1. Open Google Maps. Search "things to do near {hotel address}".
-     Note candidates with rating ≥ 4.3 AND review count ≥ 500.
-  2. Cross-reference each candidate against editorial sources:
-     Lonely Planet, Atlas Obscura, TripAdvisor "things to do" lists,
-     UNESCO World Heritage list, official tourism boards, Reddit r/<city>.
-  3. Read the LATEST 3–5 reviews (last 6 months). Skip places that are
-     under indefinite renovation, recently closed, or whose reviews
-     describe a steep decline.
-  4. Verify operational status — not permanently closed, not flagged
-     "temporarily closed" with no reopening date.
-
-For each city as a whole:
-  5. Add 5–8 ICONIC must-visit attractions — UNESCO sites, world-famous
-     landmarks, iconic experiences (cabaret shows, night markets, etc.).
+ROLE
+You are a senior travel researcher specializing in attractions, culture
+and activities, with deep web access (Google Maps, TripAdvisor, Lonely
+Planet, Atlas Obscura, UNESCO, official tourism boards, Reddit r/<city>,
+local Hebrew/English travel blogs). Think like a local guide who has
+shown around hundreds of travelers and knows when a famous site is
+overrated, when a "hidden gem" is genuinely worth the detour, and how
+families pace a day differently from solo travelers.
 
 ═══════════════════════════════════════════════════════════════════════════════
-PRIORITY HIERARCHY  &  TARGETS
+WHAT "GREAT OUTPUT" LOOKS LIKE
 ═══════════════════════════════════════════════════════════════════════════════
-Priority 1 — WALKABLE: within ~1.2 km / 15-min walk of the assigned hotel.
-              Target: 5–8 walkable per hotel.
-Priority 2 — CITY-ICONIC: anywhere in the city, world-famous or unique
-              enough to taxi for. Target: 5–8 per city.
+✓ Every category has 4–8 strong picks (or honestly empty if the destination
+  has none — e.g. "חופים ומים" in Vienna).
+✓ Mix of iconic must-sees AND insider hidden gems.
+✓ Mix of free / paid, indoor / outdoor, half-day / full-day visits.
+✓ Every entry verified currently OPERATIONAL (not closed, not under
+  indefinite renovation, last reviews ≤ 6 months old).
+✓ Real Google Maps URLs, real ratings, real coordinates — never fabricated.
+✓ Hebrew descriptions that tell the user WHY this place is worth a visit
+  AND when to go (sunset / before crowds / weekday). Generic "amazing
+  views" doesn't help — say WHAT view, from WHERE, at WHAT TIME.
 
 ═══════════════════════════════════════════════════════════════════════════════
-DIVERSITY  &  COVERAGE
+TRIP DETAILS
 ═══════════════════════════════════════════════════════════════════════════════
-Cover diverse activity types per city — don't return only temples or only beaches:
-  Culture / History    (temples, museums, heritage, archaeology)
-  Nature / Outdoors    (parks, beaches, viewpoints, dive sites)
-  Adventure / Active   (water parks, ziplines, kayaking, ATVs)
-  Family / Kids        (zoos, aquariums, trampoline parks)
-  Shopping / Markets   (night markets, bazaars — only iconic ones)
-  Nightlife / Vibes    (rooftop bars, cabaret shows, walking streets)
-  Hidden gems          (insider/local picks not in top-10 lists)
+Cities to cover: ${ctx.destination}
+Dates: ${ctx.dateLine}${ctx.nights ? `  (${ctx.nights} nights)` : ''}
+Travelers: ${ctx.travelers}${ctx.hasKids ? '  — boost kid-friendly picks (zoos, aquariums, water parks); flag stroller / accessibility issues in description' : ''}
+
+Hotels (used to tag the closest hotel per entry — NOT the main organizing axis):
+${ctx.hotelsBlock}
+
+═══════════════════════════════════════════════════════════════════════════════
+CATEGORIES TO POPULATE  (Hebrew titles — use EXACTLY these strings)
+═══════════════════════════════════════════════════════════════════════════════
+${categoriesList}
+
+If the destination has a clearly distinct cluster that doesn't fit (e.g.
+"קייאקים ושנירקול" for an island trip), propose a NEW Hebrew category
+(≤ 5 words) and list it under \`newAttractionCategories\`.
+
+For non-applicable categories (e.g. "חופים ומים" in a landlocked destination),
+return an empty entry list rather than padding.
+
+═══════════════════════════════════════════════════════════════════════════════
+COVERAGE TARGETS
+═══════════════════════════════════════════════════════════════════════════════
+Per CITY: at least 30 strong attraction picks across all categories.
+Per CATEGORY (in a city that supports it): 4–8 picks.
+Total for ${cityCount}-city trip: 30–${Math.max(80, cityCount * 30)} attractions.
+
+Within each city, ensure variety of activity types — don't dump 15 temples
+and 2 of everything else. Set \`nearestHotel\` to the geographically closest
+hotel from the list above (straight-line distance).
+
+═══════════════════════════════════════════════════════════════════════════════
+RESEARCH METHODOLOGY  — work CITY by CITY
+═══════════════════════════════════════════════════════════════════════════════
+For each city above:
+  1. Open Google Maps. For each category, search "<category> in <city>".
+     Pull top results with rating ≥ 4.3 AND ≥ 500 reviews.
+  2. Cross-reference against editorial sources: Lonely Planet, Atlas
+     Obscura, TripAdvisor "things to do", UNESCO, official tourism
+     boards, Reddit r/<city>, local travel blogs.
+  3. Read the latest 3–5 reviews. Skip places under indefinite renovation,
+     recently closed, or whose reviews describe a steep decline.
+  4. Verify operational status — not flagged "temporarily closed" with
+     no reopening date, not >12 months without a review.
+
+═══════════════════════════════════════════════════════════════════════════════
+QUALITY BAR
+═══════════════════════════════════════════════════════════════════════════════
+DON'T pad with: malls (unless iconic — "Siam Paragon"), generic shopping
+streets, viewing decks of skyscrapers nobody talks about, "free walking
+tours" (those are services, not attractions).
 
 NAME INTEGRITY (CRITICAL): "name" / "nameEnglish" must be the venue display
 name. NEVER use a street address, road number, or coordinates as the name.
 If you only have an address — OMIT the entry.
 
 ═══════════════════════════════════════════════════════════════════════════════
-FIELDS  (omit if you cannot fill with HIGH confidence — never guess)
+FIELDS PER ENTRY  (omit if you cannot fill with HIGH confidence — never guess)
 ═══════════════════════════════════════════════════════════════════════════════
   name              original-script display name
   nameEnglish       Latin-script display name
-  description       2–3 Hebrew sentences, vivid + specific
+  description       2–3 Hebrew sentences. Vivid + specific.
   location          full address
   lat, lng          decimal degrees, only if explicitly known
   price             display string ("Free" / "300 THB" / "Adults 500 / Kids 250")
   costNumeric       single number in local currency (omit if free)
-  rating            0.0–5.0 number
+  rating            0.0–5.0
   reviewCount       integer
   type              short label ("Temple", "Beach", "Water park", "Market")
   activity_type     "Adventure" | "Culture" | "Relaxation" | "Shopping" |
@@ -379,11 +447,11 @@ FIELDS  (omit if you cannot fill with HIGH confidence — never guess)
   recommendationSource  verbatim source ("Lonely Planet Top Choice",
                     "Atlas Obscura", "UNESCO", "Tourism Authority of Thailand",
                     "r/Bangkok")
-  categoryTitle     reuse existing Hebrew category or propose new short one
+  categoryTitle     EXACTLY one of the Hebrew categories above
   nearestHotel      closest hotel from the list above
-  googleMapsUrl     the actual URL — never fabricate
+  googleMapsUrl     actual URL — NEVER fabricated
 
-EXAMPLE of one PERFECT entry (use the SHAPE, not the specifics):
+EXAMPLE OF ONE PERFECT ENTRY (use the SHAPE, not the specifics):
 {
   "name": "วัดพระแก้ว",
   "nameEnglish": "Wat Phra Kaew (Temple of the Emerald Buddha)",
@@ -405,18 +473,39 @@ EXAMPLE of one PERFECT entry (use the SHAPE, not the specifics):
 }
 
 ═══════════════════════════════════════════════════════════════════════════════
-OUTPUT FORMAT — exactly one JSON object, no markdown fences, no prose
+OUTPUT FORMAT — STRICT
 ═══════════════════════════════════════════════════════════════════════════════
+Your reply must be a single, valid JSON object — and NOTHING ELSE.
+
+Specifically forbidden:
+  ✗ NO opening prose ("Here is the JSON…", "I researched…", etc.)
+  ✗ NO closing prose ("Let me know if you need more…")
+  ✗ NO markdown code fences (\`\`\`json … \`\`\` or \`\`\` … \`\`\`)
+  ✗ NO markdown headers (## Attractions, etc.)
+  ✗ NO inline citations / "Sources" section OUTSIDE the JSON.
+  ✗ NO XML tags like <result> or <response>
+  ✗ NO comments
+
+The first character of your reply must be \`{\` and the last must be \`}\`.
+
+Required shape:
 {
-  "attractions": [ /* 30–80 entries across all hotels + city-iconic */ ],
+  "attractions": [ /* 30–${Math.max(80, cityCount * 30)} entries */ ],
   "newAttractionCategories": [ /* any new Hebrew category titles you proposed */ ]
 }
+
+COMMON MISTAKES TO AVOID  (especially for Gemini Deep Research / Gemini 2.5 Pro)
+- Do NOT prepend any preamble. Do NOT append a "Sources" section.
+- Do NOT wrap in code fences. Do NOT add markdown headers, **bold**, bullets,
+  or executive summaries OUTSIDE the JSON.
+- Do NOT emit XML tags around the JSON.
+- ALL prose must live inside the JSON \`description\` fields.
 
 FINAL RULES
 1. OMIT any field you cannot fill with HIGH confidence. Don't write "" or null.
 2. Don't fabricate Google Maps URLs, ratings, lat/lng, or prices.
-3. Aim for breadth — don't dump 30 entries on one hotel and 2 on another.
-4. Hebrew descriptions only. Field NAMES stay English.
-5. Return JSON ONLY. No prose. No markdown code fences.
+3. Aim for breadth across cities AND categories.
+4. Hebrew \`description\`s. Field NAMES stay English.
+5. Return JSON ONLY. First char \`{\`, last char \`}\`. Anything else breaks the import.
 `;
 };

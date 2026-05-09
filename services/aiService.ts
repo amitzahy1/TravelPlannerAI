@@ -536,8 +536,19 @@ export const parseDeepResearchText = async (rawText: string): Promise<DeepResear
   try {
     parsed = JSON.parse(text);
   } catch {
+    // Strip code fences, then extract the first balanced { ... } block —
+    // covers Gemini Deep Research outputs that wrap JSON in prose / markdown.
     const cleaned = text.replace(/```json|```/g, '').trim();
-    parsed = JSON.parse(cleaned);
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const firstBrace = cleaned.indexOf('{');
+      const lastBrace = cleaned.lastIndexOf('}');
+      if (firstBrace < 0 || lastBrace <= firstBrace) {
+        throw new Error('Parser could not locate a JSON object in the response.');
+      }
+      parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+    }
   }
 
   return {
