@@ -255,40 +255,67 @@ display name. NEVER use a street address, "Moo X", "Soi Y", "464/12", or
 coordinates as the name. If you only have an address — OMIT the entry.
 
 ═══════════════════════════════════════════════════════════════════════════════
-FIELDS PER ENTRY  (omit if you cannot fill with HIGH confidence — never guess)
+SCHEMA — required fields, strict types
 ═══════════════════════════════════════════════════════════════════════════════
-  name              original-script display name (Thai / Arabic / Hebrew / etc)
-  nameEnglish       Latin-script display name
-  description       2–3 Hebrew sentences. Vivid + specific (what makes it special).
-  location          full address: street + district + city
-  lat, lng          decimal degrees, only if explicitly known
-  priceLevel        "$" | "$$" | "$$$" | "$$$$"
-  priceRange        display string ("100–300 THB" / "₪80–150")
-  cuisine           single label ("Thai", "Italian", "Japanese")
-  must_try_dish     the ONE signature dish ordered by 80% of patrons
-  recommendedDishes up to 5, lowercase English ("som tam", "moo ping")
-  vibe              short phrase ("street-side, plastic stools, no English menu")
-  bestTime          "Breakfast" | "Lunch" | "Dinner" | "Late Night"
-  reservationRequired  true ONLY if the source explicitly says so
-  googleRating      0.0–5.0
-  reviewCount       integer
-  michelin          true ONLY for Michelin star or Bib Gourmand
-  tags              up to 5 short markers ("Spicy", "View", "Romantic",
-                    "Family-Friendly")
-  recommendationSource  verbatim source ("Time Out Bangkok", "Michelin Guide",
-                    "r/Thailand", "Eater", "Wongnai")
-  categoryTitle     EXACTLY one of the Hebrew categories above (or one of
-                    your proposed new categories — same string in both places)
-  nearestHotel      hotel name from above this entry is geographically closest to
-  googleMapsUrl     actual URL from Google Maps results — NEVER fabricated
+The output is parsed by an automated importer and rendered on a map. If a
+required field is missing or the wrong type, the entry is dropped.
+
+REQUIRED on EVERY entry (omit the whole entry if any are missing):
+  name              string — original-script display name (Thai/Arabic/Hebrew/Latin)
+  nameEnglish       string — Latin-script display name
+  description       string — 2–3 Hebrew sentences, vivid + specific
+  location          string — full address: street + district + city + country
+  categoryTitle     string — EXACTLY one of the Hebrew categories above
+                              (or one of your proposed new categories — same
+                              string also listed in newRestaurantCategories)
+  recommendationSource  string — verbatim source name ("Michelin Guide",
+                              "Time Out Bangkok", "r/Thailand", "Eater")
+  AT LEAST ONE OF:
+    - lat (number) AND lng (number)  — decimal degrees, e.g. 13.7449
+                                       (ALWAYS preferred — needed for the map)
+    - googleMapsUrl (string)         — real Google Maps URL only, never fabricated
+                                       (the app will geocode this if no lat/lng)
+
+If you can find NEITHER coordinates NOR a real Google Maps URL — OMIT THE ENTRY.
+A restaurant we cannot place on the map has zero value to the user.
+
+STRONGLY ENCOURAGED (drives UX quality):
+  priceLevel        string enum — "$" | "$$" | "$$$" | "$$$$"
+  cuisine           string — single label ("Thai", "Italian", "Japanese")
+  must_try_dish     string — THE one signature dish
+  googleRating      number 0.0–5.0 (NUMBER not string — write 4.5 not "4.5")
+  reviewCount       integer (NUMBER not string)
+  nearestHotel      string — hotel name from above this entry is closest to
+                              (use straight-line distance from lat/lng)
+
+OPTIONAL (bonus signal):
+  priceRange        string — "100–300 THB" / "₪80–150"
+  recommendedDishes array of strings, max 5, lowercase English
+  vibe              string — short phrase ("street-side, plastic stools")
+  bestTime          string enum — "Breakfast" | "Lunch" | "Dinner" | "Late Night"
+  reservationRequired  boolean — true only if the source explicitly says so
+  michelin          boolean — true only for Michelin star / Bib Gourmand
+  tags              array of strings, max 5 short markers ("Spicy", "View",
+                              "Romantic", "Family-Friendly", "Iconic")
+
+DATA TYPE RULES (strict):
+  • Numbers as numbers, NOT strings: 4.5 ✅  "4.5" ❌
+  • Booleans as booleans: true / false ✅  "true" ❌  "yes" ❌
+  • Coordinates as decimal degrees, NOT degrees-minutes-seconds.
+  • Empty/unknown values: OMIT the field. NEVER write "", null, "N/A",
+    "unknown", 0, or "tbd".
+  • Arrays: omit the field if empty. NEVER write [].
 
 EXAMPLE OF ONE PERFECT ENTRY (use the SHAPE, not the specifics):
 {
   "name": "ส้มตำนัว",
   "nameEnglish": "Som Tum Nua",
   "description": "מסעדת איסאן אגדית ליד אנוסאוואארי-ניצחון, מפורסמת בס'ום-טאם החריף שלה ועוף מטוגן זהוב. תור ארוך אבל זז מהר.",
-  "location": "392/14 Siam Square Soi 5, Pathum Wan, Bangkok 10330",
-  "lat": 13.7449, "lng": 100.5346,
+  "location": "392/14 Siam Square Soi 5, Pathum Wan, Bangkok 10330, Thailand",
+  "lat": 13.7449,
+  "lng": 100.5346,
+  "categoryTitle": "אוכל מקומי אותנטי",
+  "recommendationSource": "Michelin Guide (Bib Gourmand)",
   "priceLevel": "$",
   "priceRange": "80–250 THB",
   "cuisine": "Thai (Isaan)",
@@ -299,10 +326,8 @@ EXAMPLE OF ONE PERFECT ENTRY (use the SHAPE, not the specifics):
   "reservationRequired": false,
   "googleRating": 4.5,
   "reviewCount": 14200,
-  "tags": ["Spicy", "Iconic", "Local Favorite"],
-  "recommendationSource": "Michelin Guide (Bib Gourmand)",
   "michelin": true,
-  "categoryTitle": "אוכל מקומי אותנטי",
+  "tags": ["Spicy", "Iconic", "Local Favorite"],
   "nearestHotel": "Holiday Inn Bangkok",
   "googleMapsUrl": "https://maps.app.goo.gl/..."
 }
@@ -475,46 +500,70 @@ name. NEVER use a street address, road number, or coordinates as the name.
 If you only have an address — OMIT the entry.
 
 ═══════════════════════════════════════════════════════════════════════════════
-FIELDS PER ENTRY  (omit if you cannot fill with HIGH confidence — never guess)
+SCHEMA — required fields, strict types
 ═══════════════════════════════════════════════════════════════════════════════
-  name              original-script display name
-  nameEnglish       Latin-script display name
-  description       2–3 Hebrew sentences. Vivid + specific.
-  location          full address
-  lat, lng          decimal degrees, only if explicitly known
-  price             display string ("Free" / "300 THB" / "Adults 500 / Kids 250")
-  costNumeric       single number in local currency (omit if free)
-  rating            0.0–5.0
-  reviewCount       integer
-  type              short label ("Temple", "Beach", "Water park", "Market")
-  activity_type     "Adventure" | "Culture" | "Relaxation" | "Shopping" |
-                    "Nature" | "Family" | "Nightlife"
-  duration          typical visit length ("1–2 hours", "Half day")
-  best_time_to_visit  e.g. "Sunset", "Early morning", "Weekday afternoon"
-  recommendationSource  verbatim source ("Lonely Planet Top Choice",
-                    "Atlas Obscura", "UNESCO", "Tourism Authority of Thailand",
-                    "r/Bangkok")
-  categoryTitle     EXACTLY one of the Hebrew categories above
-  nearestHotel      closest hotel from the list above
-  googleMapsUrl     actual URL — NEVER fabricated
+The output is parsed by an automated importer and rendered on a map. If a
+required field is missing or the wrong type, the entry is dropped.
+
+REQUIRED on EVERY entry (omit the whole entry if any are missing):
+  name              string — original-script display name
+  nameEnglish       string — Latin-script display name
+  description       string — 2–3 Hebrew sentences, vivid + specific
+  location          string — full address: street + district + city + country
+  categoryTitle     string — EXACTLY one of the Hebrew categories above
+                              (or one of your proposed new categories — same
+                              string also listed in newAttractionCategories)
+  recommendationSource  string — verbatim source ("Lonely Planet Top Choice",
+                              "Atlas Obscura", "UNESCO", "TAT", "r/Bangkok")
+  AT LEAST ONE OF:
+    - lat (number) AND lng (number)  — decimal degrees, e.g. 13.7515
+                                       (ALWAYS preferred — needed for the map)
+    - googleMapsUrl (string)         — real Google Maps URL only, never fabricated
+                                       (the app will geocode this if no lat/lng)
+
+If you can find NEITHER coordinates NOR a real Google Maps URL — OMIT THE ENTRY.
+
+STRONGLY ENCOURAGED (drives UX quality):
+  type              string — short label ("Temple", "Beach", "Water park",
+                              "Market", "Museum")
+  activity_type     string enum — "Adventure" | "Culture" | "Relaxation" |
+                              "Shopping" | "Nature" | "Family" | "Nightlife"
+  rating            number 0.0–5.0 (NUMBER not string)
+  reviewCount       integer (NUMBER not string)
+  nearestHotel      string — hotel name closest to this entry by straight-line distance
+
+OPTIONAL (bonus signal):
+  price             string — display ("Free" / "300 THB" / "Adults 500 / Kids 250")
+  costNumeric       number — single value in local currency (omit if free)
+  duration          string — typical visit length ("1–2 hours", "Half day")
+  best_time_to_visit  string — e.g. "Sunset", "Early morning", "Weekday afternoon"
+
+DATA TYPE RULES (strict):
+  • Numbers as numbers, NOT strings: 4.7 ✅  "4.7" ❌
+  • Booleans as booleans: true / false ✅  "true" ❌
+  • Coordinates as decimal degrees, NOT degrees-minutes-seconds.
+  • Empty/unknown values: OMIT the field. NEVER write "", null, "N/A",
+    "unknown", 0, or "tbd".
+  • Arrays: omit the field if empty. NEVER write [].
 
 EXAMPLE OF ONE PERFECT ENTRY (use the SHAPE, not the specifics):
 {
   "name": "วัดพระแก้ว",
   "nameEnglish": "Wat Phra Kaew (Temple of the Emerald Buddha)",
   "description": "המקדש הקדוש ביותר בתאילנד, בתוך מתחם הארמון המלכותי. בודהה הירקרק שנחצב מאבן ירקן יחידה הוא סמל לאומי. הכנסו לפני 09:00 כדי להקדים את האוטובוסים.",
-  "location": "Na Phra Lan Rd, Phra Borom Maha Ratchawang, Phra Nakhon, Bangkok 10200",
-  "lat": 13.7515, "lng": 100.4924,
-  "price": "500 THB",
-  "costNumeric": 500,
-  "rating": 4.7,
-  "reviewCount": 87000,
+  "location": "Na Phra Lan Rd, Phra Borom Maha Ratchawang, Phra Nakhon, Bangkok 10200, Thailand",
+  "lat": 13.7515,
+  "lng": 100.4924,
+  "categoryTitle": "היסטוריה ודת",
+  "recommendationSource": "Lonely Planet Top Choice",
   "type": "Temple complex",
   "activity_type": "Culture",
+  "rating": 4.7,
+  "reviewCount": 87000,
+  "price": "500 THB",
+  "costNumeric": 500,
   "duration": "2–3 hours",
   "best_time_to_visit": "Early morning (before 10:00)",
-  "recommendationSource": "Lonely Planet Top Choice",
-  "categoryTitle": "היסטוריה ודת",
   "nearestHotel": "Holiday Inn Bangkok",
   "googleMapsUrl": "https://maps.app.goo.gl/..."
 }

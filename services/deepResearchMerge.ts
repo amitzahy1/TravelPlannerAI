@@ -281,7 +281,15 @@ export const mergeDeepResearchData = (
 
   // ---- RESTAURANTS ----
   for (const incoming of payload.restaurants || []) {
+    // Hard required: a name + something we can geocode (coords or googleMapsUrl).
+    // The map is unusable without one of these.
     if (!incoming.name && !incoming.nameEnglish) {
+      stats.skippedRestaurants++;
+      continue;
+    }
+    const hasCoords = typeof incoming.lat === 'number' && typeof incoming.lng === 'number';
+    const hasMapsUrl = typeof incoming.googleMapsUrl === 'string' && incoming.googleMapsUrl.includes('maps');
+    if (!hasCoords && !hasMapsUrl) {
       stats.skippedRestaurants++;
       continue;
     }
@@ -307,6 +315,12 @@ export const mergeDeepResearchData = (
   // ---- ATTRACTIONS ----
   for (const incoming of payload.attractions || []) {
     if (!incoming.name && !incoming.nameEnglish) {
+      stats.skippedAttractions++;
+      continue;
+    }
+    const hasCoords = typeof incoming.lat === 'number' && typeof incoming.lng === 'number';
+    const hasMapsUrl = typeof incoming.googleMapsUrl === 'string' && incoming.googleMapsUrl.includes('maps');
+    if (!hasCoords && !hasMapsUrl) {
       stats.skippedAttractions++;
       continue;
     }
