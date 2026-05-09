@@ -16,6 +16,7 @@ import { displayCityName, getTripCities } from '../utils/geoData';
 import { stripChainRestaurants } from '../utils/chainRestaurants';
 import { verifyPlacesBatch, applyVerificationResult } from '../utils/placeVerification';
 import { toast } from '../stores/useToastStore';
+import { findCuisineProfile, buildAuthenticFoodSpec } from './localCuisineCatalog';
 
 // Per-trip lock — prevents firing a second background research run for a
 // trip that's already being researched (e.g. when the user hits the reset
@@ -24,8 +25,10 @@ const inFlightTrips = new Set<string>();
 
 // Build the same prompt the RestaurantsView uses, inlined so this service
 // is self-contained.
-const buildRestaurantPrompt = (city: string) => {
+const buildRestaurantPrompt = (city: string, countryHint?: string) => {
 const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+const cuisineProfile = findCuisineProfile(city, countryHint);
+const authenticSpec = buildAuthenticFoodSpec(cuisineProfile);
 return `
 You are a food expert helping someone find the BEST restaurants in
 "${city}" as of ${currentDate}. Focus on top-rated places, award winners,
@@ -61,26 +64,47 @@ Critical: an empty category is fine; a closed listing is a failure of the system
 9. "תאילנדי"
 10. "יפני"
 
+**PART 2A: SPEC FOR "אוכל מקומי אותנטי" (READ CAREFULLY)**
+${authenticSpec}
+
+**PART 2B: SPEC FOR "פיצה" — broaden the search net.**
+For pizza, search ALL of: TripAdvisor "best pizza in ${city}", local expat
+forums (e.g. for Pattaya: PattayaForums, Pattaya Daily News food posts),
+Wongnai / Tabelog / OpenRice pizza sub-categories, Time Out city guide,
+Eater city guide if available, and Google reviews with ≥4.3 + ≥150 ratings.
+Return AT LEAST 5 places when the city has them; an honest empty array is
+fine, but "1 result" almost certainly means insufficient search.
+EXCLUDE: Pizza Company, Pizza Hut, Domino's, Papa John's, Pizza Inn, Pizza Marzano.
+
 **PART 3: RECENCY CHECK (CRITICAL)**
 Do NOT recommend places whose quality dropped in the last 12 months.
 Skip lost Michelin stars, chef departures that hurt quality, closures,
 bad new management. When in doubt, leave it out.
 
 **PART 4: LOCAL AUTHORITY SOURCES (use the ones that match the region)**
-- Asia: Wongnai (Thailand), Tabelog (Japan), Dianping (China/HK),
-  OpenRice (HK/SG/MY/TH), Naver Map (Korea), Zomato (India).
+- SE Asia: Wongnai (Thailand), Tabelog (Japan), Dianping (China/HK),
+  OpenRice (HK/SG/MY/TH), Naver Map (Korea), Zomato (India), Burpple
+  (Singapore/Malaysia), Foodpanda highlights, Phuket/Pattaya/Bangkok
+  expat forums and Reddit threads (r/Thailand, r/Bangkok, etc.).
 - UK / Ireland: Time Out London, Square Meal, Hardens, Observer Food
   Monthly, Guardian restaurant reviews.
 - Europe: Gault & Millau (France), Gambero Rosso (Italy), Michelin
-  Guide (continental), 50 Best Restaurants, The Fork ratings.
+  Guide (continental), 50 Best Restaurants, The Fork ratings, local
+  city blogs, regional cuisine bloggers.
 - Americas: Eater (US cities), Yelp Elite, NYT food, Bon Appétit,
-  Infatuation, OpenTable Diners' Choice.
+  Infatuation, OpenTable Diners' Choice, Reddit r/<city>food.
 - Africa: Eat Out (South Africa), Rosetta Awards, SA Tourism picks,
   Afar magazine, Conde Nast Traveler Africa.
 - Middle East: Time Out (Tel Aviv / Dubai), Rest magazine, Gault &
   Millau ME.
-Plus: Michelin Guide, World's 50 Best, Asia's 50 Best, Eater, TimeOut.
-AVOID TripAdvisor as primary. Fallback: "Local Favorite" / "Top-Rated".
+Plus globally: Michelin Guide, World's 50 Best, Asia's 50 Best, Eater,
+TimeOut, Atlas Obscura (for unique food experiences).
+For each restaurant set "recommendationSource" to the SPECIFIC source you
+found it in (e.g. "Wongnai", "Michelin Guide", "Burpple", "Time Out",
+"r/Bangkok"). If multiple, pick the most authoritative for that cuisine.
+Fallback only when no specific source applies: "Local Favorite" / "Top-Rated".
+AVOID TripAdvisor as primary EXCEPT for the "פיצה" category in cities where
+Western/expat reviews are the only signal of pizza quality.
 
 **PART 5: HARD EXCLUSIONS — CHAIN RESTAURANTS (CRITICAL)**
 You MUST NOT include any of the following types of places, even if locals
@@ -198,7 +222,7 @@ const researchRestaurantsForTrip = async (
                 const cityEn = displayCityName(city, 'en');
                 try {
                         // First pass: standard prompt
-                        const firstPrompt = buildRestaurantPrompt(cityEn);
+                        const firstPrompt = buildRestaurantPrompt(cityEn, trip.destinationEnglish || trip.destination);
                         let response = await generateWithFallback(
                                 null,
                                 [{ role: 'user', parts: [{ text: firstPrompt }] }],

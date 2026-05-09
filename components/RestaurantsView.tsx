@@ -73,9 +73,10 @@ const getCuisineVisuals = (cuisine: string = '') => {
 
 import { cleanTextForMap } from '../utils/textUtils';
 import { getTripCities, locationMatchesCity, displayCityName, cityKey, extractRobustCity } from '../utils/geoData';
-import { geocodePlacesBatch } from '../utils/geocodePlaces';
+import { geocodePlacesBatch, photonGeocodeRich } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
 import { safeMapsUrl } from '../utils/mapsUrl';
+import { detectCountryCode } from '../utils/countryCodes';
 import { walkingMinutesBetween } from '../utils/walkingDistance';
 import { cuisineToHebrew, priceToBucket, sortPriceKeys } from '../utils/cuisineLabels';
 import { FilterChipGroup } from './FilterChipGroup';
@@ -113,7 +114,9 @@ const RestaurantCard: React.FC<{
 
     const nameForMap = cleanTextForMap(rec.nameEnglish || rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
-    const mapsUrl = safeMapsUrl(rec.googleMapsUrl, nameForMap, locationForMap);
+    const cityForMap = cleanTextForMap(rec.verifiedCity) || cleanTextForMap(rec.region) || cleanTextForMap(tripDestinationEnglish || tripDestination);
+    const countryCode = detectCountryCode(rec.verifiedCountry, tripDestinationEnglish, tripDestination);
+    const mapsUrl = safeMapsUrl(rec.googleMapsUrl, nameForMap, locationForMap, cityForMap, countryCode);
 
     const visuals = getCuisineVisuals(rec.cuisine);
 
@@ -232,6 +235,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [confirmNearHotel, setConfirmNearHotel] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [searchExpanded, setSearchExpanded] = useState(false);
+    useEffect(() => { setSearchExpanded(false); }, [activeTab]);
     const isMobile = useIsMobile();
     // Default expanded on desktop, collapsed on mobile so the wall-of-chips
     // doesn't push the list/map down on small screens.
@@ -309,8 +313,12 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 }
             }
         };
-        const walk = (cats?: { region?: string; restaurants: { region?: string; location?: string }[] }[]) => {
-            (cats || []).forEach(cat => cat.restaurants.forEach(r => tally(r.region || cat.region, r.location)));
+        // Skip items that are unverified or whose match was rejected — see
+        // AttractionsView for the same logic.
+        const isCountable = (r: { verificationStatus?: string }) =>
+            r.verificationStatus !== 'not_found' && r.verificationStatus !== 'ambiguous';
+        const walk = (cats?: { region?: string; restaurants: { region?: string; location?: string; verificationStatus?: string }[] }[]) => {
+            (cats || []).forEach(cat => cat.restaurants.forEach(r => { if (isCountable(r)) tally(r.region || cat.region, r.location); }));
         };
         walk(trip.restaurants);
         walk(trip.aiRestaurants);
@@ -467,9 +475,37 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // savable to "My list").
     const researchNearHotel = async () => {
         setConfirmNearHotel(false);
-        const hotels = (trip.hotels || []).filter(h => typeof h.lat === 'number' && typeof h.lng === 'number');
+        const allHotels = trip.hotels || [];
+        if (allHotels.length === 0) {
+            toast.warning('הוסף קודם מלון לטיול כדי לחפש מסעדות בסביבתו.');
+            return;
+        }
+        // Auto-geocode hotels missing lat/lng so a refresh on a Bangkok-only
+        // (or any city's) trip doesn't silently skip the hotel category.
+        const missing = allHotels.filter(h => typeof h.lat !== 'number' || typeof h.lng !== 'number');
+        const enriched = [...allHotels];
+        if (missing.length > 0) {
+            for (const m of missing) {
+                const query = [m.name, m.address, m.city, trip.destination].filter(Boolean).join(', ');
+                if (!query) continue;
+                const feat = await photonGeocodeRich(query);
+                if (feat) {
+                    const idx = enriched.findIndex(h => h.id === m.id);
+                    if (idx !== -1) enriched[idx] = { ...enriched[idx], lat: feat.lat, lng: feat.lng };
+                }
+            }
+            const stillMissing = enriched.filter(h => typeof h.lat !== 'number' || typeof h.lng !== 'number');
+            if (stillMissing.length < missing.length) {
+                onUpdateTrip?.({ ...trip, hotels: enriched });
+            }
+            if (stillMissing.length > 0) {
+                const names = stillMissing.map(h => h.name).slice(0, 3).join(', ');
+                toast.warning(`לא הצלחנו לאתר את הכתובת של: ${names}. עדכן כתובת מלאה למלון כדי לכלול אותו בחיפוש.`);
+            }
+        }
+        const hotels = enriched.filter(h => typeof h.lat === 'number' && typeof h.lng === 'number');
         if (hotels.length === 0) {
-            toast.warning('לא נמצא מלון עם קואורדינטות. הוסף כתובת למלון כדי לחפש מסעדות בקרבת מקום.');
+            toast.warning('אף מלון בטיול אינו מאותר במפה — הוסף כתובת מלאה כדי לחפש מסעדות בסביבתו.');
             return;
         }
 
@@ -484,8 +520,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 const hotel = hotels[i];
                 setResearchProgress({ current: i + 1, total: hotels.length });
                 const cityEn = displayCityName(hotel.city || trip.destination || '', 'en') || hotel.city || trip.destination || '';
-                const titleSuffix = hotels.length > 1 ? ` ליד ${hotel.name}` : ' ליד המלון';
-                const catTitle = `🏨${titleSuffix} — עד 15 דק׳ הליכה`;
+                const catTitle = '🏨 קרוב למלון';
                 const catId = `near-hotel-${hotel.id}`;
 
                 const prompt = `Find ~10 BEST places to EAT within a 15-minute walk (≈1.2 km radius) of "${hotel.name}" at "${hotel.address}" (lat ${hotel.lat}, lng ${hotel.lng}) in ${cityEn}.
@@ -1687,11 +1722,11 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 On map view we hide it because UnifiedMapView renders its own
                 on-map chip strip there (which also handles camera zoom). */}
             {presentCities.length > 0 && viewMode === 'list' && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
                     <button
                         key="__all__"
                         onClick={() => setSelectedCity('all')}
-                        className={`min-h-10 px-4 py-2 rounded-full text-xs font-black transition-all border-2 whitespace-nowrap ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
+                        className={`min-h-8 md:min-h-10 px-2.5 md:px-4 py-1 md:py-2 rounded-full text-[11px] md:text-xs font-black transition-all border md:border-2 whitespace-nowrap ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
                     >
                         כל המסלול
                     </button>
@@ -1703,7 +1738,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 key={key}
                                 onClick={() => setSelectedCity(display)}
                                 title={isEmpty ? 'אין כאן עדיין מסעדות. בחר את העיר ולחץ על "מצא הכי טוב באזור המלון" / רענן.' : undefined}
-                                className={`min-h-10 px-4 py-2 rounded-full text-xs font-black transition-all border-2 whitespace-nowrap inline-flex items-center gap-2 ${
+                                className={`min-h-8 md:min-h-10 px-2.5 md:px-4 py-1 md:py-2 rounded-full text-[11px] md:text-xs font-black transition-all border md:border-2 whitespace-nowrap inline-flex items-center gap-1.5 md:gap-2 ${
                                     isActive
                                         ? 'bg-slate-900 border-slate-900 text-white shadow-md'
                                         : isEmpty
@@ -1712,7 +1747,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 }`}
                             >
                                 <span>{display}</span>
-                                <span className={`text-[11px] font-bold ${isActive ? 'text-white/80' : isEmpty ? 'text-slate-300' : 'text-slate-400'}`}>{count}</span>
+                                <span className={`text-[10px] md:text-[11px] font-bold ${isActive ? 'text-white/80' : isEmpty ? 'text-slate-300' : 'text-slate-400'}`}>{count}</span>
                             </button>
                         );
                     })}

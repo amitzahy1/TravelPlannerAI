@@ -28,6 +28,32 @@ const FOOD_DB = {
                 label: '🍣 Sushi',
                 generic: ['1579871494447-9811cf80d66c', '1553621042-f6e147245754', '1611143669182-6e21629fa270', '1615887023516-9b663b6f2461']
         },
+        seafood: {
+                // Reuses sushi/asian IDs that already render as fish/shellfish
+                // dishes — keeps us within validated photo IDs while giving
+                // seafood-tagged restaurants their own bucket. Without this
+                // pool, "Thai Seafood" routes into asian.generic and can
+                // surface burgers / salads.
+                label: '🐟 Seafood',
+                generic: [
+                        '1579871494447-9811cf80d66c', '1553621042-f6e147245754',
+                        '1611143669182-6e21629fa270', '1615887023516-9b663b6f2461',
+                        '1565299507177-b0ac66763828', '1572403613768-45607a7dedf4',
+                        '1559847844-5315695dadae', '1608835291093-394b0c943a75'
+                ]
+        },
+        thai_classic: {
+                // Curated subset of asian.generic IDs that lean toward classic
+                // Thai dishes (curries, stir-fry, soups) rather than the more
+                // burger-leaning IDs in the broader pool.
+                label: '🌶️ Thai',
+                generic: [
+                        '1559314809-0d155014e29e', '1565299507177-b0ac66763828',
+                        '1585032226651-759b368d7246', '1559847844-5315695dadae',
+                        '1608835291093-394b0c943a75', '1540420773420-3366772f4999',
+                        '1569718212165-3a8278d5f624'
+                ]
+        },
         asian: {
                 label: '🥡 Asian Fusion',
                 generic: [
@@ -180,6 +206,18 @@ function selectFromPool(name: string, ids: string[]): string {
 export function getFoodImage(name: string, description: string = "", tags: string[] = []): { url: string, label: string } {
         const query = `${name} ${description} ${tags.join(' ')}`.toLowerCase();
 
+        // 0. CUISINE-TAG WHITELIST — when the AI provides a structured cuisine
+        // signal (e.g. cuisineTags=["seafood","thai"]) it overrides keyword
+        // detection. Tags travel through the same query string, so we just
+        // give them an explicit early branch.
+
+        // 0a. SEAFOOD — must come BEFORE Thai/sushi/asian so a "Thai Seafood"
+        // restaurant doesn't fall into the asian.generic mixed pool (which
+        // contains burgers and salads — the source of the photo-mismatch
+        // complaint).
+        if (query.includes('seafood') || query.includes('פירות ים') || query.includes('דגים') || query.includes('shrimp') || query.includes('crab') || query.includes('oyster') || query.includes('lobster') || query.includes('שרימפס') || query.includes('סרטן') || query.includes('כריש') || query.includes('סלמון') || (query.includes('fish') && !query.includes('fish and chips')))
+                return { url: selectFromPool(name, FOOD_DB.seafood.generic), label: '🐟 Seafood' };
+
         // 1. RAMEN (Soul)
         if (query.includes('ramen') || query.includes('noodle') || query.includes('ראמן'))
                 return { url: selectFromPool(name, FOOD_DB.ramen.generic), label: '🍜 Ramen' };
@@ -196,9 +234,11 @@ export function getFoodImage(name: string, description: string = "", tags: strin
         if (query.includes('sushi') || query.includes('omakase') || query.includes('japan') || query.includes('izakaya') || query.includes('יפני') || query.includes('סושי'))
                 return { url: selectFromPool(name, FOOD_DB.sushi.generic), label: '🍣 Japanese' };
 
-        // 5. THAI (Spice & Wok)
-        if (query.includes('thai') || query.includes('pad thai') || query.includes('curry') || query.includes('תאילנדי'))
-                return { url: selectFromPool(name, FOOD_DB.asian.generic), label: '🌶️ Thai' };
+        // 5. THAI (Spice & Wok) — uses curated thai_classic subset so we get
+        // tom yum / pad thai / curry-looking photos instead of the broader
+        // asian.generic pool that includes burgers and salads.
+        if (query.includes('thai') || query.includes('pad thai') || query.includes('tom yum') || query.includes('curry') || query.includes('תאילנדי') || query.includes('פאד תאי') || query.includes('קארי') || query.includes('סום טאם'))
+                return { url: selectFromPool(name, FOOD_DB.thai_classic.generic), label: '🌶️ Thai' };
 
         // 6. FINE DINING (The Experience)
         if (query.includes('fine dining') || query.includes('michelin') || query.includes('chef') || query.includes('tasting menu') || query.includes('יוקרה') || query.includes('מישלן'))

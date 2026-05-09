@@ -20,9 +20,10 @@ import { getLocalAI, setLocalAI } from '../utils/localTripAI';
 import { findClosedPlaces } from '../utils/closedPlaceCheck';
 
 import { cleanTextForMap } from '../utils/textUtils';
-import { geocodePlacesBatch } from '../utils/geocodePlaces';
+import { geocodePlacesBatch, photonGeocodeRich } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
 import { safeMapsUrl } from '../utils/mapsUrl';
+import { detectCountryCode } from '../utils/countryCodes';
 import { toast } from '../stores/useToastStore';
 import { walkingMinutesBetween } from '../utils/walkingDistance';
 import { attractionTypeToHebrew, priceToBucket, sortPriceKeys } from '../utils/cuisineLabels';
@@ -71,7 +72,9 @@ const AttractionRecommendationCard: React.FC<{
 }> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick }) => {
     const nameForMap = cleanTextForMap(rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
-    const mapsUrl = safeMapsUrl(rec.googleMapsUrl, nameForMap, locationForMap);
+    const cityForMap = cleanTextForMap(rec.verifiedCity) || cleanTextForMap(rec.region) || cleanTextForMap(tripDestinationEnglish || tripDestination);
+    const countryCode = detectCountryCode(rec.verifiedCountry, tripDestinationEnglish, tripDestination);
+    const mapsUrl = safeMapsUrl(rec.googleMapsUrl, nameForMap, locationForMap, cityForMap, countryCode);
     const visuals = getAttractionVisuals(rec.type);
 
     return (
@@ -176,6 +179,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [confirmNearHotel, setConfirmNearHotel] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [searchExpanded, setSearchExpanded] = useState(false);
+    useEffect(() => { setSearchExpanded(false); }, [activeTab]);
     const isMobile = useIsMobile();
     const [filtersExpanded, setFiltersExpanded] = useState(!isMobile);
     // Background-geocoding progress so the map view can show a loading
@@ -248,8 +252,14 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 }
             }
         };
-        const walk = (cats?: { region?: string; attractions: { region?: string; location?: string }[] }[]) => {
-            (cats || []).forEach(cat => cat.attractions.forEach(a => tally(a.region || cat.region, a.location)));
+        // Skip items that are unverified or whose match was rejected — they
+        // would otherwise inflate the chip count for a city the research
+        // never actually returned hits for (e.g. Koh Chang showing "3"
+        // when the AI run returned zero attractions there).
+        const isCountable = (a: { verificationStatus?: string }) =>
+            a.verificationStatus !== 'not_found' && a.verificationStatus !== 'ambiguous';
+        const walk = (cats?: { region?: string; attractions: { region?: string; location?: string; verificationStatus?: string }[] }[]) => {
+            (cats || []).forEach(cat => cat.attractions.forEach(a => { if (isCountable(a)) tally(a.region || cat.region, a.location); }));
         };
         walk(trip.attractions);
         walk(trip.aiAttractions);
@@ -378,9 +388,38 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // walk of each hotel and saves one category per hotel into trip.aiAttractions.
     const researchNearHotel = async () => {
         setConfirmNearHotel(false);
-        const hotels = (trip.hotels || []).filter(h => typeof h.lat === 'number' && typeof h.lng === 'number');
+        const allHotels = trip.hotels || [];
+        if (allHotels.length === 0) {
+            toast.warning('הוסף קודם מלון לטיול כדי לחפש אטרקציות בסביבתו.');
+            return;
+        }
+        // Auto-geocode hotels missing lat/lng so a refresh on a Bangkok-only
+        // (or any city's) trip doesn't silently skip the hotel category.
+        const missing = allHotels.filter(h => typeof h.lat !== 'number' || typeof h.lng !== 'number');
+        const enriched = [...allHotels];
+        if (missing.length > 0) {
+            for (const m of missing) {
+                const query = [m.name, m.address, m.city, trip.destination].filter(Boolean).join(', ');
+                if (!query) continue;
+                const feat = await photonGeocodeRich(query);
+                if (feat) {
+                    const idx = enriched.findIndex(h => h.id === m.id);
+                    if (idx !== -1) enriched[idx] = { ...enriched[idx], lat: feat.lat, lng: feat.lng };
+                }
+            }
+            // Persist enriched coords back to the trip so future refreshes use them.
+            const stillMissing = enriched.filter(h => typeof h.lat !== 'number' || typeof h.lng !== 'number');
+            if (stillMissing.length < missing.length) {
+                onUpdateTrip?.({ ...trip, hotels: enriched });
+            }
+            if (stillMissing.length > 0) {
+                const names = stillMissing.map(h => h.name).slice(0, 3).join(', ');
+                toast.warning(`לא הצלחנו לאתר את הכתובת של: ${names}. עדכן כתובת מלאה למלון כדי לכלול אותו בחיפוש.`);
+            }
+        }
+        const hotels = enriched.filter(h => typeof h.lat === 'number' && typeof h.lng === 'number');
         if (hotels.length === 0) {
-            toast.warning('לא נמצא מלון עם קואורדינטות. הוסף כתובת למלון כדי לחפש אטרקציות בקרבת מקום.');
+            toast.warning('אף מלון בטיול אינו מאותר במפה — הוסף כתובת מלאה כדי לחפש אטרקציות בסביבתו.');
             return;
         }
 
@@ -395,8 +434,7 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 const hotel = hotels[i];
                 setResearchProgress({ current: i + 1, total: hotels.length });
                 const cityEn = displayCityName(hotel.city || trip.destination || '', 'en') || hotel.city || trip.destination || '';
-                const titleSuffix = hotels.length > 1 ? ` ליד ${hotel.name}` : ' ליד המלון';
-                const catTitle = `🏨${titleSuffix} — עד 15 דק׳ הליכה`;
+                const catTitle = '🏨 קרוב למלון';
                 const catId = `near-hotel-att-${hotel.id}`;
 
                 const prompt = `Find ~10 BEST attractions / things to do within a 15-minute walk (≈1.2 km radius) of "${hotel.name}" at "${hotel.address}" (lat ${hotel.lat}, lng ${hotel.lng}) in ${cityEn}.
@@ -1307,11 +1345,11 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
             {/* Row 3 — city chips on list view only. The map view has its
                 own on-map chip strip (UnifiedMapView) for camera zoom. */}
             {presentCities.length > 0 && viewMode === 'list' && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
                     <button
                         key="__all__"
                         onClick={() => setSelectedCity('all')}
-                        className={`min-h-10 px-4 py-2 rounded-full text-xs font-black transition-all border-2 whitespace-nowrap ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
+                        className={`min-h-8 md:min-h-10 px-2.5 md:px-4 py-1 md:py-2 rounded-full text-[11px] md:text-xs font-black transition-all border md:border-2 whitespace-nowrap ${selectedCity === 'all' ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
                     >
                         כל המסלול
                     </button>
@@ -1323,7 +1361,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 key={key}
                                 onClick={() => setSelectedCity(display)}
                                 title={isEmpty ? 'אין כאן עדיין אטרקציות. בחר את העיר ולחץ על "מצא באזור המלון" / רענן.' : undefined}
-                                className={`min-h-10 px-4 py-2 rounded-full text-xs font-black transition-all border-2 whitespace-nowrap inline-flex items-center gap-2 ${
+                                className={`min-h-8 md:min-h-10 px-2.5 md:px-4 py-1 md:py-2 rounded-full text-[11px] md:text-xs font-black transition-all border md:border-2 whitespace-nowrap inline-flex items-center gap-1.5 md:gap-2 ${
                                     isActive
                                         ? 'bg-slate-900 border-slate-900 text-white shadow-md'
                                         : isEmpty
@@ -1332,7 +1370,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 }`}
                             >
                                 <span>{display}</span>
-                                <span className={`text-[11px] font-bold ${isActive ? 'text-white/80' : isEmpty ? 'text-slate-300' : 'text-slate-400'}`}>{count}</span>
+                                <span className={`text-[10px] md:text-[11px] font-bold ${isActive ? 'text-white/80' : isEmpty ? 'text-slate-300' : 'text-slate-400'}`}>{count}</span>
                             </button>
                         );
                     })}

@@ -227,7 +227,9 @@ export interface Restaurant {
   verifiedCity?: string;         // Photon properties.city
   verificationStatus?: 'verified' | 'ambiguous' | 'not_found' | 'manual';
   verificationSource?: 'photon' | 'google_maps_url' | 'manual';
-  verifiedAt?: number;           // epoch ms — used to skip re-verify within 30 days
+  verifiedAt?: number;
+  verificationConfidence?: number;   // 0-1; <0.5 surfaces the "כדאי לבדוק" warning
+  verificationReason?: string;       // human-readable Hebrew reason shown inside the warning           // epoch ms — used to skip re-verify within 30 days
 
   // UX Improvements
   matchScore?: number; // 1-100 score of how well it fits the user
@@ -284,6 +286,8 @@ export interface Attraction {
   verificationStatus?: 'verified' | 'ambiguous' | 'not_found' | 'manual';
   verificationSource?: 'photon' | 'google_maps_url' | 'manual';
   verifiedAt?: number;
+  verificationConfidence?: number;   // 0-1; <0.5 surfaces the "כדאי לבדוק" warning
+  verificationReason?: string;       // human-readable Hebrew reason shown inside the warning
 
   // Added optional fields to fix TypeScript errors
   type?: string;

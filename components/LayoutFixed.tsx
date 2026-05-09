@@ -456,7 +456,8 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                 aria-label={item.label}
                                                 aria-current={currentTab === item.id ? 'page' : undefined}
                                         >
-                                                <item.icon className="w-5 h-5" aria-hidden="true" />
+                                                <item.icon className="w-[18px] h-[18px]" aria-hidden="true" />
+                                                <span className="text-[10px] font-bold leading-none mt-1 whitespace-nowrap">{item.label}</span>
 
                                                 {/* Active Glow */}
                                                 <AnimatePresence>
@@ -489,7 +490,8 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                         title="תפריט"
                                         aria-label="פתח תפריט טיולים"
                                 >
-                                        <List className="w-5 h-5" />
+                                        <List className="w-[18px] h-[18px]" />
+                                        <span className="text-[10px] font-bold leading-none mt-1 whitespace-nowrap">תפריט</span>
                                 </motion.button>
                         </motion.nav>
 

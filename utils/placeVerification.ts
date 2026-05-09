@@ -22,6 +22,7 @@ import {
         photonGeocodeRich,
         extractCoordsFromMapsUrl,
         coordInBbox,
+        getCityCentroid,
         type GeocodableInput,
         type PhotonFeature,
 } from './geocodePlaces';
@@ -44,7 +45,14 @@ export interface VerifiedPlace {
         verificationStatus: VerificationStatus;
         verificationSource: VerificationSource;
         confidence: number; // 0..1
+        /** Hebrew explanation surfaced inside the "כדאי לבדוק" warning. */
+        reason?: string;
 }
+
+/** Maximum distance from the trip city centroid before we mark a place as
+ *  ambiguous regardless of country / city string match. Catches bugs like
+ *  the "Pattaya restaurant" geocoding to a different Pattaya 400 km away. */
+const MAX_CENTROID_DISTANCE_KM = 25;
 
 const REVERIFY_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days
 
@@ -120,7 +128,30 @@ export const verifyPlace = async (
                         verificationStatus: 'ambiguous',
                         verificationSource: 'photon',
                         confidence: 0.3,
+                        reason: 'הכתובת מחוץ למדינת היעד — ככל הנראה מקום בעל אותו שם במדינה אחרת.',
                 };
+        }
+
+        // Distance-from-centroid safety net. Catches places that pass the
+        // country bbox but resolve far from the trip's actual target city
+        // (the "Pattaya → Chiang Mai" 400 km case).
+        if (targetCity) {
+                const centroid = await getCityCentroid(targetCity, tripCountry || undefined);
+                if (centroid) {
+                        const distanceKm = haversineMetres({ lat: feat.lat, lng: feat.lng }, centroid) / 1000;
+                        if (distanceKm > MAX_CENTROID_DISTANCE_KM) {
+                                return {
+                                        lat: feat.lat, lng: feat.lng,
+                                        osmId: feat.osmId,
+                                        verifiedCountry: feat.country,
+                                        verifiedCity: feat.city,
+                                        verificationStatus: 'ambiguous',
+                                        verificationSource: 'photon',
+                                        confidence: 0.35,
+                                        reason: `המקום נמצא ${Math.round(distanceKm)} ק"מ מ-${targetCity} — ייתכן שאינו באזור הטיול.`,
+                                };
+                        }
+                }
         }
 
         // 2. Score against trip context.
@@ -251,13 +282,15 @@ export const verifyPlacesBatch = async <T extends VerifiableItem>(
  * `geocodeFailed: true`.
  */
 export const applyVerificationResult = (
-        item: { lat?: number; lng?: number; osmId?: string; verifiedCountry?: string; verifiedCity?: string; verificationStatus?: VerificationStatus; verificationSource?: VerificationSource; verifiedAt?: number; geocodeFailed?: boolean },
+        item: { lat?: number; lng?: number; osmId?: string; verifiedCountry?: string; verifiedCity?: string; verificationStatus?: VerificationStatus; verificationSource?: VerificationSource; verifiedAt?: number; geocodeFailed?: boolean; verificationConfidence?: number; verificationReason?: string },
         result: VerifiedPlace,
 ): boolean => {
         if (result.verificationStatus === 'not_found') {
                 item.verificationStatus = 'not_found';
                 item.verificationSource = 'photon';
                 item.verifiedAt = Date.now();
+                item.verificationConfidence = result.confidence;
+                if (result.reason) item.verificationReason = result.reason;
                 item.geocodeFailed = true;
                 return false;
         }
@@ -269,6 +302,9 @@ export const applyVerificationResult = (
         item.verificationStatus = result.verificationStatus;
         item.verificationSource = result.verificationSource;
         item.verifiedAt = Date.now();
+        item.verificationConfidence = result.confidence;
+        if (result.reason) item.verificationReason = result.reason;
+        else if (item.verificationReason) delete item.verificationReason;
         item.geocodeFailed = false;
         return true;
 };

@@ -203,6 +203,28 @@ export const getCityBboxSync = (
         return hit.bbox;
 };
 
+/**
+ * Lazy-resolves a city's centroid (lat/lng) using the same Photon cache
+ * as `getCityBbox`. Used by placeVerification to reject restaurants that
+ * geocode to coordinates more than ~25 km from the trip city centroid —
+ * the safety net that catches "Pattaya restaurant resolves to a Pattaya
+ * 400 km north" type bugs.
+ */
+export const getCityCentroid = async (
+        cityName: string,
+        countryHint?: string,
+): Promise<{ lat: number; lng: number } | null> => {
+        if (!cityName || !cityName.trim()) return null;
+        const key = cityBboxKey(cityName, countryHint);
+        const cache = cityBboxCache();
+        const hit = cache[key];
+        if (hit && Date.now() - hit.t < CITY_BBOX_TTL_MS) return hit.centroid;
+        // Falls through to getCityBbox which populates the cache as a side effect.
+        await getCityBbox(cityName, countryHint);
+        const after = cityBboxCache()[key];
+        return after?.centroid || null;
+};
+
 interface CacheEntry { coords: { lat: number; lng: number }; t: number }
 type Cache = Record<string, CacheEntry>;
 
