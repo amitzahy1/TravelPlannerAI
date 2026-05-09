@@ -4,68 +4,97 @@
       "name": "Raan Jay Fai",
       "description": "אגדה של בנגקוק וזוכת כוכב מישלן ראשון בעולם של דוכן רחוב. השפית ג'יי פאי בוגלי ירוקים מטגנת בעצמה את חביתת הסרטן המפורסמת שלה — חביתה גדולה ועתירת בשר סרטן עם ביצים פלאפיות.",
       "location": "327 Maha Chai Rd, Samran Rat, Phra Nakhon, Bangkok 10200, Thailand",
-      "lat": 13.7531,
-      "lng": 100.5085,
+      "lat": 13.752534,
+      "lng": 100.504737,
       "categoryTitle": "אוכל מקומי אותנטי",
       "recommendationSource": "Michelin Guide (1 Star)",
       "priceLevel": "$$$",
       "priceRange": "1,000–2,500 THB",
       "cuisine": "Thai street food",
       "must_try_dish": "Crab Meat Omelet",
-      "recommendedDishes": ["crab omelet", "drunken noodles", "tom yum"],
+      "recommendedDishes": [
+        "crab omelet",
+        "drunken noodles",
+        "tom yum"
+      ],
       "vibe": "Open-air street kitchen, hot and frenetic",
       "bestTime": "Dinner",
       "reservationRequired": true,
       "michelin": true,
       "googleRating": 4.3,
       "reviewCount": 12000,
-      "tags": ["Iconic", "Michelin", "Local Legend"]
+      "tags": [
+        "Iconic",
+        "Michelin",
+        "Local Legend"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.752534,100.504737"
     },
     {
       "name": "100 Mahaseth",
       "description": "מסעדת איסאן מודרנית של השף צ'אלי קאדר עם פילוסופיית nose-to-tail. מח עצם צלוי, נקניקיות צפוניות ולארב מסורתי — כל מנה מציגה את המסורת הכפרית של צפון מזרח תאילנד באלגנטיות עכשווית.",
       "location": "100 Maha Set Rd, Si Phraya, Bang Rak, Bangkok 10500, Thailand",
-      "lat": 13.7287,
-      "lng": 100.5176,
+      "lat": 13.729029,
+      "lng": 100.518231,
       "categoryTitle": "אוכל מקומי אותנטי",
       "recommendationSource": "Michelin Guide",
       "priceLevel": "$$$",
       "cuisine": "Thai (Isaan)",
       "must_try_dish": "Bone Marrow",
-      "recommendedDishes": ["roasted bone marrow", "northern sausage", "larb", "grilled river prawn"],
+      "recommendedDishes": [
+        "roasted bone marrow",
+        "northern sausage",
+        "larb",
+        "grilled river prawn"
+      ],
       "vibe": "Industrial-chic shophouse, lively and trendy",
       "bestTime": "Dinner",
       "reservationRequired": true,
       "googleRating": 4.5,
       "reviewCount": 1800,
-      "tags": ["Modern Thai", "Trendy", "Chef-driven"]
+      "tags": [
+        "Modern Thai",
+        "Trendy",
+        "Chef-driven"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.729029,100.518231"
     },
     {
       "name": "Som Tum Nua",
       "description": "מסעדת איסאן ליד אנוסאוואארי ניצחון, מפורסמת בס'ום-טאם החריף ועוף מטוגן זהוב. תור ארוך אבל זז מהר — תורים של 30 דקות הם הנורמה. החריפות אמיתית, הכינו את הבטן.",
       "location": "392/14 Siam Square Soi 5, Pathum Wan, Bangkok 10330, Thailand",
-      "lat": 13.7449,
-      "lng": 100.5346,
+      "lat": 13.744436,
+      "lng": 100.534358,
       "categoryTitle": "אוכל מקומי אותנטי",
       "recommendationSource": "Michelin Guide (Bib Gourmand)",
       "priceLevel": "$",
       "priceRange": "80–250 THB",
       "cuisine": "Thai (Isaan)",
       "must_try_dish": "Som Tum Thai with crispy chicken",
-      "recommendedDishes": ["som tam thai", "fried chicken", "sticky rice", "larb gai"],
+      "recommendedDishes": [
+        "som tam thai",
+        "fried chicken",
+        "sticky rice",
+        "larb gai"
+      ],
       "vibe": "Cramped, energetic, no-frills",
       "bestTime": "Lunch",
       "googleRating": 4.5,
       "reviewCount": 14200,
-      "tags": ["Spicy", "Iconic", "Bib Gourmand"],
-      "michelin": true
+      "tags": [
+        "Spicy",
+        "Iconic",
+        "Bib Gourmand"
+      ],
+      "michelin": true,
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.744436,100.534358"
     },
     {
       "name": "Go-Ang Pratunam Chicken Rice",
       "description": "כאומונקאי איקוני ב-50 שנה האחרונות. עוף הויינאני עדין ורך, אורז מבושל בציר עוף ארומטי, רוטב צ'ילי-ג'ינג'ר חריף. קלאסיקה בנגקוקית שזכתה למישלן ביב גורמן.",
       "location": "960-962 Phetchaburi Rd, Thanon Phaya Thai, Ratchathewi, Bangkok 10400, Thailand",
-      "lat": 13.7503,
-      "lng": 100.5396,
+      "lat": 13.74964,
+      "lng": 100.542086,
       "categoryTitle": "אוכל מקומי אותנטי",
       "recommendationSource": "Michelin Guide (Bib Gourmand)",
       "priceLevel": "$",
@@ -77,14 +106,19 @@
       "googleRating": 4.4,
       "reviewCount": 5800,
       "michelin": true,
-      "tags": ["Iconic", "Bib Gourmand", "Comfort food"]
+      "tags": [
+        "Iconic",
+        "Bib Gourmand",
+        "Comfort food"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.749640,100.542086"
     },
     {
       "name": "Guay Jub Ouan Pochana",
       "description": "ב-50 שנה במרכז ה-Chinatown מגישים מרק נודלס תאי-סיני עם פלפל שחור — בטן חזיר, איברי פנים ונודלס שטוחים גלגוליים. אווירה לילית של דוכן רחוב אמיתי.",
       "location": "408 Yaowarat Rd, Samphanthawong, Bangkok 10100, Thailand",
-      "lat": 13.7387,
-      "lng": 100.5106,
+      "lat": 13.740625,
+      "lng": 100.509195,
       "categoryTitle": "אוכל מקומי אותנטי",
       "recommendationSource": "Michelin Guide (Bib Gourmand)",
       "priceLevel": "$",
@@ -95,14 +129,19 @@
       "googleRating": 4.3,
       "reviewCount": 3500,
       "michelin": true,
-      "tags": ["Late Night", "Yaowarat", "Bib Gourmand"]
+      "tags": [
+        "Late Night",
+        "Yaowarat",
+        "Bib Gourmand"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.740625,100.509195"
     },
     {
       "name": "Phed Mark",
       "description": "פאד קראפאו מורם לרמת אומנות — חביתת ביצים פריכה בשוליים, בקר טחון מטוגן בהרבה צ'ילי ובזיליקום קדוש. השף מארק וויינס הביא תיירים עולמיים לפינה צנועה ב-Ekkamai.",
       "location": "21/1 Soi Sukhumvit 63, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7305,
-      "lng": 100.5828,
+      "lat": 13.720303,
+      "lng": 100.583861,
       "categoryTitle": "תאילנדי",
       "recommendationSource": "YouTube (Mark Wiens)",
       "priceLevel": "$$",
@@ -112,14 +151,19 @@
       "bestTime": "Dinner",
       "googleRating": 4.4,
       "reviewCount": 1100,
-      "tags": ["Spicy", "Trendy", "Instagrammable"]
+      "tags": [
+        "Spicy",
+        "Trendy",
+        "Instagrammable"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.720303,100.583861"
     },
     {
       "name": "Charmgang",
       "description": "פנינה נסתרת ב-shophouse רטרו המגישה קארי תאילנדי קלאסי במשחות שנעשות במקום. קארי הפנאנג עם לחי בקר נימוחה הוא חובת טעימה — שעות של בישול איטי יוצרות מרקם ג'לטיני עשיר.",
       "location": "499/4 Soi Charoenkrung 32, Bang Rak, Bangkok 10500, Thailand",
-      "lat": 13.7263,
-      "lng": 100.5142,
+      "lat": 13.732902,
+      "lng": 100.51509,
       "categoryTitle": "תאילנדי",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$$",
@@ -130,14 +174,19 @@
       "reservationRequired": true,
       "googleRating": 4.6,
       "reviewCount": 800,
-      "tags": ["Curry", "Trendy", "Date night"]
+      "tags": [
+        "Curry",
+        "Trendy",
+        "Date night"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.732902,100.515090"
     },
     {
       "name": "Polo Fried Chicken (Soi Polo)",
       "description": "עוף מטוגן באיכות מתפוצצת בלימון-לבן ושום מטוגן פריך. דוכן אגדי שצועקים עליו תיירים ומקומיים כאחד — הסבן בשרני ומלוח, השום מתמסר מתוק.",
       "location": "137/1-3 Soi Sanam Khli, Lumphini, Pathum Wan, Bangkok 10330, Thailand",
-      "lat": 13.7298,
-      "lng": 100.5435,
+      "lat": 13.732573,
+      "lng": 100.547966,
       "categoryTitle": "תאילנדי",
       "recommendationSource": "Lonely Planet",
       "priceLevel": "$",
@@ -147,14 +196,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.3,
       "reviewCount": 4200,
-      "tags": ["Iconic", "Comfort food"]
+      "tags": [
+        "Iconic",
+        "Comfort food"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.732573,100.547966"
     },
     {
       "name": "Thip Samai",
       "description": "ה-pad thai האגדי של בנגקוק מאז 1966. נודלס עוטפים בביצה זהובה, עם שרימפס נהר ענקיים ומיץ תפוז סחוט במקום. תורים של שעה בערב הם נורמה — שווה את ההמתנה.",
       "location": "313 Maha Chai Rd, Samran Rat, Phra Nakhon, Bangkok 10200, Thailand",
-      "lat": 13.7531,
-      "lng": 100.5081,
+      "lat": 13.752763,
+      "lng": 100.504824,
       "categoryTitle": "תאילנדי",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$",
@@ -165,14 +218,19 @@
       "bestTime": "Dinner",
       "googleRating": 4.3,
       "reviewCount": 8400,
-      "tags": ["Iconic", "Pad Thai", "Late Night"]
+      "tags": [
+        "Iconic",
+        "Pad Thai",
+        "Late Night"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.752763,100.504824"
     },
     {
       "name": "Baan Tepa",
       "description": "חוויית מישלן יוצאת דופן של השפית טאם — Asia's Best Female Chef לשעבר. פילוסופיית farm-to-table קפדנית, צמחי תיבול מקומיים וטכניקות תסיסה. תפריט טעימות מורם שגם משעשע אינטלקטואלית.",
       "location": "69 Ekkamai 12 Alley, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7320,
-      "lng": 100.5867,
+      "lat": 13.7694,
+      "lng": 100.507491,
       "categoryTitle": "יוקרה ומישלן",
       "recommendationSource": "Michelin Guide (1 Star)",
       "priceLevel": "$$$$",
@@ -185,14 +243,19 @@
       "michelin": true,
       "googleRating": 4.7,
       "reviewCount": 600,
-      "tags": ["Michelin", "Tasting menu", "Date night"]
+      "tags": [
+        "Michelin",
+        "Tasting menu",
+        "Date night"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.769400,100.507491"
     },
     {
       "name": "Gaggan Anand",
       "description": "מוסד גסטרונומי אקספרימנטלי של גגן ענאנד. חוויה תיאטרלית של 25 מנות על הבר עם מוזיקה מקורית, מולקולריות וחישובים מנטליים. מושלם לסועדים יחידים שמחפשים הרפתקה רב-חושית.",
       "location": "31 Soi Sukhumvit 31, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7414,
-      "lng": 100.5708,
+      "lat": 13.740759,
+      "lng": 100.567568,
       "categoryTitle": "יוקרה ומישלן",
       "recommendationSource": "World's 50 Best",
       "priceLevel": "$$$$",
@@ -205,14 +268,19 @@
       "michelin": true,
       "googleRating": 4.6,
       "reviewCount": 950,
-      "tags": ["Tasting menu", "Theatrical", "World 50 Best"]
+      "tags": [
+        "Tasting menu",
+        "Theatrical",
+        "World 50 Best"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.740759,100.567568"
     },
     {
       "name": "Sühring",
       "description": "פיין דיינינג גרמני בשתי כוכבי מישלן. האחים סוהרינג מפרשים מחדש מסורת אירופאית עם רכיבים תאילנדים מקומיים ועונתיים. וילה מודרנית-אורבנית, אווירה אינטימית.",
       "location": "10 Yen Akat Soi 3, Chong Nonsi, Yan Nawa, Bangkok 10120, Thailand",
-      "lat": 13.7048,
-      "lng": 100.5460,
+      "lat": 13.710822,
+      "lng": 100.545524,
       "categoryTitle": "יוקרה ומישלן",
       "recommendationSource": "Michelin Guide (2 Stars)",
       "priceLevel": "$$$$",
@@ -224,14 +292,19 @@
       "michelin": true,
       "googleRating": 4.7,
       "reviewCount": 480,
-      "tags": ["Michelin", "European", "Tasting menu"]
+      "tags": [
+        "Michelin",
+        "European",
+        "Tasting menu"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.710822,100.545524"
     },
     {
       "name": "Le Du",
       "description": "מסעדה של השף טון ת'איתאוואט שזכה ב-Asia's Best Restaurant 2023. מנות תאי עכשוויות עם דגש על רכיבים מקומיים ועונתיים. תפריט טעימות יצירתי ובר יין מרשים.",
       "location": "399/3 Silom Soi 7, Silom, Bang Rak, Bangkok 10500, Thailand",
-      "lat": 13.7270,
-      "lng": 100.5331,
+      "lat": 13.725058,
+      "lng": 100.529305,
       "categoryTitle": "יוקרה ומישלן",
       "recommendationSource": "Asia's 50 Best (#1, 2023)",
       "priceLevel": "$$$$",
@@ -243,14 +316,18 @@
       "michelin": true,
       "googleRating": 4.6,
       "reviewCount": 720,
-      "tags": ["Asia 50 Best", "Modern Thai"]
+      "tags": [
+        "Asia 50 Best",
+        "Modern Thai"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.725058,100.529305"
     },
     {
       "name": "Sorn",
       "description": "מסעדת מישלן 2 כוכבים שמתמחה במטבח דרום תאי. השף ייטון שלף את הטעמים החריפים, החמוצים והמלוחים של פוקט וקרבי לחוויה ייחודית. תפריט טעימות שלוקח שלוש שעות.",
       "location": "56 Sukhumvit 26, Khlong Tan, Khlong Toei, Bangkok 10110, Thailand",
-      "lat": 13.7269,
-      "lng": 100.5709,
+      "lat": 13.737825,
+      "lng": 100.466153,
       "categoryTitle": "יוקרה ומישלן",
       "recommendationSource": "Michelin Guide (2 Stars)",
       "priceLevel": "$$$$",
@@ -262,14 +339,19 @@
       "michelin": true,
       "googleRating": 4.7,
       "reviewCount": 410,
-      "tags": ["Michelin", "Southern Thai", "Tasting menu"]
+      "tags": [
+        "Michelin",
+        "Southern Thai",
+        "Tasting menu"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.737825,100.466153"
     },
     {
       "name": "80/20",
       "description": "מטבח תאי-לאוסי יצירתי של השף ג'ו ניפיטה. 80% מסורת, 20% דמיון — תוצאה: ארכיטקטורת טעמים מורכבת בסביבה סטייליסטית עכשווית. מקבל מנעולים על דלת בנעילה לחושר אינטימי.",
       "location": "1052-1054 Charoenkrung Rd, Talad Noi, Samphanthawong, Bangkok 10100, Thailand",
-      "lat": 13.7327,
-      "lng": 100.5103,
+      "lat": 13.673107,
+      "lng": 100.542612,
       "categoryTitle": "יוקרה ומישלן",
       "recommendationSource": "Michelin Guide (1 Star)",
       "priceLevel": "$$$$",
@@ -280,33 +362,47 @@
       "michelin": true,
       "googleRating": 4.6,
       "reviewCount": 380,
-      "tags": ["Michelin", "Tasting menu", "Talad Noi"]
+      "tags": [
+        "Michelin",
+        "Tasting menu",
+        "Talad Noi"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.673107,100.542612"
     },
     {
       "name": "Mensho Tokyo",
       "description": "ראמן של חדשנות מטוקיו עם נגיעות בנגקוקיות. ציר עוף paitan קרמי-לבן עם chashu, דאק קונפי ופטריות. הברוט הטבעוני בעל נוכחות חזקה — סומסום-צ'ילי שמתחרה בכל מקום בהראג'וקו.",
       "location": "57 Soi Sukhumvit 31, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7444,
-      "lng": 100.5694,
+      "lat": 13.73107,
+      "lng": 100.570641,
       "categoryTitle": "ראמן",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$",
       "priceRange": "300–450 THB",
       "cuisine": "Japanese (Ramen)",
       "must_try_dish": "Tori Paitan Ramen",
-      "recommendedDishes": ["tori paitan", "tantanmen", "duck confit ramen", "vegan tantanmen"],
+      "recommendedDishes": [
+        "tori paitan",
+        "tantanmen",
+        "duck confit ramen",
+        "vegan tantanmen"
+      ],
       "vibe": "Compact, modern Japanese",
       "bestTime": "Lunch",
       "googleRating": 4.5,
       "reviewCount": 1300,
-      "tags": ["Japanese", "Vegan-friendly"]
+      "tags": [
+        "Japanese",
+        "Vegan-friendly"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.731070,100.570641"
     },
     {
       "name": "Tonkotsu Kazan Ramen",
       "description": "סניף בנגקוקי של אוסקה. מגישים בקערת חמרה קוריאנית שמשמרת את המרק חם לכל הארוחה. צוות יפני מקבל אותך ב-irasshaimase מהדלת — הרגשה של טוקיו אמיתית.",
       "location": "Empire Tower, 195 South Sathorn Rd, Yan Nawa, Sathon, Bangkok 10120, Thailand",
-      "lat": 13.7220,
-      "lng": 100.5371,
+      "lat": 13.735615,
+      "lng": 100.562901,
       "categoryTitle": "ראמן",
       "recommendationSource": "Eating Thai Food",
       "priceLevel": "$$",
@@ -316,14 +412,17 @@
       "bestTime": "Lunch",
       "googleRating": 4.4,
       "reviewCount": 950,
-      "tags": ["Authentic Japanese"]
+      "tags": [
+        "Authentic Japanese"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.735615,100.562901"
     },
     {
       "name": "Bankara Ramen",
       "description": "ציר סוי-סוס סופג צלול עם איזון מלוח-אומאמי מצוין. אווירה חמה ומסבירת פנים. ה-Bankara Original Ramen הוא נקודת התחלה מצוינת לטירונים בעולם הראמן.",
       "location": "Sukhumvit Soi 39, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7392,
-      "lng": 100.5654,
+      "lat": 13.73479,
+      "lng": 100.572057,
       "categoryTitle": "ראמן",
       "recommendationSource": "Tripadvisor",
       "priceLevel": "$$",
@@ -333,14 +432,17 @@
       "bestTime": "Dinner",
       "googleRating": 4.4,
       "reviewCount": 700,
-      "tags": ["Japanese"]
+      "tags": [
+        "Japanese"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.734790,100.572057"
     },
     {
       "name": "Lust Ramen",
       "description": "טונקוטסו עשיר וארומטי עם אטריות שעוצבו לאחר 100+ ניסיונות. הפרשנות התאי שלהם — Tom Yam Ramen — היא יציר מבריק שמשלב חמיצות תאית עם מרקם יפני סמיך.",
       "location": "Ari Soi 4, Phaya Thai, Bangkok 10400, Thailand",
-      "lat": 13.7795,
-      "lng": 100.5444,
+      "lat": 13.780958,
+      "lng": 100.544677,
       "categoryTitle": "ראמן",
       "recommendationSource": "That Bangkok Life",
       "priceLevel": "$$",
@@ -350,14 +452,18 @@
       "bestTime": "Dinner",
       "googleRating": 4.5,
       "reviewCount": 520,
-      "tags": ["Fusion", "Trendy"]
+      "tags": [
+        "Fusion",
+        "Trendy"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.780958,100.544677"
     },
     {
       "name": "Ippudo",
       "description": "טייטן ראמן גלובלי עם איכות עקבית ב-Bangkok. ראמן הקאטה-טונקוטסו קלאסי עם בקרת איכות מדויקת על אלקליניות האטריות ויציבות אמולסיית הציר. בחירה אמינה ומספקת.",
       "location": "EmQuartier, 693 Sukhumvit Rd, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7307,
-      "lng": 100.5697,
+      "lat": 13.746369,
+      "lng": 100.534697,
       "categoryTitle": "ראמן",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$",
@@ -367,14 +473,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.3,
       "reviewCount": 1900,
-      "tags": ["Reliable", "Family-Friendly"]
+      "tags": [
+        "Reliable",
+        "Family-Friendly"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.746369,100.534697"
     },
     {
       "name": "Mokkori Silom Ramen",
       "description": "נוסד על ידי השחקן היפני נוריו סוזוקי. מפורסם ב-Karamiso ramen — חיבור מורכב של פולי סויה מותססים ושמן צ'ילי — וב-Miso Aburi Chashu עם בטן חזיר בגריל פחם.",
       "location": "Silom Complex, Silom Rd, Bang Rak, Bangkok 10500, Thailand",
-      "lat": 13.7283,
-      "lng": 100.5340,
+      "lat": 13.728159,
+      "lng": 100.528998,
       "categoryTitle": "ראמן",
       "recommendationSource": "Pierre Blake Ramen Guide",
       "priceLevel": "$$",
@@ -384,14 +494,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.4,
       "reviewCount": 480,
-      "tags": ["Spicy", "Japanese"]
+      "tags": [
+        "Spicy",
+        "Japanese"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.728159,100.528998"
     },
     {
       "name": "Fujiyama Go Go",
       "description": "מומחי ה-tsukemen בבנגקוק. אטריות עבות מוגשות בנפרד מציר מרוכז וסמיך, אותו מחממים על פלטה קטנה ממש על השולחן — סגנון מותאם בצורה מושלמת לאקלים הלח של בנגקוק.",
       "location": "Soi Sukhumvit 33/1, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7398,
-      "lng": 100.5660,
+      "lat": 13.735646,
+      "lng": 100.598303,
       "categoryTitle": "ראמן",
       "recommendationSource": "Tripadvisor",
       "priceLevel": "$$",
@@ -401,14 +515,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.4,
       "reviewCount": 380,
-      "tags": ["Tsukemen", "Interactive"]
+      "tags": [
+        "Tsukemen",
+        "Interactive"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.735646,100.598303"
     },
     {
       "name": "Peppina",
       "description": "פיצריה Neapolitan המוסמכת על ידי AVPN — האסוציאציה ה-rapport של פיצה נאפוליטנית. הפיצה הטובה ביותר בבנגקוק — בצק עם תסיסה ארוכה, שריפה בתנור עץ בטמפרטורה גבוהה, וטופינגים איטלקיים מיובאים אמיתיים.",
       "location": "27/1 Sukhumvit Soi 33, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7398,
-      "lng": 100.5663,
+      "lat": 13.737712,
+      "lng": 100.567483,
       "categoryTitle": "פיצה",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$$",
@@ -420,14 +538,18 @@
       "reservationRequired": true,
       "googleRating": 4.5,
       "reviewCount": 2900,
-      "tags": ["AVPN Certified", "Wood-fired"]
+      "tags": [
+        "AVPN Certified",
+        "Wood-fired"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.737712,100.567483"
     },
     {
       "name": "Massilia",
       "description": "פיצה השנה באסיה 2025, חמש שנים רצופות הפיצריה הטובה בתאילנד לפי 50 Top Pizza. תנור עץ, רכיבים אריסטוקרטיים מאיטליה, ובצק שתופח 72 שעות.",
       "location": "1, Sirinrat Building, 388 Sukhumvit Rd, Khlong Tan, Khlong Toei, Bangkok 10110, Thailand",
-      "lat": 13.7283,
-      "lng": 100.5687,
+      "lat": 13.740113,
+      "lng": 100.549463,
       "categoryTitle": "פיצה",
       "recommendationSource": "50 Top Pizza (Best Pizzeria Thailand 2026)",
       "priceLevel": "$$$",
@@ -438,14 +560,18 @@
       "reservationRequired": true,
       "googleRating": 4.6,
       "reviewCount": 1600,
-      "tags": ["Award-winning", "Top 50"]
+      "tags": [
+        "Award-winning",
+        "Top 50"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.740113,100.549463"
     },
     {
       "name": "Vesuvio",
       "description": "פנינה נסתרת על Soi 8 ליד Nana BTS. פיצה נאפוליטנית אמיתית מתנור עץ — עגבניות San Marzano, גבינת fior di latte, בצק שנח 24-48 שעות. פשטות אריסטוקרטית.",
       "location": "10 Soi Sukhumvit 8, Khlong Toei, Bangkok 10110, Thailand",
-      "lat": 13.7376,
-      "lng": 100.5566,
+      "lat": 13.739598,
+      "lng": 100.555809,
       "categoryTitle": "פיצה",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$",
@@ -455,14 +581,18 @@
       "bestTime": "Dinner",
       "googleRating": 4.5,
       "reviewCount": 750,
-      "tags": ["Wood-fired", "Hidden gem"]
+      "tags": [
+        "Wood-fired",
+        "Hidden gem"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.739598,100.555809"
     },
     {
       "name": "Pala Pizza",
       "description": "פיצה רומאית מלבנית הנמכרת ב-al taglio (לפי משולשים). בצק עם הידרציה גבוהה ותסיסה ארוכה משיג קראנץ' אוורירי, בסיס איתן לטופינגים איטלקיים מיובאים. נוח ל-Asok BTS.",
       "location": "Soi Sukhumvit 16, Khlong Toei, Bangkok 10110, Thailand",
-      "lat": 13.7335,
-      "lng": 100.5635,
+      "lat": 13.736894,
+      "lng": 100.56092,
       "categoryTitle": "פיצה",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$",
@@ -472,14 +602,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.4,
       "reviewCount": 620,
-      "tags": ["By the slice", "Casual"]
+      "tags": [
+        "By the slice",
+        "Casual"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.736894,100.560920"
     },
     {
       "name": "Otto Pizza",
       "description": "תנור עץ ופיצות באיכות גבוהה ב-Soi 8. מפעיל בקואופרציה עם מסעדות שכנות בפס שהפך לחתיכת אוכל מיני-איטלקית. אווירה אינטימית ומתאימה לדייט.",
       "location": "Soi Sukhumvit 8, Khlong Toei, Bangkok 10110, Thailand",
-      "lat": 13.7372,
-      "lng": 100.5568,
+      "lat": 13.732754,
+      "lng": 100.58225,
       "categoryTitle": "פיצה",
       "recommendationSource": "BangkokDays",
       "priceLevel": "$$$",
@@ -489,33 +623,44 @@
       "bestTime": "Dinner",
       "googleRating": 4.4,
       "reviewCount": 450,
-      "tags": ["Wood-fired"]
+      "tags": [
+        "Wood-fired"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.732754,100.582250"
     },
     {
       "name": "Smizzle Burger",
       "description": "מומחי הסמאש-בורגר של בנגקוק. בקר Charolais צרפתי 300-day grain fed, לחמניות עם בצק צרפתי מיוחד. ה-Crusty Blondy עם פטיות מוכפלות, גבינת צ'דר עם שולי קריספי, ומיונז סריראצ'ה חריף.",
       "location": "23/1 Si Fa Alley, Phahonyothin Rd, Phaya Thai, Bangkok 10400, Thailand",
-      "lat": 13.7813,
-      "lng": 100.5433,
+      "lat": 13.750537,
+      "lng": 100.538698,
       "categoryTitle": "המבורגר",
       "recommendationSource": "BK Magazine",
       "priceLevel": "$$",
       "priceRange": "230–330 THB",
       "cuisine": "American (Smash Burger)",
       "must_try_dish": "Crusty Blondy",
-      "recommendedDishes": ["crusty blondy", "messy fries", "strawberry shake"],
+      "recommendedDishes": [
+        "crusty blondy",
+        "messy fries",
+        "strawberry shake"
+      ],
       "vibe": "Hip Ari spot, watch the smash through glass",
       "bestTime": "Lunch",
       "googleRating": 4.6,
       "reviewCount": 850,
-      "tags": ["Smash Burger", "Trendy"]
+      "tags": [
+        "Smash Burger",
+        "Trendy"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.750537,100.538698"
     },
     {
       "name": "Barney's Burger Joint",
       "description": "מסעדה של אנרגיה אמריקאית עובדת ב-Ari. סמאש בורגר מבקר Black Angus ו-Wagyu אוסטרלי — קריספי, מלוח ובשרני. נמכר עד הסוף כל יום, מומלץ להגיע מוקדם.",
       "location": "Ari Soi 1, Phaya Thai, Bangkok 10400, Thailand",
-      "lat": 13.7781,
-      "lng": 100.5430,
+      "lat": 13.782494,
+      "lng": 100.546485,
       "categoryTitle": "המבורגר",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$",
@@ -525,14 +670,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.5,
       "reviewCount": 380,
-      "tags": ["Smash Burger", "Wagyu"]
+      "tags": [
+        "Smash Burger",
+        "Wagyu"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.782494,100.546485"
     },
     {
       "name": "No Drama Burger",
       "description": "סמאש בורגר מוקפד ב-Thonglor. ה-Double Smash Cheeseburger הוא חתימה — שתי פטיות מסוגליות, גבינה מותכת ולחמניה רכה. תפריט קומפקטי ומיקוד באיכות.",
       "location": "Marche Thonglor, 150 Thong Lo, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7333,
-      "lng": 100.5803,
+      "lat": 13.737868,
+      "lng": 100.515202,
       "categoryTitle": "המבורגר",
       "recommendationSource": "TikTok (talmagemitchell)",
       "priceLevel": "$$",
@@ -542,14 +691,17 @@
       "bestTime": "Lunch",
       "googleRating": 4.5,
       "reviewCount": 290,
-      "tags": ["Smash Burger"]
+      "tags": [
+        "Smash Burger"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.737868,100.515202"
     },
     {
       "name": "Art of B",
       "description": "המבורגרים מבקר dry-aged ב-Thong Lo. ה-aging מעניק עומק טעם פאנקי-אומאמי שלא תמצאו במקומות אחרים. תפריט קטן ומתוקן, לא לחפזון.",
       "location": "Thonglor Soi 11, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7378,
-      "lng": 100.5824,
+      "lat": 13.745769,
+      "lng": 100.566399,
       "categoryTitle": "המבורגר",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$$",
@@ -559,7 +711,11 @@
       "bestTime": "Dinner",
       "googleRating": 4.5,
       "reviewCount": 240,
-      "tags": ["Dry-Aged", "Premium"]
+      "tags": [
+        "Dry-Aged",
+        "Premium"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.745769,100.566399"
     },
     {
       "name": "Pita Steak Burger",
@@ -576,14 +732,17 @@
       "bestTime": "Lunch",
       "googleRating": 4.4,
       "reviewCount": 350,
-      "tags": ["Smash Burger"]
+      "tags": [
+        "Smash Burger"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.779100,100.543900"
     },
     {
       "name": "Bar Us",
       "description": "מקום ה-#4 ב-Asia's 50 Best Bars 2025 ו-#15 בעולם. גישת tasting menu לקוקטיילים — מנות שנפרשות בקורסים מאומנים. בסוקומוויט 26, דמיין מסעדה אבוסטרקטית של משקאות.",
       "location": "Soi Sukhumvit 26, Khlong Tan, Khlong Toei, Bangkok 10110, Thailand",
-      "lat": 13.7245,
-      "lng": 100.5709,
+      "lat": 13.733291,
+      "lng": 100.582895,
       "categoryTitle": "ברי קוקטיילים",
       "recommendationSource": "Asia's 50 Best Bars (#4)",
       "priceLevel": "$$$$",
@@ -594,14 +753,18 @@
       "reservationRequired": true,
       "googleRating": 4.7,
       "reviewCount": 280,
-      "tags": ["Asia 50 Best", "Tasting menu"]
+      "tags": [
+        "Asia 50 Best",
+        "Tasting menu"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.733291,100.582895"
     },
     {
       "name": "Tropic City",
       "description": "תרבות טיקי ב-Charoenkrung עם מקצועיות אמיתית מאחורי המופע ההומוריסטי. אינטריור משומש, צבעוני, טרופי בלי בושה. עלה למקום ה-#6 ב-Asia's 50 Best Bars 2023.",
       "location": "65 Charoen Krung Rd Soi 28, Bang Rak, Bangkok 10500, Thailand",
-      "lat": 13.7307,
-      "lng": 100.5125,
+      "lat": 13.730761,
+      "lng": 100.515376,
       "categoryTitle": "ברי קוקטיילים",
       "recommendationSource": "Asia's 50 Best Bars",
       "priceLevel": "$$$",
@@ -611,14 +774,18 @@
       "bestTime": "Late Night",
       "googleRating": 4.6,
       "reviewCount": 1100,
-      "tags": ["Tiki", "Asia 50 Best"]
+      "tags": [
+        "Tiki",
+        "Asia 50 Best"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.730761,100.515376"
     },
     {
       "name": "Vesper",
       "description": "הבר שהפעיל את מהפכת הקוקטיילים המודרנית בבנגקוק. ב-Convent Road ב-Silom — הופיע מספר פעמים ב-Asia's 50 Best Bars. המשקאות מדויקים בעקביות, השירות מקצועי.",
       "location": "10/15 Convent Rd, Silom, Bang Rak, Bangkok 10500, Thailand",
-      "lat": 13.7252,
-      "lng": 100.5358,
+      "lat": 13.72704,
+      "lng": 100.533444,
       "categoryTitle": "ברי קוקטיילים",
       "recommendationSource": "Asia's 50 Best Bars",
       "priceLevel": "$$$",
@@ -628,14 +795,18 @@
       "bestTime": "Late Night",
       "googleRating": 4.5,
       "reviewCount": 540,
-      "tags": ["Classic", "Italian"]
+      "tags": [
+        "Classic",
+        "Italian"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.727040,100.533444"
     },
     {
       "name": "Teens of Thailand",
       "description": "בר קוקטיילים אפלולי ומוקפד ב-Soi Nana, מתמחה ב-gin. המיקסולוגים משתמשים בעשבי תיבול מקומיים, דבש פראי ופירות הדר תאי ליצירת טעמים נדירים. דלת עץ כבד.",
       "location": "76 Soi Nana, Pom Prap, Pom Prap Sattru Phai, Bangkok 10100, Thailand",
-      "lat": 13.7409,
-      "lng": 100.5102,
+      "lat": 13.739834,
+      "lng": 100.513909,
       "categoryTitle": "ברי קוקטיילים",
       "recommendationSource": "Asia's 50 Best Bars",
       "priceLevel": "$$$",
@@ -645,14 +816,18 @@
       "bestTime": "Late Night",
       "googleRating": 4.5,
       "reviewCount": 920,
-      "tags": ["Gin", "Speakeasy"]
+      "tags": [
+        "Gin",
+        "Speakeasy"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.739834,100.513909"
     },
     {
       "name": "BKK Social Club",
       "description": "בר #49 ב-World's 50 Best Bars 2025, ב-Four Seasons Bangkok. השראה דרום-אמריקאית, רוחות חמות וקוקטיילים מבוססים פירות אקזוטיים. אווירה חגיגית.",
       "location": "300/1 Charoenkrung Rd, Si Phraya, Bang Rak, Bangkok 10500, Thailand",
-      "lat": 13.7227,
-      "lng": 100.5141,
+      "lat": 13.725092,
+      "lng": 100.521458,
       "categoryTitle": "ברי קוקטיילים",
       "recommendationSource": "World's 50 Best Bars (#49)",
       "priceLevel": "$$$$",
@@ -662,14 +837,18 @@
       "bestTime": "Late Night",
       "googleRating": 4.6,
       "reviewCount": 380,
-      "tags": ["World 50 Best", "Hotel bar"]
+      "tags": [
+        "World 50 Best",
+        "Hotel bar"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.725092,100.521458"
     },
     {
       "name": "Bamboo Bar (Mandarin Oriental)",
       "description": "מוסד היסטורי בעידן הקולוניאלי במנדרין אוריינטל. ג'אז חי ברמה עולמית, מיקסולוגיה ברמה הגבוהה ביותר ובר עץ אגדי. החוויה האולטימטיבית של בר במלון איקוני.",
       "location": "48 Oriental Ave, Bang Rak, Bangkok 10500, Thailand",
-      "lat": 13.7234,
-      "lng": 100.5121,
+      "lat": 13.723885,
+      "lng": 100.514155,
       "categoryTitle": "ברי קוקטיילים",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$$$",
@@ -679,14 +858,19 @@
       "bestTime": "Late Night",
       "googleRating": 4.6,
       "reviewCount": 660,
-      "tags": ["Live Jazz", "Hotel", "Iconic"]
+      "tags": [
+        "Live Jazz",
+        "Hotel",
+        "Iconic"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.723885,100.514155"
     },
     {
       "name": "Rabbit Hole",
       "description": "ספיקיזי רב-קומתי מתוחכם ב-Thong Lor, עם בנייה מוקפדת של משקאות וצוות מאומן בהזמנות מותאמות אישית. אווירה דרמטית עם אורות נמוכים והומאז' ל-Alice in Wonderland.",
       "location": "125 Soi Sukhumvit 55, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7331,
-      "lng": 100.5786,
+      "lat": 13.729898,
+      "lng": 100.581121,
       "categoryTitle": "ברי קוקטיילים",
       "recommendationSource": "Roadbook",
       "priceLevel": "$$$",
@@ -696,14 +880,18 @@
       "bestTime": "Late Night",
       "googleRating": 4.5,
       "reviewCount": 580,
-      "tags": ["Speakeasy", "Multi-level"]
+      "tags": [
+        "Speakeasy",
+        "Multi-level"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.729898,100.581121"
     },
     {
       "name": "Asia Today",
       "description": "בר חדש ב-Soi Nana שמתמקד בקוקטיילים אסיאתיים מודרניים. שימוש בתסיסה, עשבי תיבול אסיאתיים ושיטות חמה-קר. בר אינטימי של 30 מקומות, חוויה כמעט-tasting-menu.",
       "location": "Soi Nana, Pom Prap, Bangkok 10100, Thailand",
-      "lat": 13.7411,
-      "lng": 100.5106,
+      "lat": 13.739835,
+      "lng": 100.514143,
       "categoryTitle": "ברי קוקטיילים",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$$",
@@ -712,14 +900,18 @@
       "bestTime": "Late Night",
       "googleRating": 4.6,
       "reviewCount": 320,
-      "tags": ["Modern", "Asian-inspired"]
+      "tags": [
+        "Modern",
+        "Asian-inspired"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.739835,100.514143"
     },
     {
       "name": "Sweet Poppy",
       "description": "גן עדן למשפחות עם חצר ענקית, מתקני עץ, ארגז חול ובר מיצים. אוכל אוסטרלי-מערבי באיכות מוקפדת מאפשר להורים ליהנות בזמן שהילדים משחקים בבטחון. מומלץ לבילוי יום שלם.",
       "location": "999/9 Nonthaburi 47, Bang Khen, Mueang Nonthaburi, Nonthaburi 11000, Thailand",
-      "lat": 13.8552,
-      "lng": 100.4954,
+      "lat": 13.88452,
+      "lng": 100.519245,
       "categoryTitle": "מסעדות משפחתיות",
       "recommendationSource": "Bambi Web",
       "priceLevel": "$$",
@@ -728,14 +920,19 @@
       "bestTime": "Lunch",
       "googleRating": 4.5,
       "reviewCount": 880,
-      "tags": ["Family-Friendly", "Outdoor", "Playground"]
+      "tags": [
+        "Family-Friendly",
+        "Outdoor",
+        "Playground"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.884520,100.519245"
     },
     {
       "name": "Wonder Woods Kids Café",
       "description": "מרחב co-learning מסודר ונקי במיוחד ב-Thonglor המותאם לפעוטות. סביבה רגועה עם אופציות אוכל בריאות ומתקנים תוך-גופניים. מושלם לימים עם ילדים קטנים.",
       "location": "Thong Lo Soi 13, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
       "lat": 13.7392,
-      "lng": 100.5810,
+      "lng": 100.581,
       "categoryTitle": "מסעדות משפחתיות",
       "recommendationSource": "Verso International School",
       "priceLevel": "$$",
@@ -744,7 +941,11 @@
       "bestTime": "Lunch",
       "googleRating": 4.4,
       "reviewCount": 340,
-      "tags": ["Family-Friendly", "Toddlers"]
+      "tags": [
+        "Family-Friendly",
+        "Toddlers"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.739200,100.581000"
     },
     {
       "name": "Pumpkin Art Town",
@@ -760,14 +961,19 @@
       "bestTime": "Lunch",
       "googleRating": 4.4,
       "reviewCount": 720,
-      "tags": ["Family-Friendly", "Art", "Riverside"]
+      "tags": [
+        "Family-Friendly",
+        "Art",
+        "Riverside"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=14.020800,100.525300"
     },
     {
       "name": "Dasa Café (Sukhumvit 26)",
       "description": "ספרים, ספות, וקייק שוקולד גדולים. בית קפה אינטימי שמרגיש כמו ספרייה פרטית — מקום מצוין לעבוד במחשב או לקרוא ספר. הקייקים והמאפים נאפים במקום.",
       "location": "Sukhumvit Soi 26, Khlong Tan, Khlong Toei, Bangkok 10110, Thailand",
-      "lat": 13.7242,
-      "lng": 100.5712,
+      "lat": 13.728814,
+      "lng": 100.57175,
       "categoryTitle": "בתי קפה וקינוחים",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$",
@@ -777,14 +983,19 @@
       "bestTime": "Breakfast",
       "googleRating": 4.5,
       "reviewCount": 480,
-      "tags": ["Quiet", "Books", "WiFi"]
+      "tags": [
+        "Quiet",
+        "Books",
+        "WiFi"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.728814,100.571750"
     },
     {
       "name": "After You Dessert Café",
       "description": "Honey Toast — לחם שלם חתוך ומטוגן עם חמאה ודבש, מוגש עם גלידה וניל ופירות. רשת תאית אגדית למתוקיסטים. תור של 30+ דקות בשעות שיא.",
       "location": "Siam Paragon Mall, Pathum Wan, Bangkok 10330, Thailand",
-      "lat": 13.7466,
-      "lng": 100.5347,
+      "lat": 13.74528,
+      "lng": 100.533901,
       "categoryTitle": "בתי קפה וקינוחים",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$",
@@ -794,7 +1005,12 @@
       "bestTime": "Late Night",
       "googleRating": 4.4,
       "reviewCount": 5800,
-      "tags": ["Iconic", "Dessert", "Family-Friendly"]
+      "tags": [
+        "Iconic",
+        "Dessert",
+        "Family-Friendly"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.745280,100.533901"
     },
     {
       "name": "Mr. Jones' Orphanage",
@@ -811,14 +1027,18 @@
       "bestTime": "Late Night",
       "googleRating": 4.3,
       "reviewCount": 920,
-      "tags": ["Photogenic", "Dessert"]
+      "tags": [
+        "Photogenic",
+        "Dessert"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.740100,100.582100"
     },
     {
       "name": "Roast Coffee & Eatery",
       "description": "ארוחת בוקר ובראנץ' איכותי עם דגש על קפה specialty. ביצי בנדיקט, פנקייקים, ולחמים נאפים במקום. סניפים ב-EmQuartier וב-The Commons. אהוב על gold-collar local crowd.",
       "location": "EmQuartier, Sukhumvit Rd, Bangkok 10110, Thailand",
-      "lat": 13.7310,
-      "lng": 100.5697,
+      "lat": 13.731872,
+      "lng": 100.562827,
       "categoryTitle": "בתי קפה וקינוחים",
       "recommendationSource": "Time Out Bangkok",
       "priceLevel": "$$$",
@@ -828,14 +1048,18 @@
       "bestTime": "Breakfast",
       "googleRating": 4.4,
       "reviewCount": 1500,
-      "tags": ["Brunch", "Specialty Coffee"]
+      "tags": [
+        "Brunch",
+        "Specialty Coffee"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.731872,100.562827"
     },
     {
       "name": "Sushi Masato",
       "description": "אומקאסה יפנית פרימיום של השף מסטו שינה. דג טרי שמיובא יומי מ-Toyosu Market, אורז שניתן בעדנה. תפריט קבוע קטן ושמורני — אחד הסושי הטובים בדרום-מזרח אסיה.",
       "location": "67 Sawasdee 1 Alley, Soi Sukhumvit 31, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7445,
-      "lng": 100.5687,
+      "lat": 13.726942,
+      "lng": 100.567939,
       "categoryTitle": "יפני",
       "recommendationSource": "Michelin Guide (1 Star)",
       "priceLevel": "$$$$",
@@ -848,14 +1072,18 @@
       "michelin": true,
       "googleRating": 4.7,
       "reviewCount": 220,
-      "tags": ["Michelin", "Omakase"]
+      "tags": [
+        "Michelin",
+        "Omakase"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.726942,100.567939"
     },
     {
       "name": "Ginza Sushi Ichi",
       "description": "סניף בנגקוק של מועדון הסושי הטוקיוני המפורסם. אומקאסה איכותי בסטנדרט יפני אמיתי, דג טרי ותפריט עונתי. בר אנטילי של 12 מקומות.",
       "location": "Erawan Bangkok, 494 Phloen Chit Rd, Pathum Wan, Bangkok 10330, Thailand",
-      "lat": 13.7441,
-      "lng": 100.5414,
+      "lat": 13.743995,
+      "lng": 100.540743,
       "categoryTitle": "יפני",
       "recommendationSource": "Michelin Guide",
       "priceLevel": "$$$$",
@@ -866,14 +1094,18 @@
       "reservationRequired": true,
       "googleRating": 4.6,
       "reviewCount": 180,
-      "tags": ["Omakase", "Premium"]
+      "tags": [
+        "Omakase",
+        "Premium"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.743995,100.540743"
     },
     {
       "name": "Sushi Cyu",
       "description": "אומקאסה במחיר נגיש יותר מהסניפים הטוקיונים — תכשיט שכונתי ב-Phrom Phong. דג איכותי, אורז מצוין ושירות חם. תפריט הכולל גם donburi לארוחות צהריים.",
       "location": "55 Sukhumvit Soi 39, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7385,
-      "lng": 100.5660,
+      "lat": 13.726942,
+      "lng": 100.567939,
       "categoryTitle": "יפני",
       "recommendationSource": "BangkokDays",
       "priceLevel": "$$$",
@@ -883,14 +1115,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.5,
       "reviewCount": 410,
-      "tags": ["Omakase", "Lunch deal"]
+      "tags": [
+        "Omakase",
+        "Lunch deal"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.726942,100.567939"
     },
     {
       "name": "Yamazaki",
       "description": "איזקאיה יפנית מסורתית עם אווירה חמה ותפריט נרחב — סקיווארה צלוי, סשימי ארומטי ומבחר סאקה רחב. פופולרי בקהילה היפנית של בנגקוק.",
       "location": "Sukhumvit Soi 33, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.7402,
-      "lng": 100.5658,
+      "lat": 13.718896,
+      "lng": 100.597329,
       "categoryTitle": "יפני",
       "recommendationSource": "Tripatrek",
       "priceLevel": "$$$",
@@ -900,14 +1136,18 @@
       "bestTime": "Dinner",
       "googleRating": 4.4,
       "reviewCount": 280,
-      "tags": ["Izakaya", "Sake"]
+      "tags": [
+        "Izakaya",
+        "Sake"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.718896,100.597329"
     },
     {
       "name": "Aoyama Sushi",
       "description": "סושי אמין במחיר סביר ב-EmQuartier. דג טרי בכמויות הגונות, סטו סוסי ובאר אורז מסיני נדיב. אופציה משפחתית-נגישה לחוויה יפנית באיכות גבוהה.",
       "location": "EmQuartier, Sukhumvit Rd, Bangkok 10110, Thailand",
-      "lat": 13.7311,
-      "lng": 100.5694,
+      "lat": 13.726942,
+      "lng": 100.567939,
       "categoryTitle": "יפני",
       "recommendationSource": "Tripatrek",
       "priceLevel": "$$",
@@ -917,14 +1157,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.3,
       "reviewCount": 600,
-      "tags": ["Family-Friendly", "Casual"]
+      "tags": [
+        "Family-Friendly",
+        "Casual"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.726942,100.567939"
     },
     {
       "name": "Krua Apsorn",
       "description": "מסעדה של Bib Gourmand המגישה מטבח תאי המסורתי. קארי הסרטן הוא המנה החתימה, ביצה מקופצת עם ירקות מקומיים. רב-דוריות של מקומיים אוהבים.",
       "location": "169 Dinso Rd, Bowon Niwet, Phra Nakhon, Bangkok 10200, Thailand",
-      "lat": 13.7575,
-      "lng": 100.5009,
+      "lat": 13.755213,
+      "lng": 100.501545,
       "categoryTitle": "תאילנדי",
       "recommendationSource": "Michelin Guide (Bib Gourmand)",
       "priceLevel": "$$",
@@ -935,14 +1179,18 @@
       "googleRating": 4.4,
       "reviewCount": 1700,
       "michelin": true,
-      "tags": ["Bib Gourmand", "Local Favorite"]
+      "tags": [
+        "Bib Gourmand",
+        "Local Favorite"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.755213,100.501545"
     },
     {
       "name": "Nahm",
       "description": "מסעדת תאי מסורתית פרימיום בהוטל COMO Metropolitan. שף Pim Techamuanvivit עוקבת אחר מתכונים מהמאה ה-19 שנמצאו בכתבי יד מלכותיים. חוויה אקדמית-טעימה.",
       "location": "Como Metropolitan Bangkok, 27 South Sathon Rd, Yan Nawa, Sathon, Bangkok 10120, Thailand",
-      "lat": 13.7227,
-      "lng": 100.5410,
+      "lat": 13.723571,
+      "lng": 100.538971,
       "categoryTitle": "תאילנדי",
       "recommendationSource": "Asia's 50 Best Restaurants",
       "priceLevel": "$$$$",
@@ -954,7 +1202,11 @@
       "michelin": true,
       "googleRating": 4.5,
       "reviewCount": 320,
-      "tags": ["Asia 50 Best", "Traditional"]
+      "tags": [
+        "Asia 50 Best",
+        "Traditional"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.723571,100.538971"
     }
   ],
   "newRestaurantCategories": []

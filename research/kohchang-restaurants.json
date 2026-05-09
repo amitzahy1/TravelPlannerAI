@@ -1,0 +1,636 @@
+{
+  "restaurants": [
+    {
+      "name": "Phu-Talay",
+      "description": "מסעדת פירות ים יוקרתית מעוצבת בכחול-ולבן על גדות הנהר ב-Salakphet. דג ברמונדי שלם מאודה בלימון, צדפות חיות מובחרות ושירות מוקפד באווירה קסומה ורומנטית.",
+      "location": "Salakphet, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "יוקרה ומישלן",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$$",
+      "cuisine": "Thai (Seafood)",
+      "must_try_dish": "Whole Steamed Lemon Sea Bass",
+      "vibe": "Riverside fishing village, magical",
+      "bestTime": "Dinner",
+      "reservationRequired": true,
+      "googleRating": 4.6,
+      "reviewCount": 1200,
+      "tags": [
+        "Riverside",
+        "Seafood",
+        "Romantic"
+      ],
+      "lat": 12.056583,
+      "lng": 102.292886,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.056583,102.292886"
+    },
+    {
+      "name": "Saaitara Restaurant",
+      "description": "מסעדה אלגנטית במלון Santhiya Tree Resort עם נופים פנורמיים של האוקיינוס. מטבח דרום-תאי איכותי וטעמים אסיאתיים רחבים. מתאים לאירועים קולינריים משמעותיים.",
+      "location": "Santhiya Tree Koh Chang Resort, Klong Son, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "יוקרה ומישלן",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$$$",
+      "cuisine": "Asian Fusion",
+      "vibe": "Resort fine dining, ocean views",
+      "bestTime": "Dinner",
+      "reservationRequired": true,
+      "googleRating": 4.5,
+      "reviewCount": 720,
+      "tags": [
+        "Ocean View",
+        "Resort"
+      ],
+      "lat": 12.087341,
+      "lng": 102.278781,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.087341,102.278781"
+    },
+    {
+      "name": "Chantara Restaurant",
+      "description": "מסעדת המלון Awa Resort עם מסגרת מבנה רשמית ופוקוס על פירות ים פרימיום וגרילים בינלאומיים. פילוסופיית sea-to-grill — הדג עובר מהסירה ישר לפלטה.",
+      "location": "Awa Resort, Klong Prao, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "יוקרה ומישלן",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$$",
+      "cuisine": "Seafood + Grill",
+      "must_try_dish": "Sea-to-Grill Catch",
+      "vibe": "Hotel dining, structured",
+      "bestTime": "Dinner",
+      "googleRating": 4.4,
+      "reviewCount": 480,
+      "tags": [
+        "Resort",
+        "Seafood"
+      ],
+      "lat": 12.087341,
+      "lng": 102.278781,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.087341,102.278781"
+    },
+    {
+      "name": "Nong Bua Seafood",
+      "description": "מוסד קולינרי משפחתי של מעל 30 שנה על White Sand Beach. צדפות מוקפצות בחמאה ושום, דג מטוגן עמוק עם רוטב דגים — מול מופעי אש מרהיבים בשקיעה.",
+      "location": "White Sand Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "אוכל מקומי אותנטי",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$",
+      "cuisine": "Thai (Seafood)",
+      "must_try_dish": "Stir-Fried Scallops with Butter & Garlic",
+      "vibe": "Beachfront, fire shows at sunset",
+      "bestTime": "Dinner",
+      "googleRating": 4.4,
+      "reviewCount": 1500,
+      "tags": [
+        "Beachfront",
+        "Seafood",
+        "Fire Show"
+      ],
+      "lat": 12.064487,
+      "lng": 102.286172,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.064487,102.286172"
+    },
+    {
+      "name": "Jae Eaw Seafood",
+      "description": "מסעדה ותיקה אגדית של פטאיה החדשה. שיטות הכנה מסורתיות בשולחנות גדולים-קולקטיביים. אווירה משפחתית ולא-פורמלית עם פירות ים שמשתנים יומית.",
+      "location": "Salakphet, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "אוכל מקומי אותנטי",
+      "recommendationSource": "Travel Triangle",
+      "priceLevel": "$$",
+      "cuisine": "Thai (Seafood)",
+      "vibe": "Casual, communal tables",
+      "bestTime": "Dinner",
+      "googleRating": 4.3,
+      "reviewCount": 880,
+      "tags": [
+        "Local",
+        "Seafood"
+      ],
+      "lat": 12.041671,
+      "lng": 102.298238,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.041671,102.298238"
+    },
+    {
+      "name": "Kati Culinary",
+      "description": "המקום לקארי תאי אמיתי. כל משחות הקארי נעשות במקום מאפס — Massaman חריף ועוף מטוגן עם עשב לימון פריך. ב-Klong Prao Beach, אווירה משפחתית-מסבירה-פנים.",
+      "location": "Klong Prao Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "תאילנדי",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$",
+      "cuisine": "Thai",
+      "must_try_dish": "Massaman Curry",
+      "recommendedDishes": [
+        "massaman curry",
+        "fried chicken with lemongrass",
+        "tom kha gai"
+      ],
+      "vibe": "Authentic family-run",
+      "bestTime": "Dinner",
+      "googleRating": 4.6,
+      "reviewCount": 1100,
+      "tags": [
+        "Curry",
+        "Authentic",
+        "House-made"
+      ],
+      "lat": 12.045754,
+      "lng": 102.298743,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.045754,102.298743"
+    },
+    {
+      "name": "Manpu Seafood",
+      "description": "המקום הטוב ביותר לטום-יום-נודלס באי, עם דגים שנתפסים ישירות מהסירות הסמוכות. מחיר נמוך-מאוד-נדיב עם איכות שגוברת על מסעדות התיירים. מקומיים אוכלים פה.",
+      "location": "Bang Bao, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "אוכל מקומי אותנטי",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$",
+      "cuisine": "Thai (Noodle Soup)",
+      "must_try_dish": "Tom Yum Noodle Soup",
+      "vibe": "No-frills, locals only",
+      "bestTime": "Lunch",
+      "googleRating": 4.5,
+      "reviewCount": 320,
+      "tags": [
+        "Hidden Gem",
+        "Local",
+        "Cheap Eats"
+      ],
+      "lat": 12.034676,
+      "lng": 102.293461,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.034676,102.293461"
+    },
+    {
+      "name": "Dinosaur Gai Yang",
+      "description": "אומנות הצליית עוף הפחם. עוף שלם מסובב על שיפוד מעל פחמים לאורך שעות עד לקרום זהוב פריך. שירות פשוט, פוקוס על המנה היחידה. מתאים לארוחת צהריים מלאה.",
+      "location": "White Sand Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "תאילנדי",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$",
+      "cuisine": "Thai",
+      "must_try_dish": "Charcoal Spit-Roast Chicken",
+      "vibe": "Roadside grill",
+      "bestTime": "Lunch",
+      "googleRating": 4.4,
+      "reviewCount": 280,
+      "tags": [
+        "Charcoal",
+        "Local"
+      ]
+    },
+    {
+      "name": "Indian Hut",
+      "description": "מסעדה הודית ותיקה ב-White Sand Beach, בין Changburi Resort ל-Tesco Express. אוכל הודי אותנטי עם תפריט רחב — currys, tandoori, vegetarian. כנראה האופציה ההודית הטובה באי.",
+      "location": "White Sand Beach (south end), Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "אוכל מקומי אותנטי",
+      "recommendationSource": "Tripadvisor",
+      "priceLevel": "$$",
+      "cuisine": "Indian",
+      "must_try_dish": "Butter Chicken",
+      "vibe": "Casual neighborhood Indian",
+      "bestTime": "Dinner",
+      "googleRating": 4.4,
+      "reviewCount": 720,
+      "tags": [
+        "Indian",
+        "Vegetarian-Friendly"
+      ],
+      "lat": 12.027926,
+      "lng": 102.290578,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.027926,102.290578"
+    },
+    {
+      "name": "Sun and Soul (Cookies Resort)",
+      "description": "פירות ים בגריל BBQ עם הקפדה על מקורות מקומיים. בנו קהל נאמן בשנים האחרונות — דגים שנתפסו באותו יום, עם רטבים תאיים. אווירה רגועה של מלון בוטיק.",
+      "location": "Cookies Resort, White Sand Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "אוכל מקומי אותנטי",
+      "recommendationSource": "Tripadvisor",
+      "priceLevel": "$$",
+      "cuisine": "Thai (Seafood BBQ)",
+      "must_try_dish": "Seafood BBQ Set",
+      "vibe": "Beachfront resort",
+      "bestTime": "Dinner",
+      "googleRating": 4.5,
+      "reviewCount": 410,
+      "tags": [
+        "Beachfront",
+        "BBQ",
+        "Seafood"
+      ]
+    },
+    {
+      "name": "Beach Tango Restaurant & Bar",
+      "description": "מסעדה ובר על White Sand Beach עם לובסטרים גדולים וטריים, סטייקים נמסים ופלטות פירות ים. אווירת חוף-לילה עם מוזיקה ושירות חם — מקום פופולרי לתיירים.",
+      "location": "White Sand Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "מסעדות משפחתיות",
+      "recommendationSource": "Thinglish Lifestyle",
+      "priceLevel": "$$$",
+      "cuisine": "International",
+      "must_try_dish": "Grilled Lobster",
+      "vibe": "Beachfront restaurant-bar",
+      "bestTime": "Dinner",
+      "googleRating": 4.4,
+      "reviewCount": 980,
+      "tags": [
+        "Beachfront",
+        "Lobster"
+      ],
+      "lat": 12.0442,
+      "lng": 102.293951,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.044200,102.293951"
+    },
+    {
+      "name": "The Kitchen",
+      "description": "אהוב על מטיילים-תרמילאים ב-Lonely Beach. אוכל תאי אותנטי, פירות ים מצוינים ומחירים נגישים. אווירה רגועה ומסבירה-פנים — פגישה של זולים ומקצוענים יחד.",
+      "location": "Lonely Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "תאילנדי",
+      "recommendationSource": "explorekohchang.com",
+      "priceLevel": "$",
+      "cuisine": "Thai",
+      "must_try_dish": "Pad See Ew with Seafood",
+      "vibe": "Backpacker favorite",
+      "bestTime": "Dinner",
+      "googleRating": 4.5,
+      "reviewCount": 590,
+      "tags": [
+        "Backpacker",
+        "Affordable"
+      ],
+      "lat": 12.046045,
+      "lng": 102.298888,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.046045,102.298888"
+    },
+    {
+      "name": "Siam Beach Resort Restaurant",
+      "description": "מסעדה תאית במלון ב-Lonely Beach. תפריט אותנטי שמדגיש Tom Yum Goong ו-Larb Moo איסאן. ישיבה קרובה לחוף עם אווירה רגועה. טוב למפגשים משפחתיים.",
+      "location": "Siam Beach Resort, Lonely Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "תאילנדי",
+      "recommendationSource": "explorekohchang.com",
+      "priceLevel": "$$",
+      "cuisine": "Thai",
+      "must_try_dish": "Tom Yum Goong",
+      "vibe": "Beachfront resort restaurant",
+      "bestTime": "Dinner",
+      "googleRating": 4.3,
+      "reviewCount": 480,
+      "tags": [
+        "Beachfront",
+        "Resort"
+      ],
+      "lat": 12.008777,
+      "lng": 102.292896,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.008777,102.292896"
+    },
+    {
+      "name": "Mordi e Fuggi",
+      "description": "פיצריה איטלקית אותנטית של בעל איטלקי-יליד ב-Kai Bae walking street. בצק מותסס פריך עם תוספות איכותיות כמו פרושוטו ופרמיג'אנו. תשלום במזומן בלבד — חוויה איטלקית בלב הג'ונגל.",
+      "location": "Kai Bae Walking Street, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "פיצה",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$",
+      "cuisine": "Italian (Tuscan)",
+      "must_try_dish": "Margherita with Buffalo Mozzarella",
+      "recommendedDishes": [
+        "margherita",
+        "lasagna",
+        "ravioli",
+        "tiramisu"
+      ],
+      "vibe": "Cosy, authentic, cash-only",
+      "bestTime": "Dinner",
+      "googleRating": 4.7,
+      "reviewCount": 620,
+      "tags": [
+        "Authentic Italian",
+        "Wood-fired",
+        "Cash Only"
+      ],
+      "lat": 12.032165,
+      "lng": 102.293104,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.032165,102.293104"
+    },
+    {
+      "name": "Lisca Beach",
+      "description": "פיצה איטלקית בתנור עץ ישירות על Bailan Beach. בעלים איטלקי-תאי יוצרים שילוב של טכניקה אירופית ואירוח אסיאתי. אווירה רגועה לארוחת ערב מול הים.",
+      "location": "Bailan Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "פיצה",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$$",
+      "cuisine": "Italian",
+      "must_try_dish": "Wood-fired Pizza",
+      "vibe": "Beachfront Italian, peaceful",
+      "bestTime": "Dinner",
+      "googleRating": 4.6,
+      "reviewCount": 280,
+      "tags": [
+        "Beachfront",
+        "Wood-fired"
+      ],
+      "lat": 12.006954,
+      "lng": 102.293326,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.006954,102.293326"
+    },
+    {
+      "name": "Pizza King Express",
+      "description": "פיצריה fast-casual ב-White Sand Beach. פיצה מרגריטה מסורתית מבנייה מבנה איתן. מקום אמין ופשוט שלא מתפשר על איכות הבצק. מתאים לארוחה מהירה.",
+      "location": "White Sand Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "פיצה",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$",
+      "cuisine": "Italian",
+      "must_try_dish": "Margherita Pizza",
+      "vibe": "Fast-casual",
+      "bestTime": "Dinner",
+      "googleRating": 4.3,
+      "reviewCount": 240,
+      "tags": [
+        "Casual",
+        "Affordable"
+      ],
+      "lat": 12.075186,
+      "lng": 102.281143,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.075186,102.281143"
+    },
+    {
+      "name": "Burger Station",
+      "description": "מסעדת ההמבורגרים המתמחה היחידה באי. תפריט מצומצם המתמקד בבקר מובחר, עוף, חזיר וצ'יפס מחתוך ידני. אווירה פשוטה — מקום לבשר-ותפוחי-אדמה.",
+      "location": "Klong Prao, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "המבורגר",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$",
+      "cuisine": "American",
+      "must_try_dish": "Cheeseburger with Hand-cut Fries",
+      "vibe": "No-frills, meat-focused",
+      "bestTime": "Lunch",
+      "googleRating": 4.5,
+      "reviewCount": 420,
+      "tags": [
+        "Burger",
+        "Specialist"
+      ],
+      "lat": 12.037108,
+      "lng": 102.293457,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.037108,102.293457"
+    },
+    {
+      "name": "The Journey",
+      "description": "מסעדת באגרים אומנותיים בתוך מכולות שילוח באזור הדרומי-Klong Kloi. גריל פאניני וצ'יפס בית. אווירת תעשייה-כפרית מובחרת — פעיל בעיקר בעונה הגבוהה.",
+      "location": "Klong Kloi Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "המבורגר",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$",
+      "cuisine": "American",
+      "must_try_dish": "Artisan Burger",
+      "vibe": "Industrial-chic in containers",
+      "bestTime": "Lunch",
+      "googleRating": 4.4,
+      "reviewCount": 180,
+      "tags": [
+        "Burger",
+        "Hipster"
+      ],
+      "lat": 13.663292,
+      "lng": 100.659841,
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.663292,100.659841"
+    },
+    {
+      "name": "Ageha",
+      "description": "הפתעה יפנית באמצע הג'ונגל. שף יפני מקומי מגיש ראמן טונקוטסו עשיר וקרמי, סושי טרי באווירה מסורתית. מעוצב במזכרות משפחה יפניות. מקום שווה כל הנסיעה.",
+      "location": "Klong Prao, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "ראמן",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$$",
+      "cuisine": "Japanese",
+      "must_try_dish": "Tonkotsu Ramen",
+      "recommendedDishes": [
+        "tonkotsu ramen",
+        "sashimi platter",
+        "japanese curry"
+      ],
+      "vibe": "Traditional Japanese, intimate",
+      "bestTime": "Dinner",
+      "reservationRequired": true,
+      "googleRating": 4.7,
+      "reviewCount": 320,
+      "tags": [
+        "Japanese",
+        "Authentic",
+        "Hidden Gem"
+      ],
+      "lat": 12.051965,
+      "lng": 102.291164,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.051965,102.291164"
+    },
+    {
+      "name": "Sushi Kha",
+      "description": "סושי בר קטן ואינטימי המגיש מאקי וניגירי ברמת טריות מפתיעה לאי. מחירים הוגנים ושירות חם מתוך תשוקה למקצוע. השף מסור ועובד מהר — turnover גבוה לטריות מקסימלית.",
+      "location": "White Sand Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "יפני",
+      "recommendationSource": "Wanderlog",
+      "priceLevel": "$$",
+      "cuisine": "Japanese (Sushi)",
+      "must_try_dish": "Maki Roll Set",
+      "vibe": "Tiny intimate sushi bar",
+      "bestTime": "Dinner",
+      "googleRating": 4.5,
+      "reviewCount": 240,
+      "tags": [
+        "Sushi",
+        "Authentic",
+        "Affordable"
+      ],
+      "lat": 12.079144,
+      "lng": 102.277574,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.079144,102.277574"
+    },
+    {
+      "name": "Onaka Sushi Bar",
+      "description": "בית קפה יפני שקט עם סושי-מאקי, אורז קארי יפני ראמן פשוט. מתאים ליום כי לעצירה רגועה. מבחר תה ירוק מצוין בנגינה הגיש קטן וחמים.",
+      "location": "Kai Bae, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "יפני",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$",
+      "cuisine": "Japanese",
+      "must_try_dish": "Japanese Curry Rice",
+      "vibe": "Quiet daytime cafe",
+      "bestTime": "Lunch",
+      "googleRating": 4.3,
+      "reviewCount": 160,
+      "tags": [
+        "Quiet",
+        "Tea"
+      ],
+      "lat": 12.142094,
+      "lng": 102.269375,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.142094,102.269375"
+    },
+    {
+      "name": "Nature Rocks",
+      "description": "בר-מסעדה בחוף ב-Nature Beach Resort. ביום מקום משפחתי רגוע, ובערב הופך למוקד קוקטיילים טרופיים, מופעי אש ומוזיקה מול הגלים. מעבר חלק יום-ללילה.",
+      "location": "Nature Beach Resort, Lonely Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "ברי קוקטיילים",
+      "recommendationSource": "Agoda",
+      "priceLevel": "$$",
+      "cuisine": "Beach bar",
+      "must_try_dish": "Coconut Mojito",
+      "vibe": "Beachfront, fire shows",
+      "bestTime": "Late Night",
+      "googleRating": 4.4,
+      "reviewCount": 1200,
+      "tags": [
+        "Beachfront",
+        "Fire Show",
+        "Family-Friendly"
+      ],
+      "lat": 12.006421,
+      "lng": 102.294159,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.006421,102.294159"
+    },
+    {
+      "name": "Lonely Beach Bar",
+      "description": "בר-לילה אגדי לתרמילאים. אנרגיה גבוהה, מוזיקה אלקטרונית, קוקטיילים בזיל-להציל. מקום למסיבה אמיתית-טרופית-תאית — לא למחפשי שקט.",
+      "location": "Lonely Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "ברי קוקטיילים",
+      "recommendationSource": "Explore Koh Chang",
+      "priceLevel": "$",
+      "cuisine": "Beach bar",
+      "vibe": "Backpacker party, electronic music",
+      "bestTime": "Late Night",
+      "googleRating": 4.2,
+      "reviewCount": 1800,
+      "tags": [
+        "Party",
+        "Backpacker"
+      ],
+      "lat": 12.006954,
+      "lng": 102.293326,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.006954,102.293326"
+    },
+    {
+      "name": "Oasis Koh Chang",
+      "description": "מסעדה רומנטית בסביבה אקזוטית-ג'ונגלית ליד Lonely Beach. שולחנות מתחת לעצים, אורות נמוכים, קוקטיילים יצירתיים. אווירה אינטימית למסעדת ערב.",
+      "location": "Lonely Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "ברי קוקטיילים",
+      "recommendationSource": "Tripadvisor",
+      "priceLevel": "$$$",
+      "cuisine": "Cocktail bar",
+      "vibe": "Jungle-romantic, intimate",
+      "bestTime": "Late Night",
+      "googleRating": 4.5,
+      "reviewCount": 380,
+      "tags": [
+        "Romantic",
+        "Jungle"
+      ],
+      "lat": 12.064522,
+      "lng": 102.286136,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.064522,102.286136"
+    },
+    {
+      "name": "El Greco",
+      "description": "טברנה יוונית אמיתית ב-Khlong Prao עם חדר ממוזג נדיר באי. מוסקה נהדרת, גירוס כבש ושייק מנגו טרי. יחס חם וסביבה אידיאלית למשפחות.",
+      "location": "Khlong Prao, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "מסעדות משפחתיות",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$$",
+      "cuisine": "Greek",
+      "must_try_dish": "Moussaka",
+      "recommendedDishes": [
+        "moussaka",
+        "lamb gyros",
+        "greek salad",
+        "spanakopita"
+      ],
+      "vibe": "Greek taverna, A/C room available",
+      "bestTime": "Dinner",
+      "googleRating": 4.6,
+      "reviewCount": 540,
+      "tags": [
+        "Greek",
+        "Family-Friendly",
+        "A/C"
+      ],
+      "lat": 12.029009,
+      "lng": 102.292775,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.029009,102.292775"
+    },
+    {
+      "name": "Chill Out Cafe",
+      "description": "קפה-מסעדה יושב ממש על קו המים ליד The Chill Koh Chang Resort. תפריט מגוון: אופציות אירופיות, תאיות, צמחוניות וטבעוניות. הילדים משחקים בחול בזמן שההורים שותים קפה קר.",
+      "location": "Klong Prao Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "בתי קפה וקינוחים",
+      "recommendationSource": "iamkohchang.com",
+      "priceLevel": "$$",
+      "cuisine": "Café (Multi-cuisine)",
+      "vibe": "Beachside chill",
+      "bestTime": "Breakfast",
+      "googleRating": 4.5,
+      "reviewCount": 1400,
+      "tags": [
+        "Beachfront",
+        "Family-Friendly",
+        "Vegetarian-Friendly"
+      ],
+      "lat": 11.814725,
+      "lng": 102.461411,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.814725,102.461411"
+    },
+    {
+      "name": "Nirvana Cafe",
+      "description": "קפה ארטיזנלי ב-Klong Prao עם אספרסו ייחודי, מאפים אירופיים ושייקים מפירות טרופיים טריים. ממוקם תוך חצר ירוקה עם שולחנות עץ — מקום שקט לבוקר.",
+      "location": "Klong Prao, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "בתי קפה וקינוחים",
+      "recommendationSource": "Tripadvisor",
+      "priceLevel": "$$",
+      "cuisine": "Café",
+      "must_try_dish": "Mango Sticky Rice",
+      "vibe": "Garden cafe",
+      "bestTime": "Breakfast",
+      "googleRating": 4.4,
+      "reviewCount": 280,
+      "tags": [
+        "Quiet",
+        "Specialty Coffee"
+      ],
+      "lat": 12.016269,
+      "lng": 102.291394,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.016269,102.291394"
+    },
+    {
+      "name": "Iyara Seafood",
+      "description": "מסעדה ותיקה ב-Bang Bao Pier עם דגים שנשלפים מהסירות בעצמה. סטייל אוכל-של-כפר-הדייגים — פשוט, טרי וזול. מומלץ ארוחת ערב בשקיעה לפני סנובלינג.",
+      "location": "Bang Bao Pier, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "אוכל מקומי אותנטי",
+      "recommendationSource": "Tripadvisor",
+      "priceLevel": "$$",
+      "cuisine": "Thai (Seafood)",
+      "must_try_dish": "Steamed Sea Bass with Lemon",
+      "vibe": "Fishing pier, sunset views",
+      "bestTime": "Dinner",
+      "googleRating": 4.4,
+      "reviewCount": 620,
+      "tags": [
+        "Seafood",
+        "Pier"
+      ],
+      "lat": 12.104767,
+      "lng": 102.273379,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.104767,102.273379"
+    },
+    {
+      "name": "Smoke and Bones",
+      "description": "BBQ סגנון אמריקאי ב-White Sand Beach — צלי כתף, נקניקיות ביתיות וצלעות. מערב-מערבי על אי תאי, אבל איכות הבשר מתפוצצת. מתאים לארוחת ערב גדולה.",
+      "location": "White Sand Beach, Ko Chang, Trat 23170, Thailand",
+      "categoryTitle": "המבורגר",
+      "recommendationSource": "Tripadvisor",
+      "priceLevel": "$$",
+      "cuisine": "American BBQ",
+      "must_try_dish": "Pulled Pork Plate",
+      "vibe": "American smokehouse",
+      "bestTime": "Dinner",
+      "googleRating": 4.4,
+      "reviewCount": 320,
+      "tags": [
+        "BBQ",
+        "Western"
+      ]
+    }
+  ],
+  "newRestaurantCategories": []
+}

@@ -4,8 +4,8 @@
       "name": "Mae Pong Sri",
       "description": "מקום מישלן בייב גורמן ב-Pattaya למרק איברי חזיר וקיש מוקפץ עם פירות ים. נודלס זכוכית מוקפצים עם פירות ים הם המנה החתימה. אווירה מקומית-משפחתית.",
       "location": "Pattaya 3rd Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9296,
-      "lng": 100.8771,
+      "lat": 12.934301,
+      "lng": 100.892744,
       "categoryTitle": "אוכל מקומי אותנטי",
       "recommendationSource": "Michelin Guide (Bib Gourmand)",
       "priceLevel": "$",
@@ -16,14 +16,18 @@
       "googleRating": 4.4,
       "reviewCount": 850,
       "michelin": true,
-      "tags": ["Bib Gourmand", "Local Favorite"]
+      "tags": [
+        "Bib Gourmand",
+        "Local Favorite"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.934301,100.892744"
     },
     {
       "name": "Rimpa Lapin",
       "description": "מסעדת מצוק על האוקיינוס ברשימת מישלן. אוכל תאי אמיתי במיוחד ושרימפס בגריל מתפוצצים בטעם. הנוף השוקע אל מפרץ ת'איי הוא חוויה בפני עצמה.",
       "location": "247 Moo 5, Najomtien, Sattahip District, Chon Buri 20250, Thailand",
-      "lat": 12.7902,
-      "lng": 100.8973,
+      "lat": 12.805205,
+      "lng": 100.913545,
       "categoryTitle": "אוכל מקומי אותנטי",
       "recommendationSource": "Michelin Guide",
       "priceLevel": "$$$",
@@ -35,14 +39,19 @@
       "michelin": true,
       "googleRating": 4.5,
       "reviewCount": 2400,
-      "tags": ["Cliff-side", "Romantic", "Sunset"]
+      "tags": [
+        "Cliff-side",
+        "Romantic",
+        "Sunset"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.805205,100.913545"
     },
     {
       "name": "Pupen Seafood",
       "description": "מסעדה פתוחה ובלתי-מסונחנת בה איכות האוכל נקבעת לחלוטין על ידי מה שיורד מהסירות. פירות ים טריים שלא נראים אצל מסעדות-תיירים. סגנון כפרי טהור.",
       "location": "Naklua Rd, Na Kluea, Bang Lamung, Chon Buri 20150, Thailand",
-      "lat": 12.9590,
-      "lng": 100.8909,
+      "lat": 12.861424,
+      "lng": 100.895537,
       "categoryTitle": "אוכל מקומי אותנטי",
       "recommendationSource": "Travel Insighter",
       "priceLevel": "$$",
@@ -52,14 +61,18 @@
       "bestTime": "Dinner",
       "googleRating": 4.4,
       "reviewCount": 1200,
-      "tags": ["Seafood", "Local"]
+      "tags": [
+        "Seafood",
+        "Local"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.861424,100.895537"
     },
     {
       "name": "Prajanban",
       "description": "מסעדה אהובה על מקומיים וגולים. תפריט עצום המציע אוכל תאילנדי אותנטי, סלטי איסאן חריפים ובשרים צלויים ללא פשרות. תפריט שיורד עד הצלחת — בלי להתפשר על חריפות.",
       "location": "Pattaya 2nd Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9293,
-      "lng": 100.8810,
+      "lat": 12.93303,
+      "lng": 100.896593,
       "categoryTitle": "תאילנדי",
       "recommendationSource": "Reddit r/Pattaya",
       "priceLevel": "$$",
@@ -69,14 +82,18 @@
       "bestTime": "Dinner",
       "googleRating": 4.4,
       "reviewCount": 1900,
-      "tags": ["Spicy", "Local"]
+      "tags": [
+        "Spicy",
+        "Local"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.933030,100.896593"
     },
     {
       "name": "Ruen Thai",
       "description": "מסעדה תאית מסורתית עם הופעות ריקוד קלאסי חי. המתכונים נשארים במסורת התאית ולא מותאמים לתיירים — חוויה אוטנטית ב-Pattaya 2nd Road.",
       "location": "485/3 Pattaya 2nd Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9268,
-      "lng": 100.8806,
+      "lat": 12.934301,
+      "lng": 100.892744,
       "categoryTitle": "תאילנדי",
       "recommendationSource": "Pickyourtrail",
       "priceLevel": "$$$",
@@ -87,14 +104,19 @@
       "reservationRequired": true,
       "googleRating": 4.3,
       "reviewCount": 2100,
-      "tags": ["Cultural", "Traditional", "Live Performance"]
+      "tags": [
+        "Cultural",
+        "Traditional",
+        "Live Performance"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.934301,100.892744"
     },
     {
       "name": "Nara Thai",
       "description": "מסעדה תאית מורמת ב-Terminal 21. פירות ים בגריל בסידור יפה ונודלס מיוחדים. מקום נוח לאוכל איכותי בזמן יום קניות. בעלים מבנגקוק עם סטנדרטים גבוהים.",
       "location": "Terminal 21 Pattaya, Bang Lamung, Chon Buri 20150, Thailand",
-      "lat": 12.9602,
-      "lng": 100.8839,
+      "lat": 12.953644,
+      "lng": 100.937517,
       "categoryTitle": "תאילנדי",
       "recommendationSource": "Pickyourtrail",
       "priceLevel": "$$",
@@ -104,14 +126,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.4,
       "reviewCount": 1800,
-      "tags": ["Family-Friendly", "Mall"]
+      "tags": [
+        "Family-Friendly",
+        "Mall"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.953644,100.937517"
     },
     {
       "name": "Glass House Pattaya",
       "description": "מסעדה אהובה על מקומיים על החוף ב-Najomtien. פלטה של פירות ים מומלצת, אווירה רגועה, ישיבה ישירות על החול. מושלם לארוחת ערב רגועה עם נוף.",
       "location": "Najomtien Beach, Sattahip District, Chon Buri 20250, Thailand",
-      "lat": 12.7935,
-      "lng": 100.8902,
+      "lat": 12.803459,
+      "lng": 100.93847,
       "categoryTitle": "מסעדות משפחתיות",
       "recommendationSource": "Pickyourtrail",
       "priceLevel": "$$$",
@@ -121,7 +147,12 @@
       "bestTime": "Dinner",
       "googleRating": 4.4,
       "reviewCount": 1100,
-      "tags": ["Beachfront", "Family-Friendly", "Sunset"]
+      "tags": [
+        "Beachfront",
+        "Family-Friendly",
+        "Sunset"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.803459,100.938470"
     },
     {
       "name": "The Globe's Heritage by Chef Alex",
@@ -140,14 +171,19 @@
       "reservationRequired": true,
       "googleRating": 4.7,
       "reviewCount": 380,
-      "tags": ["French", "Tasting menu", "Date night"]
+      "tags": [
+        "French",
+        "Tasting menu",
+        "Date night"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.936200,100.885400"
     },
     {
       "name": "Cafe des Amis",
       "description": "מסעדה רומנטית-אינטימית הסתורה מהסטריפים הראשיים. סטייקים מיובאים מובחרים, מבחר ג'ין רחב ואווירה של סלון אירופי. תכשיט נסתר במקום שאף אחד לא מצפה.",
       "location": "Naklua Rd Soi 22, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9690,
-      "lng": 100.8870,
+      "lat": 12.913292,
+      "lng": 100.873327,
       "categoryTitle": "יוקרה ומישלן",
       "recommendationSource": "Travel Insighter",
       "priceLevel": "$$$$",
@@ -158,14 +194,19 @@
       "reservationRequired": true,
       "googleRating": 4.6,
       "reviewCount": 470,
-      "tags": ["European", "Romantic", "Date night"]
+      "tags": [
+        "European",
+        "Romantic",
+        "Date night"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.913292,100.873327"
     },
     {
       "name": "Mantra Restaurant & Bar",
       "description": "שבעה מטבחים פתוחים בכל אחד עם מטבח אחר — פירות ים, גריל, יפני, סיני, איטלקי, תאילנדי, סלטים. אחד הברנצ'ים הטובים בפטאיה ביום ראשון. גן בעל פסיפסים ועצים.",
       "location": "Amari Pattaya, 240 Beach Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9391,
-      "lng": 100.8849,
+      "lat": 12.91459,
+      "lng": 100.915521,
       "categoryTitle": "יוקרה ומישלן",
       "recommendationSource": "Pickyourtrail",
       "priceLevel": "$$$$",
@@ -176,14 +217,19 @@
       "reservationRequired": true,
       "googleRating": 4.5,
       "reviewCount": 1700,
-      "tags": ["Brunch", "Multi-cuisine", "Hotel"]
+      "tags": [
+        "Brunch",
+        "Multi-cuisine",
+        "Hotel"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.914590,100.915521"
     },
     {
       "name": "Ronin Japanese Restaurant",
       "description": "מסעדה יפנית פרימיום בנקלואה עם אווירת זן מסורתית. התפריט אינו ארוך, אבל כל מנה מוקפדת. סשימי טרי ברמת טוקיו — חובה להזמין מקום מראש.",
       "location": "Naklua Soi 16/2, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9633,
-      "lng": 100.8841,
+      "lat": 12.937708,
+      "lng": 100.913021,
       "categoryTitle": "יפני",
       "recommendationSource": "Tatinta",
       "priceLevel": "$$$",
@@ -194,14 +240,19 @@
       "reservationRequired": true,
       "googleRating": 4.6,
       "reviewCount": 480,
-      "tags": ["Premium", "Authentic", "Date night"]
+      "tags": [
+        "Premium",
+        "Authentic",
+        "Date night"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.937708,100.913021"
     },
     {
       "name": "Tsunami Sushi Buffet",
       "description": "סושי בופה מקובל באיכות סולידית — סלמון נא, טמפורה ביצועי-טוב ורולים מגוונים. מקום לארוחה גדולה במחיר הוגן עם המשפחה. הרבה אופציות לילדים.",
       "location": "Chaiyapruek Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9056,
-      "lng": 100.9008,
+      "lat": 12.94874,
+      "lng": 100.903519,
       "categoryTitle": "יפני",
       "recommendationSource": "Tatinta",
       "priceLevel": "$$",
@@ -211,14 +262,18 @@
       "bestTime": "Dinner",
       "googleRating": 4.2,
       "reviewCount": 2100,
-      "tags": ["Buffet", "Family-Friendly"]
+      "tags": [
+        "Buffet",
+        "Family-Friendly"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.948740,100.903519"
     },
     {
       "name": "Grillicious Japanese BBQ",
       "description": "Yakiniku אינטראקטיבי מצוין במרכז Pattaya. בקר משובח על פלטות חמות, אווירה של איזקאיה. תפריט סאקה רחב. מקום לארוחה ארוכה ומבדרת.",
       "location": "Pattaya 2nd Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9305,
-      "lng": 100.8819,
+      "lat": 12.937708,
+      "lng": 100.913021,
       "categoryTitle": "יפני",
       "recommendationSource": "Tatinta",
       "priceLevel": "$$$",
@@ -228,7 +283,11 @@
       "bestTime": "Dinner",
       "googleRating": 4.4,
       "reviewCount": 380,
-      "tags": ["Yakiniku", "BBQ"]
+      "tags": [
+        "Yakiniku",
+        "BBQ"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.937708,100.913021"
     },
     {
       "name": "Ramen Champion",
@@ -245,14 +304,18 @@
       "bestTime": "Late Night",
       "googleRating": 4.3,
       "reviewCount": 720,
-      "tags": ["Late Night", "Open-air"]
+      "tags": [
+        "Late Night",
+        "Open-air"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.930100,100.878400"
     },
     {
       "name": "Hachiban Ramen",
       "description": "רשת ראמן עקבית באיכות גבוהה. ב-Tukcom Mall מציעים קערות מאוזנות במחיר נגיש. נקודת התחלה נהדרת לטירונים בעולם הראמן בפטאיה.",
       "location": "Tukcom Pattaya, Pattaya 2nd Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9322,
-      "lng": 100.8825,
+      "lat": 12.92334,
+      "lng": 100.878742,
       "categoryTitle": "ראמן",
       "recommendationSource": "Pattaya Prestige",
       "priceLevel": "$$",
@@ -262,14 +325,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.2,
       "reviewCount": 980,
-      "tags": ["Reliable", "Family-Friendly"]
+      "tags": [
+        "Reliable",
+        "Family-Friendly"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.923340,100.878742"
     },
     {
       "name": "Ozawa Ramen",
       "description": "Tantanmen אותנטי ב-Jomtien Beach. שמן צ'ילי מאוזן עם משחת sesame עשירה. השף בעל ניסיון רב יודע איך לכוון את החריפות בדיוק. אווירה אינטימית של 12 מקומות.",
       "location": "Jomtien Beach Rd, Nong Prue, Bang Lamung, Chon Buri 20150, Thailand",
-      "lat": 12.8889,
-      "lng": 100.8956,
+      "lat": 12.937597,
+      "lng": 100.88348,
       "categoryTitle": "ראמן",
       "recommendationSource": "Reddit r/FarangsofPattaya",
       "priceLevel": "$$",
@@ -279,14 +346,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.5,
       "reviewCount": 220,
-      "tags": ["Authentic", "Spicy"]
+      "tags": [
+        "Authentic",
+        "Spicy"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.937597,100.883480"
     },
     {
       "name": "La Dolce Vita Garden",
       "description": "פיצריה אותנטית המנוהלת ע\"י שף איטלקי. הבצק עובר התפחה ארוכה ונאפה לשלמות, תוך שימוש בחומרי גלם איטלקיים מיובאים בלבד. גן יפה, אווירה משפחתית.",
       "location": "Pratamnak Hill, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9136,
-      "lng": 100.8781,
+      "lat": 12.923593,
+      "lng": 100.91004,
       "categoryTitle": "פיצה",
       "recommendationSource": "Reddit r/FarangsofPattaya",
       "priceLevel": "$$$",
@@ -296,7 +367,11 @@
       "bestTime": "Dinner",
       "googleRating": 4.6,
       "reviewCount": 290,
-      "tags": ["Authentic Italian", "Family-Friendly"]
+      "tags": [
+        "Authentic Italian",
+        "Family-Friendly"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.923593,100.910040"
     },
     {
       "name": "Grottino Osteria Pizzeria",
@@ -313,14 +388,18 @@
       "bestTime": "Dinner",
       "googleRating": 4.5,
       "reviewCount": 410,
-      "tags": ["Italian", "Wood-fired"]
+      "tags": [
+        "Italian",
+        "Wood-fired"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.941600,100.889700"
     },
     {
       "name": "Pizza Big",
       "description": "מסעדה איטלקית קטנה ובמסבירת פנים על כביש Naklua. תפריט מצומצם המתמקד בפיצה — אבל מה שיש כאן — מצוין. מחירים סבירים, סביבה נקייה ואווירה רגועה.",
       "location": "Naklua Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9650,
-      "lng": 100.8893,
+      "lat": 12.950867,
+      "lng": 100.893739,
       "categoryTitle": "פיצה",
       "recommendationSource": "Wanderlog",
       "priceLevel": "$$",
@@ -330,14 +409,18 @@
       "bestTime": "Dinner",
       "googleRating": 4.5,
       "reviewCount": 370,
-      "tags": ["Casual", "Hidden Gem"]
+      "tags": [
+        "Casual",
+        "Hidden Gem"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.950867,100.893739"
     },
     {
       "name": "Slice Pizza",
       "description": "פיצה ניו-יורקית אמינה לפי משולשים, בעיקר ללילה. ראציו גבינה-לרוטב מובחר, בצק קריספי. מקום קטן בלי הזמנת מקום לפני — מתאים אחרי בילוי בערב.",
       "location": "Soi Buakhao, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9317,
-      "lng": 100.8793,
+      "lat": 12.942464,
+      "lng": 100.88586,
       "categoryTitle": "פיצה",
       "recommendationSource": "Reddit r/piza",
       "priceLevel": "$",
@@ -347,14 +430,18 @@
       "bestTime": "Late Night",
       "googleRating": 4.3,
       "reviewCount": 580,
-      "tags": ["Late Night", "By the slice"]
+      "tags": [
+        "Late Night",
+        "By the slice"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.942464,100.885860"
     },
     {
       "name": "Prime Burger",
       "description": "אלופי הסמאש-בורגר של פטאיה. בקר משובח על פלטה לוהטת ליצירת קרום קריספי, גבינה נמסה ורוטב סודי. מקום קטן עם תפריט ממוקד — איכות לפני כמות.",
       "location": "Pattaya 3rd Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9354,
-      "lng": 100.8841,
+      "lat": 12.930588,
+      "lng": 100.886056,
       "categoryTitle": "המבורגר",
       "recommendationSource": "Reddit r/Pattaya",
       "priceLevel": "$$",
@@ -364,14 +451,18 @@
       "bestTime": "Dinner",
       "googleRating": 4.6,
       "reviewCount": 320,
-      "tags": ["Smash Burger", "Top-Rated"]
+      "tags": [
+        "Smash Burger",
+        "Top-Rated"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.930588,100.886056"
     },
     {
       "name": "Charlie Burger",
       "description": "סמאש בורגר בסגנון West-Coast אמריקאי במחיר מאוד נגיש. רוטב סודי ייחודי שיוצר נאמנות מקומית עזה. תור של 20+ דקות בערב.",
       "location": "North Pattaya Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9415,
-      "lng": 100.8902,
+      "lat": 12.939147,
+      "lng": 100.893658,
       "categoryTitle": "המבורגר",
       "recommendationSource": "Reddit r/Pattaya",
       "priceLevel": "$",
@@ -381,14 +472,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.5,
       "reviewCount": 410,
-      "tags": ["Smash Burger", "Cult Favorite"]
+      "tags": [
+        "Smash Burger",
+        "Cult Favorite"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.939147,100.893658"
     },
     {
       "name": "Robin Hood Tavern",
       "description": "פאב-בורגר בריטי עם איכות עבת-קציצה ופאב-ארוחת בוקר אנגלית מלאה מפורסמת. אווירה של פאב לונדוני אמיתי, קמין ובאר עץ. מקום של היום-יום-הבריטי.",
       "location": "Soi Yamato, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9261,
-      "lng": 100.8829,
+      "lat": 12.900683,
+      "lng": 100.869159,
       "categoryTitle": "המבורגר",
       "recommendationSource": "Reddit r/Pattaya",
       "priceLevel": "$$",
@@ -398,14 +493,19 @@
       "bestTime": "Lunch",
       "googleRating": 4.4,
       "reviewCount": 920,
-      "tags": ["British", "Pub", "English Breakfast"]
+      "tags": [
+        "British",
+        "Pub",
+        "English Breakfast"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.900683,100.869159"
     },
     {
       "name": "Horizon Rooftop Restaurant & Bar",
       "description": "בקומה ה-34 של Hilton Pattaya — נוף פנורמי של מפרץ פטאיה, קוקטיילים מולקולריים ומגדל פירות ים מרשים. אטמוספרה רומנטית עם סטייקים פרימיום ושעת happy hour.",
       "location": "Hilton Pattaya, 333 Beach Rd, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9322,
-      "lng": 100.8826,
+      "lat": 12.935116,
+      "lng": 100.882414,
       "categoryTitle": "ברי קוקטיילים",
       "recommendationSource": "Luxury Lifestyle Magazine",
       "priceLevel": "$$$$",
@@ -416,7 +516,12 @@
       "reservationRequired": true,
       "googleRating": 4.5,
       "reviewCount": 5800,
-      "tags": ["Rooftop", "Sunset", "Luxury"]
+      "tags": [
+        "Rooftop",
+        "Sunset",
+        "Luxury"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.935116,100.882414"
     },
     {
       "name": "Hermes Skybar",
@@ -433,14 +538,19 @@
       "bestTime": "Late Night",
       "googleRating": 4.5,
       "reviewCount": 280,
-      "tags": ["Whisky", "Cigars", "Exclusive"]
+      "tags": [
+        "Whisky",
+        "Cigars",
+        "Exclusive"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.910500,100.878600"
     },
     {
       "name": "Surf & Turf Beach Club",
       "description": "מועדון חוף קסום המשלב אווירה רגועה, תפריט בינלאומי מוקפד וגישה ישירה לחול. מושלם להורים שרוצים לאכול טוב בזמן שהילדים משחקים בים.",
       "location": "Najomtien Beach, Sattahip District, Chon Buri 20250, Thailand",
-      "lat": 12.7850,
-      "lng": 100.9012,
+      "lat": 12.824768,
+      "lng": 100.910713,
       "categoryTitle": "מסעדות משפחתיות",
       "recommendationSource": "Hungry Hub",
       "priceLevel": "$$$",
@@ -451,7 +561,12 @@
       "reservationRequired": true,
       "googleRating": 4.5,
       "reviewCount": 1100,
-      "tags": ["Beachfront", "Family-Friendly", "Chic"]
+      "tags": [
+        "Beachfront",
+        "Family-Friendly",
+        "Chic"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.824768,100.910713"
     },
     {
       "name": "Great&Grand Sweet Destination",
@@ -468,7 +583,12 @@
       "bestTime": "Late Night",
       "googleRating": 4.4,
       "reviewCount": 2200,
-      "tags": ["Family-Friendly", "Photogenic", "Dessert"]
+      "tags": [
+        "Family-Friendly",
+        "Photogenic",
+        "Dessert"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.946100,100.906900"
     },
     {
       "name": "Woodlands Suites Lobby Café",
@@ -485,14 +605,18 @@
       "bestTime": "Breakfast",
       "googleRating": 4.3,
       "reviewCount": 220,
-      "tags": ["Quiet", "Hotel"]
+      "tags": [
+        "Quiet",
+        "Hotel"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.957200,100.886700"
     },
     {
       "name": "Ramayana Water Park Restaurant",
       "description": "מתחם אוכל ענק בתוך פארק המים — תאי, מערבי, אסיאתי, צמחוני, סינדוויצ'ים. נועד לקיים משפחות בילוי יום שלם בלי לצאת. סבון ומחיר מקובל.",
       "location": "Ramayana Water Park, Najomtien, Sattahip District, Chon Buri 20250, Thailand",
-      "lat": 12.7665,
-      "lng": 100.9342,
+      "lat": 12.750536,
+      "lng": 100.962101,
       "categoryTitle": "מסעדות משפחתיות",
       "recommendationSource": "Agoda",
       "priceLevel": "$$",
@@ -501,14 +625,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.2,
       "reviewCount": 3400,
-      "tags": ["Family-Friendly", "Water Park"]
+      "tags": [
+        "Family-Friendly",
+        "Water Park"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.750536,100.962101"
     },
     {
       "name": "Mae Sri Ruen",
       "description": "מסעדת ראמן-תאי המספקת מרק יענטאפו (יצירה תאית של פירות ים בציר אדום-חמוץ). מקום מקומי שעצב את הפיוז'ן בין נודלס יפניים לטעמים של פטאיה. תור של מקומיים.",
       "location": "Soi Buakhao, Pattaya, Chon Buri 20150, Thailand",
-      "lat": 12.9293,
-      "lng": 100.8814,
+      "lat": 12.934301,
+      "lng": 100.892744,
       "categoryTitle": "תאילנדי",
       "recommendationSource": "Reddit r/Pattaya",
       "priceLevel": "$",
@@ -518,14 +646,18 @@
       "bestTime": "Lunch",
       "googleRating": 4.4,
       "reviewCount": 480,
-      "tags": ["Local", "Noodle Soup"]
+      "tags": [
+        "Local",
+        "Noodle Soup"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.934301,100.892744"
     },
     {
       "name": "Nong Bua Rim Khlong (Lim Lah)",
       "description": "מסעדה תאית מסורתית על תעלה ב-Bang Saray. שולחנות מתחת לעצים, שירות מקומי ופירות ים שיצאו לכם מהבטן של הסירה. אטרקטיבי לסוף-שבועות בנגקוקיים.",
       "location": "Bang Saray, Sattahip District, Chon Buri 20250, Thailand",
-      "lat": 12.7551,
-      "lng": 100.9148,
+      "lat": 12.942413,
+      "lng": 100.895913,
       "categoryTitle": "אוכל מקומי אותנטי",
       "recommendationSource": "Wanderlog",
       "priceLevel": "$$",
@@ -535,7 +667,12 @@
       "bestTime": "Lunch",
       "googleRating": 4.3,
       "reviewCount": 1100,
-      "tags": ["Riverside", "Seafood", "Local"]
+      "tags": [
+        "Riverside",
+        "Seafood",
+        "Local"
+      ],
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.942413,100.895913"
     }
   ],
   "newRestaurantCategories": []
