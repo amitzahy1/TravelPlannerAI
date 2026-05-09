@@ -125,15 +125,32 @@ const AppContent: React.FC = () => {
 
   // Admin-only "What's new" popup. Show once per release; the user's
   // dismissal cursor is stored in Firestore + localStorage.
+  // Force-show via URL hash `?whatsnew=1` for testing — bypasses the
+  // admin check too so non-admins can preview.
   useEffect(() => {
-    if (!user) return;
-    if (!isAdmin(user)) return;
+    const forceShow = typeof window !== 'undefined' && /[?&#]whatsnew=1\b/.test(window.location.href);
+    if (forceShow) {
+      console.log('[WhatsNew] forced via URL');
+      setShowWhatsNew(true);
+      return;
+    }
+    if (!user) {
+      console.log('[WhatsNew] skip — no user yet');
+      return;
+    }
+    const admin = isAdmin(user);
+    console.log('[WhatsNew] user.email=', user.email, 'isAdmin=', admin);
+    if (!admin) return;
     let cancelled = false;
     (async () => {
       const latest = RELEASE_NOTES[0]?.version;
-      if (!latest) return;
+      if (!latest) {
+        console.log('[WhatsNew] no release notes defined');
+        return;
+      }
       const seen = await getLastSeenReleaseVersion(user.uid);
       if (cancelled) return;
+      console.log('[WhatsNew] latest=', latest, 'seen=', seen);
       if (seen !== latest) setShowWhatsNew(true);
     })();
     return () => { cancelled = true; };

@@ -339,6 +339,77 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
                                 },
                         );
 
+                        // Per-category retry — count verified items per category;
+                        // if any category has <5, run a targeted second pass at
+                        // higher temperature with an "expand to neighborhoods +
+                        // long-tail sources" addendum. Catches the "1 pizza in
+                        // Pattaya" failure mode where the model gave up early.
+                        const undersized = processed.filter((c: any) => {
+                                const verified = (c.restaurants || []).filter((r: any) => r.verificationStatus === 'verified').length;
+                                return verified < 5 && (c.restaurants || []).length < 8;
+                        });
+                        if (undersized.length > 0) {
+                                const titles = undersized.map((c: any) => c.title).join(', ');
+                                console.log(`[bgResearch] ${city} undersized categories: ${titles} — running per-category retry`);
+                                const retryPrompt = `Retry only these categories for "${cityEn}" — they came back with too few real, verified results in the first pass: ${titles}.
+
+Cast a wider net this time:
+- Search neighborhood-level (not just city-level): include suburbs, beach areas, market districts, expat hubs.
+- Include long-tail aggregators: TripAdvisor city subforum, Reddit r/<city>, local FB food groups, Burpple, Foodpanda highlights, Wongnai sub-categories, expat blog posts.
+- Aim for 6-8 places per category. Better to over-shoot and let downstream verification cut.
+- All other rules from the original prompt still apply (no closed places, real venue names not addresses, business_status REQUIRED, cuisineTags array, etc.).
+- Return JSON in the SAME shape as before, but only for these categories: ${titles}.`;
+
+                                try {
+                                        const retryResp = await generateWithFallback(
+                                                null,
+                                                [{ role: 'user', parts: [{ text: `${firstPrompt}\n\n${retryPrompt}` }] }],
+                                                { responseMimeType: 'application/json', temperature: 0.3 },
+                                                'SEARCH',
+                                        );
+                                        const retryData = JSON.parse(retryResp.text || '{}');
+                                        const retryCats = extractCategoriesList(retryData);
+                                        let retryAddCount = 0;
+                                        retryCats.forEach((rc: any) => {
+                                                const target = processed.find((p: any) => p.title === rc.title);
+                                                if (!target) return;
+                                                const existingNames = new Set(target.restaurants.map((r: any) => (r.name || '').trim().toLowerCase()));
+                                                const cleaned = stripClosedPlaces(stripChainRestaurants(rc.restaurants || []) as any[])
+                                                        .filter((r: any) => !(looksLikeAddress(r.name) && looksLikeAddress(r.nameEnglish || '')))
+                                                        .filter((r: any) => !existingNames.has((r.name || '').trim().toLowerCase()));
+                                                cleaned.forEach((r: any, j: number) => {
+                                                        target.restaurants.push({
+                                                                ...r,
+                                                                region: r.region || city,
+                                                                id: `ai-rec-retry-${city}-${rc.title}-${Math.random().toString(36).slice(2, 7)}-${j}`,
+                                                                categoryTitle: rc.title,
+                                                        });
+                                                        retryAddCount++;
+                                                });
+                                        });
+                                        if (retryAddCount > 0) {
+                                                // Re-verify only the new items.
+                                                const newItems = processed.flatMap((c: any) => (c.restaurants || []).filter((r: any) => !r.verificationStatus));
+                                                if (newItems.length > 0) {
+                                                        await verifyPlacesBatch(
+                                                                newItems.map((r: any) => ({ id: r.id, name: r.name, location: r.location, googleMapsUrl: r.googleMapsUrl, countryHint: cityEn })),
+                                                                trip,
+                                                                (id, result) => {
+                                                                        const t = newItems.find((r: any) => r.id === id);
+                                                                        if (t) applyVerificationResult(t, result);
+                                                                },
+                                                                { onFail: (id) => { const t = newItems.find((r: any) => r.id === id); if (t) t.geocodeFailed = true; } },
+                                                        );
+                                                }
+                                                console.log(`[bgResearch] ${city} per-category retry added ${retryAddCount} items across ${retryCats.length} categories`);
+                                        } else {
+                                                console.log(`[bgResearch] ${city} per-category retry returned 0 new items`);
+                                        }
+                                } catch (retryErr) {
+                                        console.warn(`[bgResearch] per-category retry for ${city} failed`, retryErr);
+                                }
+                        }
+
                         processed.forEach((newCat: any) => {
                                 const existingIdx = accumulated.findIndex(c => c.title === newCat.title);
                                 if (existingIdx !== -1) {
@@ -350,6 +421,24 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
                                         accumulated.push(newCat);
                                 }
                         });
+
+                        // Structured per-city summary so we can audit quality across
+                        // runs (where did the AI struggle? which categories came back
+                        // small?). Single console.log of structured JSON keeps it
+                        // grep-friendly.
+                        const summary = {
+                                kind: 'bgResearch.foodCityComplete',
+                                city,
+                                totalCategories: processed.length,
+                                totalItems: processed.reduce((s: number, c: any) => s + (c.restaurants?.length || 0), 0),
+                                verified: processed.reduce((s: number, c: any) => s + (c.restaurants || []).filter((r: any) => r.verificationStatus === 'verified').length, 0),
+                                ambiguous: processed.reduce((s: number, c: any) => s + (c.restaurants || []).filter((r: any) => r.verificationStatus === 'ambiguous').length, 0),
+                                notFound: processed.reduce((s: number, c: any) => s + (c.restaurants || []).filter((r: any) => r.verificationStatus === 'not_found').length, 0),
+                                undersizedCategories: processed
+                                        .filter((c: any) => (c.restaurants || []).filter((r: any) => r.verificationStatus === 'verified').length < 5)
+                                        .map((c: any) => `${c.title}(${(c.restaurants || []).length})`),
+                        };
+                        console.log('[bgResearch] city summary', JSON.stringify(summary));
 
                         // Persist after every city so the UI sees partial results
                         try {
