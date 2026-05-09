@@ -14,7 +14,14 @@
       "best_time_to_visit": "Weekday morning",
       "rating": 4.3,
       "reviewCount": 12000,
-      "tags": ["Iconic", "Swimming", "Hike"]
+      "tags": [
+        "Iconic",
+        "Swimming",
+        "Hike"
+      ],
+      "lat": 12.056538,
+      "lng": 102.298088,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.056538,102.298088"
     },
     {
       "name": "Ban Kwan Chang Elephant Camp",
@@ -30,7 +37,14 @@
       "best_time_to_visit": "Morning",
       "rating": 4.4,
       "reviewCount": 3800,
-      "tags": ["Elephants", "Family-Friendly", "Ethical"]
+      "tags": [
+        "Elephants",
+        "Family-Friendly",
+        "Ethical"
+      ],
+      "lat": 12.114564,
+      "lng": 102.299626,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.114564,102.299626"
     },
     {
       "name": "Koh Rang National Marine Park",
@@ -46,7 +60,11 @@
       "best_time_to_visit": "Morning (Nov–Apr)",
       "rating": 4.6,
       "reviewCount": 4400,
-      "tags": ["Snorkeling", "Diving", "Marine Park"]
+      "tags": [
+        "Snorkeling",
+        "Diving",
+        "Marine Park"
+      ]
     },
     {
       "name": "White Sand Beach (Hat Sai Khao)",
@@ -61,7 +79,14 @@
       "best_time_to_visit": "Morning or sunset",
       "rating": 4.4,
       "reviewCount": 18000,
-      "tags": ["Beach", "Iconic", "Family-Friendly"]
+      "tags": [
+        "Beach",
+        "Iconic",
+        "Family-Friendly"
+      ],
+      "lat": 12.10524,
+      "lng": 102.272826,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.105240,102.272826"
     },
     {
       "name": "Kai Bae Beach",
@@ -76,7 +101,13 @@
       "best_time_to_visit": "Morning",
       "rating": 4.4,
       "reviewCount": 8800,
-      "tags": ["Beach", "Quiet"]
+      "tags": [
+        "Beach",
+        "Quiet"
+      ],
+      "lat": 12.025292,
+      "lng": 102.291383,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.025292,102.291383"
     },
     {
       "name": "Lonely Beach",
@@ -91,7 +122,14 @@
       "best_time_to_visit": "Evening",
       "rating": 4.3,
       "reviewCount": 9400,
-      "tags": ["Beach", "Backpacker", "Party"]
+      "tags": [
+        "Beach",
+        "Backpacker",
+        "Party"
+      ],
+      "lat": 12.006954,
+      "lng": 102.293326,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.006954,102.293326"
     },
     {
       "name": "Bang Bao Pier",
@@ -106,7 +144,14 @@
       "best_time_to_visit": "Late afternoon",
       "rating": 4.3,
       "reviewCount": 7600,
-      "tags": ["Cultural", "Fishing Village", "Photogenic"]
+      "tags": [
+        "Cultural",
+        "Fishing Village",
+        "Photogenic"
+      ],
+      "lat": 11.969665,
+      "lng": 102.314146,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.969665,102.314146"
     },
     {
       "name": "Salakphet Fishing Village",
@@ -121,7 +166,10 @@
       "best_time_to_visit": "Morning",
       "rating": 4.4,
       "reviewCount": 1800,
-      "tags": ["Hidden Gem", "Authentic"]
+      "tags": [
+        "Hidden Gem",
+        "Authentic"
+      ]
     },
     {
       "name": "Wat Salakphet",
@@ -136,7 +184,13 @@
       "best_time_to_visit": "Morning",
       "rating": 4.2,
       "reviewCount": 240,
-      "tags": ["Quiet", "Local Temple"]
+      "tags": [
+        "Quiet",
+        "Local Temple"
+      ],
+      "lat": 12.048524,
+      "lng": 102.298673,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.048524,102.298673"
     },
     {
       "name": "Khao Kun Phra (Mountain View)",
@@ -151,7 +205,11 @@
       "best_time_to_visit": "Morning",
       "rating": 4.3,
       "reviewCount": 980,
-      "tags": ["Hike", "Panoramic", "Adventure"]
+      "tags": [
+        "Hike",
+        "Panoramic",
+        "Adventure"
+      ]
     },
     {
       "name": "Klong Nonsi Waterfall",
@@ -167,7 +225,11 @@
       "best_time_to_visit": "Weekday morning",
       "rating": 4.2,
       "reviewCount": 1100,
-      "tags": ["Hidden Gem", "Waterfall", "Quiet"]
+      "tags": [
+        "Hidden Gem",
+        "Waterfall",
+        "Quiet"
+      ]
     },
     {
       "name": "Treetop Adventure Park",
@@ -183,7 +245,11 @@
       "best_time_to_visit": "Morning",
       "rating": 4.6,
       "reviewCount": 3200,
-      "tags": ["Adventure", "Family-Friendly", "Ziplining"]
+      "tags": [
+        "Adventure",
+        "Family-Friendly",
+        "Ziplining"
+      ]
     },
     {
       "name": "Koh Wai (Day Trip)",
@@ -199,7 +265,11 @@
       "best_time_to_visit": "Morning",
       "rating": 4.5,
       "reviewCount": 1700,
-      "tags": ["Hidden Gem", "Snorkeling", "Day Trip"]
+      "tags": [
+        "Hidden Gem",
+        "Snorkeling",
+        "Day Trip"
+      ]
     },
     {
       "name": "Koh Mak (Day Trip)",
@@ -215,7 +285,13 @@
       "best_time_to_visit": "Morning",
       "rating": 4.6,
       "reviewCount": 2200,
-      "tags": ["Hidden Gem", "Eco-friendly"]
+      "tags": [
+        "Hidden Gem",
+        "Eco-friendly"
+      ],
+      "lat": 11.816,
+      "lng": 102.492633,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.816000,102.492633"
     },
     {
       "name": "Klong Son Walking Street",
@@ -230,7 +306,13 @@
       "best_time_to_visit": "Mon/Thu evenings",
       "rating": 4.2,
       "reviewCount": 540,
-      "tags": ["Local", "Night Market"]
+      "tags": [
+        "Local",
+        "Night Market"
+      ],
+      "lat": 12.035966,
+      "lng": 102.293702,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.035966,102.293702"
     },
     {
       "name": "Kai Bae Viewpoint",
@@ -245,7 +327,14 @@
       "best_time_to_visit": "Sunset",
       "rating": 4.5,
       "reviewCount": 4800,
-      "tags": ["Sunset", "Free", "Photogenic"]
+      "tags": [
+        "Sunset",
+        "Free",
+        "Photogenic"
+      ],
+      "lat": 12.027506,
+      "lng": 102.292061,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.027506,102.292061"
     },
     {
       "name": "Mu Ko Chang National Park HQ",
@@ -260,7 +349,13 @@
       "best_time_to_visit": "Morning",
       "rating": 4.0,
       "reviewCount": 380,
-      "tags": ["National Park", "Information"]
+      "tags": [
+        "National Park",
+        "Information"
+      ],
+      "lat": 11.967739,
+      "lng": 102.477628,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.967739,102.477628"
     },
     {
       "name": "Bailan Beach",
@@ -275,7 +370,13 @@
       "best_time_to_visit": "Morning",
       "rating": 4.3,
       "reviewCount": 1700,
-      "tags": ["Quiet", "Hidden Gem"]
+      "tags": [
+        "Quiet",
+        "Hidden Gem"
+      ],
+      "lat": 11.993633,
+      "lng": 102.29834,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.993633,102.298340"
     },
     {
       "name": "Klong Kloi Beach",
@@ -290,7 +391,14 @@
       "best_time_to_visit": "Sunset",
       "rating": 4.5,
       "reviewCount": 3400,
-      "tags": ["Beach", "Sunset", "Quiet"]
+      "tags": [
+        "Beach",
+        "Sunset",
+        "Quiet"
+      ],
+      "lat": 11.974267,
+      "lng": 102.327587,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.974267,102.327587"
     },
     {
       "name": "Than Mayom Waterfall",
@@ -306,7 +414,13 @@
       "best_time_to_visit": "Morning",
       "rating": 4.2,
       "reviewCount": 1300,
-      "tags": ["Hidden Gem", "Waterfall"]
+      "tags": [
+        "Hidden Gem",
+        "Waterfall"
+      ],
+      "lat": 12.076301,
+      "lng": 102.367338,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.076301,102.367338"
     },
     {
       "name": "Koh Chang Mangrove Forest Walk",
@@ -321,7 +435,14 @@
       "best_time_to_visit": "Morning",
       "rating": 4.4,
       "reviewCount": 980,
-      "tags": ["Nature", "Family-Friendly", "Free"]
+      "tags": [
+        "Nature",
+        "Family-Friendly",
+        "Free"
+      ],
+      "lat": 11.998327,
+      "lng": 102.371506,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.998327,102.371506"
     },
     {
       "name": "Salakkok Fishing Village",
@@ -336,7 +457,11 @@
       "best_time_to_visit": "Morning",
       "rating": 4.5,
       "reviewCount": 540,
-      "tags": ["Hidden Gem", "Authentic", "Kayaking"]
+      "tags": [
+        "Hidden Gem",
+        "Authentic",
+        "Kayaking"
+      ]
     }
   ],
   "newAttractionCategories": []

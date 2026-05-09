@@ -279,7 +279,7 @@
     },
     {
       "name": "Mordi e Fuggi",
-      "description": "פיצריה איטלקית אותנטית של בעל איטלקי-יליד ב-Kai Bae walking street. בצק מותסס פריך עם תוספות איכותיות כמו פרושוטו ופרמיג'אנו. תשלום במזומן בלבד — חוויה איטלקית בלב הג'ונגל.",
+      "description": "פיצריה איטלקית אותנטית של בעל איטלקי-יליד ב-Kai Bae walking street. בצק מותסס פריך עם תוספות איכותיות. תשלום במזומן בלבד. ⚠️ מקום זעיר — לקבוצה גדולה חובה לתאם הזמנה מראש.",
       "location": "Kai Bae Walking Street, Ko Chang, Trat 23170, Thailand",
       "categoryTitle": "פיצה",
       "recommendationSource": "iamkohchang.com",
@@ -388,34 +388,6 @@
       "lat": 13.663292,
       "lng": 100.659841,
       "googleMapsUrl": "https://www.google.com/maps/?q=13.663292,100.659841"
-    },
-    {
-      "name": "Ageha",
-      "description": "הפתעה יפנית באמצע הג'ונגל. שף יפני מקומי מגיש ראמן טונקוטסו עשיר וקרמי, סושי טרי באווירה מסורתית. מעוצב במזכרות משפחה יפניות. מקום שווה כל הנסיעה.",
-      "location": "Klong Prao, Ko Chang, Trat 23170, Thailand",
-      "categoryTitle": "ראמן",
-      "recommendationSource": "iamkohchang.com",
-      "priceLevel": "$$$",
-      "cuisine": "Japanese",
-      "must_try_dish": "Tonkotsu Ramen",
-      "recommendedDishes": [
-        "tonkotsu ramen",
-        "sashimi platter",
-        "japanese curry"
-      ],
-      "vibe": "Traditional Japanese, intimate",
-      "bestTime": "Dinner",
-      "reservationRequired": true,
-      "googleRating": 4.7,
-      "reviewCount": 320,
-      "tags": [
-        "Japanese",
-        "Authentic",
-        "Hidden Gem"
-      ],
-      "lat": 12.051965,
-      "lng": 102.291164,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.051965,102.291164"
     },
     {
       "name": "Sushi Kha",

@@ -2,7 +2,7 @@
   "attractions": [
     {
       "name": "Grand Palace",
-      "description": "המתחם המלכותי החשוב ביותר בתאילנד. שטח של 218,000 מ\"ר עם בניינים מלכותיים, מקדשים ופאר ארכיטקטוני. זמן ביקור: 2-3 שעות. הגיעו לפני 09:00 כדי להקדים את האוטובוסים.",
+      "description": "המתחם המלכותי החשוב ביותר בתאילנד. שטח של 218,000 מ\"ר עם בניינים מלכותיים, מקדשים ופאר ארכיטקטוני. ⚠️ באוגוסט החום והלחות בשיא — חובה להגיע 08:00–08:30 לפני העומס.",
       "location": "Na Phra Lan Rd, Phra Borom Maha Ratchawang, Phra Nakhon, Bangkok 10200, Thailand",
       "categoryTitle": "אתרי חובה",
       "recommendationSource": "Lonely Planet Top Choice",
@@ -11,7 +11,7 @@
       "duration": "2–3 hours",
       "price": "500 THB",
       "costNumeric": 500,
-      "best_time_to_visit": "Early morning (before 10:00)",
+      "best_time_to_visit": "08:00–08:30 (especially August)",
       "rating": 4.7,
       "reviewCount": 145000,
       "tags": [
@@ -263,7 +263,7 @@
     },
     {
       "name": "Damnoen Saduak Floating Market",
-      "description": "השוק הצף האגדי של תאילנד. סירות עם פירות, ירקות, אוכל מהיר ומזכרות. אווירה אקזוטית ופוטוגנית. נסיעה של שעה וחצי מבנגקוק. מומלץ להגיע ב-08:00 לפני העומס.",
+      "description": "השוק הצף האגדי של תאילנד. סירות עם פירות, ירקות, אוכל מהיר ומזכרות. ⚠️ באוגוסט הגיעו 08:00–08:30 לפני שהאוטובוסים מגיעים והחום בלתי-נסבל.",
       "location": "Damnoen Saduak, Ratchaburi 70130, Thailand",
       "categoryTitle": "קניות ושווקים",
       "recommendationSource": "Lonely Planet",
@@ -271,7 +271,7 @@
       "activity_type": "Culture",
       "duration": "Half day",
       "price": "Free entry",
-      "best_time_to_visit": "Early morning (before 09:00)",
+      "best_time_to_visit": "08:00–08:30 (avoid August heat + crowds)",
       "rating": 4.1,
       "reviewCount": 26000,
       "tags": [

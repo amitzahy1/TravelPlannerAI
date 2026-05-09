@@ -2,7 +2,7 @@
   "restaurants": [
     {
       "name": "Raan Jay Fai",
-      "description": "אגדה של בנגקוק וזוכת כוכב מישלן ראשון בעולם של דוכן רחוב. השפית ג'יי פאי בוגלי ירוקים מטגנת בעצמה את חביתת הסרטן המפורסמת שלה — חביתה גדולה ועתירת בשר סרטן עם ביצים פלאפיות.",
+      "description": "אגדה של בנגקוק וזוכת כוכב מישלן ראשון בעולם של דוכן רחוב. השפית ג'יי פאי מטגנת בעצמה את חביתת הסרטן המפורסמת. ⚠️ מקום זעיר וצפוף — לקבוצה של 14 איש חובה לתאם ולסגור הזמנה פרטית מראש, אחרת אין מקום פיזי.",
       "location": "327 Maha Chai Rd, Samran Rat, Phra Nakhon, Bangkok 10200, Thailand",
       "lat": 13.752534,
       "lng": 100.504737,
@@ -227,12 +227,12 @@
     },
     {
       "name": "Baan Tepa",
-      "description": "חוויית מישלן יוצאת דופן של השפית טאם — Asia's Best Female Chef לשעבר. פילוסופיית farm-to-table קפדנית, צמחי תיבול מקומיים וטכניקות תסיסה. תפריט טעימות מורם שגם משעשע אינטלקטואלית.",
+      "description": "חוויית מישלן 2 כוכבים יוצאת דופן של השפית טאם — Asia's Best Female Chef לשעבר. פילוסופיית farm-to-table קפדנית, צמחי תיבול מקומיים וטכניקות תסיסה. תפריט טעימות מורם שגם משעשע אינטלקטואלית.",
       "location": "69 Ekkamai 12 Alley, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
       "lat": 13.7694,
       "lng": 100.507491,
       "categoryTitle": "יוקרה ומישלן",
-      "recommendationSource": "Michelin Guide (1 Star)",
+      "recommendationSource": "Michelin Guide (2 Stars)",
       "priceLevel": "$$$$",
       "priceRange": "3,500–4,500 THB",
       "cuisine": "Modern Thai",
@@ -695,27 +695,6 @@
         "Smash Burger"
       ],
       "googleMapsUrl": "https://www.google.com/maps/?q=13.737868,100.515202"
-    },
-    {
-      "name": "Art of B",
-      "description": "המבורגרים מבקר dry-aged ב-Thong Lo. ה-aging מעניק עומק טעם פאנקי-אומאמי שלא תמצאו במקומות אחרים. תפריט קטן ומתוקן, לא לחפזון.",
-      "location": "Thonglor Soi 11, Khlong Tan Nuea, Watthana, Bangkok 10110, Thailand",
-      "lat": 13.745769,
-      "lng": 100.566399,
-      "categoryTitle": "המבורגר",
-      "recommendationSource": "Time Out Bangkok",
-      "priceLevel": "$$$",
-      "cuisine": "American",
-      "must_try_dish": "Dry-Aged Cheeseburger",
-      "vibe": "Premium burger bistro",
-      "bestTime": "Dinner",
-      "googleRating": 4.5,
-      "reviewCount": 240,
-      "tags": [
-        "Dry-Aged",
-        "Premium"
-      ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.745769,100.566399"
     },
     {
       "name": "Pita Steak Burger",

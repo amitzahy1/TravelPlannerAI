@@ -2,7 +2,7 @@
   "attractions": [
     {
       "name": "Grand Palace",
-      "description": "המתחם המלכותי החשוב ביותר בתאילנד. שטח של 218,000 מ\"ר עם בניינים מלכותיים, מקדשים ופאר ארכיטקטוני. זמן ביקור: 2-3 שעות. הגיעו לפני 09:00 כדי להקדים את האוטובוסים.",
+      "description": "המתחם המלכותי החשוב ביותר בתאילנד. שטח של 218,000 מ\"ר עם בניינים מלכותיים, מקדשים ופאר ארכיטקטוני. ⚠️ באוגוסט החום והלחות בשיא — חובה להגיע 08:00–08:30 לפני העומס.",
       "location": "Na Phra Lan Rd, Phra Borom Maha Ratchawang, Phra Nakhon, Bangkok 10200, Thailand",
       "categoryTitle": "אתרי חובה",
       "recommendationSource": "Lonely Planet Top Choice",
@@ -11,7 +11,7 @@
       "duration": "2–3 hours",
       "price": "500 THB",
       "costNumeric": 500,
-      "best_time_to_visit": "Early morning (before 10:00)",
+      "best_time_to_visit": "08:00–08:30 (especially August)",
       "rating": 4.7,
       "reviewCount": 145000,
       "tags": [
@@ -263,7 +263,7 @@
     },
     {
       "name": "Damnoen Saduak Floating Market",
-      "description": "השוק הצף האגדי של תאילנד. סירות עם פירות, ירקות, אוכל מהיר ומזכרות. אווירה אקזוטית ופוטוגנית. נסיעה של שעה וחצי מבנגקוק. מומלץ להגיע ב-08:00 לפני העומס.",
+      "description": "השוק הצף האגדי של תאילנד. סירות עם פירות, ירקות, אוכל מהיר ומזכרות. ⚠️ באוגוסט הגיעו 08:00–08:30 לפני שהאוטובוסים מגיעים והחום בלתי-נסבל.",
       "location": "Damnoen Saduak, Ratchaburi 70130, Thailand",
       "categoryTitle": "קניות ושווקים",
       "recommendationSource": "Lonely Planet",
@@ -271,7 +271,7 @@
       "activity_type": "Culture",
       "duration": "Half day",
       "price": "Free entry",
-      "best_time_to_visit": "Early morning (before 09:00)",
+      "best_time_to_visit": "08:00–08:30 (avoid August heat + crowds)",
       "rating": 4.1,
       "reviewCount": 26000,
       "tags": [
@@ -1178,7 +1178,10 @@
         "Iconic",
         "Swimming",
         "Hike"
-      ]
+      ],
+      "lat": 12.056538,
+      "lng": 102.298088,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.056538,102.298088"
     },
     {
       "name": "Ban Kwan Chang Elephant Camp",
@@ -1198,7 +1201,10 @@
         "Elephants",
         "Family-Friendly",
         "Ethical"
-      ]
+      ],
+      "lat": 12.114564,
+      "lng": 102.299626,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.114564,102.299626"
     },
     {
       "name": "Koh Rang National Marine Park",
@@ -1237,7 +1243,10 @@
         "Beach",
         "Iconic",
         "Family-Friendly"
-      ]
+      ],
+      "lat": 12.10524,
+      "lng": 102.272826,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.105240,102.272826"
     },
     {
       "name": "Kai Bae Beach",
@@ -1255,7 +1264,10 @@
       "tags": [
         "Beach",
         "Quiet"
-      ]
+      ],
+      "lat": 12.025292,
+      "lng": 102.291383,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.025292,102.291383"
     },
     {
       "name": "Lonely Beach",
@@ -1274,7 +1286,10 @@
         "Beach",
         "Backpacker",
         "Party"
-      ]
+      ],
+      "lat": 12.006954,
+      "lng": 102.293326,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.006954,102.293326"
     },
     {
       "name": "Bang Bao Pier",
@@ -1293,7 +1308,10 @@
         "Cultural",
         "Fishing Village",
         "Photogenic"
-      ]
+      ],
+      "lat": 11.969665,
+      "lng": 102.314146,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.969665,102.314146"
     },
     {
       "name": "Salakphet Fishing Village",
@@ -1329,7 +1347,10 @@
       "tags": [
         "Quiet",
         "Local Temple"
-      ]
+      ],
+      "lat": 12.048524,
+      "lng": 102.298673,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.048524,102.298673"
     },
     {
       "name": "Khao Kun Phra (Mountain View)",
@@ -1427,7 +1448,10 @@
       "tags": [
         "Hidden Gem",
         "Eco-friendly"
-      ]
+      ],
+      "lat": 11.816,
+      "lng": 102.492633,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.816000,102.492633"
     },
     {
       "name": "Klong Son Walking Street",
@@ -1445,7 +1469,10 @@
       "tags": [
         "Local",
         "Night Market"
-      ]
+      ],
+      "lat": 12.035966,
+      "lng": 102.293702,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.035966,102.293702"
     },
     {
       "name": "Kai Bae Viewpoint",
@@ -1464,7 +1491,10 @@
         "Sunset",
         "Free",
         "Photogenic"
-      ]
+      ],
+      "lat": 12.027506,
+      "lng": 102.292061,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.027506,102.292061"
     },
     {
       "name": "Mu Ko Chang National Park HQ",
@@ -1482,7 +1512,10 @@
       "tags": [
         "National Park",
         "Information"
-      ]
+      ],
+      "lat": 11.967739,
+      "lng": 102.477628,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.967739,102.477628"
     },
     {
       "name": "Bailan Beach",
@@ -1500,7 +1533,10 @@
       "tags": [
         "Quiet",
         "Hidden Gem"
-      ]
+      ],
+      "lat": 11.993633,
+      "lng": 102.29834,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.993633,102.298340"
     },
     {
       "name": "Klong Kloi Beach",
@@ -1519,7 +1555,10 @@
         "Beach",
         "Sunset",
         "Quiet"
-      ]
+      ],
+      "lat": 11.974267,
+      "lng": 102.327587,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.974267,102.327587"
     },
     {
       "name": "Than Mayom Waterfall",
@@ -1538,7 +1577,10 @@
       "tags": [
         "Hidden Gem",
         "Waterfall"
-      ]
+      ],
+      "lat": 12.076301,
+      "lng": 102.367338,
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.076301,102.367338"
     },
     {
       "name": "Koh Chang Mangrove Forest Walk",
@@ -1557,7 +1599,10 @@
         "Nature",
         "Family-Friendly",
         "Free"
-      ]
+      ],
+      "lat": 11.998327,
+      "lng": 102.371506,
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.998327,102.371506"
     },
     {
       "name": "Salakkok Fishing Village",
