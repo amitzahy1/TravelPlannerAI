@@ -233,9 +233,29 @@ export default {
 
                                 const model = genAI.getGenerativeModel(modelOptions);
 
-                                // Pass content directly — supports text, inlineData (images/PDFs), and mixed parts
-                                // The client sends Content[] format: [{ role: 'user', parts: [{text: ...}, {inlineData: ...}] }]
-                                const result = await model.generateContent({ contents: requestContent });
+                                // Cloudflare Workers (free tier) cap a single request at ~30s wall-clock.
+                                // Race the SDK call against an explicit 25s timeout so we return a clean
+                                // 504/GeminiTimeout to the client (which treats it as transient and falls
+                                // through to the next model) instead of letting Cloudflare kill the
+                                // Worker mid-flight and surface an opaque 500.
+                                let result: any;
+                                try {
+                                        result = await Promise.race([
+                                                model.generateContent({ contents: requestContent }),
+                                                new Promise<never>((_, reject) =>
+                                                        setTimeout(() => reject(new Error('GeminiTimeout: 25s')), 25_000)
+                                                ),
+                                        ]);
+                                } catch (e: any) {
+                                        if (/GeminiTimeout/.test(e?.message || '')) {
+                                                console.warn(`[Worker] ${modelId} timed out after 25s`);
+                                                return new Response(JSON.stringify({ error: e.message, model: modelId }), {
+                                                        status: 504,
+                                                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                                                });
+                                        }
+                                        throw e;
+                                }
                                 const response = await result.response;
                                 const text = response.text();
 

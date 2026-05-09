@@ -26,21 +26,17 @@ const GOOGLE_MODELS = {
     "gemini-3-flash-preview",
     "gemini-2.5-pro",
   ],
-  // Tier 2: Used for SEARCH intent (restaurant/attraction market research).
-  // Quality first — stronger models produce better results.
-  //
-  // NOTE on quota tiers (free vs paid):
-  //   - gemini-3.1-pro-preview, gemini-2.5-pro → limit: 0 on free tier (needs GEMINI_PREMIUM_KEY)
-  //   - gemini-3-flash → 404 on v1beta API (wrong ID — model not yet publicly available)
-  //   - gemini-3-flash-preview → works but has low per-minute quota
-  //   - gemini-2.5-flash, gemini-2.5-flash-lite → free tier: 20/day each
+  // Tier 2: SEARCH intent (restaurant/attraction market research).
+  // Flash-first — Pro 3.1 Preview removed: TTFT (21–35s) exceeds the
+  // Cloudflare Worker 30s lifecycle, causing every Pro 3.1 call to time
+  // out before returning. 2.5-flash with googleSearch grounding produces
+  // excellent results in ~3–8s. Pro stays in chain as escalation only.
   RESEARCH_CANDIDATES: [
-    "gemini-3.1-pro-preview",                        // PRIMARY — best quality (needs paid key; skipped on free)
-    "gemini-2.5-pro",                                // FALLBACK 1 — stable Pro (needs paid key; skipped on free)
-    "gemini-3-flash-preview",                        // FALLBACK 2 — Gemini 3 Flash, grounding-capable
-    "gemini-2.5-flash",                              // FALLBACK 3 — stable, 20 req/day free
-    "gemini-2.5-flash-lite",                         // FALLBACK 4 — highest free-tier quota
-    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 5 — OpenRouter free tier (non-Google)
+    "gemini-2.5-flash",                                   // PRIMARY — fast + grounded (~3–8s)
+    "gemini-3-flash-preview",                             // FALLBACK 1 — Gemini 3 Flash
+    "gemini-2.5-pro",                                     // FALLBACK 2 — escalate when Flash output is thin
+    "gemini-2.5-flash-lite",                              // FALLBACK 3 — cheapest Gemini option
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 4 — non-Google last resort
   ],
   // Tier 3: Used for FAST intent (chat, quick suggestions)
   FAST_CANDIDATES: [
@@ -229,6 +225,8 @@ const isTransientWorkerError = (status: number, message: string): boolean => {
   // Permanent quota (limit:0, PerDay) must be checked first — even for 429
   if (/PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay|limit:\s*0/i.test(message)) return false;
   if (status === 429) return true;
+  // Worker-side timeout (model.generateContent took >25s) — fall through to next model
+  if (status === 504 || /GeminiTimeout/i.test(message)) return true;
   if (status < 500) return false;
   return /503|Service Unavailable|high demand|temporar|retry/i.test(message);
 };
@@ -289,9 +287,13 @@ export const generateWithFallback = async (
       }
 
       const controller = new AbortController();
-      // Pro models are slower on large grounding prompts; give them more time
+      // Cloudflare Workers (free tier) cap a single fetch handler at ~30s
+      // wall-clock, so any client timeout above that is wishful — the Worker
+      // will be killed before the SDK call returns. Keep the client just
+      // above the Worker's own 25s race timeout so we surface the Worker's
+      // 504 instead of an opaque AbortError.
       const isProModel = modelId.includes('pro');
-      const timeoutMs = intent === 'SEARCH' ? (isProModel ? 150000 : 90000) : 60000;
+      const timeoutMs = intent === 'SEARCH' ? (isProModel ? 30000 : 20000) : 15000;
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       // SEARCH intent uses Google Search grounding on the Worker side.
@@ -419,6 +421,131 @@ export const generateWithFallback = async (
     throw new Error(`PerDay quota exhausted — all models failed. Last error: ${lastMsg}`);
   }
   throw lastError || new Error("All AI models failed to generate response.");
+};
+
+// ============================================================================
+// 🔬 DEEP RESEARCH TEXT PARSER
+// ============================================================================
+//
+// Takes raw text from an external Deep Research session (ChatGPT, Gemini
+// Advanced, Claude with web access) and coerces it into our internal
+// Restaurant / Attraction shape. Routed through SMART intent + Flash-Lite —
+// no grounding (we already have the research), structured-JSON output mode,
+// pennies per import.
+
+export interface DeepResearchParseResult {
+  restaurants: any[];
+  attractions: any[];
+  newRestaurantCategories: string[];
+  newAttractionCategories: string[];
+}
+
+const DEEP_RESEARCH_PARSE_PROMPT = `
+You are a JSON normalizer. The user pasted the raw output of a Deep Research
+session about restaurants and attractions for a specific trip. Your job is
+to convert that text into a single, valid JSON object that matches the
+schema below — exactly. Do not invent, summarize, or expand. Only extract
+what is explicitly present in the input.
+
+OUTPUT SCHEMA (no markdown, no prose, only this object):
+{
+  "restaurants": [
+    {
+      "name": string,                       // original-script display name
+      "nameEnglish": string,                // Latin-script
+      "description": string,                // Hebrew if present, otherwise English
+      "location": string,                   // address as written
+      "lat": number,                        // optional
+      "lng": number,                        // optional
+      "priceLevel": "$" | "$$" | "$$$" | "$$$$",  // optional
+      "priceRange": string,                 // optional, display
+      "cuisine": string,                    // optional
+      "must_try_dish": string,              // optional
+      "recommendedDishes": string[],        // optional, max 5
+      "vibe": string,                       // optional
+      "bestTime": "Breakfast" | "Lunch" | "Dinner" | "Late Night",
+      "reservationRequired": boolean,       // only if explicitly stated
+      "googleRating": number,               // 0–5
+      "reviewCount": number,
+      "michelin": boolean,                  // only if explicitly Michelin
+      "tags": string[],                     // optional, max 5
+      "recommendationSource": string,       // verbatim source name
+      "categoryTitle": string,              // Hebrew category name
+      "googleMapsUrl": string,              // only if a real URL is present
+      "googleSearchQuery": string           // optional, "{name} {city}"
+    }
+  ],
+  "attractions": [
+    {
+      "name": string, "nameEnglish": string, "description": string,
+      "location": string, "lat": number, "lng": number,
+      "price": string, "costNumeric": number,
+      "rating": number, "reviewCount": number,
+      "type": string,
+      "activity_type": string,
+      "duration": string,
+      "best_time_to_visit": string,
+      "recommendationSource": string,
+      "categoryTitle": string,
+      "googleMapsUrl": string
+    }
+  ],
+  "newRestaurantCategories": string[],
+  "newAttractionCategories": string[]
+}
+
+RULES:
+1. OMIT any field you cannot fill with confidence from the input. Empty
+   string and null are NOT acceptable values — leave the key out entirely.
+2. Never invent lat/lng. Only include them if the input explicitly states
+   decimal coordinates.
+3. \`name\` and \`nameEnglish\` MUST be venue display names — never an
+   address fragment, "Moo X", "Soi Y", or coordinates.
+4. \`recommendedDishes\` and \`tags\` capped at 5 entries each.
+5. \`categoryTitle\` should match one of the existing trip categories when
+   the entry obviously belongs to it. If clearly distinct, propose a new
+   short Hebrew title and ALSO list it in \`newRestaurantCategories\` /
+   \`newAttractionCategories\`.
+
+INPUT (raw Deep Research text follows the marker):
+========== DEEP RESEARCH TEXT ==========
+`;
+
+export const parseDeepResearchText = async (rawText: string): Promise<DeepResearchParseResult> => {
+  if (!rawText || rawText.trim().length < 50) {
+    throw new Error('Deep Research text is too short to parse (need ≥50 chars).');
+  }
+
+  const prompt = `${DEEP_RESEARCH_PARSE_PROMPT}\n${rawText}\n========== END ==========\nReturn ONLY the JSON object now.`;
+
+  const response = await generateWithFallback(
+    null,
+    [{ role: 'user', parts: [{ text: prompt }] }],
+    {
+      responseMimeType: 'application/json',
+      temperature: 0.1,
+      // No responseSchema — Gemini can be picky about deeply optional schemas.
+      // The parser below is forgiving.
+    },
+    'SMART',  // routes to Flash-Lite first → cheapest path
+    'free'
+  );
+
+  const text: string = response?.text || '';
+  let parsed: any;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    parsed = JSON.parse(cleaned);
+  }
+
+  return {
+    restaurants: Array.isArray(parsed?.restaurants) ? parsed.restaurants : [],
+    attractions: Array.isArray(parsed?.attractions) ? parsed.attractions : [],
+    newRestaurantCategories: Array.isArray(parsed?.newRestaurantCategories) ? parsed.newRestaurantCategories : [],
+    newAttractionCategories: Array.isArray(parsed?.newAttractionCategories) ? parsed.newAttractionCategories : [],
+  };
 };
 
 // ============================================================================

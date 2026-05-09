@@ -25,6 +25,7 @@ import { MagicalWizard } from './onboarding/MagicalWizard';
 import { UnifiedMapView } from './UnifiedMapView';
 import { DataHealthPanel } from './admin/DataHealthPanel';
 import { ActivityPanel } from './admin/ActivityPanel';
+import { DeepResearchPanel } from './DeepResearchPanel';
 
 
 interface TripSettingsModalProps {
@@ -1170,6 +1171,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />
                                     </div>
                                 </div>
+
+                                {/* External Deep Research — generate prompt + import results */}
+                                <DeepResearchPanel trip={activeTrip} onUpdateTrip={(t) => handleUpdateTrip(t)} />
 
                                 {/* Activity log + soft-delete recovery */}
                                 <ActivityPanel
