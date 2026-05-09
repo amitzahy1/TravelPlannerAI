@@ -164,6 +164,66 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // One-shot recovery for the Holiday Inn Pattaya rooms that were deleted
+  // by the nested-button bug on 9.5.2026. Triggered by URL flag
+  // `?restoreHolidayInnPattayaRooms=1`. Scans all trips, finds the hotel,
+  // overlays the 5 rooms (idempotent — won't duplicate if already there),
+  // updates trip notes with the special-requests, removes the URL param.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const flagged = new URL(window.location.href).searchParams.get('restoreHolidayInnPattayaRooms') === '1';
+    if (!flagged) return;
+    if (!trips || trips.length === 0) return;
+    const ROOMS = [
+      { id: 'recover-hipattaya-room1', label: 'חדר 1', roomType: 'Standard Sea View Room', adults: 2, children: 0, beds: '', notes: '' },
+      { id: 'recover-hipattaya-room2', label: 'חדר 2', roomType: 'Standard Sea View Room', adults: 1, children: 0, beds: '', notes: '' },
+      { id: 'recover-hipattaya-room3', label: 'חדר 3', roomType: 'Suite', adults: 2, children: 1, beds: '', notes: 'תינוק בן 6 חודשים' },
+      { id: 'recover-hipattaya-room4', label: 'חדר 4', roomType: 'King Premium — Sea View', adults: 2, children: 2, beds: 'King Bed', notes: 'ילד בן 4.5, פעוט בן 1.5' },
+      { id: 'recover-hipattaya-room5', label: 'חדר 5', roomType: 'Standard Sea View Room', adults: 2, children: 3, beds: '', notes: 'ילד בן 10, פעוט בן שנתיים, תינוק בן 6 חודשים' },
+    ];
+    const SPECIAL_REQUESTS = [
+      'בקשה ספציפית לבניין ה-Bay Tower (אזור משפחות).',
+      'בשל מספר עגלות התינוק — נדרשת גישה חלקה למעליות, מינימום מדרגות.',
+      'בקשה למקם את כל 5 החדרים סמוכים זה לזה.',
+    ].join(' ');
+
+    let didChange = false;
+    for (const trip of trips) {
+      const hotelIdx = (trip.hotels || []).findIndex(h => /holiday\s*inn/i.test(h.name || '') && /pattaya|פטאיה/i.test(`${h.name || ''} ${h.city || ''} ${h.address || ''}`));
+      if (hotelIdx === -1) continue;
+      const existingHotel = trip.hotels[hotelIdx];
+      const existingLabels = new Set((existingHotel.rooms || []).map(r => (r.label || '').trim()));
+      const toAdd = ROOMS.filter(r => !existingLabels.has(r.label));
+      if (toAdd.length === 0) {
+        console.log('[recovery] Holiday Inn Pattaya rooms already present, skipping');
+        continue;
+      }
+      const newHotels = [...trip.hotels];
+      newHotels[hotelIdx] = {
+        ...existingHotel,
+        rooms: [...(existingHotel.rooms || []), ...toAdd],
+        notes: existingHotel.notes && existingHotel.notes.includes('Bay Tower')
+          ? existingHotel.notes
+          : [existingHotel.notes, SPECIAL_REQUESTS].filter(Boolean).join('\n\n'),
+      };
+      const updated: Trip = { ...trip, hotels: newHotels };
+      console.log(`[recovery] restoring ${toAdd.length} rooms to "${existingHotel.name}" in trip "${trip.name}"`);
+      updateTripMutation.mutate(updated);
+      didChange = true;
+    }
+
+    // Remove the URL flag whether we found the hotel or not so a refresh
+    // doesn't keep re-running.
+    const url = new URL(window.location.href);
+    url.searchParams.delete('restoreHolidayInnPattayaRooms');
+    window.history.replaceState(null, '', url.toString());
+    if (didChange) {
+      // Surface a brief feedback. toast lives in useToastStore but we
+      // keep the dependency local; alert is acceptable for a one-shot.
+      setTimeout(() => alert('שוחזרו 5 החדרים ב-Holiday Inn Pattaya'), 200);
+    }
+  }, [trips]);
+
   // Default Active Trip Logic (If none selected)
   useEffect(() => {
     if (!isLoading && trips.length > 0 && !activeTrip) {
