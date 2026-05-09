@@ -8,21 +8,44 @@
  * - Strict FinishReason Validation
  */
 
-import { SignJWT, importPKCS8 } from 'jose';
+import { SignJWT, importPKCS8, jwtVerify, createRemoteJWKSet } from 'jose';
 import PostalMime from 'postal-mime';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // --- INTERFACES ---
 interface Env {
         GEMINI_API_KEY?: string;
-        GEMINI_PREMIUM_KEY?: string;   // Billing-enabled key — used only when request body has tier='paid'
+        GEMINI_PREMIUM_KEY?: string;   // Billing-enabled key — used for Pro models or when tier='paid'
         OPENROUTER_API_KEY?: string;
         FIREBASE_SERVICE_ACCOUNT: string;
         FIREBASE_PROJECT_ID: string;
         AUTH_SECRET: string;
 }
 
+// Hard allow-list. Only these accounts can invoke /api/generate.
+const ALLOWED_EMAILS = new Set<string>([
+        'amitzahy1@gmail.com',
+]);
+
+// Firebase ID tokens are RS256-signed JWTs from Google's secure token service.
+const FIREBASE_JWKS = createRemoteJWKSet(
+        new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
+);
+
+const verifyFirebaseToken = async (token: string, projectId: string): Promise<{ email: string; uid: string }> => {
+        const { payload } = await jwtVerify(token, FIREBASE_JWKS, {
+                issuer: `https://securetoken.google.com/${projectId}`,
+                audience: projectId,
+        });
+        const email = (payload.email as string | undefined) ?? '';
+        const uid = (payload.user_id as string | undefined) ?? (payload.sub as string | undefined) ?? '';
+        if (!email) throw new Error('Token missing email claim');
+        if (payload.email_verified !== true) throw new Error('Email not verified');
+        return { email: email.toLowerCase(), uid };
+};
+
 const isOpenRouterModel = (modelId: string) => modelId.startsWith("openrouter:");
+const isProModel = (modelId: string) => /(?:^|[-/])(?:gemini-)?\d+(?:\.\d+)?-pro\b/i.test(modelId) || modelId.toLowerCase().includes('pro');
 
 const partToText = (part: any): string => {
         if (!part) return "";
@@ -126,6 +149,35 @@ export default {
                 try {
                         // Secure API Endpoint for Frontend (supports multimodal content)
                         if (url.pathname === "/api/generate" && request.method === "POST") {
+                                // Auth: verify Firebase ID token + check email allow-list before doing any work.
+                                const authHeader = request.headers.get('Authorization') || '';
+                                const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+                                if (!idToken) {
+                                        return new Response(JSON.stringify({ error: 'Missing Authorization bearer token' }), {
+                                                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                                        });
+                                }
+                                if (!env.FIREBASE_PROJECT_ID) {
+                                        return new Response(JSON.stringify({ error: 'Server misconfigured: FIREBASE_PROJECT_ID missing' }), {
+                                                status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                                        });
+                                }
+                                let caller: { email: string; uid: string };
+                                try {
+                                        caller = await verifyFirebaseToken(idToken, env.FIREBASE_PROJECT_ID);
+                                } catch (e: any) {
+                                        console.warn(`[Auth] Token verification failed: ${e?.message}`);
+                                        return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                                                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                                        });
+                                }
+                                if (!ALLOWED_EMAILS.has(caller.email)) {
+                                        console.warn(`[Auth] Forbidden email: ${caller.email} (uid=${caller.uid})`);
+                                        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+                                                status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                                        });
+                                }
+
                                 const body = await request.json() as any;
                                 const { contents, prompt, Model, generationConfig, intent, tier } = body;
 
@@ -133,7 +185,7 @@ export default {
                                 const requestContent = contents || prompt;
                                 if (!requestContent) return new Response("Missing prompt/contents", { status: 400, headers: corsHeaders });
 
-                                const modelId = Model || "gemini-1.5-flash-latest";
+                                const modelId = Model || "gemini-2.5-flash";
                                 const isSearch = intent === 'SEARCH';
                                 const finalGenConfig = isSearch
                                         ? { temperature: generationConfig?.temperature ?? 0.2 }
@@ -151,14 +203,19 @@ export default {
                                         });
                                 }
 
-                                // Pick the API key. tier='paid' uses GEMINI_PREMIUM_KEY when set;
-                                // otherwise falls through to the free key (or rejects if neither exists).
-                                const usePremiumKey = tier === 'paid' && !!env.GEMINI_PREMIUM_KEY;
-                                const apiKey = usePremiumKey ? env.GEMINI_PREMIUM_KEY! : env.GEMINI_API_KEY;
+                                // Smart key routing: Pro models always use the premium (paid) key —
+                                // free tier has limit:0 on Pro. Flash models use the free key unless
+                                // the caller explicitly requested tier='paid'. Falls back to whichever
+                                // key is set when only one exists.
+                                const wantsPremium = isProModel(modelId) || tier === 'paid';
+                                const usePremiumKey = wantsPremium && !!env.GEMINI_PREMIUM_KEY;
+                                const apiKey = usePremiumKey
+                                        ? env.GEMINI_PREMIUM_KEY!
+                                        : (env.GEMINI_API_KEY || env.GEMINI_PREMIUM_KEY);
                                 if (!apiKey) {
                                         throw new Error("Missing GEMINI_API_KEY");
                                 }
-                                console.log(`[Worker] ${modelId} tier=${tier ?? 'free'} ${usePremiumKey ? '(using PREMIUM key)' : '(using free key)'}`);
+                                console.log(`[Worker] ${caller.email} ${modelId} tier=${tier ?? 'free'} ${usePremiumKey ? '(PREMIUM key — Pro/paid)' : '(free key)'}`);
 
                                 // SEARCH intent → ground via Google Search + low temperature.
                                 // Tools and structured-JSON output are mutually exclusive in the

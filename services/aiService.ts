@@ -1,5 +1,15 @@
 import { StagedTripData, StagedCategories } from "../types";
 import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
+import { auth } from "./firebaseConfig";
+
+// Worker enforces a per-email allow-list and rejects unauthenticated calls.
+// We attach the current user's Firebase ID token on every request.
+const getAuthHeader = async (): Promise<Record<string, string>> => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not signed in — AI features require login.');
+  const idToken = await user.getIdToken();
+  return { Authorization: `Bearer ${idToken}` };
+};
 
 // ============================================================================
 // 🏗️ CONFIGURATION — Model Chains & Constants
@@ -297,11 +307,12 @@ export const generateWithFallback = async (
             responseSchema: config.responseSchema || (intent === 'ANALYZE' ? TRIP_OUTPUT_SCHEMA : undefined),
           };
 
+      const authHeader = await getAuthHeader();
       let response: Response;
       try {
         response = await fetch(`${WORKER_URL}/api/generate`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeader },
           signal: controller.signal,
           body: JSON.stringify({
             contents: adaptedContents,  // Send full structured content (multimodal support)
@@ -339,9 +350,10 @@ export const generateWithFallback = async (
         await delay(retryAfterMs);
 
         // Retry once on same model — include full config to match original request.
+        const retryAuthHeader = await getAuthHeader();
         const retryResponse = await fetch(`${WORKER_URL}/api/generate`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...retryAuthHeader },
           body: JSON.stringify({
             contents: adaptedContents,
             prompt: adaptedContents,
