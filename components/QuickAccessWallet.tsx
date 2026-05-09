@@ -3,6 +3,7 @@ import { Trip, SecureNote, FlightSegment } from '../types';
 import { X, Plane, Hotel, Copy, Eye, EyeOff, ShieldCheck, Plus, Trash2, MapPin, Calendar, Lock, Maximize2, Loader2, Phone, ExternalLink, Users, Info } from 'lucide-react';
 import { getCheckInUrl } from '../utils/airlineCheckIn';
 import { safeMapsUrl } from '../utils/mapsUrl';
+import { formatTimeOnly, formatDateOnly } from '../utils/dateUtils';
 import { detectCountryCode } from '../utils/countryCodes';
 import { toast } from '../stores/useToastStore';
 
@@ -175,20 +176,29 @@ export const QuickAccessWallet: React.FC<QuickAccessWalletProps> = ({ trip, onCl
                                                 </div>
                                             </div>
 
-                                            <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100" dir="ltr">
-                                                <div className="text-center">
-                                                    <div className="text-2xl font-black text-slate-800">{seg.fromCode}</div>
-                                                    <div className="text-2xs font-bold text-slate-400">{seg.departureTime}</div>
-                                                    <div className="text-2xs text-slate-400">{seg.fromCity}</div>
-                                                </div>
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <div className="h-px bg-slate-300 w-10"></div>
-                                                    {seg.date && <div className="text-2xs font-bold text-slate-500">{seg.date}</div>}
-                                                </div>
-                                                <div className="text-center">
-                                                    <div className="text-2xl font-black text-slate-800">{seg.toCode}</div>
-                                                    <div className="text-2xs font-bold text-slate-400">{seg.arrivalTime}</div>
-                                                    <div className="text-2xs text-slate-400">{seg.toCity}</div>
+                                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-2" dir="ltr">
+                                                {/* Date strip — single line, formatted, never breaks */}
+                                                {seg.date && (
+                                                    <div className="text-center text-2xs font-bold text-slate-500 tracking-wide">
+                                                        {formatDateOnly(seg.date)}
+                                                    </div>
+                                                )}
+                                                {/* Cities + times — locked grid so the middle column doesn't push them */}
+                                                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                                                    <div className="text-center min-w-0">
+                                                        <div className="text-xl sm:text-2xl font-black text-slate-800 leading-none">{seg.fromCode}</div>
+                                                        <div className="text-2xs font-bold text-slate-500 mt-1">{formatTimeOnly(seg.departureTime)}</div>
+                                                        <div className="text-2xs text-slate-400 truncate">{seg.fromCity}</div>
+                                                    </div>
+                                                    <div className="flex flex-col items-center px-1">
+                                                        <Plane className="w-3.5 h-3.5 text-slate-400" />
+                                                        <div className="h-px bg-slate-300 w-8 mt-1"></div>
+                                                    </div>
+                                                    <div className="text-center min-w-0">
+                                                        <div className="text-xl sm:text-2xl font-black text-slate-800 leading-none">{seg.toCode}</div>
+                                                        <div className="text-2xs font-bold text-slate-500 mt-1">{formatTimeOnly(seg.arrivalTime)}</div>
+                                                        <div className="text-2xs text-slate-400 truncate">{seg.toCity}</div>
+                                                    </div>
                                                 </div>
                                             </div>
 

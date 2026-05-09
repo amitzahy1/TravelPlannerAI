@@ -56,8 +56,12 @@ export const CategoryListModal: React.FC<CategoryListModalProps> = ({ type, trip
                                                                 <div className="w-20 h-20 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 relative">
                                                                         <img src={image.url} className="w-full h-full object-cover" alt={image.label || ''} loading="lazy" decoding="async" />
                                                                         {(item.rating || item.googleRating) && (
-                                                                                <div className="absolute top-1 right-1 bg-white/90 backdrop-blur px-1 rounded text-[10px] font-bold flex items-center gap-0.5 shadow-sm">
-                                                                                        {item.rating || item.googleRating}<Star className="w-2 h-2 text-yellow-500 fill-yellow-500" />
+                                                                                <div className="absolute top-1 right-1 bg-white/90 backdrop-blur px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 shadow-sm">
+                                                                                        <span>{item.rating || item.googleRating}</span>
+                                                                                        <Star className="w-2 h-2 text-yellow-500 fill-yellow-500" />
+                                                                                        {item.reviewCount && item.reviewCount > 0 && (
+                                                                                                <span className="text-slate-500 font-medium ml-0.5">({item.reviewCount >= 1000 ? `${(item.reviewCount / 1000).toFixed(1).replace(/\.0$/, '')}k` : item.reviewCount})</span>
+                                                                                        )}
                                                                                 </div>
                                                                         )}
                                                                 </div>
