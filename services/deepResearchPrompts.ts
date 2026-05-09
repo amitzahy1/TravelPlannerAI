@@ -162,8 +162,7 @@ Think like a local resident who happens to be a great editor.
 ═══════════════════════════════════════════════════════════════════════════════
 WHAT "GREAT OUTPUT" LOOKS LIKE
 ═══════════════════════════════════════════════════════════════════════════════
-✓ Every category has 6–10 strong picks (or honestly empty if the destination
-  has nothing for that category — e.g. "ראמן" in Tel Aviv).
+✓ EVERY category gets AT LEAST 10 strong picks (HARD MINIMUM — see below).
 ✓ Mix of price points within each category (some $, some $$$).
 ✓ Mix of iconic must-eats AND insider/local hidden gems.
 ✓ Every entry verified currently OPERATIONAL (not closed, not under year-long
@@ -183,28 +182,46 @@ Hotels (used to tag the closest hotel per entry — NOT the main organizing axis
 ${ctx.hotelsBlock}
 
 ═══════════════════════════════════════════════════════════════════════════════
-CATEGORIES TO POPULATE  (Hebrew titles — use EXACTLY these strings)
+CATEGORIES TO POPULATE  (these are the EXACT Hebrew strings the app uses)
 ═══════════════════════════════════════════════════════════════════════════════
+You MUST attempt to populate every category below for every city in the trip.
+Use the strings VERBATIM in the \`categoryTitle\` field — they are matched
+character-by-character against the app's existing categories. Do NOT translate,
+abbreviate, paraphrase, or punctuate them differently.
+
 ${categoriesList}
 
-If the destination has a clearly distinct food cluster that doesn't fit any
-of the above (e.g. "מסעדות שוק לח" in Bangkok, "אוכל איסאן" in northeastern
-Thailand), propose a NEW Hebrew category — short (≤ 5 words) — and list it
-under \`newRestaurantCategories\`.
+When to add a NEW category:
+  Only when there is a clearly distinct food cluster the canonical 10
+  cannot host (e.g. "אוכל איסאן" in northeastern Thailand, "טאפאס"
+  in Spain, "שווארמה ופלאפל" in Israel). Add the new Hebrew title (≤ 5
+  words) to \`newRestaurantCategories\` AND use it as the \`categoryTitle\`
+  on the relevant entries. Don't add a new category just to host overflow
+  from an existing one.
 
-For non-applicable categories (e.g. "ראמן" in a non-Asian destination),
-return an empty entry list rather than padding with weak picks.
+When to leave a category empty:
+  ONLY when the destination genuinely has nothing for that category — e.g.
+  "ראמן" in a small Italian village. Don't leave one empty just because
+  searching was hard. If you cannot reach 10 picks in a category that
+  clearly EXISTS in this city, you have not searched broadly enough —
+  go back to the methodology section and try more sources.
 
 ═══════════════════════════════════════════════════════════════════════════════
-COVERAGE TARGETS
+COVERAGE TARGETS — HARD MINIMUMS
 ═══════════════════════════════════════════════════════════════════════════════
-Per CITY: at least 50 strong restaurant picks across all categories.
-Per CATEGORY (in a city that supports it): 6–10 picks.
-Total for ${cityCount}-city trip: 60–${Math.max(120, cityCount * 50)} restaurants.
+Per CATEGORY in a city that supports it: AT LEAST 10 picks. Aim for 12–15.
+  • If your first pass yields fewer than 10 in a viable category, expand
+    your search: include nearby suburbs, lesser-known neighborhoods,
+    weekend-only stalls, hotel restaurants with named chefs, food halls,
+    rooftops, etc.
+  • Returning 4 picks in "אוכל מקומי אותנטי" for Bangkok is a FAILURE.
+    Bangkok has hundreds of credible candidates — find 10+.
+Per CITY: at least 80 strong restaurant picks across all categories.
+Total for ${cityCount}-city trip: ${Math.max(150, cityCount * 80)}–${Math.max(250, cityCount * 100)} restaurants.
 
 Within each city, ensure geographic spread — don't dump 30 picks in one
-neighborhood and 2 in another. Every entry should set \`nearestHotel\` to
-the closest hotel from the list above (use straight-line distance).
+neighborhood and 2 in another. Every entry sets \`nearestHotel\` to the
+closest hotel from the list above (straight-line distance).
 
 ═══════════════════════════════════════════════════════════════════════════════
 RESEARCH METHODOLOGY  — work CITY by CITY, USE EVERYTHING YOU KNOW
@@ -351,7 +368,7 @@ The first character of your reply must be \`{\` and the last must be \`}\`.
 
 Required shape:
 {
-  "restaurants": [ /* 60–${Math.max(120, cityCount * 50)} entries */ ],
+  "restaurants": [ /* ${Math.max(150, cityCount * 80)}–${Math.max(250, cityCount * 100)} entries — at least 10 per category per city */ ],
   "newRestaurantCategories": [ /* any new Hebrew category titles you proposed */ ]
 }
 
@@ -366,10 +383,12 @@ COMMON MISTAKES TO AVOID  (especially for Gemini Deep Research / Gemini 2.5 Pro)
 FINAL RULES
 1. OMIT any field you cannot fill with HIGH confidence. Don't write "" or null.
 2. Don't fabricate Google Maps URLs, ratings, lat/lng, or prices.
-3. Aim for breadth across all cities AND across all categories — don't dump
-   most picks in one city or one category.
-4. Hebrew \`description\`s. Field NAMES stay English.
-5. Return JSON ONLY. The very first character of your reply MUST be \`{\`
+3. AT LEAST 10 picks per applicable category per city. If your first pass
+   yields fewer, search harder — never settle on 4 or 5.
+4. Use the canonical Hebrew \`categoryTitle\` strings VERBATIM. Match by
+   character, not by meaning.
+5. Hebrew \`description\`s. Field NAMES stay English.
+6. Return JSON ONLY. The very first character of your reply MUST be \`{\`
    and the very last MUST be \`}\`. Anything else breaks the import.
 `;
 };
@@ -406,8 +425,7 @@ families pace a day differently from solo travelers.
 ═══════════════════════════════════════════════════════════════════════════════
 WHAT "GREAT OUTPUT" LOOKS LIKE
 ═══════════════════════════════════════════════════════════════════════════════
-✓ Every category has 4–8 strong picks (or honestly empty if the destination
-  has none — e.g. "חופים ומים" in Vienna).
+✓ EVERY category gets AT LEAST 8 strong picks (HARD MINIMUM — see below).
 ✓ Mix of iconic must-sees AND insider hidden gems.
 ✓ Mix of free / paid, indoor / outdoor, half-day / full-day visits.
 ✓ Every entry verified currently OPERATIONAL (not closed, not under
@@ -428,23 +446,37 @@ Hotels (used to tag the closest hotel per entry — NOT the main organizing axis
 ${ctx.hotelsBlock}
 
 ═══════════════════════════════════════════════════════════════════════════════
-CATEGORIES TO POPULATE  (Hebrew titles — use EXACTLY these strings)
+CATEGORIES TO POPULATE  (these are the EXACT Hebrew strings the app uses)
 ═══════════════════════════════════════════════════════════════════════════════
+You MUST attempt to populate every category below for every city in the trip.
+Use the strings VERBATIM in the \`categoryTitle\` field — they are matched
+character-by-character against the app's existing categories. Do NOT translate,
+abbreviate, paraphrase, or punctuate them differently.
+
 ${categoriesList}
 
-If the destination has a clearly distinct cluster that doesn't fit (e.g.
-"קייאקים ושנירקול" for an island trip), propose a NEW Hebrew category
-(≤ 5 words) and list it under \`newAttractionCategories\`.
+When to add a NEW category:
+  Only when the destination has a clearly distinct cluster the canonical 10
+  cannot host (e.g. "קייאקים ושנירקול" for an island trip, "סקי וסנובורד"
+  for the Alps). Add the new Hebrew title (≤ 5 words) to
+  \`newAttractionCategories\` AND use it as the \`categoryTitle\` on those
+  entries. Don't add a new category just to host overflow.
 
-For non-applicable categories (e.g. "חופים ומים" in a landlocked destination),
-return an empty entry list rather than padding.
+When to leave a category empty:
+  ONLY when the destination genuinely has none — e.g. "חופים ומים" in
+  Vienna. Don't leave one empty just because searching was hard.
 
 ═══════════════════════════════════════════════════════════════════════════════
-COVERAGE TARGETS
+COVERAGE TARGETS — HARD MINIMUMS
 ═══════════════════════════════════════════════════════════════════════════════
-Per CITY: at least 30 strong attraction picks across all categories.
-Per CATEGORY (in a city that supports it): 4–8 picks.
-Total for ${cityCount}-city trip: 30–${Math.max(80, cityCount * 30)} attractions.
+Per CATEGORY in a city that supports it: AT LEAST 8 picks. Aim for 10–12.
+  • If your first pass yields fewer than 8, expand: include day-trip-distance
+    sites, lesser-known neighborhoods, festivals running during the trip dates,
+    seasonal attractions, niche museums, local-only spots.
+  • Returning 4 picks in "אתרי חובה" for Bangkok is a FAILURE — Bangkok has
+    dozens of must-sees.
+Per CITY: at least 50 strong attraction picks across all categories.
+Total for ${cityCount}-city trip: ${Math.max(80, cityCount * 50)}–${Math.max(150, cityCount * 70)} attractions.
 
 Within each city, ensure variety of activity types — don't dump 15 temples
 and 2 of everything else. Set \`nearestHotel\` to the geographically closest
@@ -586,7 +618,7 @@ The first character of your reply must be \`{\` and the last must be \`}\`.
 
 Required shape:
 {
-  "attractions": [ /* 30–${Math.max(80, cityCount * 30)} entries */ ],
+  "attractions": [ /* ${Math.max(80, cityCount * 50)}–${Math.max(150, cityCount * 70)} entries — at least 8 per category per city */ ],
   "newAttractionCategories": [ /* any new Hebrew category titles you proposed */ ]
 }
 
@@ -600,8 +632,11 @@ COMMON MISTAKES TO AVOID  (especially for Gemini Deep Research / Gemini 2.5 Pro)
 FINAL RULES
 1. OMIT any field you cannot fill with HIGH confidence. Don't write "" or null.
 2. Don't fabricate Google Maps URLs, ratings, lat/lng, or prices.
-3. Aim for breadth across cities AND categories.
-4. Hebrew \`description\`s. Field NAMES stay English.
-5. Return JSON ONLY. First char \`{\`, last char \`}\`. Anything else breaks the import.
+3. AT LEAST 8 picks per applicable category per city. If your first pass
+   yields fewer, search harder — never settle on 3 or 4.
+4. Use the canonical Hebrew \`categoryTitle\` strings VERBATIM. Match by
+   character, not by meaning.
+5. Hebrew \`description\`s. Field NAMES stay English.
+6. Return JSON ONLY. First char \`{\`, last char \`}\`. Anything else breaks the import.
 `;
 };
