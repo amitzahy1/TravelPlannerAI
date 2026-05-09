@@ -1075,7 +1075,16 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
                         {activeTab === 'deep_research' && isOwner && (
                             <div className="space-y-6 animate-fade-in">
-                                <DeepResearchPanel trip={activeTrip} onUpdateTrip={(t) => handleUpdateTrip(t)} />
+                                <DeepResearchPanel
+                                    trip={activeTrip}
+                                    onUpdateTrip={(updatedTrip) => {
+                                        // Persist IMMEDIATELY to Firestore — the import flow shouldn't
+                                        // require the user to also press the modal's Save button.
+                                        const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t);
+                                        setTrips(newTrips);
+                                        onSave(newTrips);
+                                    }}
+                                />
                             </div>
                         )}
 
