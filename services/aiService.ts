@@ -536,6 +536,25 @@ export const parseDeepResearchText = async (rawText: string): Promise<DeepResear
     throw new Error('Deep Research text is too short to parse (need ≥50 chars).');
   }
 
+  // FAST PATH: input is already valid JSON in our schema. Skip Flash-Lite —
+  // sending 50KB of JSON to the LLM only to receive 50KB back blows the
+  // Worker's 25s timeout and costs money for zero value.
+  const cleanedRaw = rawText.replace(/^```json\s*|\s*```$/g, '').trim();
+  try {
+    const direct = JSON.parse(cleanedRaw);
+    if (direct && (Array.isArray(direct.restaurants) || Array.isArray(direct.attractions))) {
+      console.log('[DeepResearch] Fast-path: input is already valid JSON, skipping Flash-Lite');
+      return {
+        restaurants: Array.isArray(direct.restaurants) ? direct.restaurants : [],
+        attractions: Array.isArray(direct.attractions) ? direct.attractions : [],
+        newRestaurantCategories: Array.isArray(direct.newRestaurantCategories) ? direct.newRestaurantCategories : [],
+        newAttractionCategories: Array.isArray(direct.newAttractionCategories) ? direct.newAttractionCategories : [],
+      };
+    }
+  } catch {
+    // Not valid JSON — fall through to LLM parsing for narrative / table inputs
+  }
+
   const prompt = `${DEEP_RESEARCH_PARSE_PROMPT}\n${rawText}\n========== END ==========\nReturn ONLY the JSON object now.`;
 
   // Use the PAID key — Deep Research outputs are 5–15k tokens long, which
