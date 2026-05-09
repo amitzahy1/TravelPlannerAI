@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Trip } from '../types';
-import { Sparkles, Copy, Check, Loader2, Upload, Search, ArrowDownToLine, FileText } from 'lucide-react';
-import { buildDeepResearchPrompt } from '../services/deepResearchPrompts';
+import { Sparkles, Copy, Check, Loader2, Upload, Search, ArrowDownToLine, FileText, UtensilsCrossed, Landmark } from 'lucide-react';
+import { buildDeepRestaurantPrompt, buildDeepAttractionPrompt } from '../services/deepResearchPrompts';
 import { parseDeepResearchText } from '../services/aiService';
 import { mergeDeepResearchData, MergeStats } from '../services/deepResearchMerge';
 import { toast } from '../stores/useToastStore';
@@ -12,22 +12,27 @@ interface DeepResearchPanelProps {
 }
 
 type Tab = 'generate' | 'import';
+type PromptKind = 'restaurants' | 'attractions';
 
 export const DeepResearchPanel: React.FC<DeepResearchPanelProps> = ({ trip, onUpdateTrip }) => {
   const [tab, setTab] = useState<Tab>('generate');
-  const [copied, setCopied] = useState(false);
+  const [activePrompt, setActivePrompt] = useState<PromptKind>('restaurants');
+  const [copiedKind, setCopiedKind] = useState<PromptKind | null>(null);
   const [rawText, setRawText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [preview, setPreview] = useState<{ trip: Trip; stats: MergeStats } | null>(null);
 
-  const prompt = useMemo(() => buildDeepResearchPrompt(trip), [trip]);
+  const restaurantPrompt = useMemo(() => buildDeepRestaurantPrompt(trip), [trip]);
+  const attractionPrompt = useMemo(() => buildDeepAttractionPrompt(trip), [trip]);
+  const visiblePrompt = activePrompt === 'restaurants' ? restaurantPrompt : attractionPrompt;
 
-  const handleCopy = async () => {
+  const handleCopy = async (kind: PromptKind) => {
+    const text = kind === 'restaurants' ? restaurantPrompt : attractionPrompt;
     try {
-      await navigator.clipboard.writeText(prompt);
-      setCopied(true);
-      toast.success('הפרומפט הועתק. הדבק אותו במחקר מעמיק והמתן לתוצאות.');
-      setTimeout(() => setCopied(false), 2500);
+      await navigator.clipboard.writeText(text);
+      setCopiedKind(kind);
+      toast.success(`פרומפט ל${kind === 'restaurants' ? 'מסעדות' : 'אטרקציות'} הועתק. הדבק אותו במחקר מעמיק והמתן לתוצאות.`);
+      setTimeout(() => setCopiedKind(null), 2500);
     } catch {
       toast.error('העתקה נכשלה — בחר ידנית מהשדה והעתק.');
     }
@@ -115,22 +120,43 @@ export const DeepResearchPanel: React.FC<DeepResearchPanelProps> = ({ trip, onUp
           <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-sm text-slate-700 leading-relaxed">
             <p className="font-bold text-emerald-800 mb-1">איך זה עובד</p>
             <ol className="list-decimal pr-5 space-y-1 text-xs">
-              <li>לחץ "העתק פרומפט" — הפרומפט נבנה מהמלונות, הערים והקטגוריות הקיימות בטיול שלך.</li>
+              <li>בחר באיזה תחום אתה רוצה להתעמק — מסעדות או אטרקציות. אפשר להריץ את שניהם במקביל בשני טאבים.</li>
+              <li>לחץ "העתק פרומפט" — הפרומפט נבנה מהמלונות, הערים, הקטגוריות והרכב הנוסעים בטיול שלך.</li>
               <li>הדבק אותו ב-ChatGPT Deep Research / Gemini Advanced / Claude עם גישה לאינטרנט.</li>
               <li>המתן 5–20 דקות עד שהמחקר מסיים.</li>
-              <li>חזור לכאן ללשונית "ייבוא תוצאות" והדבק את הטקסט שקיבלת.</li>
+              <li>חזור לכאן ללשונית "ייבוא תוצאות" והדבק את הטקסט שקיבלת (אפשר ייבוא של אחד או שניהם).</li>
             </ol>
           </div>
 
+          {/* Pick which prompt to view/copy */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setActivePrompt('restaurants')}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border-2 transition-all ${activePrompt === 'restaurants' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300'}`}
+            >
+              <UtensilsCrossed className="w-4 h-4" /> מסעדות
+            </button>
+            <button
+              onClick={() => setActivePrompt('attractions')}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold border-2 transition-all ${activePrompt === 'attractions' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300'}`}
+            >
+              <Landmark className="w-4 h-4" /> אטרקציות
+            </button>
+          </div>
+
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3" dir="ltr">
-            <pre className="text-xs text-slate-700 whitespace-pre-wrap break-words max-h-72 overflow-y-auto font-mono leading-relaxed">{prompt}</pre>
+            <pre className="text-xs text-slate-700 whitespace-pre-wrap break-words max-h-72 overflow-y-auto font-mono leading-relaxed">{visiblePrompt}</pre>
           </div>
 
           <button
-            onClick={handleCopy}
+            onClick={() => handleCopy(activePrompt)}
             className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-colors"
           >
-            {copied ? (<><Check className="w-4 h-4" /> הועתק!</>) : (<><Copy className="w-4 h-4" /> העתק פרומפט</>)}
+            {copiedKind === activePrompt ? (
+              <><Check className="w-4 h-4" /> הועתק!</>
+            ) : (
+              <><Copy className="w-4 h-4" /> העתק פרומפט {activePrompt === 'restaurants' ? 'למסעדות' : 'לאטרקציות'}</>
+            )}
           </button>
         </div>
       )}
