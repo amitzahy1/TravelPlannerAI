@@ -36,8 +36,11 @@ Find the BEST restaurants in "${city}" as of ${currentDate}. Use Google Search
 to verify each place is currently OPERATIONAL — omit "Permanently closed",
 "Temporarily closed", or anything you're <90% sure is open today.
 
-QUOTA: 6–8 real restaurants per category (aim 8 in major food cities).
-Empty array only if the category genuinely has nothing. Every "location"
+QUOTA: AT LEAST 10 real restaurants per category per city. Aim for 10–12.
+Returning fewer than 10 in a viable category (e.g. 4 picks for "פיצה" in
+Bangkok) is a failure — search broader, include nearby suburbs, weekend
+stalls, food halls, hotel restaurants, rooftops. Empty array ONLY when
+the category genuinely has nothing in this destination. Every "location"
 must be in or near "${city}".
 
 CATEGORIES (use EXACTLY these Hebrew titles):
@@ -81,8 +84,11 @@ markets, cultural villages) — they're highly rated for a reason. Use Google
 Search to verify each place is operational; omit permanently closed or
 indefinitely under-renovation venues.
 
-QUOTA: 3–5 real attractions per category (aim 5). Empty array only if the
-city truly has none. Every "location" must be in or near "${city}".
+QUOTA: AT LEAST 8 real attractions per category per city. Aim for 8–10.
+Returning fewer than 8 in a viable category is a failure — search broader,
+include day-trip-distance sites, festivals running during the trip dates,
+seasonal attractions, niche museums. Empty array ONLY when the city truly
+has none. Every "location" must be in or near "${city}".
 
 CATEGORIES (use EXACTLY these Hebrew titles):
 1. "אתרי חובה"  2. "טבע ונופים"  3. "מוזיאונים ותרבות"  4. "קניות ושווקים"
@@ -237,7 +243,7 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
                         // Pattaya" failure mode where the model gave up early.
                         const undersized = processed.filter((c: any) => {
                                 const verified = (c.restaurants || []).filter((r: any) => r.verificationStatus === 'verified').length;
-                                return verified < 5 && (c.restaurants || []).length < 8;
+                                return verified < 8 && (c.restaurants || []).length < 10;
                         });
                         if (undersized.length > 0) {
                                 const titles = undersized.map((c: any) => c.title).join(', ');
@@ -247,7 +253,7 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
 Cast a wider net this time:
 - Search neighborhood-level (not just city-level): include suburbs, beach areas, market districts, expat hubs.
 - Include long-tail aggregators: TripAdvisor city subforum, Reddit r/<city>, local FB food groups, Burpple, Foodpanda highlights, Wongnai sub-categories, expat blog posts.
-- Aim for 6-8 places per category. Better to over-shoot and let downstream verification cut.
+- Aim for 10–12 places per category. Better to over-shoot and let downstream verification cut.
 - All other rules from the original prompt still apply (no closed places, real venue names not addresses, business_status REQUIRED, cuisineTags array, etc.).
 - Return JSON in the SAME shape as before, but only for these categories: ${titles}.`;
 

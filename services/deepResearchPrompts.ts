@@ -77,7 +77,32 @@ interface SharedContext {
   hasKids: boolean;
 }
 
-const buildSharedContext = (trip: Trip): SharedContext => {
+export interface DeepResearchPromptOptions {
+  /** When set, scope the prompt to ONLY this one city (filters hotels +
+   *  collapses the volume target so the model can hit 10 per category). */
+  city?: string;
+}
+
+const getTripCityList = (trip: Trip): string[] => {
+  const hotels = (trip.hotels || []).filter(h => h.name);
+  const cityKey = (h: any): string => {
+    if (h.region) return h.region;
+    if (h.address) {
+      const parts = h.address.split(',').map((s: string) => s.trim()).filter(Boolean);
+      if (parts.length >= 2) return parts[parts.length - 2];
+    }
+    return trip.destination || 'Destination';
+  };
+  const set = new Set<string>();
+  for (const h of hotels) set.add(cityKey(h));
+  if (set.size > 0) return Array.from(set);
+  if (trip.destination) return trip.destination.split(/[-–,]+/).map(s => s.trim()).filter(Boolean);
+  return [];
+};
+
+export const getDeepResearchCities = (trip: Trip): string[] => getTripCityList(trip);
+
+const buildSharedContext = (trip: Trip, opts?: DeepResearchPromptOptions): SharedContext => {
   const { from, to, raw } = splitDateRange(trip.dates);
   const dateLine = (from && to) ? `${formatDateHuman(from)} – ${formatDateHuman(to)}` : (raw || 'unspecified');
   const nights = nightsBetween(from, to) ?? trip.days ?? null;
@@ -111,23 +136,42 @@ const buildSharedContext = (trip: Trip): SharedContext => {
     if (!hotelsByCity.has(k)) hotelsByCity.set(k, []);
     hotelsByCity.get(k)!.push(h);
   }
+
+  // Scope to a single city if requested.
+  const cityFilter = opts?.city?.trim();
+  let cityList = Array.from(hotelsByCity.keys());
+  let scopedEntries = Array.from(hotelsByCity.entries());
+  if (cityFilter) {
+    const lc = cityFilter.toLowerCase();
+    scopedEntries = scopedEntries.filter(([city]) => city.toLowerCase() === lc);
+    cityList = scopedEntries.map(([c]) => c);
+    if (cityList.length === 0) {
+      // The selected city has no hotels — still scope the destination to it.
+      cityList = [cityFilter];
+      scopedEntries = [[cityFilter, []]];
+    }
+  }
+
   const formatHotel = (h: any): string => {
     const cleanedAddr = cleanAddress(h.name, h.address);
     const coords = (h.lat && h.lng) ? ` (${h.lat.toFixed(4)}, ${h.lng.toFixed(4)})` : '';
     const dates = (h.checkInDate && h.checkOutDate) ? `, stay ${h.checkInDate}→${h.checkOutDate}` : '';
     return `   • ${h.name}${cleanedAddr ? ` — ${cleanedAddr}` : ''}${coords}${dates}`;
   };
-  const cityList = Array.from(hotelsByCity.keys());
-  const hotelsBlock = Array.from(hotelsByCity.entries())
-    .map(([city, list]) => `- ${city}\n${list.map(formatHotel).join('\n')}`)
+  const hotelsBlock = scopedEntries
+    .map(([city, list]) => `- ${city}\n${list.length ? list.map(formatHotel).join('\n') : '   (no hotel booked yet — research the city itself)'}`)
     .join('\n');
+
+  const destination = cityFilter
+    ? cityFilter
+    : (trip.destination || cityList.join(', ') || 'unknown');
 
   return {
     dateLine,
     nights,
-    destination: trip.destination || cityList.join(', ') || 'unknown',
+    destination,
     travelers,
-    cities: cityList.length ? cityList : (trip.destination ? trip.destination.split(/[-–,]+/).map(s => s.trim()).filter(Boolean) : []),
+    cities: cityList,
     hotelsBlock: hotelsBlock || '   (no hotels yet)',
     hasKids,
   };
@@ -137,12 +181,13 @@ const buildSharedContext = (trip: Trip): SharedContext => {
 // 🍽  RESTAURANTS PROMPT
 // ===========================================================================
 
-export const buildDeepRestaurantPrompt = (trip: Trip): string => {
-  const ctx = buildSharedContext(trip);
-  const existing = (trip.aiRestaurants || trip.restaurants || []).map(c => c.title).filter(Boolean);
+export const buildDeepRestaurantPrompt = (trip: Trip, opts?: DeepResearchPromptOptions): string => {
+  const ctx = buildSharedContext(trip, opts);
+  const existing = (trip.aiRestaurants || []).map(c => c.title).filter(Boolean);
   const categoriesToTarget = existing.length ? existing : CANONICAL_RESTAURANT_CATEGORIES_HE;
   const categoriesList = categoriesToTarget.map((c, i) => `   ${i + 1}. "${c}"`).join('\n');
   const cityCount = ctx.cities.length || 1;
+  const isSingleCity = !!opts?.city;
 
   return `MISSION
 You are building a curated, deeply-researched RESTAURANT GUIDE for a real
@@ -216,12 +261,20 @@ Per CATEGORY in a city that supports it: AT LEAST 10 picks. Aim for 12–15.
     rooftops, etc.
   • Returning 4 picks in "אוכל מקומי אותנטי" for Bangkok is a FAILURE.
     Bangkok has hundreds of credible candidates — find 10+.
-Per CITY: at least 80 strong restaurant picks across all categories.
-Total for ${cityCount}-city trip: ${Math.max(150, cityCount * 80)}–${Math.max(250, cityCount * 100)} restaurants.
+${isSingleCity
+  ? `THIS RUN IS SCOPED TO ONE CITY: "${ctx.destination}".
+Total target for this single city: ~100 restaurants (10 categories × 10
+picks each). Aim for 120 if the city supports it.`
+  : `Per CITY: at least 100 strong restaurant picks across all categories.
+Total for ${cityCount}-city trip: ${cityCount * 100}–${cityCount * 120} restaurants.
 
-Within each city, ensure geographic spread — don't dump 30 picks in one
-neighborhood and 2 in another. Every entry sets \`nearestHotel\` to the
-closest hotel from the list above (straight-line distance).
+⚠️ Producing this many entries in ONE run is hard. If you find yourself
+falling short, the user can run this prompt once per city — but try to
+do it all in this single run first.`}
+
+Within the city/cities, ensure geographic spread — don't dump 30 picks
+in one neighborhood and 2 in another. Every entry sets \`nearestHotel\`
+to the closest hotel from the list above (straight-line distance).
 
 ═══════════════════════════════════════════════════════════════════════════════
 RESEARCH METHODOLOGY  — work CITY by CITY, USE EVERYTHING YOU KNOW
@@ -397,12 +450,13 @@ FINAL RULES
 // 🏛  ATTRACTIONS PROMPT
 // ===========================================================================
 
-export const buildDeepAttractionPrompt = (trip: Trip): string => {
-  const ctx = buildSharedContext(trip);
-  const existing = (trip.aiAttractions || trip.attractions || []).map(c => c.title).filter(Boolean);
+export const buildDeepAttractionPrompt = (trip: Trip, opts?: DeepResearchPromptOptions): string => {
+  const ctx = buildSharedContext(trip, opts);
+  const existing = (trip.aiAttractions || []).map(c => c.title).filter(Boolean);
   const categoriesToTarget = existing.length ? existing : CANONICAL_ATTRACTION_CATEGORIES_HE;
   const categoriesList = categoriesToTarget.map((c, i) => `   ${i + 1}. "${c}"`).join('\n');
   const cityCount = ctx.cities.length || 1;
+  const isSingleCity = !!opts?.city;
 
   return `MISSION
 You are building a curated, deeply-researched ATTRACTIONS GUIDE for a real
@@ -475,12 +529,19 @@ Per CATEGORY in a city that supports it: AT LEAST 8 picks. Aim for 10–12.
     seasonal attractions, niche museums, local-only spots.
   • Returning 4 picks in "אתרי חובה" for Bangkok is a FAILURE — Bangkok has
     dozens of must-sees.
-Per CITY: at least 50 strong attraction picks across all categories.
-Total for ${cityCount}-city trip: ${Math.max(80, cityCount * 50)}–${Math.max(150, cityCount * 70)} attractions.
+${isSingleCity
+  ? `THIS RUN IS SCOPED TO ONE CITY: "${ctx.destination}".
+Total target for this single city: ~80 attractions (10 categories × 8
+picks each). Aim for 100 if the city supports it.`
+  : `Per CITY: at least 80 strong attraction picks across all categories.
+Total for ${cityCount}-city trip: ${cityCount * 80}–${cityCount * 100} attractions.
 
-Within each city, ensure variety of activity types — don't dump 15 temples
-and 2 of everything else. Set \`nearestHotel\` to the geographically closest
-hotel from the list above (straight-line distance).
+⚠️ Producing this many entries in ONE run is hard. If you fall short,
+run this prompt once per city — try a single combined run first.`}
+
+Within the city/cities, ensure variety of activity types — don't dump 15
+temples and 2 of everything else. Set \`nearestHotel\` to the geographically
+closest hotel from the list above (straight-line distance).
 
 ═══════════════════════════════════════════════════════════════════════════════
 RESEARCH METHODOLOGY  — work CITY by CITY, USE EVERYTHING YOU KNOW

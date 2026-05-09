@@ -273,9 +273,11 @@ export const mergeDeepResearchData = (
     enrichedFields: {},
   };
 
-  // Deep-clone the affected slices so we never mutate the user's current state in place.
-  const aiRestaurants: RestaurantCategory[] = JSON.parse(JSON.stringify(trip.aiRestaurants || trip.restaurants || []));
-  const aiAttractions: AttractionCategory[] = JSON.parse(JSON.stringify(trip.aiAttractions || trip.attractions || []));
+  // Deep-clone the AI-research slices only. Never seed from trip.restaurants /
+  // trip.attractions — those are the user's manually-curated lists and must
+  // stay separate from the AI research panel.
+  const aiRestaurants: RestaurantCategory[] = JSON.parse(JSON.stringify(trip.aiRestaurants || []));
+  const aiAttractions: AttractionCategory[] = JSON.parse(JSON.stringify(trip.aiAttractions || []));
 
   const region = trip.destination || trip.destinationEnglish || '';
 

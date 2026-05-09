@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Trip } from '../types';
-import { Sparkles, Copy, Check, Loader2, Upload, Search, ArrowDownToLine, FileText, UtensilsCrossed, Landmark } from 'lucide-react';
-import { buildDeepRestaurantPrompt, buildDeepAttractionPrompt } from '../services/deepResearchPrompts';
+import { Sparkles, Copy, Check, Loader2, Upload, Search, ArrowDownToLine, FileText, UtensilsCrossed, Landmark, MapPin } from 'lucide-react';
+import { buildDeepRestaurantPrompt, buildDeepAttractionPrompt, getDeepResearchCities } from '../services/deepResearchPrompts';
 import { parseDeepResearchText } from '../services/aiService';
 import { mergeDeepResearchData, MergeStats } from '../services/deepResearchMerge';
 import { toast } from '../stores/useToastStore';
@@ -13,17 +13,22 @@ interface DeepResearchPanelProps {
 
 type Tab = 'generate' | 'import';
 type PromptKind = 'restaurants' | 'attractions';
+const ALL_CITIES = '__all__';
 
 export const DeepResearchPanel: React.FC<DeepResearchPanelProps> = ({ trip, onUpdateTrip }) => {
   const [tab, setTab] = useState<Tab>('generate');
   const [activePrompt, setActivePrompt] = useState<PromptKind>('restaurants');
+  const [cityFilter, setCityFilter] = useState<string>(ALL_CITIES);
   const [copiedKind, setCopiedKind] = useState<PromptKind | null>(null);
   const [rawText, setRawText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [preview, setPreview] = useState<{ trip: Trip; stats: MergeStats } | null>(null);
 
-  const restaurantPrompt = useMemo(() => buildDeepRestaurantPrompt(trip), [trip]);
-  const attractionPrompt = useMemo(() => buildDeepAttractionPrompt(trip), [trip]);
+  const cities = useMemo(() => getDeepResearchCities(trip), [trip]);
+  const promptOpts = cityFilter !== ALL_CITIES ? { city: cityFilter } : undefined;
+
+  const restaurantPrompt = useMemo(() => buildDeepRestaurantPrompt(trip, promptOpts), [trip, cityFilter]);
+  const attractionPrompt = useMemo(() => buildDeepAttractionPrompt(trip, promptOpts), [trip, cityFilter]);
   const visiblePrompt = activePrompt === 'restaurants' ? restaurantPrompt : attractionPrompt;
 
   const handleCopy = async (kind: PromptKind) => {
@@ -143,6 +148,31 @@ export const DeepResearchPanel: React.FC<DeepResearchPanelProps> = ({ trip, onUp
               <Landmark className="w-4 h-4" /> אטרקציות
             </button>
           </div>
+
+          {/* City scope — Deep Research returns ~10 entries per category when
+              focused on one city; producing 30+ entries per category × 3 cities
+              in a single run usually fails the model's output budget. */}
+          {cities.length > 1 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
+                <MapPin className="w-4 h-4" /> מיקוד לפי עיר
+              </div>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                לקבלת לפחות 10 מסעדות / 8 אטרקציות לכל קטגוריה, רוץ את המחקר <strong>פעם נפרדת לכל עיר</strong>. הפרומפט מגדיר את העיר הספציפית ואת המלון בה, וכך המודל מתמקד ולא מפזר.
+              </p>
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="w-full bg-white border border-amber-300 rounded-md px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:border-amber-500"
+                dir="ltr"
+              >
+                <option value={ALL_CITIES}>All cities (single run, lower volume)</option>
+                {cities.map(c => (
+                  <option key={c} value={c}>{c}  (focused — recommended)</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3" dir="ltr">
             <pre className="text-xs text-slate-700 whitespace-pre-wrap break-words max-h-72 overflow-y-auto font-mono leading-relaxed">{visiblePrompt}</pre>

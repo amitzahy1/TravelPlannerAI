@@ -770,7 +770,7 @@ HARD RULES:
             const catTitle = cat.title;
             const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
             const prompt = `You are a food expert. As of ${currentDate}, find the BEST restaurants in "${cityEn}" for the category: "${catTitle}".
-Return 6-8 currently operating restaurants. Apply the same strict operational check as always — omit any closed place.
+Return AT LEAST 10 currently operating restaurants (aim 12). Apply the same strict operational check as always — omit any closed place.
 Respond in the same JSON format:
 { "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl", "business_status", "verification_needed" } ] }
 Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be in English.`;
@@ -929,7 +929,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
     media. If any of these signal closure, omit.
 
     **PART 1: QUOTA & SCOPE**
-    - For EACH of the 10 categories below, return 6-8 real restaurants
+    - For EACH of the 10 categories below, return AT LEAST 10 real restaurants (aim 12)
       (aim for 8 in a major food city). Return an empty array ONLY if
       the category truly has no real results in this city. Better empty
       than fake. Full response for a major city = 60-80 restaurants.
@@ -1068,7 +1068,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
             Critical: an empty category is fine; a closed listing is a failure.
 
             **PART 1: QUOTA & SCOPE**
-            - For EACH of the 10 categories below, return 6-8 real restaurants
+            - For EACH of the 10 categories below, return AT LEAST 10 real restaurants (aim 12)
               (aim for 8 in a major food city). Empty array ONLY if the category
               truly has nothing. Total response for a major city = 60-80.
             - Every "location" MUST be in or near "${targetCity}".

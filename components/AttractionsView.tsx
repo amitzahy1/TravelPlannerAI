@@ -668,7 +668,7 @@ HARD RULES:
             const catTitle = cat.title;
             const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
             const prompt = `You are a travel expert. As of ${currentDate}, find the BEST attractions in "${cityEn}" for the category: "${catTitle}".
-Return 6-8 currently operating places. Omit any permanently or temporarily closed attraction.
+Return AT LEAST 8 currently operating places (aim 10). Omit any permanently or temporarily closed attraction.
 Respond in JSON:
 { "attractions": [ { "name", "nameEnglish", "description", "location", "type", "rating", "recommendationSource", "googleMapsUrl", "business_status", "verification_needed" } ] }
 Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be in English.`;
