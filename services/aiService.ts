@@ -442,10 +442,24 @@ export interface DeepResearchParseResult {
 
 const DEEP_RESEARCH_PARSE_PROMPT = `
 You are a JSON normalizer. The user pasted the raw output of a Deep Research
-session about restaurants and attractions for a specific trip. Your job is
-to convert that text into a single, valid JSON object that matches the
-schema below — exactly. Do not invent, summarize, or expand. Only extract
-what is explicitly present in the input.
+session about restaurants and attractions for a specific trip. The input may
+be ANY format — strict JSON, narrative prose, markdown tables, mixed Hebrew
+and English, headings with bullet lists, a research paper with tables at the
+end of each section. Extract every distinct restaurant or attraction the
+research mentions and convert them to the JSON schema below.
+
+Extraction rules:
+- A "restaurant" or "attraction" is a named venue with at least a Hebrew
+  description OR a category OR a vibe/location field.
+- If the input has tables at the end of city sections (common in Gemini
+  Deep Research output), each table row is one entry.
+- The Hebrew description column maps to "description". The category
+  column maps to "categoryTitle". The vibe/location column merges into
+  "vibe" and "location".
+- If the narrative mentions a venue but it's NOT in any table, still
+  extract it — pull the description from the surrounding paragraph.
+- Do not invent, summarize, or expand. Only extract what is explicitly
+  present in the input.
 
 OUTPUT SCHEMA (no markdown, no prose, only this object):
 {
