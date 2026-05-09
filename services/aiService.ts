@@ -287,13 +287,12 @@ export const generateWithFallback = async (
       }
 
       const controller = new AbortController();
-      // Cloudflare Workers (free tier) cap a single fetch handler at ~30s
-      // wall-clock, so any client timeout above that is wishful — the Worker
-      // will be killed before the SDK call returns. Keep the client just
-      // above the Worker's own 25s race timeout so we surface the Worker's
-      // 504 instead of an opaque AbortError.
-      const isProModel = modelId.includes('pro');
-      const timeoutMs = intent === 'SEARCH' ? (isProModel ? 30000 : 20000) : 15000;
+      // Worker has its own 25s race timeout. Frontend timeout MUST be longer,
+      // otherwise we abort with "signal aborted" before the Worker can return
+      // its clean 504/GeminiTimeout — and isTransientWorkerError never gets
+      // to mark the failure transient. Setting frontend = 30s ensures the
+      // Worker's 504 always wins the race.
+      const timeoutMs = 30_000;
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       // SEARCH intent uses Google Search grounding on the Worker side.
@@ -539,6 +538,9 @@ export const parseDeepResearchText = async (rawText: string): Promise<DeepResear
 
   const prompt = `${DEEP_RESEARCH_PARSE_PROMPT}\n${rawText}\n========== END ==========\nReturn ONLY the JSON object now.`;
 
+  // Use the PAID key — Deep Research outputs are 5–15k tokens long, which
+  // burns through the free 20/day Flash-Lite quota in a single import.
+  // Cost is still tiny (~$0.003 per import on Flash-Lite paid).
   const response = await generateWithFallback(
     null,
     [{ role: 'user', parts: [{ text: prompt }] }],
@@ -549,7 +551,7 @@ export const parseDeepResearchText = async (rawText: string): Promise<DeepResear
       // The parser below is forgiving.
     },
     'SMART',  // routes to Flash-Lite first → cheapest path
-    'free'
+    'paid'    // bypass the 20/day free-tier ceiling
   );
 
   const text: string = response?.text || '';
