@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Trip } from '../types';
-import { Sparkles, Copy, Check, Loader2, Upload, Search, ArrowDownToLine, FileText, UtensilsCrossed, Landmark, MapPin } from 'lucide-react';
+import { Sparkles, Copy, Check, Loader2, Upload, Search, ArrowDownToLine, FileText, UtensilsCrossed, Landmark, MapPin, Trash2, AlertTriangle } from 'lucide-react';
 import { buildDeepRestaurantPrompt, buildDeepAttractionPrompt, getDeepResearchCities } from '../services/deepResearchPrompts';
 import { parseDeepResearchText } from '../services/aiService';
 import { mergeDeepResearchData, MergeStats } from '../services/deepResearchMerge';
@@ -26,6 +26,27 @@ export const DeepResearchPanel: React.FC<DeepResearchPanelProps> = ({ trip, onUp
 
   const cities = useMemo(() => getDeepResearchCities(trip), [trip]);
   const promptOpts = cityFilter !== ALL_CITIES ? { city: cityFilter } : undefined;
+  const [showWipeConfirm, setShowWipeConfirm] = useState<null | 'ai-only' | 'all'>(null);
+
+  const counts = useMemo(() => {
+    const restManual = (trip.restaurants || []).reduce((s, c) => s + c.restaurants.length, 0);
+    const restAi = (trip.aiRestaurants || []).reduce((s, c) => s + c.restaurants.length, 0);
+    const attrManual = (trip.attractions || []).reduce((s, c) => s + c.attractions.length, 0);
+    const attrAi = (trip.aiAttractions || []).reduce((s, c) => s + c.attractions.length, 0);
+    return { restManual, restAi, attrManual, attrAi };
+  }, [trip]);
+
+  const handleWipe = (scope: 'ai-only' | 'all') => {
+    const updated: Trip = {
+      ...trip,
+      aiRestaurants: [],
+      aiAttractions: [],
+      ...(scope === 'all' ? { restaurants: [], attractions: [] } : {}),
+    };
+    onUpdateTrip(updated);
+    setShowWipeConfirm(null);
+    toast.success(scope === 'all' ? 'נמחקו כל המסעדות והאטרקציות.' : 'נמחקו תוצאות מחקר ה-AI בלבד. הרשימות הידניות נשמרו.');
+  };
 
   const restaurantPrompt = useMemo(() => buildDeepRestaurantPrompt(trip, promptOpts), [trip, cityFilter]);
   const attractionPrompt = useMemo(() => buildDeepAttractionPrompt(trip, promptOpts), [trip, cityFilter]);
@@ -188,6 +209,73 @@ export const DeepResearchPanel: React.FC<DeepResearchPanelProps> = ({ trip, onUp
               <><Copy className="w-4 h-4" /> העתק פרומפט {activePrompt === 'restaurants' ? 'למסעדות' : 'לאטרקציות'}</>
             )}
           </button>
+
+          {/* Danger zone — wipe restaurants / attractions to start fresh */}
+          {(counts.restManual + counts.restAi + counts.attrManual + counts.attrAi) > 0 && (
+            <div className="border border-red-200 bg-red-50 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-red-800 font-bold text-sm">
+                <Trash2 className="w-4 h-4" /> איפוס נתונים
+              </div>
+              <p className="text-xs text-red-700 leading-relaxed">
+                מחק את הנתונים הקיימים לפני הרצה מחדש. הפעולה לא ניתנת לביטול — מומלץ לוודא שיש לך גיבוי או שהנתונים אכן לא רצויים.
+              </p>
+              <div className="text-xs text-slate-600 grid grid-cols-2 gap-2 bg-white rounded p-2 border border-red-100">
+                <div>מסעדות (רשימה ידנית): <strong>{counts.restManual}</strong></div>
+                <div>מסעדות (מחקר AI): <strong>{counts.restAi}</strong></div>
+                <div>אטרקציות (רשימה ידנית): <strong>{counts.attrManual}</strong></div>
+                <div>אטרקציות (מחקר AI): <strong>{counts.attrAi}</strong></div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowWipeConfirm('ai-only')}
+                  disabled={counts.restAi + counts.attrAi === 0}
+                  className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white rounded-md text-xs font-bold flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-3 h-3" /> מחק רק תוצאות AI
+                </button>
+                <button
+                  onClick={() => setShowWipeConfirm('all')}
+                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-bold flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-3 h-3" /> מחק הכל (גם ידני)
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showWipeConfirm && (
+            <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+                <div className="flex items-center gap-3 text-red-700">
+                  <AlertTriangle className="w-6 h-6" />
+                  <h3 className="font-black text-lg">לאשר מחיקה?</h3>
+                </div>
+                {showWipeConfirm === 'all' ? (
+                  <p className="text-sm text-slate-700 leading-relaxed">
+                    פעולה זו תמחק <strong>את כל {counts.restManual + counts.restAi} המסעדות</strong> ו-<strong>{counts.attrManual + counts.attrAi} האטרקציות</strong> מהטיול — גם הידניות וגם של מחקר ה-AI. הפעולה לא ניתנת לביטול.
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-700 leading-relaxed">
+                    פעולה זו תמחק <strong>{counts.restAi} מסעדות</strong> ו-<strong>{counts.attrAi} אטרקציות</strong> מתוצאות מחקר ה-AI. הרשימות הידניות (אם יש) יישמרו.
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowWipeConfirm(null)}
+                    className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-md text-sm font-bold text-slate-700"
+                  >
+                    ביטול
+                  </button>
+                  <button
+                    onClick={() => handleWipe(showWipeConfirm)}
+                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-bold"
+                  >
+                    כן, מחק
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

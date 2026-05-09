@@ -331,8 +331,12 @@ The output is parsed by an automated importer and rendered on a map. If a
 required field is missing or the wrong type, the entry is dropped.
 
 REQUIRED on EVERY entry (omit the whole entry if any are missing):
-  name              string — original-script display name (Thai/Arabic/Hebrew/Latin)
-  nameEnglish       string — Latin-script display name
+  name              string — LATIN / ENGLISH display name ALWAYS
+                              (e.g. "Som Tum Nua", "Wat Pho", "Baan Tepa").
+                              NEVER put Hebrew, Thai, Arabic, Chinese or any
+                              non-Latin script in this field. The user's UI
+                              displays it as the primary label and renders
+                              poorly for non-Latin scripts.
   description       string — 2–3 Hebrew sentences, vivid + specific
   location          string — full address: street + district + city + country
   categoryTitle     string — EXACTLY one of the Hebrew categories above
@@ -378,8 +382,7 @@ DATA TYPE RULES (strict):
 
 EXAMPLE OF ONE PERFECT ENTRY (use the SHAPE, not the specifics):
 {
-  "name": "ส้มตำนัว",
-  "nameEnglish": "Som Tum Nua",
+  "name": "Som Tum Nua",
   "description": "מסעדת איסאן אגדית ליד אנוסאוואארי-ניצחון, מפורסמת בס'ום-טאם החריף שלה ועוף מטוגן זהוב. תור ארוך אבל זז מהר.",
   "location": "392/14 Siam Square Soi 5, Pathum Wan, Bangkok 10330, Thailand",
   "lat": 13.7449,
@@ -641,8 +644,7 @@ DATA TYPE RULES (strict):
 
 EXAMPLE OF ONE PERFECT ENTRY (use the SHAPE, not the specifics):
 {
-  "name": "วัดพระแก้ว",
-  "nameEnglish": "Wat Phra Kaew (Temple of the Emerald Buddha)",
+  "name": "Wat Phra Kaew (Temple of the Emerald Buddha)",
   "description": "המקדש הקדוש ביותר בתאילנד, בתוך מתחם הארמון המלכותי. בודהה הירקרק שנחצב מאבן ירקן יחידה הוא סמל לאומי. הכנסו לפני 09:00 כדי להקדים את האוטובוסים.",
   "location": "Na Phra Lan Rd, Phra Borom Maha Ratchawang, Phra Nakhon, Bangkok 10200, Thailand",
   "lat": 13.7515,

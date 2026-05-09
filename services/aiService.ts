@@ -453,9 +453,16 @@ Extraction rules:
   description OR a category OR a vibe/location field.
 - If the input has tables at the end of city sections (common in Gemini
   Deep Research output), each table row is one entry.
-- The Hebrew description column maps to "description". The category
-  column maps to "categoryTitle". The vibe/location column merges into
-  "vibe" and "location".
+- COLUMN MAPPING (CRITICAL — this is where Deep Research outputs trip people up):
+   * The "Name" / "שם המסעדה" column → "name" field. This is the LATIN /
+     ENGLISH venue name (e.g. "Baan Tepa", "Wat Pho"). NEVER put Hebrew
+     prose, descriptions, or non-Latin scripts in the "name" field.
+   * The "Hebrew Description" / "תיאור בעברית" column → "description" field.
+   * The "Category" / "קטגוריה" column → "categoryTitle" field.
+   * The "Vibe/Location" / "סגנון ומיקום" column → "vibe" + "location" fields.
+   * The "Source" / "מקור" column → "recommendationSource" field.
+- If the input shows the name in original script (Thai/Arabic/Hebrew) AND a
+  Latin transliteration, USE THE LATIN ONE for "name". Drop the original-script.
 - If the narrative mentions a venue but it's NOT in any table, still
   extract it — pull the description from the surrounding paragraph.
 - Do not invent, summarize, or expand. Only extract what is explicitly

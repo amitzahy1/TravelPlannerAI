@@ -1,5 +1,39 @@
 import type { Restaurant, Attraction, RestaurantCategory, AttractionCategory, Trip } from '../types';
 
+// Detect whether a string is "mostly Latin" — letters from a-z plus common
+// punctuation. Used to defensively swap name/nameEnglish when the parser put
+// Hebrew prose into the wrong field.
+const isMostlyLatin = (s?: string): boolean => {
+  if (!s || !s.trim()) return false;
+  let latin = 0;
+  let nonLatin = 0;
+  for (const ch of s.trim()) {
+    if (/[A-Za-z0-9]/.test(ch)) latin++;
+    else if (/[֐-׿؀-ۿ฀-๿一-鿿぀-ヿ]/.test(ch)) {
+      // Hebrew, Arabic, Thai, CJK, Hiragana/Katakana ranges
+      nonLatin++;
+    }
+  }
+  return latin > 0 && latin >= nonLatin;
+};
+
+// If incoming.name is non-Latin (Hebrew/Thai/etc) and incoming.nameEnglish is
+// Latin, the parser confused two columns. Swap so the Latin name becomes the
+// primary display value and we drop the original-script version.
+const enforceLatinName = <T extends { name?: string; nameEnglish?: string }>(entry: T): T => {
+  const out: any = { ...entry };
+  const nameLatin = isMostlyLatin(out.name);
+  const engLatin = isMostlyLatin(out.nameEnglish);
+  if (!nameLatin && engLatin) {
+    out.name = out.nameEnglish;
+    out.nameEnglish = undefined;
+  } else if (nameLatin) {
+    // English already in `name` — drop the redundant nameEnglish
+    out.nameEnglish = undefined;
+  }
+  return out as T;
+};
+
 // Normalize a place name for fuzzy matching:
 //  - lowercase, strip diacritics
 //  - drop generic suffixes ("restaurant", "cafe", "bar", "ร้าน")
@@ -282,13 +316,15 @@ export const mergeDeepResearchData = (
   const region = trip.destination || trip.destinationEnglish || '';
 
   // ---- RESTAURANTS ----
-  for (const incoming of payload.restaurants || []) {
+  for (const rawIncoming of payload.restaurants || []) {
     // Required: a name. Coords / map URL are PREFERRED — when missing,
     // existing post-import Photon geocoding fills them in (utils/placeVerification.ts).
-    if (!incoming.name && !incoming.nameEnglish) {
+    if (!rawIncoming.name && !rawIncoming.nameEnglish) {
       stats.skippedRestaurants++;
       continue;
     }
+    // Force Latin display name. The parser sometimes puts Hebrew prose in `name`.
+    const incoming = enforceLatinName(rawIncoming);
     const match = findExistingRestaurant(incoming, aiRestaurants);
     if (match) {
       const before = match.r;
@@ -309,11 +345,12 @@ export const mergeDeepResearchData = (
   }
 
   // ---- ATTRACTIONS ----
-  for (const incoming of payload.attractions || []) {
-    if (!incoming.name && !incoming.nameEnglish) {
+  for (const rawIncoming of payload.attractions || []) {
+    if (!rawIncoming.name && !rawIncoming.nameEnglish) {
       stats.skippedAttractions++;
       continue;
     }
+    const incoming = enforceLatinName(rawIncoming);
     const match = findExistingAttraction(incoming, aiAttractions);
     if (match) {
       const before = match.a;
