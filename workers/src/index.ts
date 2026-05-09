@@ -137,7 +137,7 @@ export default {
                 const corsHeaders = {
                         "Access-Control-Allow-Origin": allowedOrigin,
                         "Access-Control-Allow-Methods": "POST, OPTIONS",
-                        "Access-Control-Allow-Headers": "Content-Type, X-Auth-Token",
+                        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Auth-Token",
                 };
 
                 if (request.method === "OPTIONS") {
