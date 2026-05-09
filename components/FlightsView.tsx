@@ -824,14 +824,6 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
             הוסף הסעה / מעבורת
           </button>
         )}
-        {flights.pnr && (
-          <div dir="ltr" className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-sm">
-            <div>
-              <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">מספר הזמנה</div>
-              <div className="text-lg font-mono font-black text-slate-800 tracking-widest">{flights.pnr}</div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Flight Segments — ticket-style cards in a responsive grid so several
