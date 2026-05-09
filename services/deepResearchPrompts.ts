@@ -207,22 +207,45 @@ neighborhood and 2 in another. Every entry should set \`nearestHotel\` to
 the closest hotel from the list above (use straight-line distance).
 
 ═══════════════════════════════════════════════════════════════════════════════
-RESEARCH METHODOLOGY  — work CITY by CITY
+RESEARCH METHODOLOGY  — work CITY by CITY, USE EVERYTHING YOU KNOW
 ═══════════════════════════════════════════════════════════════════════════════
-For each city above:
-  1. Open Google Maps. For each category, search "best <category> in <city>".
-     Pull top results with rating ≥ 4.4 AND ≥ 200 reviews.
-  2. Cross-reference against editorial sources: Time Out, Eater, Michelin,
-     local food blogs, Reddit r/<city>, regional aggregators (Wongnai for
-     Thailand, Tabelog for Japan, Burpple for Singapore, etc.).
-  3. Read the latest 3–5 reviews. Skip places where recent reviews indicate
-     decline, closure, or a chef departure that hurt quality.
-  4. Verify operational status — not "Permanently closed", not >12 months
-     without a review.
+You have FULL CREATIVE FREEDOM in HOW you research. The goal is to find
+the most AMAZING restaurants for this trip — not the most algorithmically
+average. Cast as wide a net as you can:
+
+  • Editorial guides: Time Out, Eater, Michelin Guide, Bib Gourmand list,
+    World's 50 Best, Asia's 50 Best, La Liste, Gault & Millau, Bon Appétit,
+    Infatuation, NYT food, Lonely Planet food picks.
+  • Regional aggregators: Wongnai (Thailand), Tabelog (Japan), Dianping
+    (China), OpenRice (HK/SG/MY), Burpple (SG/MY), Naver Map (Korea),
+    The Fork, OpenTable Diners' Choice — but DON'T limit yourself to these.
+  • Forums & communities: Reddit r/<city>, r/AskCulinary, local food
+    Facebook groups, expat forums, Hebrew travel groups if relevant.
+  • Voice of locals & travelers: chef interviews, food podcasts (e.g.
+    "The Sporkful", "Off Menu", local equivalents), YouTube food channels
+    (Mark Wiens, Best Ever Food Review Show, Strictly Dumpling, Migrationology),
+    TikTok food trend videos for the city, hotel concierge "must-eat" lists.
+  • Niche / hidden gem signals: places that show up in chef "where I eat
+    on my day off" interviews, restaurants mentioned by name in critic
+    reviews of OTHER restaurants ("not as good as X across town"),
+    long-running street stalls with multi-decade reputations.
+  • Google Maps: useful but DON'T let it gate you. A 20-year-old hole in
+    the wall with 60 reviews can be better than a 4,000-review tourist trap.
+    Use the rating + review count as ONE signal among many, not a filter.
+
+For each candidate restaurant, ALWAYS verify:
+  ✓ Currently OPERATIONAL (not "Permanently closed", not >12 months without
+    a review or recent press mention).
+  ✓ Quality has not collapsed in the last 12 months (skip places where
+    recent reviews report decline, chef departure, or new bad management).
 
 ═══════════════════════════════════════════════════════════════════════════════
 QUALITY BAR
 ═══════════════════════════════════════════════════════════════════════════════
+INCLUDE freely: Michelin starred, Bib Gourmand, hawker legends, omakase
+hideouts, market stalls with cult followings, basement izakaya, beach
+shacks, supper clubs, chef's tables — whatever is genuinely great.
+
 EXCLUDE global / regional fast chains: McDonald's, KFC, Burger King, Subway,
 Pizza Hut, Domino's, Papa John's, Pizza Company, Pizza Marzano, Starbucks,
 Costa, Krispy Kreme, Dunkin', Tim Hortons. Better an empty pick than chain padding.
@@ -403,24 +426,48 @@ and 2 of everything else. Set \`nearestHotel\` to the geographically closest
 hotel from the list above (straight-line distance).
 
 ═══════════════════════════════════════════════════════════════════════════════
-RESEARCH METHODOLOGY  — work CITY by CITY
+RESEARCH METHODOLOGY  — work CITY by CITY, USE EVERYTHING YOU KNOW
 ═══════════════════════════════════════════════════════════════════════════════
-For each city above:
-  1. Open Google Maps. For each category, search "<category> in <city>".
-     Pull top results with rating ≥ 4.3 AND ≥ 500 reviews.
-  2. Cross-reference against editorial sources: Lonely Planet, Atlas
-     Obscura, TripAdvisor "things to do", UNESCO, official tourism
-     boards, Reddit r/<city>, local travel blogs.
-  3. Read the latest 3–5 reviews. Skip places under indefinite renovation,
-     recently closed, or whose reviews describe a steep decline.
-  4. Verify operational status — not flagged "temporarily closed" with
-     no reopening date, not >12 months without a review.
+You have FULL CREATIVE FREEDOM in HOW you research. The goal is to find the
+most AMAZING attractions for this trip — not the most algorithmically average.
+Cast as wide a net as you can:
+
+  • Editorial / reference: Lonely Planet, Atlas Obscura, UNESCO World
+    Heritage list, National Geographic Travel, Conde Nast Traveler, Time
+    Out city guides, Rick Steves (Europe), Smithsonian, Tour authority
+    of the country (e.g. TAT for Thailand, ENIT for Italy, JNTO for Japan).
+  • Aggregator / reviews: TripAdvisor "things to do" lists, Klook & KKday
+    bestsellers, GetYourGuide top picks, Viator top-rated, Google Maps
+    "popular" pins — useful as ONE signal, don't let them gate you.
+  • Forums & locals: Reddit r/<city>, local Facebook expat groups, Hebrew
+    travel Facebook groups when relevant, blog posts from long-term
+    residents, hotel concierge "things to do" sheets.
+  • Niche / hidden gems: travel show segments (Anthony Bourdain, Stanley
+    Tucci, Somebody Feed Phil), YouTube travel channels with deep local
+    knowledge, Substack newsletters from city specialists, archaeological
+    society sites for ancient ruins, religious authority sites for active
+    temples / churches.
+  • Activity-specific authorities: PADI dive shop reviews for dive sites,
+    SANParks for South African parks, NPS for US national parks, climbing
+    guidebooks for via-ferrata, surf forecasting sites for surf spots.
+
+For each candidate attraction, ALWAYS verify:
+  ✓ Currently OPERATIONAL (not under indefinite renovation, not flagged
+    "temporarily closed" with no reopening date, not >12 months without
+    a review or press mention).
+  ✓ Reputation hasn't collapsed (no scandal, no recent bad press, no
+    travel-warning advisory specific to the venue).
 
 ═══════════════════════════════════════════════════════════════════════════════
 QUALITY BAR
 ═══════════════════════════════════════════════════════════════════════════════
-DON'T pad with: malls (unless iconic — "Siam Paragon"), generic shopping
-streets, viewing decks of skyscrapers nobody talks about, "free walking
+INCLUDE freely: UNESCO sites, world-famous landmarks, ruins, festivals
+running during the trip dates, day trips worth a 1–2 hour drive, signature
+local experiences (cooking classes from a Michelin chef, scuba in a
+specific dive site, sunset boat ride), insider hidden gems known to locals.
+
+DON'T pad with: malls (unless iconic — "Siam Paragon", "Forum"), generic
+shopping streets, viewing decks of unremarkable skyscrapers, "free walking
 tours" (those are services, not attractions).
 
 NAME INTEGRITY (CRITICAL): "name" / "nameEnglish" must be the venue display
