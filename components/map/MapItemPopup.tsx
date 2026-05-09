@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MapPin, Star, Trophy, Calendar, ChevronLeft, Plus, Check, Hotel, Utensils, Plane, Camera, Crosshair, Navigation, Trash2 } from 'lucide-react';
 import { safeMapsUrl } from '../../utils/mapsUrl';
+import { looksLikeAddress } from '../../utils/nameValidation';
 import { getFoodImage, getAttractionImage } from '../../services/imageMapper';
 import { resolveRealPlaceImage } from '../../services/placeImageService';
 
@@ -161,7 +162,16 @@ export const MapItemPopup: React.FC<Props> = ({ item, onAddToList, isAdded = fal
                         {/* Body */}
                         <div className="px-3 pt-2.5 pb-2.5">
                                 <h3 className="text-[15px] font-black text-slate-900 leading-tight line-clamp-2 mb-1" dir="ltr">
-                                        {(item as any).nameEnglish || item.name}
+                                        {(() => {
+                                                const en = (item as any).nameEnglish;
+                                                const he = item.name;
+                                                // Defensive: if AI hallucinated an address as the name,
+                                                // prefer whichever field is real; otherwise show the
+                                                // original (the warning badge already covers this case).
+                                                if (en && !looksLikeAddress(en)) return en;
+                                                if (he && !looksLikeAddress(he)) return he;
+                                                return en || he || 'מקום לא מזוהה';
+                                        })()}
                                 </h3>
 
                                 {item.address && (

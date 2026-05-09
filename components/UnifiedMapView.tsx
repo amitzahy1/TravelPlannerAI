@@ -227,7 +227,12 @@ const getCityKeywords = (cityName: string): string[] => {
 };
 
 const isValidCoordinate = (lat?: number, lng?: number) =>
-    typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng);
+    typeof lat === 'number' && typeof lng === 'number'
+    && !isNaN(lat) && !isNaN(lng)
+    // Reject the literal (0, 0) — there are no real places at that exact
+    // intersection of equator + prime meridian, and failed-geocode
+    // fallbacks historically wrote 0,0, causing markers to stack.
+    && (lat !== 0 || lng !== 0);
 
 const parseTripDate = (dateStr: string): Date | null => {
     if (!dateStr) return null;
@@ -2082,6 +2087,24 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // the unclustered route layer so they're always individually
         // visible as a reference point — even at low zoom where dense
         // clusters of restaurants/attractions would otherwise hide them.
+        //
+        // Collision tracking — when multiple items resolve to the same
+        // lat/lng (e.g. food court, building shared by attractions), we
+        // jitter subsequent markers around the first one so all are
+        // visible. Key = truncated coords (~10 m grid).
+        const placedCoords = new Map<string, number>();
+        const idHash = (s: string): number => {
+            let h = 0;
+            for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
+            return Math.abs(h);
+        };
+        const jitterFor = (lat: number, lng: number, id: string, collisionIndex: number): [number, number] => {
+            const offsetMeters = 15 * collisionIndex; // 15m, 30m, 45m
+            const angle = (idHash(id) % 360) * Math.PI / 180;
+            const latOffset = (offsetMeters / 111111) * Math.cos(angle);
+            const lngOffset = (offsetMeters / (111111 * Math.max(0.05, Math.cos(lat * Math.PI / 180)))) * Math.sin(angle);
+            return [lat + latOffset, lng + lngOffset];
+        };
         visibleItems.forEach(item => {
             if (item.type === 'airport') return;
             // DEFAULT-VIEW DECLUTTER (per user spec): at the trip-overview zoom
@@ -2150,7 +2173,20 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             const icon = makePinIcon(cfg, showLabel ? labelText : undefined, pinSource, wrapLabel, badge);
 
             const targetLayer = item.type === 'hotel' ? routeLayer : markerLayer;
-            const marker = L.marker([item.lat!, item.lng!], {
+            // Hotels are anchors and never jittered. For other items, if the
+            // exact (lat, lng) was already placed, apply a deterministic
+            // jitter so all collisions become visible.
+            let displayLat = item.lat!;
+            let displayLng = item.lng!;
+            if (item.type !== 'hotel') {
+                const key = `${item.lat!.toFixed(5)},${item.lng!.toFixed(5)}`;
+                const seen = placedCoords.get(key) || 0;
+                if (seen > 0) {
+                    [displayLat, displayLng] = jitterFor(item.lat!, item.lng!, item.id || key, seen);
+                }
+                placedCoords.set(key, seen + 1);
+            }
+            const marker = L.marker([displayLat, displayLng], {
                 icon,
                 // Z-index priority for label collisions:
                 //   hotels   3000 (highest — anchor of trip planning)

@@ -77,6 +77,7 @@ import { geocodePlacesBatch, photonGeocodeRich } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
 import { safeMapsUrl } from '../utils/mapsUrl';
 import { detectCountryCode } from '../utils/countryCodes';
+import { normalizeNearHotelTitle } from '../utils/categoryTitle';
 import { walkingMinutesBetween } from '../utils/walkingDistance';
 import { cuisineToHebrew, priceToBucket, sortPriceKeys } from '../utils/cuisineLabels';
 import { FilterChipGroup } from './FilterChipGroup';
@@ -1258,7 +1259,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         "Hidden Gems": "פינות נסתרות"
     };
 
-    const displayTitle = (title: string) => HEBREW_TITLES[title] || title;
+    const displayTitle = (title: string) => normalizeNearHotelTitle(HEBREW_TITLES[title] || title);
 
     // Extract Raters for Filtering — every source that actually appears in
     // the data shows up as a filter. Authoritative sources (Michelin, 50

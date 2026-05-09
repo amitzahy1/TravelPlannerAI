@@ -107,8 +107,9 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
         // Image — same resolver the card uses, so clicking a card doesn't swap
         // to a different image. Stock photo shows immediately; real photo from
         // Wikipedia upgrades in when available + validated against the type.
+        const cuisineTagInputs: string[] = Array.isArray((item as any).cuisineTags) ? (item as any).cuisineTags : [];
         const { url: stockUrl, label: visualLabel } = (type === 'food' || type === 'restaurant')
-                ? getFoodImage(searchName, item.description || '', [originalTag])
+                ? getFoodImage(searchName, item.description || '', [originalTag, ...cuisineTagInputs])
                 : getAttractionImage(searchName, item.description || '', [originalTag]);
 
         const placeType = (type === 'food' || type === 'restaurant') ? 'restaurant' : 'attraction';

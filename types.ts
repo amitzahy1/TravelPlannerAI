@@ -191,6 +191,7 @@ export interface HotelBooking {
   checkInInstructions?: string; // "Keybox 1234"
   guests?: string[]; // Multiple guests (legacy)
   rooms?: HotelRoom[]; // Detailed room breakdown
+  phone?: string; // Hotel reception phone — used by the wallet for "call hotel"
 }
 
 export interface Restaurant {

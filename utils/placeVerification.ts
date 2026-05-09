@@ -292,6 +292,11 @@ export const applyVerificationResult = (
                 item.verificationConfidence = result.confidence;
                 if (result.reason) item.verificationReason = result.reason;
                 item.geocodeFailed = true;
+                // Clear any stale lat/lng so the map filter (which excludes
+                // items without valid coords) drops the item rather than
+                // stacking it at (0,0) with other failures.
+                delete item.lat;
+                delete item.lng;
                 return false;
         }
         item.lat = result.lat;

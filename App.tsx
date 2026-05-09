@@ -23,6 +23,10 @@ const RestaurantsView = React.lazy(() => import('./components/RestaurantsView').
 const AttractionsView = React.lazy(() => import('./components/AttractionsView').then(module => ({ default: module.AttractionsView })));
 
 import { JoinTripModal } from './components/JoinTripModal';
+import { WhatsNewModal } from './components/WhatsNewModal';
+import { isAdmin } from './utils/isAdmin';
+import { RELEASE_NOTES } from './constants/releaseNotes';
+import { getLastSeenReleaseVersion, setLastSeenReleaseVersion } from './services/releaseNotesService';
 import { AIChatOverlay } from './components/AIChatOverlay';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { Toaster } from './components/ui/Toaster';
@@ -93,6 +97,8 @@ const AppContent: React.FC = () => {
   // Once-per-shareId welcome carousel for invitees who just joined a shared trip.
   const [welcomeForShareId, setWelcomeForShareId] = useState<string | null>(null);
   const [welcomeForTrip, setWelcomeForTrip] = useState<Trip | null>(null);
+  // Admin "What's new" popup — once per release, per user.
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
 
   // Deep Link Handling
   useEffect(() => {
@@ -116,6 +122,30 @@ const AppContent: React.FC = () => {
       localStorage.setItem('lastTripId', activeTripId);
     }
   }, [activeTripId]);
+
+  // Admin-only "What's new" popup. Show once per release; the user's
+  // dismissal cursor is stored in Firestore + localStorage.
+  useEffect(() => {
+    if (!user) return;
+    if (!isAdmin(user)) return;
+    let cancelled = false;
+    (async () => {
+      const latest = RELEASE_NOTES[0]?.version;
+      if (!latest) return;
+      const seen = await getLastSeenReleaseVersion(user.uid);
+      if (cancelled) return;
+      if (seen !== latest) setShowWhatsNew(true);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const handleDismissWhatsNew = async () => {
+    setShowWhatsNew(false);
+    if (user) {
+      const latest = RELEASE_NOTES[0]?.version;
+      if (latest) await setLastSeenReleaseVersion(user.uid, latest);
+    }
+  };
 
   // Default Active Trip Logic (If none selected)
   useEffect(() => {
@@ -461,6 +491,8 @@ const AppContent: React.FC = () => {
       </AnimatePresence>
 
 
+
+      {showWhatsNew && <WhatsNewModal onDismiss={handleDismissWhatsNew} />}
 
       {joinShareId && (
         <JoinTripModal

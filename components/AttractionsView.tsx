@@ -24,6 +24,7 @@ import { geocodePlacesBatch, photonGeocodeRich } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
 import { safeMapsUrl } from '../utils/mapsUrl';
 import { detectCountryCode } from '../utils/countryCodes';
+import { normalizeNearHotelTitle } from '../utils/categoryTitle';
 import { toast } from '../stores/useToastStore';
 import { walkingMinutesBetween } from '../utils/walkingDistance';
 import { attractionTypeToHebrew, priceToBucket, sortPriceKeys } from '../utils/cuisineLabels';
@@ -1118,7 +1119,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
         "Nightlife": "חיי לילה ואווירה" // Legacy
     };
 
-    const displayTitle = (title: string) => HEBREW_TITLES[title] || title;
+    const displayTitle = (title: string) => normalizeNearHotelTitle(HEBREW_TITLES[title] || title);
 
     const normalizeSource = (raw: string): string => {
         if (!raw) return '';

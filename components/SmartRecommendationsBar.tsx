@@ -105,8 +105,8 @@ export const SmartRecommendationsBar: React.FC<Props> = ({
                         {/* Visibility is controlled entirely by the parent's outer pill —
                              the inner mobile-only header pill was a duplicate and showed a
                              second number that didn't match the outer one. */}
-                        <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 border border-amber-200/50 rounded-2xl p-3 mb-6 shadow-sm mx-4 md:mx-0 animate-in slide-in-from-top-2">
-                                <div className="flex items-center gap-3">
+                        <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 border border-amber-200/50 rounded-2xl p-2.5 mb-6 shadow-sm mx-4 md:mx-0 md:max-w-2xl animate-in slide-in-from-top-2">
+                                <div className="flex items-center gap-2">
                                         {/* Icon & Title - Desktop Only */}
                                         <div className="hidden md:flex items-center gap-2 min-w-fit">
                                                 <div className="p-1.5 bg-amber-100 rounded-lg">

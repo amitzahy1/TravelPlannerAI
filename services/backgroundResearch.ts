@@ -14,6 +14,8 @@ import { generateWithFallback } from './aiService';
 import { saveSingleTrip } from './storageService';
 import { displayCityName, getTripCities } from '../utils/geoData';
 import { stripChainRestaurants } from '../utils/chainRestaurants';
+import { stripClosedPlaces } from '../utils/closedPlaceFilter';
+import { looksLikeAddress } from '../utils/nameValidation';
 import { verifyPlacesBatch, applyVerificationResult } from '../utils/placeVerification';
 import { toast } from '../stores/useToastStore';
 import { findCuisineProfile, buildAuthenticFoodSpec } from './localCuisineCatalog';
@@ -132,8 +134,22 @@ return an empty array for that category. Better empty than bad.
 For "googleMapsUrl": include the actual URL from your Google Search
 results, not a guessed one. Omit the field if you can't find a real URL.
 
-Descriptions in HEBREW. "nameEnglish" REQUIRED = official Latin-script name (not a Hebrew transliteration). OUTPUT JSON ONLY:
-{ "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl", "business_status" } ] } ] }
+**PART 7: NAME INTEGRITY (CRITICAL)**
+"name" and "nameEnglish" MUST be the establishment's display name
+(e.g. "Tiffany's Show Pattaya", "Wat Pho", "Pa Tiu", "Som Sak Boo Ob").
+NEVER use a street address, road name, building number, "Moo X", "Soi Y",
+coordinates, or any address fragment as the name. If you can only find
+an address and no real venue name — OMIT the entry entirely. Bad: name="464 Moo 9".
+
+**PART 8: CUISINE TAGS (FOR IMAGE MATCHING)**
+For each restaurant, set "cuisineTags" = an array of 1-4 specific dishes
+or cuisine markers the place is known for, taken from the country's local
+cuisine list when applicable. Examples for Thailand:
+["tom yum", "pad thai"], ["seafood", "thai"], ["khao soi"]. For Italy:
+["pizza", "napoletana"], ["pasta", "carbonara"]. Use lowercase English.
+
+Descriptions in HEBREW. "nameEnglish" REQUIRED = official Latin-script name (not a Hebrew transliteration). "business_status" REQUIRED ∈ {OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY}. OUTPUT JSON ONLY:
+{ "categories": [ { "id", "title", "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "cuisineTags", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl", "business_status" } ] } ] }
 `; };
 
 const buildAttractionPrompt = (city: string) => {
@@ -186,9 +202,18 @@ For each attraction include "googleMapsUrl" — the actual URL from
 your Google Search results, NOT a guessed one. If you cannot find
 a real URL, omit the field entirely; do not fabricate.
 
+**NAME INTEGRITY (CRITICAL)**
+"name" and "nameEnglish" MUST be the attraction's display name
+(e.g. "Tiffany's Show Pattaya", "Wat Pho", "Nong Nooch Tropical Garden").
+NEVER use a street address, road name, building number, "Moo X", "Soi Y",
+coordinates, or any address fragment as the name. If you can only find an
+address and no real venue name — OMIT the entry entirely.
+Bad: name="464 Moo 9".
+
 "nameEnglish" REQUIRED = official Latin-script name (e.g. "Wat Pho", "Tiffany's Show Pattaya").
+"business_status" REQUIRED ∈ {OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY}.
 OUTPUT JSON ONLY:
-{ "categories": [ { "id", "title", "attractions": [ { "name", "nameEnglish", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl" } ] } ] }
+{ "categories": [ { "id", "title", "attractions": [ { "name", "nameEnglish", "description", "location", "rating", "type", "price", "recommendationSource", "googleMapsUrl", "business_status" } ] } ] }
 `; };
 
 interface ResearchOptions {
@@ -278,7 +303,9 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
                                 // Frontend safety-net: even with the prompt's hard exclusion list,
                                 // the model occasionally slips chains through (Pizza Company,
                                 // Burger King observed). Strip them here so they never reach the UI.
-                                restaurants: stripChainRestaurants(c.restaurants || []).map((r: any, j: number) => ({
+                                restaurants: stripClosedPlaces(stripChainRestaurants(c.restaurants || []) as any[])
+                                        .filter((r: any) => !(looksLikeAddress(r.name) && looksLikeAddress(r.nameEnglish || '')))
+                                        .map((r: any, j: number) => ({
                                         ...r,
                                         region: r.region || city,
                                         id: `ai-rec-${city}-${idx}-${Math.random().toString(36).slice(2, 7)}-${j}`,
@@ -368,7 +395,9 @@ const researchAttractionsForTrip = async (
                                 ...c,
                                 id: c.id || `ai-cat-${city}-${idx}-${Date.now()}`,
                                 region: city,
-                                attractions: (c.attractions || []).map((a: any, j: number) => ({
+                                attractions: stripClosedPlaces(c.attractions || [])
+                                        .filter((a: any) => !(looksLikeAddress(a.name) && looksLikeAddress(a.nameEnglish || '')))
+                                        .map((a: any, j: number) => ({
                                         ...a,
                                         region: a.region || city,
                                         id: `ai-attr-${city}-${idx}-${Math.random().toString(36).slice(2, 7)}-${j}`,
