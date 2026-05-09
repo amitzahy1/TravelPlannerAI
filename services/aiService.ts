@@ -390,11 +390,21 @@ export const generateWithFallback = async (
   }
 
   console.error("❌ [AI] All models failed.");
+  const lastMsg = lastError?.message || '';
+  // FreeTier billing failure — distinct from a daily-quota cap. The
+  // project's API key is on a Google Cloud project without billing
+  // enabled, so every model lands at limit:0. Surface a clearer message
+  // so the user fixes the right thing (Google Cloud billing) instead of
+  // waiting a day.
+  const isFreeTierBilling = /FreeTier|free_tier|limit:\s*0/i.test(lastMsg);
+  if (isFreeTierBilling) {
+    throw new Error(`FreeTierBilling — Gemini API key is on a Google Cloud project without billing enabled. Enable billing on the project or swap the GEMINI_API_KEY in the worker. Last error: ${lastMsg}`);
+  }
   // Only surface a hard daily-quota message when every observed failure was
   // day-quota related. If Flash failed due to temporary demand after Pro quota
   // errors, keep the true last error so callers can retry later.
   if (hadDayQuotaError && !hadNonDayQuotaError) {
-    throw new Error(`PerDay quota exhausted — all models failed. Last error: ${lastError?.message || ''}`);
+    throw new Error(`PerDay quota exhausted — all models failed. Last error: ${lastMsg}`);
   }
   throw lastError || new Error("All AI models failed to generate response.");
 };

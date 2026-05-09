@@ -67,8 +67,11 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, bookingPnr, 
     airline: segment.airline || '',
     flightNumber: segment.flightNumber || '',
     duration: segment.duration || '',
-    pnr: bookingPnr || '',
-    confirmationCode: (segment as any).confirmationCode || '',
+    // PNR is per-segment (different airlines = different bookings = different PNRs).
+    // Pre-fill with the segment's own confirmationCode; fall back to the
+    // ticket-level pnr only as a legacy migration aid for old data that
+    // had a single shared PNR. Saving writes ONLY to the segment.
+    pnr: (segment as any).confirmationCode || bookingPnr || '',
     passengers: (passengers || []).join(', '),
   });
 
@@ -90,13 +93,15 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, bookingPnr, 
       flightNumber: form.flightNumber,
       duration: form.duration,
     };
-    if (form.confirmationCode.trim()) (updated as any).confirmationCode = form.confirmationCode.trim();
+    // Per-segment PNR. Empty string clears it. Always written to the
+    // segment, never to ticket.pnr — that's what was leaking the same
+    // code to every flight before.
+    (updated as any).confirmationCode = form.pnr.trim();
     const parsedPassengers = form.passengers
       .split(/[,\n]/)
       .map(s => s.trim())
       .filter(Boolean);
     onSave(updated, {
-      pnr: form.pnr.trim(),
       passengers: parsedPassengers,
     });
     onClose();
@@ -243,35 +248,22 @@ const EditFlightModal: React.FC<EditFlightModalProps> = ({ segment, bookingPnr, 
             />
           </div>
 
-          {/* Booking essentials — shared across all segments of this ticket */}
+          {/* Booking essentials — per-segment so different airlines / different
+              PNRs aren't merged into one shared code. */}
           <div className="border-t border-slate-100 pt-4 space-y-4">
-            <div className="text-xs font-black text-slate-700">פרטי הזמנה</div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">קוד הזמנה (PNR)</label>
-                <input
-                  type="text"
-                  value={form.pnr}
-                  onChange={e => setForm({ ...form, pnr: e.target.value.toUpperCase() })}
-                  placeholder="ABC123"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono uppercase tracking-widest"
-                  dir="ltr"
-                  maxLength={10}
-                />
-                <div className="text-2xs text-slate-400 mt-1 leading-snug">משותף לכל הקטעים בהזמנה</div>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">קוד אישור לקטע (אופציונלי)</label>
-                <input
-                  type="text"
-                  value={form.confirmationCode}
-                  onChange={e => setForm({ ...form, confirmationCode: e.target.value.toUpperCase() })}
-                  placeholder="עבור הזמנות עם PNR נפרד לכל קטע"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono uppercase tracking-widest"
-                  dir="ltr"
-                  maxLength={10}
-                />
-              </div>
+            <div className="text-xs font-black text-slate-700">פרטי הזמנה לטיסה זו</div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">קוד הזמנה (PNR)</label>
+              <input
+                type="text"
+                value={form.pnr}
+                onChange={e => setForm({ ...form, pnr: e.target.value.toUpperCase() })}
+                placeholder="ABC123"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono uppercase tracking-widest"
+                dir="ltr"
+                maxLength={10}
+              />
+              <div className="text-2xs text-slate-400 mt-1 leading-snug">קוד הזמנה לטיסה הזו בלבד — לכל חברת תעופה יש PNR נפרד</div>
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">שמות נוסעים</label>

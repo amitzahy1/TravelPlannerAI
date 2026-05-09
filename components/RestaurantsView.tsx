@@ -576,6 +576,10 @@ HARD RULES:
                 } catch (e: any) {
                     console.error(`Near-hotel research failed for ${hotel.name}:`, e);
                     const msg = e?.message || '';
+                    if (/FreeTierBilling|FreeTier|free_tier|limit:\s*0/i.test(msg)) {
+                        setRecError('מפתח Gemini API לא משויך לפרויקט Google Cloud עם חיוב פעיל — הפעל חיוב על הפרויקט בקונסול של גוגל ונסה שוב.');
+                        break;
+                    }
                     if (/PerDay/i.test(msg) || /per_day/i.test(msg)) {
                         setRecError('מכסת ה-AI היומית מוצתה. נסה שוב מחר.');
                         break;
@@ -673,6 +677,10 @@ HARD RULES:
                     const msg = cityErr?.message || '';
                     console.error(`Error researching ${city}:`, cityErr);
                     // Day quota exhausted — waiting won't help, abort the entire loop.
+                    if (/FreeTierBilling|FreeTier|free_tier|limit:\s*0/i.test(msg)) {
+                        setRecError('מפתח Gemini API לא משויך לפרויקט Google Cloud עם חיוב פעיל — הפעל חיוב על הפרויקט בקונסול של גוגל ונסה שוב.');
+                        break;
+                    }
                     if (/PerDay/i.test(msg) || /per_day/i.test(msg)) {
                         setRecError('מכסת ה-AI היומית מוצתה. נסה שוב מחר.');
                         break;

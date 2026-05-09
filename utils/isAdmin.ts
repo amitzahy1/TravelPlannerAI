@@ -5,7 +5,7 @@
  * add more admins without a code change in the future.
  */
 
-const BASELINE_ADMIN_EMAILS = ['amitz@tailormed.co'];
+const BASELINE_ADMIN_EMAILS = ['amitz@tailormed.co', 'amitzahy1@gmail.com'];
 
 const envEmails = (() => {
   try {
