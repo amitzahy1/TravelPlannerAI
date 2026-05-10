@@ -1542,12 +1542,13 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
             const k = coordKey(r.lat, r.lng);
             if (k) savedCoordKeys.add(k);
         });
-        // Map markers track the active source tab so the tabs aren't dead
-        // controls when the user is on map view. "הרשימה שלי" = saved only,
-        // "המלצות AI" = AI research only. Marker style still differentiates
-        // (solid pin = saved, dashed pin = AI).
-        const includeSaved = activeTab === 'my_list';
-        const includeAi = activeTab === 'recommended';
+        // Map view shows EVERYTHING by default — both saved restaurants
+        // (solid orange pin) and AI suggestions (dashed orange pin) — so
+        // the user sees the full picture of their food options without
+        // toggling tabs. Marker style differentiates the two sources.
+        // The list-view tab still scopes the list itself.
+        const includeSaved = true;
+        const includeAi = true;
         savedFlat.forEach(r => {
             if (!includeSaved) return;
             if (selectedCity !== 'all' && !restaurantMatchesCity(r, selectedCity)) return;

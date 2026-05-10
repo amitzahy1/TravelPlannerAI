@@ -1198,11 +1198,11 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 ? (displayCityName(selectedCity, 'en') || selectedCity)
                 : (region ? displayCityName(region, 'en') : undefined);
 
-        // Map markers track the active source tab so the tabs aren't dead
-        // controls when the user is on map view. Marker style still
-        // distinguishes saved (solid) from AI (dashed).
-        const includeSaved = activeTab === 'my_list';
-        const includeAi = activeTab === 'recommended';
+        // Map view shows EVERYTHING by default — both saved (solid pin) and
+        // AI suggestions (dashed pin) — so the user sees the full picture
+        // without toggling tabs. The list-view tab still scopes the list.
+        const includeSaved = true;
+        const includeAi = true;
 
         const savedNameKeys = new Set<string>();
         const savedCoordKeys = new Set<string>();
