@@ -3,6 +3,8 @@ import { Trip, Restaurant, RestaurantIconType, RestaurantCategory } from '../typ
 import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel, Heart } from 'lucide-react';
 // cleaned imports
 import { getFoodImage } from '../services/imageMapper';
+import { resolveRealPlaceImage } from '../services/placeImageService';
+import { getEnglishName } from '../utils/displayName';
 import { SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
@@ -2287,8 +2289,37 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
     const { url: mappedUrl, label: visualLabel } = getFoodImage(data.name || '', data.description || '', tags);
     const visuals = getCuisineVisuals(data.cuisine || visualLabel);
 
-    // Fallback Image
-    const imageSrc = data.imageUrl || mappedUrl;
+    // Fallback Image. If a real photo has already been resolved and persisted
+    // (data.imageUrl), use it; otherwise fall back to the category stock and
+    // try to upgrade asynchronously.
+    const [resolvedSrc, setResolvedSrc] = useState<string>(data.imageUrl || mappedUrl);
+
+    useEffect(() => {
+        if (data.imageUrl) {
+            setResolvedSrc(data.imageUrl);
+            return;
+        }
+        // No saved real photo yet — try Wikipedia. Result is cached for 30
+        // days in localStorage and concurrency-throttled to 3 in-flight
+        // requests, so mounting a long list won't hammer Wikipedia.
+        let cancelled = false;
+        const searchName = getEnglishName({
+            name: data.name,
+            nameEnglish: (data as any).nameEnglish,
+            location: data.location,
+        });
+        resolveRealPlaceImage(searchName, data.location || '', 'restaurant').then(real => {
+            if (cancelled || !real) return;
+            setResolvedSrc(real);
+            // Persist on the saved item so future renders (any device) skip
+            // the lookup entirely. Fires once per item — the early return
+            // above prevents re-firing after data.imageUrl is set.
+            onUpdate({ imageUrl: real });
+        });
+        return () => { cancelled = true; };
+    }, [data.imageUrl, data.name, data.location]);
+
+    const imageSrc = resolvedSrc;
 
     // Toggle Heart
     const toggleFavorite = (e: React.MouseEvent) => {

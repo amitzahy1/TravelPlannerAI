@@ -4,6 +4,8 @@ import { MapPin, Ticket, Star, Landmark, Sparkles, Filter as FilterIcon, StickyN
 // cleaned imports
 import { getTripCities, locationMatchesCity, displayCityName, cityKey, extractRobustCity } from '../utils/geoData';
 import { getAttractionImage } from '../services/imageMapper';
+import { resolveRealPlaceImage } from '../services/placeImageService';
+import { getEnglishName } from '../utils/displayName';
 import { SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
@@ -1874,8 +1876,32 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
     );
     const visuals = getAttractionVisuals(visualLabel);
 
-    // Fallback Image logic
-    const imageSrc = data.imageUrl || mappedUrl;
+    // Try to upgrade the stock photo to a real Wikipedia photo and persist
+    // it on the saved item. After the first successful resolve, every
+    // future render (and every other device) reads imageUrl directly with
+    // no network call.
+    const [resolvedSrc, setResolvedSrc] = useState<string>(data.imageUrl || mappedUrl);
+
+    useEffect(() => {
+        if (data.imageUrl) {
+            setResolvedSrc(data.imageUrl);
+            return;
+        }
+        let cancelled = false;
+        const searchName = getEnglishName({
+            name: data.name,
+            nameEnglish: (data as any).nameEnglish,
+            location: data.location,
+        });
+        resolveRealPlaceImage(searchName, data.location || '', 'attraction').then(real => {
+            if (cancelled || !real) return;
+            setResolvedSrc(real);
+            onUpdate({ imageUrl: real });
+        });
+        return () => { cancelled = true; };
+    }, [data.imageUrl, data.name, data.location]);
+
+    const imageSrc = resolvedSrc;
 
     // Toggle Heart
     const toggleFavorite = (e: React.MouseEvent) => {
