@@ -392,22 +392,25 @@ const makePinIcon = (
         : 'white-space:nowrap;line-height:1.3;';
     const labelHtml = trimmed ? `
         <div style="
-            background:${source === 'ai' ? '#ffffffd9' : 'white'};
-            border:1px ${source === 'ai' ? 'dashed' : 'solid'} ${c1}${source === 'ai' ? '88' : '55'};border-radius:8px;
-            padding:2px 8px;font-size:10px;font-weight:700;color:${source === 'ai' ? '#475569' : '#0f172a'};
+            background:${source === 'ai' ? '#fff7ed' : 'white'};
+            border:1px solid ${source === 'ai' ? `${c1}66` : `${c1}55`};border-radius:8px;
+            padding:2px 8px;font-size:10px;font-weight:700;color:${source === 'ai' ? '#9a3412' : '#0f172a'};
             box-shadow:0 2px 6px rgba(15,23,42,0.18);
             font-family:'Rubik','Inter',sans-serif;
             ${wrapStyles}
             margin-bottom:3px;direction:rtl;
         ">${trimmed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
     ` : '';
-    // AI suggestions render hollow: semi-transparent fill + dashed white
-    // border. Same hue as saved so the user still recognises the category.
+    // AI suggestions render as a true LIGHTER version of the saved pin:
+    // solid pastel fill (color-mix toward white) so the orange still reads
+    // as orange but is clearly paler. Avoids the previous translucent
+    // approach that looked gray-ish over a green map. Saved pins keep
+    // the vivid full-saturation gradient.
     const fill = source === 'ai'
-        ? `linear-gradient(135deg,${c1}66,${c2}66)`
+        ? `linear-gradient(135deg, color-mix(in srgb, ${c1} 35%, white), color-mix(in srgb, ${c2} 35%, white))`
         : `linear-gradient(135deg,${c1},${c2})`;
     const borderStyle = source === 'ai'
-        ? '2.5px dashed rgba(255,255,255,0.95)'
+        ? '2.5px solid rgba(255,255,255,0.95)'
         : '2.5px solid rgba(255,255,255,0.8)';
     const iconColor = source === 'ai' ? `${c1}` : 'white';
     // Optional content-bearing badge — small chip overlaid on the upper-right
@@ -456,7 +459,9 @@ const makePinIcon = (
                 </div>
                 <div style="
                     width:6px; height:10px; margin:-2px auto 0;
-                    background:linear-gradient(to bottom,${c1}${source === 'ai' ? 'aa' : ''},${c2}${source === 'ai' ? 'aa' : ''});
+                    background:${source === 'ai'
+                        ? `linear-gradient(to bottom, color-mix(in srgb, ${c1} 35%, white), color-mix(in srgb, ${c2} 35%, white))`
+                        : `linear-gradient(to bottom,${c1},${c2})`};
                     clip-path:polygon(50% 100%,0 0,100% 0);
                 "></div>
             </div>
@@ -1115,26 +1120,68 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             // Filter out items not in trip scope so legacy/hallucinated AI data
             // (Banff, Paris on a Thailand trip) doesn't pollute the map or
             // get fed into geocoding lookups.
-            // Also: skip an AI item whose name already appears in the user's
-            // saved list — saved wins, so the same place doesn't render as
-            // two stacked pins (one "my list" + one "AI recommendation").
-            const savedRestaurantNames = new Set<string>();
-            const savedAttractionNames = new Set<string>();
+            // Also dedup: an AI item that matches a saved item by name OR by
+            // coordinate (within ~120m) is skipped — saved wins, so the same
+            // place doesn't render as two stacked pins. We also dedup within
+            // the AI list itself in case the same restaurant appears in
+            // multiple AI categories ("Asian Cuisine" + "Ramen", etc.).
+            const normName = (s?: string): string => (s || '')
+                .toLowerCase()
+                .normalize('NFKD')
+                .replace(/[̀-ͯ]/g, '')   // strip diacritics
+                .replace(/[^a-z0-9֐-׿]+/g, '')  // strip everything except a-z/0-9/Hebrew
+                .trim();
+            const haversineMeters = (la1?: number, ln1?: number, la2?: number, ln2?: number): number => {
+                if (la1 == null || ln1 == null || la2 == null || ln2 == null) return Infinity;
+                const R = 6371000;
+                const toRad = (d: number) => d * Math.PI / 180;
+                const dLat = toRad(la2 - la1);
+                const dLng = toRad(ln2 - ln1);
+                const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(la1)) * Math.cos(toRad(la2)) * Math.sin(dLng / 2) ** 2;
+                return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+            };
+
+            type DedupKey = { name: string; engName: string; lat?: number; lng?: number };
+            const savedRestaurantKeys: DedupKey[] = [];
+            const savedAttractionKeys: DedupKey[] = [];
             trip.restaurants?.forEach(cat => cat.restaurants?.forEach(r => {
-                if (r.name) savedRestaurantNames.add(r.name.trim().toLowerCase());
+                if (!r.name) return;
+                savedRestaurantKeys.push({
+                    name: normName(r.name),
+                    engName: normName(getEnglishName({ name: r.name, nameEnglish: (r as any).nameEnglish, location: r.location })),
+                    lat: r.lat, lng: r.lng,
+                });
             }));
             trip.attractions?.forEach(cat => cat.attractions?.forEach(a => {
-                if (a.name) savedAttractionNames.add(a.name.trim().toLowerCase());
+                if (!a.name) return;
+                savedAttractionKeys.push({
+                    name: normName(a.name),
+                    engName: normName(getEnglishName({ name: a.name, nameEnglish: (a as any).nameEnglish, location: a.location })),
+                    lat: a.lat, lng: a.lng,
+                });
             }));
+            const matchesAnyKey = (keys: DedupKey[], name: string, engName: string, lat?: number, lng?: number): boolean => {
+                for (const k of keys) {
+                    if (name && (name === k.name || name === k.engName)) return true;
+                    if (engName && (engName === k.name || engName === k.engName)) return true;
+                    if (haversineMeters(lat, lng, k.lat, k.lng) < 120) return true;
+                }
+                return false;
+            };
 
             if (layerFlags.aiRestaurants) {
+                const seenAiRestaurantKeys: DedupKey[] = [];
                 trip.aiRestaurants?.forEach(cat => {
                     const city = (cat as any).region || cat.title || trip.destination;
                     cat.restaurants?.forEach(r => {
                         if (!isPlaceInTripScope(trip, { location: r.location, region: r.region || city })) return;
-                        if (r.name && savedRestaurantNames.has(r.name.trim().toLowerCase())) return;
+                        const en = getEnglishName({ name: r.name, nameEnglish: (r as any).nameEnglish, location: r.location });
+                        const key = { name: normName(r.name), engName: normName(en), lat: r.lat, lng: r.lng };
+                        if (matchesAnyKey(savedRestaurantKeys, key.name, key.engName, key.lat, key.lng)) return;
+                        if (matchesAnyKey(seenAiRestaurantKeys, key.name, key.engName, key.lat, key.lng)) return;
+                        seenAiRestaurantKeys.push(key);
                         raw.push({
-                            id: r.id, type: 'restaurant', name: getEnglishName({ name: r.name, nameEnglish: (r as any).nameEnglish, location: r.location }), address: r.location,
+                            id: r.id, type: 'restaurant', name: en, address: r.location,
                             lat: r.lat, lng: r.lng, description: r.description, city,
                             rating: typeof r.googleRating === 'number' ? r.googleRating : undefined,
                             cuisine: r.cuisine, recommendationSource: r.recommendationSource,
@@ -1148,13 +1195,18 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
             // AI attraction recommendations — opt-in layer (same scope filter).
             if (layerFlags.aiAttractions) {
+                const seenAiAttractionKeys: DedupKey[] = [];
                 trip.aiAttractions?.forEach(cat => {
                     const city = (cat as any).region || cat.title || trip.destination;
                     cat.attractions?.forEach(a => {
                         if (!isPlaceInTripScope(trip, { location: a.location, region: a.region || city, description: a.description })) return;
-                        if (a.name && savedAttractionNames.has(a.name.trim().toLowerCase())) return;
+                        const en = getEnglishName({ name: a.name, nameEnglish: (a as any).nameEnglish, location: a.location });
+                        const key = { name: normName(a.name), engName: normName(en), lat: a.lat, lng: a.lng };
+                        if (matchesAnyKey(savedAttractionKeys, key.name, key.engName, key.lat, key.lng)) return;
+                        if (matchesAnyKey(seenAiAttractionKeys, key.name, key.engName, key.lat, key.lng)) return;
+                        seenAiAttractionKeys.push(key);
                         raw.push({
-                            id: a.id, type: 'attraction', name: getEnglishName({ name: a.name, nameEnglish: (a as any).nameEnglish, location: a.location }), address: a.location,
+                            id: a.id, type: 'attraction', name: en, address: a.location,
                             lat: a.lat, lng: a.lng, description: a.description, city,
                             rating: typeof a.rating === 'number' ? a.rating : undefined,
                             category: a.type || a.categoryTitle,
