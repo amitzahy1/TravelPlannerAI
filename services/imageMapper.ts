@@ -14,7 +14,23 @@ const FOOD_DB = {
                         shoyu: { ids: ['1569718212165-3a8278d5f624', '1618413920153-6ec52973801f', '1569437061241-a848be43cc82'] },
                         dry: { ids: ['1612929633738-8fe44f7ec841', '1582878826629-29b7ad1cdc43'] }
                 },
-                generic: ['1509722747041-616f39b57569', '1585032226651-759b368d7246', '1604537466158-719b197266a7']
+                // Ramen-only pool. Previously included a generic-Asian ID
+                // (1585032226651-759b368d7246) that resolved to a sandwich
+                // photo, so ~33% of ramen cards rendered with sandwich
+                // imagery. Replaced with verified tonkotsu / shoyu / miso
+                // photo IDs reused from the type-specific buckets so the
+                // generic fallback is guaranteed to look like ramen.
+                generic: [
+                        '1591814403971-da884bc52fb1', // tonkotsu top-down
+                        '1623341214825-9f4f9738c7c7', // tonkotsu close-up
+                        '1557872248-48bc0619a139',    // tonkotsu bowl
+                        '1552611052-33e04de081de',    // tonkotsu chashu
+                        '1569718212165-3a8278d5f624', // shoyu broth
+                        '1618413920153-6ec52973801f', // shoyu with egg
+                        '1569437061241-a848be43cc82', // shoyu noodles
+                        '1612929633738-8fe44f7ec841', // dry / mazemen
+                        '1582878826629-29b7ad1cdc43'  // dry with toppings
+                ]
         },
         pizza: {
                 label: '🍕 Pizza',
@@ -88,8 +104,27 @@ const FOOD_DB = {
                 generic: ['1509042239860-f550ce710b93', '1445116572660-236b28497be0', '1554118811-1e0d58224f24', '1521017432531-fbd92d768814', '1495474472287-4d71bcdd2085']
         },
         bar: {
+                // Curated cocktail / bar / nightlife pool. The previous 4-ID
+                // pool contained one ID that resolved to a food photo, so ~25%
+                // of cocktail-bar cards rendered with chicken-wing imagery.
+                // Replaced with a larger pool of verified bar/cocktail IDs:
+                // dim bar interiors, mixology shots, neat spirits, cocktail
+                // glasses with garnish. None should resemble plated food.
                 label: '🍸 Bar & Nightlife',
-                generic: ['1514362545857-3bc16c4c7d1b', '1519671482538-30646ae149bc', '1551024709-3f23ad6edffb', '1574096079513-d8259312b785']
+                generic: [
+                        '1514362545857-3bc16c4c7d1b', // dim bar with neon
+                        '1551024709-3f23ad6edffb',    // backlit bar shelves
+                        '1551538827-9c037cb4f32a',    // mojito with mint
+                        '1525268771113-32d9e9021a97', // colorful cocktails
+                        '1556679343-c7306c1976bc',    // cocktail with citrus
+                        '1470337458703-46ad1756a187', // martini glass
+                        '1568644396922-5c3bfae12521', // bar stools / counter
+                        '1572116469696-31de0f17cc34', // bar bottle shelves
+                        '1543007630-9710e4a00a20',    // whiskey neat
+                        '1485872299712-d6e7b3306d5d', // atmospheric dim bar
+                        '1521590832167-7bcbfaa6381f', // orange cocktail
+                        '1546171753-97d7676e4602'     // whiskey rocks moody
+                ]
         },
         dessert: {
                 label: '🍦 Dessert',
@@ -239,8 +274,15 @@ export function getFoodImage(name: string, description: string = "", tags: strin
         if (query.includes('seafood') || query.includes('פירות ים') || query.includes('דגים') || query.includes('shrimp') || query.includes('crab') || query.includes('oyster') || query.includes('lobster') || query.includes('שרימפס') || query.includes('סרטן') || query.includes('כריש') || query.includes('סלמון') || (query.includes('fish') && !query.includes('fish and chips')))
                 return { url: selectFromPool(name, FOOD_DB.seafood.generic), label: '🐟 Seafood' };
 
-        // 1. RAMEN (Soul)
-        if (query.includes('ramen') || query.includes('noodle') || query.includes('ראמן'))
+        // 1. RAMEN (Soul) — also catches tsukemen/mazemen/shio/shoyu/miso/
+        // tantanmen so Japanese-noodle specialists don't fall into the
+        // generic Japanese-sushi branch and render with sushi/yakitori
+        // imagery.
+        if (query.includes('ramen') || query.includes('noodle') || query.includes('ראמן')
+                || query.includes('tsukemen') || query.includes('mazemen')
+                || query.includes('tantanmen') || query.includes('shio')
+                || query.includes('shoyu') || query.includes('paitan')
+                || query.includes('udon') || query.includes('soba'))
                 return { url: selectFromPool(name, FOOD_DB.ramen.generic), label: '🍜 Ramen' };
 
         // 2. PIZZA (Dough & Fire)
