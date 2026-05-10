@@ -6,7 +6,7 @@ import { Trip } from '../types';
 export const WORLD_DESTINATIONS: Record<string, string[]> = {
         // ASIA
         'Philippines': ['Manila', 'Cebu', 'Boracay', 'El Nido', 'Coron', 'Bohol', 'Siargao', 'Puerto Princesa', 'Davao', 'Makati', 'BGC', 'Taguig', 'Pasay', 'Quezon City'],
-        'Thailand': ['Bangkok', 'Phuket', 'Chiang Mai', 'Ko Samui', 'Krabi', 'Pattaya', 'Hua Hin', 'Ayutthaya', 'Chiang Rai', 'Ko Tao', 'Ko Phi Phi'],
+        'Thailand': ['Bangkok', 'Phuket', 'Chiang Mai', 'Ko Samui', 'Krabi', 'Pattaya', 'Hua Hin', 'Ayutthaya', 'Chiang Rai', 'Ko Tao', 'Ko Phi Phi', 'Ko Chang', 'Koh Chang'],
         'Vietnam': ['Hanoi', 'Ho Chi Minh City', 'Da Nang', 'Hoi An', 'Nha Trang', 'Phu Quoc', 'Hue', 'Sapa', 'Ha Long Bay'],
         'Japan': ['Tokyo', 'Osaka', 'Kyoto', 'Hiroshima', 'Sapporo', 'Fukuoka', 'Nara', 'Okinawa', 'Hakone'],
         'South Korea': ['Seoul', 'Busan', 'Jeju City', 'Incheon', 'Gyeongju', 'Daegu'],
@@ -265,7 +265,7 @@ const CITY_HEBREW_NAMES: Record<string, string> = {
         'bangkok': 'בנגקוק',
         'koh chang': "קו צ'אנג",
         'ko chang': "קו צ'אנג",
-        'pattaya': 'פטאייה',
+        'pattaya': 'פטאיה',
         'phuket': 'פוקט',
         'ko samui': 'קו סאמוי',
         'koh samui': 'קו סאמוי',
@@ -932,13 +932,13 @@ export const displayCityName = (name: string, lang: 'he' | 'en' = 'he'): string 
  * Refactored from ItineraryView to be shared across the app
  */
 export const extractRobustCity = (address: string, hotelName: string, trip: Trip): string => {
-        if (!address && !hotelName) return (trip.destination || '').split('-')[0].trim();
+        if (!address && !hotelName) return (trip.destination || '').split(/[-–—&,]/)[0].trim();
 
         // Build known cities database from trip data to help disambiguate
         const knownCities = new Set<string>();
 
-        // From trip destination (e.g., "Georgia - Tbilisi & Batumi")
-        (trip.destination || '').split(/[-&,]/).forEach(part => {
+        // From trip destination (e.g., "Georgia - Tbilisi & Batumi" or em-dash variants)
+        (trip.destination || '').split(/[-–—&,]/).forEach(part => {
                 const city = part.trim().toLowerCase();
                 if (city && city.length > 2 && !['and', 'the'].includes(city)) {
                         knownCities.add(city);
@@ -1005,8 +1005,9 @@ export const extractRobustCity = (address: string, hotelName: string, trip: Trip
                 }
         }
 
-        // Final Candidate
-        let candidate = (trip.destination || '').split('-')[0].trim();
+        // Final Candidate — use any common separator (ASCII hyphen, en/em-dash,
+        // ampersand, comma) so multi-city destination strings get split.
+        let candidate = (trip.destination || '').split(/[-–—&,]/)[0].trim();
         return cleanCityName(candidate);
 };
 
@@ -1053,9 +1054,11 @@ export const getTripCities = (
                 if (h.city) hotelCityKeys.add(cityKey(h.city));
         });
 
-        // 1. Wizard Destination
+        // 1. Wizard Destination — accept ASCII hyphen, en-dash, em-dash, ampersand,
+        // comma as separators (with or without surrounding spaces) so multi-city
+        // strings always split, regardless of how they were typed.
         if (trip.destination) {
-                trip.destination.split(/ - | & |, /).forEach(s => add(s.trim()));
+                trip.destination.split(/\s*[-–—&,]\s*/).forEach(s => add(s.trim()));
         }
 
         // 2. Flight Destinations (Arrivals) — skipped for non-hotel cities when

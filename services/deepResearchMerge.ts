@@ -313,7 +313,12 @@ export const mergeDeepResearchData = (
   const aiRestaurants: RestaurantCategory[] = JSON.parse(JSON.stringify(trip.aiRestaurants || []));
   const aiAttractions: AttractionCategory[] = JSON.parse(JSON.stringify(trip.aiAttractions || []));
 
-  const region = trip.destination || trip.destinationEnglish || '';
+  // Leave region empty: the chip-tally logic falls back to the entry's own
+  // location field (which contains the actual city — e.g. "Pattaya 2nd Rd,
+  // Pattaya, Chon Buri 20150, Thailand"). Setting region = trip.destination
+  // accidentally matches the multi-city destination string and inflates a
+  // bogus catch-all chip.
+  const region = '';
 
   // ---- RESTAURANTS ----
   for (const rawIncoming of payload.restaurants || []) {

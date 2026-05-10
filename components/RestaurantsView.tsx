@@ -293,12 +293,33 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 return ta - tb;
             });
         const orderedKeys: string[] = [];
+        // Multi-city strings (separators: -, –, —, &, ,) are trip-level
+        // destinations, not single cities. Reject them here so dirty data
+        // like h.city = "Bangkok - Pattaya - Ko Chang" doesn't become a chip.
+        const isMultiCityString = (s: string) => /[-–—&,]/.test(s);
+
         sortedHotels.forEach(({ h }) => {
-            const raw = extractRobustCity(h.address || '', h.name || '', trip) || h.city || '';
-            if (!raw || isProvinceOrCountryName(raw)) return;
+            const extracted = extractRobustCity(h.address || '', h.name || '', trip);
+            const fallbackCity = h.city && !isMultiCityString(h.city) ? h.city : '';
+            const raw = extracted || fallbackCity;
+            if (!raw || isProvinceOrCountryName(raw) || isMultiCityString(raw)) return;
             const k = normalizeCityForChip(raw);
             if (!k || cityByKey.has(k)) return;
             const display = displayCityName(raw, 'he') || raw;
+            cityByKey.set(k, { display, count: 0 });
+            orderedKeys.push(k);
+        });
+
+        // Backstop — ensure every city in trip.destination has a chip even if
+        // the corresponding hotel's data is missing or dirty. Without this, a
+        // hotel with empty address + multi-city h.city would silently drop its
+        // city from the filter list.
+        const destinationCities = (trip.destination || '').split(/\s*[-–—&,]\s*/).map(s => s.trim()).filter(Boolean);
+        destinationCities.forEach((rawCity: string) => {
+            if (!rawCity || isProvinceOrCountryName(rawCity) || isMultiCityString(rawCity)) return;
+            const k = normalizeCityForChip(rawCity);
+            if (!k || cityByKey.has(k)) return;
+            const display = displayCityName(rawCity, 'he') || rawCity;
             cityByKey.set(k, { display, count: 0 });
             orderedKeys.push(k);
         });
