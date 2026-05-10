@@ -1032,7 +1032,7 @@ export const ItineraryView: React.FC<{
                                                     favoriteAttractions
                                             ).map((item: any, idx: number) => {
                                                 // Dynamic Image Logic
-                                                const tags = [item.cuisine || item.type || '', item.location || item.address || ''];
+                                                const tags = [item.cuisine || item.type || ''];
                                                 const { url } = getPlaceImage(item.name || '', viewingCategory === 'food' ? 'food' : viewingCategory === 'attractions' ? 'attraction' : 'attraction', tags);
 
                                                 return (

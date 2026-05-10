@@ -61,11 +61,13 @@ interface Props {
 const useFallbackImage = (item: PopupItem): string | null => {
         const initial = (() => {
                 if (item.imageUrl) return item.imageUrl;
+                // Don't pass address — "Bangkok, Thailand" forces every Bangkok
+                // venue into the Thai cuisine branch.
                 if (item.type === 'restaurant') {
-                        return getFoodImage(item.name, item.description || '', [item.cuisine || '', item.address || '']).url;
+                        return getFoodImage(item.name, item.description || '', [item.cuisine || '']).url;
                 }
                 if (item.type === 'attraction') {
-                        return getAttractionImage(item.name, item.description || '', [item.category || '', item.address || '']).url;
+                        return getAttractionImage(item.name, item.description || '', [item.category || '']).url;
                 }
                 return null;
         })();

@@ -1115,11 +1115,24 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             // Filter out items not in trip scope so legacy/hallucinated AI data
             // (Banff, Paris on a Thailand trip) doesn't pollute the map or
             // get fed into geocoding lookups.
+            // Also: skip an AI item whose name already appears in the user's
+            // saved list — saved wins, so the same place doesn't render as
+            // two stacked pins (one "my list" + one "AI recommendation").
+            const savedRestaurantNames = new Set<string>();
+            const savedAttractionNames = new Set<string>();
+            trip.restaurants?.forEach(cat => cat.restaurants?.forEach(r => {
+                if (r.name) savedRestaurantNames.add(r.name.trim().toLowerCase());
+            }));
+            trip.attractions?.forEach(cat => cat.attractions?.forEach(a => {
+                if (a.name) savedAttractionNames.add(a.name.trim().toLowerCase());
+            }));
+
             if (layerFlags.aiRestaurants) {
                 trip.aiRestaurants?.forEach(cat => {
                     const city = (cat as any).region || cat.title || trip.destination;
                     cat.restaurants?.forEach(r => {
                         if (!isPlaceInTripScope(trip, { location: r.location, region: r.region || city })) return;
+                        if (r.name && savedRestaurantNames.has(r.name.trim().toLowerCase())) return;
                         raw.push({
                             id: r.id, type: 'restaurant', name: getEnglishName({ name: r.name, nameEnglish: (r as any).nameEnglish, location: r.location }), address: r.location,
                             lat: r.lat, lng: r.lng, description: r.description, city,
@@ -1127,6 +1140,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                             cuisine: r.cuisine, recommendationSource: r.recommendationSource,
                             priceRange: r.priceRange || r.price || r.priceLevel,
                             imageUrl: r.imageUrl, notes: r.notes, googleMapsUrl: r.googleMapsUrl,
+                            source: 'ai',
                         });
                     });
                 });
@@ -1138,6 +1152,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                     const city = (cat as any).region || cat.title || trip.destination;
                     cat.attractions?.forEach(a => {
                         if (!isPlaceInTripScope(trip, { location: a.location, region: a.region || city, description: a.description })) return;
+                        if (a.name && savedAttractionNames.has(a.name.trim().toLowerCase())) return;
                         raw.push({
                             id: a.id, type: 'attraction', name: getEnglishName({ name: a.name, nameEnglish: (a as any).nameEnglish, location: a.location }), address: a.location,
                             lat: a.lat, lng: a.lng, description: a.description, city,
@@ -1145,6 +1160,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                             category: a.type || a.categoryTitle,
                             recommendationSource: a.recommendationSource, priceRange: a.price,
                             imageUrl: a.imageUrl, notes: a.notes, googleMapsUrl: a.googleMapsUrl,
+                            source: 'ai',
                         });
                     });
                 });

@@ -211,7 +211,28 @@ export function getFoodImage(name: string, description: string = "", tags: strin
         // detection. Tags travel through the same query string, so we just
         // give them an explicit early branch.
 
-        // 0a. SEAFOOD — must come BEFORE Thai/sushi/asian so a "Thai Seafood"
+        // 0a. COCKTAIL BARS — must come BEFORE Thai/sushi/asian so that bars
+        // in Bangkok don't fall into the Thai branch just because their
+        // description mentions Thai cocktails or local ingredients. A venue
+        // whose cuisine is explicitly "Cocktail Bar" / "ברי קוקטיילים" should
+        // always render bar imagery, never noodles or curries.
+        // Stay strict on standalone "bar" — "sushi bar" / "coffee bar" /
+        // "salad bar" should NOT match; require an explicit bar context.
+        const looksLikeBar = (
+                query.includes('cocktail') || query.includes('speakeasy') || query.includes('lounge')
+                || query.includes('rooftop bar') || query.includes('whiskey bar') || query.includes('wine bar')
+                || query.includes('cocktail bar') || query.includes('cocktail bars')
+                || query.includes('ברי קוקטיילים') || query.includes('בר קוקטיילים') || query.includes('קוקטייל')
+                || query.includes('מקומות לילה') || query.includes('חיי לילה')
+                || query.includes('nightlife') || query.includes('mixology')
+        );
+        const isOtherBar = query.includes('sushi bar') || query.includes('coffee bar')
+                || query.includes('salad bar') || query.includes('juice bar')
+                || query.includes('noodle bar') || query.includes('ramen bar');
+        if (looksLikeBar && !isOtherBar)
+                return { url: selectFromPool(name, FOOD_DB.bar.generic), label: '🍸 Cocktail Bar' };
+
+        // 0b. SEAFOOD — must come BEFORE Thai/sushi/asian so a "Thai Seafood"
         // restaurant doesn't fall into the asian.generic mixed pool (which
         // contains burgers and salads — the source of the photo-mismatch
         // complaint).
@@ -236,17 +257,17 @@ export function getFoodImage(name: string, description: string = "", tags: strin
 
         // 5. THAI (Spice & Wok) — uses curated thai_classic subset so we get
         // tom yum / pad thai / curry-looking photos instead of the broader
-        // asian.generic pool that includes burgers and salads.
-        if (query.includes('thai') || query.includes('pad thai') || query.includes('tom yum') || query.includes('curry') || query.includes('תאילנדי') || query.includes('פאד תאי') || query.includes('קארי') || query.includes('סום טאם'))
+        // asian.generic pool that includes burgers and salads. Use word-
+        // boundary regex for "thai" so the country name "Thailand" in a
+        // description doesn't force every Thailand venue into this branch.
+        if (/\bthai\b/.test(query) || query.includes('pad thai') || query.includes('tom yum') || query.includes('curry') || query.includes('תאילנדי') || query.includes('פאד תאי') || query.includes('קארי') || query.includes('סום טאם'))
                 return { url: selectFromPool(name, FOOD_DB.thai_classic.generic), label: '🌶️ Thai' };
 
         // 6. FINE DINING (The Experience)
         if (query.includes('fine dining') || query.includes('michelin') || query.includes('chef') || query.includes('tasting menu') || query.includes('יוקרה') || query.includes('מישלן'))
                 return { url: selectFromPool(name, FOOD_DB.fine.generic), label: '💎 Fine Dining' };
 
-        // 7. COCKTAIL BARS (The Vibe)
-        if (query.includes('cocktail') || query.includes('bar') || query.includes('speakeasy') || query.includes('lounge') || query.includes('בר') || query.includes('קוקטייל'))
-                return { url: selectFromPool(name, FOOD_DB.bar.generic), label: '🍸 Cocktail Bar' };
+        // 7. (Cocktail bars handled at top of function — see 0a.)
 
         // 8. CAFE & DESSERT (Third Wave)
         if (query.includes('cafe') || query.includes('coffee') || query.includes('bakery') || query.includes('pastry') || query.includes('dessert') || query.includes('gelato') || query.includes('ice cream') || query.includes('בתי קפה') || query.includes('קינוח'))

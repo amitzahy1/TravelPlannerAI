@@ -2280,7 +2280,10 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
     const [noteText, setNoteText] = useState(data.notes || '');
 
     // Intelligent Mappers
-    const tags = [data.cuisine || '', data.categoryTitle || '', data.location];
+    // Don't include data.location — "Bangkok, Thailand" would force every
+    // venue into the Thai branch of getFoodImage. Cuisine should be derived
+    // from cuisine / categoryTitle only.
+    const tags = [data.cuisine || '', data.categoryTitle || ''];
     const { url: mappedUrl, label: visualLabel } = getFoodImage(data.name || '', data.description || '', tags);
     const visuals = getCuisineVisuals(data.cuisine || visualLabel);
 

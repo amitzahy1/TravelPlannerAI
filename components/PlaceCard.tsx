@@ -54,7 +54,11 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         const showVerificationBadge = !!verification_needed || !!geocodeFailed
                 || verificationStatus === 'not_found' || verificationStatus === 'ambiguous';
         // 1. Get Context-Aware Visual (Isolated Paths)
-        const tags = [cuisine || attractionType || '', location];
+        // NOTE: do not include `location` in tags — "Bangkok, Thailand" would
+        // make every Bangkok venue match the Thai branch in getFoodImage,
+        // even cocktail bars / cafes / sushi spots. Cuisine detection must
+        // be driven by the cuisine field, not the address.
+        const tags = [cuisine || attractionType || ''];
         const searchName = getEnglishName({ name, nameEnglish, location });
 
         // Strict Isolation: Never call a generic mapper

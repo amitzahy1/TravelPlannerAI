@@ -44,7 +44,7 @@ export const CategoryListModal: React.FC<CategoryListModalProps> = ({ type, trip
                                 {/* List */}
                                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-50/30">
                                         {items.map((item, idx) => {
-                                                const tags = [(item.cuisine || item.type || ''), item.location || item.address];
+                                                const tags = [(item.cuisine || item.type || '')];
                                                 const image = getPlaceImage(item.name, type === 'food' ? 'food' : 'attraction', tags); // Hotels fallback to attraction logic or default
 
                                                 return (

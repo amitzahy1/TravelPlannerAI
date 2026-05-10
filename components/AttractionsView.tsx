@@ -1865,10 +1865,12 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
     const [noteText, setNoteText] = useState(data.notes || '');
 
     // Use intelligent image mapper
+    // Don't pass data.location — "Bangkok, Thailand" would push everything
+    // into Thai-flavored buckets regardless of the actual attraction type.
     const { url: mappedUrl, label: visualLabel } = getAttractionImage(
         data.name || '',
         data.description || '',
-        [data.categoryTitle || '', data.location || '']
+        [data.categoryTitle || '']
     );
     const visuals = getAttractionVisuals(visualLabel);
 
