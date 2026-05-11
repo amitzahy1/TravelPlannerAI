@@ -1,0 +1,231 @@
+/**
+ * Theme overrides — applied via `data-theme="..."` on <html>.
+ *
+ * The point: KEEP the existing app layout + features. Only swap visual
+ * treatment — brand colors, card radii, shadows, font, page background.
+ * The user navigates the real RestaurantsView / AttractionsView / etc.
+ * and sees them re-skinned.
+ *
+ * No theme applied → app looks the same as today.
+ */
+
+/* ============================================================
+   THEME A — AIRBNB-FLAVORED
+   Warm white, Rausch pink accent, soft shadows, generous radii.
+   ============================================================ */
+html[data-theme='airbnb'] body {
+  background-color: #FFFFFF !important;
+  font-family: 'Inter', 'Rubik', system-ui, sans-serif !important;
+  color: #222222 !important;
+}
+
+/* Primary brand colors → Rausch pink */
+html[data-theme='airbnb'] .bg-orange-600,
+html[data-theme='airbnb'] .bg-orange-500,
+html[data-theme='airbnb'] .bg-amber-600,
+html[data-theme='airbnb'] .bg-blue-600,
+html[data-theme='airbnb'] .bg-blue-700,
+html[data-theme='airbnb'] .bg-indigo-600,
+html[data-theme='airbnb'] .bg-purple-600 {
+  background-color: #FF385C !important;
+}
+html[data-theme='airbnb'] .hover\:bg-orange-700:hover,
+html[data-theme='airbnb'] .hover\:bg-blue-700:hover,
+html[data-theme='airbnb'] .hover\:bg-purple-700:hover {
+  background-color: #E61E4D !important;
+}
+html[data-theme='airbnb'] .text-orange-600,
+html[data-theme='airbnb'] .text-orange-700,
+html[data-theme='airbnb'] .text-blue-600,
+html[data-theme='airbnb'] .text-blue-700,
+html[data-theme='airbnb'] .text-purple-600,
+html[data-theme='airbnb'] .text-purple-700,
+html[data-theme='airbnb'] .text-indigo-600 {
+  color: #FF385C !important;
+}
+html[data-theme='airbnb'] .border-orange-600,
+html[data-theme='airbnb'] .border-orange-500,
+html[data-theme='airbnb'] .border-blue-600,
+html[data-theme='airbnb'] .border-blue-500,
+html[data-theme='airbnb'] .border-purple-600 {
+  border-color: #FF385C !important;
+}
+/* Subtle pink wash backgrounds (for active/selected states) */
+html[data-theme='airbnb'] .bg-orange-50,
+html[data-theme='airbnb'] .bg-blue-50,
+html[data-theme='airbnb'] .bg-purple-50,
+html[data-theme='airbnb'] .bg-indigo-50 {
+  background-color: #FFF5F7 !important;
+}
+
+/* Page background — warmer whites */
+html[data-theme='airbnb'] .bg-slate-50 { background-color: #FFFFFF !important; }
+html[data-theme='airbnb'] .bg-slate-100 { background-color: #F7F7F7 !important; }
+
+/* Generous radii — Airbnb uses 12-16px on cards */
+html[data-theme='airbnb'] .rounded-lg { border-radius: 10px !important; }
+html[data-theme='airbnb'] .rounded-xl { border-radius: 12px !important; }
+html[data-theme='airbnb'] .rounded-2xl { border-radius: 16px !important; }
+html[data-theme='airbnb'] .rounded-3xl { border-radius: 20px !important; }
+
+/* Very soft shadows */
+html[data-theme='airbnb'] .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important; }
+html[data-theme='airbnb'] .shadow {    box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important; }
+html[data-theme='airbnb'] .shadow-md { box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important; }
+html[data-theme='airbnb'] .shadow-lg { box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; }
+html[data-theme='airbnb'] .shadow-xl { box-shadow: 0 6px 16px rgba(0,0,0,0.1) !important; }
+
+/* Typography — semi-bold ceiling, never black */
+html[data-theme='airbnb'] .font-black { font-weight: 600 !important; }
+html[data-theme='airbnb'] .font-extrabold { font-weight: 600 !important; }
+html[data-theme='airbnb'] .font-bold { font-weight: 600 !important; }
+
+/* ============================================================
+   THEME B — WOLT-FLAVORED
+   Cyan accent, navy text, hairline borders (no shadows), tight radii.
+   ============================================================ */
+html[data-theme='wolt'] body {
+  background-color: #F4F4F5 !important;
+  font-family: 'Inter Tight', 'Inter', 'Rubik', system-ui, sans-serif !important;
+  color: #0E1217 !important;
+}
+
+/* Primary brand → Wolt cyan */
+html[data-theme='wolt'] .bg-orange-600,
+html[data-theme='wolt'] .bg-orange-500,
+html[data-theme='wolt'] .bg-amber-600,
+html[data-theme='wolt'] .bg-blue-600,
+html[data-theme='wolt'] .bg-blue-700,
+html[data-theme='wolt'] .bg-indigo-600,
+html[data-theme='wolt'] .bg-purple-600 {
+  background-color: #009DE0 !important;
+}
+html[data-theme='wolt'] .hover\:bg-orange-700:hover,
+html[data-theme='wolt'] .hover\:bg-blue-700:hover {
+  background-color: #0080B8 !important;
+}
+html[data-theme='wolt'] .text-orange-600,
+html[data-theme='wolt'] .text-orange-700,
+html[data-theme='wolt'] .text-blue-600,
+html[data-theme='wolt'] .text-blue-700,
+html[data-theme='wolt'] .text-purple-600,
+html[data-theme='wolt'] .text-purple-700,
+html[data-theme='wolt'] .text-indigo-600 {
+  color: #009DE0 !important;
+}
+html[data-theme='wolt'] .border-orange-600,
+html[data-theme='wolt'] .border-orange-500,
+html[data-theme='wolt'] .border-blue-600,
+html[data-theme='wolt'] .border-blue-500,
+html[data-theme='wolt'] .border-purple-600 {
+  border-color: #009DE0 !important;
+}
+html[data-theme='wolt'] .bg-orange-50,
+html[data-theme='wolt'] .bg-blue-50,
+html[data-theme='wolt'] .bg-purple-50,
+html[data-theme='wolt'] .bg-indigo-50 {
+  background-color: #E5F7FE !important;
+}
+
+/* Cool page bg */
+html[data-theme='wolt'] .bg-slate-50 { background-color: #F4F4F5 !important; }
+html[data-theme='wolt'] .bg-slate-100 { background-color: #ECECEE !important; }
+html[data-theme='wolt'] .bg-white { background-color: #FFFFFF !important; }
+
+/* Tighter radii */
+html[data-theme='wolt'] .rounded-lg { border-radius: 8px !important; }
+html[data-theme='wolt'] .rounded-xl { border-radius: 8px !important; }
+html[data-theme='wolt'] .rounded-2xl { border-radius: 10px !important; }
+html[data-theme='wolt'] .rounded-3xl { border-radius: 12px !important; }
+
+/* NO shadows — borders instead. Apply a 1px hairline to common card classes. */
+html[data-theme='wolt'] .shadow-sm,
+html[data-theme='wolt'] .shadow,
+html[data-theme='wolt'] .shadow-md,
+html[data-theme='wolt'] .shadow-lg,
+html[data-theme='wolt'] .shadow-xl {
+  box-shadow: none !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Bold typography */
+html[data-theme='wolt'] body {
+  font-weight: 500 !important;
+}
+
+/* ============================================================
+   THEME C — NOTION / LINEAR-FLAVORED
+   Monochrome paper white, indigo accent, hairlines, square-ish pills.
+   ============================================================ */
+html[data-theme='notion'] body {
+  background-color: #FAFAF9 !important;
+  font-family: 'Inter', 'Rubik', system-ui, sans-serif !important;
+  color: #18181B !important;
+  letter-spacing: -0.005em;
+}
+
+/* All chromatic brands → grayscale neutral surfaces with one indigo accent */
+html[data-theme='notion'] .bg-orange-600,
+html[data-theme='notion'] .bg-orange-500,
+html[data-theme='notion'] .bg-amber-600,
+html[data-theme='notion'] .bg-blue-600,
+html[data-theme='notion'] .bg-blue-700,
+html[data-theme='notion'] .bg-indigo-600,
+html[data-theme='notion'] .bg-purple-600 {
+  background-color: #5E6AD2 !important;
+}
+html[data-theme='notion'] .hover\:bg-orange-700:hover,
+html[data-theme='notion'] .hover\:bg-blue-700:hover,
+html[data-theme='notion'] .hover\:bg-purple-700:hover {
+  background-color: #4E58BC !important;
+}
+html[data-theme='notion'] .text-orange-600,
+html[data-theme='notion'] .text-orange-700,
+html[data-theme='notion'] .text-blue-600,
+html[data-theme='notion'] .text-blue-700,
+html[data-theme='notion'] .text-purple-600,
+html[data-theme='notion'] .text-purple-700,
+html[data-theme='notion'] .text-indigo-600 {
+  color: #5E6AD2 !important;
+}
+html[data-theme='notion'] .border-orange-600,
+html[data-theme='notion'] .border-orange-500,
+html[data-theme='notion'] .border-blue-600,
+html[data-theme='notion'] .border-purple-600 {
+  border-color: #5E6AD2 !important;
+}
+/* Pale-tinted backgrounds become neutral zinc */
+html[data-theme='notion'] .bg-orange-50,
+html[data-theme='notion'] .bg-blue-50,
+html[data-theme='notion'] .bg-purple-50,
+html[data-theme='notion'] .bg-indigo-50,
+html[data-theme='notion'] .bg-amber-50,
+html[data-theme='notion'] .bg-emerald-50,
+html[data-theme='notion'] .bg-pink-50 {
+  background-color: #F4F4F5 !important;
+}
+
+/* Paper white background */
+html[data-theme='notion'] .bg-slate-50 { background-color: #FAFAF9 !important; }
+html[data-theme='notion'] .bg-slate-100 { background-color: #F4F4F5 !important; }
+
+/* Sharper radii — 6px-ish on everything */
+html[data-theme='notion'] .rounded-lg { border-radius: 6px !important; }
+html[data-theme='notion'] .rounded-xl { border-radius: 6px !important; }
+html[data-theme='notion'] .rounded-2xl { border-radius: 8px !important; }
+html[data-theme='notion'] .rounded-3xl { border-radius: 10px !important; }
+/* NB: keep `rounded-full` alone — heart icons / avatars should still be circular */
+
+/* No shadows; hairline borders for depth */
+html[data-theme='notion'] .shadow-sm,
+html[data-theme='notion'] .shadow,
+html[data-theme='notion'] .shadow-md,
+html[data-theme='notion'] .shadow-lg,
+html[data-theme='notion'] .shadow-xl {
+  box-shadow: none !important;
+  border: 1px solid #E4E4E7 !important;
+}
+
+/* Slightly tighter heading weight */
+html[data-theme='notion'] .font-black { font-weight: 700 !important; }
+html[data-theme='notion'] .font-extrabold { font-weight: 700 !important; }

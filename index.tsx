@@ -1,8 +1,18 @@
 import React from 'react';
 import './src/index.css';
+import './src/themes.css';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+
+// Restore theme preference set via the design preview before React mounts,
+// so the first paint already has the chosen brand colors / radii.
+try {
+  const savedTheme = localStorage.getItem('app_theme');
+  if (savedTheme === 'airbnb' || savedTheme === 'wolt' || savedTheme === 'notion') {
+    document.documentElement.dataset.theme = savedTheme;
+  }
+} catch { /* localStorage unavailable */ }
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

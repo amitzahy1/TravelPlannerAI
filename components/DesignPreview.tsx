@@ -1,82 +1,85 @@
 /**
- * DesignPreview — admin-only sandbox for comparing 3 alternative visual
- * languages (Airbnb / Wolt / Notion-Linear) against the current design.
+ * DesignPreview — admin-only theme picker.
  *
- * Lives at /design-preview (admin-gated in App.tsx). Renders the same set of
- * fixtures in each style so the user can pick a direction.
+ * IMPORTANT: this is NOT a mock app. It applies a CSS theme override to
+ * the REAL app (`<html data-theme="...">`). The user picks a theme here,
+ * then navigates anywhere in the app and sees their actual pages
+ * re-skinned — same layout, same features, different visual treatment.
  *
- * Does NOT affect the live app. Once the user picks, the chosen style can be
- * promoted to production in a follow-up.
+ * Themes live in src/themes.css. Adding/changing a theme = editing CSS.
+ * No component duplication.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { isAdmin } from '../utils/isAdmin';
 import { useAuth } from '../contexts/AuthContext';
-import { Lock } from 'lucide-react';
+import { Lock, Check, RotateCcw, ArrowLeft } from 'lucide-react';
 
-import { previewPlaces, previewHotels, previewItinerary, previewBudget } from './design-preview/fixtures';
+type Theme = 'current' | 'airbnb' | 'wolt' | 'notion';
 
-import {
-  AirbnbPlaceCard, AirbnbPlaceModal, AirbnbPageHeader, AirbnbCategoryChips,
-  AirbnbHotelCard, AirbnbItineraryDayCard, AirbnbBudgetCard, AirbnbMapViewSkin,
-} from './design-preview/airbnb/components';
-import {
-  WoltPlaceCard, WoltPlaceModal, WoltPageHeader, WoltCategoryChips,
-  WoltHotelCard, WoltItineraryDayCard, WoltBudgetCard, WoltMapViewSkin,
-} from './design-preview/wolt/components';
-import {
-  NotionPlaceCard, NotionPlaceModal, NotionPageHeader, NotionCategoryChips,
-  NotionHotelCard, NotionItineraryDayCard, NotionBudgetCard, NotionMapViewSkin,
-} from './design-preview/notion/components';
-
-type Style = 'airbnb' | 'wolt' | 'notion';
-
-const STYLES: { id: Style; label: string; tagline: string; accent: string }[] = [
-  { id: 'airbnb', label: 'A — Airbnb', tagline: 'חמים, פוטוגרפי, רחב', accent: '#FF385C' },
-  { id: 'wolt',   label: 'B — Wolt',   tagline: 'צבעוני, צפוף, מהיר',  accent: '#00C2E8' },
-  { id: 'notion', label: 'C — Notion / Linear', tagline: 'מינימליסטי, טקסטואלי, רציני', accent: '#5E6AD2' },
+const THEMES: { id: Theme; label: string; tagline: string; accent: string; bg: string; subtitle: string }[] = [
+  {
+    id: 'current',
+    label: 'הנוכחי',
+    tagline: 'הברירת מחדל של האתר היום',
+    accent: '#3b82f6',
+    bg: '#f8fafc',
+    subtitle: 'אינדיגו/כתום/סגול — שיטה רגילה של Tailwind',
+  },
+  {
+    id: 'airbnb',
+    label: 'Airbnb',
+    tagline: 'חמים, פוטוגרפי, רחב',
+    accent: '#FF385C',
+    bg: '#FFFFFF',
+    subtitle: 'ורוד-קורל, רדיוסים גדולים, צללים רכים, גופן Inter',
+  },
+  {
+    id: 'wolt',
+    label: 'Wolt',
+    tagline: 'מהיר, צפוף, דליברי-אפ',
+    accent: '#009DE0',
+    bg: '#F4F4F5',
+    subtitle: 'ציאן, ללא צללים — רק קווי גבול, רדיוסים הדוקים',
+  },
+  {
+    id: 'notion',
+    label: 'Notion / Linear',
+    tagline: 'מינימליסטי, טקסטואלי',
+    accent: '#5E6AD2',
+    bg: '#FAFAF9',
+    subtitle: 'אינדיגו עדין, גוונים של אפור, אחיד, רדיוסים חדים',
+  },
 ];
 
-const COMPONENTS: Record<Style, any> = {
-  airbnb: {
-    PlaceCard: AirbnbPlaceCard,
-    PlaceModal: AirbnbPlaceModal,
-    PageHeader: AirbnbPageHeader,
-    CategoryChips: AirbnbCategoryChips,
-    HotelCard: AirbnbHotelCard,
-    ItineraryDayCard: AirbnbItineraryDayCard,
-    BudgetCard: AirbnbBudgetCard,
-    MapViewSkin: AirbnbMapViewSkin,
-  },
-  wolt: {
-    PlaceCard: WoltPlaceCard,
-    PlaceModal: WoltPlaceModal,
-    PageHeader: WoltPageHeader,
-    CategoryChips: WoltCategoryChips,
-    HotelCard: WoltHotelCard,
-    ItineraryDayCard: WoltItineraryDayCard,
-    BudgetCard: WoltBudgetCard,
-    MapViewSkin: WoltMapViewSkin,
-  },
-  notion: {
-    PlaceCard: NotionPlaceCard,
-    PlaceModal: NotionPlaceModal,
-    PageHeader: NotionPageHeader,
-    CategoryChips: NotionCategoryChips,
-    HotelCard: NotionHotelCard,
-    ItineraryDayCard: NotionItineraryDayCard,
-    BudgetCard: NotionBudgetCard,
-    MapViewSkin: NotionMapViewSkin,
-  },
-};
+const STORAGE_KEY = 'app_theme';
 
-const dayOne = previewItinerary.filter(i => i.day === 1);
+function readTheme(): Theme {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v === 'airbnb' || v === 'wolt' || v === 'notion') return v;
+  } catch { /* noop */ }
+  return 'current';
+}
+
+function applyTheme(theme: Theme) {
+  if (theme === 'current') {
+    delete document.documentElement.dataset.theme;
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* noop */ }
+  } else {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* noop */ }
+  }
+}
 
 export const DesignPreview: React.FC = () => {
   const { user } = useAuth();
-  const [active, setActive] = useState<Style>('airbnb');
-  const [showModalFor, setShowModalFor] = useState<string | null>(null);
-  const [chosen, setChosen] = useState<Style | null>(null);
+  const [active, setActive] = useState<Theme>(readTheme());
+
+  // Apply on mount + on every change.
+  useEffect(() => {
+    applyTheme(active);
+  }, [active]);
 
   if (!isAdmin(user)) {
     return (
@@ -85,137 +88,119 @@ export const DesignPreview: React.FC = () => {
           <div className="inline-flex w-12 h-12 rounded-full bg-slate-100 items-center justify-center">
             <Lock className="w-5 h-5 text-slate-500" />
           </div>
-          <h1 className="text-xl font-bold text-slate-900">דף תצוגת עיצוב — אדמין בלבד</h1>
-          <p className="text-sm text-slate-500">
-            הדף הזה משמש לבחירת כיוון עיצוב חדש לאתר. רק משתמשי אדמין יכולים לגשת אליו.
-          </p>
+          <h1 className="text-xl font-bold text-slate-900">בחירת עיצוב — אדמין בלבד</h1>
+          <p className="text-sm text-slate-500">הדף הזה משמש לבחירת כיוון עיצוב חדש לאתר. רק משתמשי אדמין יכולים לגשת אליו.</p>
         </div>
       </div>
     );
   }
 
-  const C = COMPONENTS[active];
-  const modalPlace = previewPlaces.find(p => p.id === showModalFor);
-
   return (
-    <div className="min-h-screen bg-slate-100" dir="rtl">
-      {/* Toolbar — sticky at top */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-lg font-black text-slate-900">בחירת כיוון עיצוב</h1>
-            <p className="text-xs text-slate-500">השווה 3 שפות עיצוב על אותם נתונים אמיתיים מהטיול שלך</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {STYLES.map(s => (
-              <button
-                key={s.id}
-                onClick={() => setActive(s.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                  active === s.id
-                    ? 'bg-slate-900 text-white border-slate-900'
-                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
-                }`}
-                style={active === s.id ? { background: s.accent, borderColor: s.accent } : undefined}
-              >
-                {s.label}
-              </button>
-            ))}
-            <div className="w-px h-6 bg-slate-200" />
-            <button
-              onClick={() => setChosen(active)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                chosen === active
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'
-              }`}
-            >
-              {chosen === active ? '✓ נבחר' : 'אני רוצה את זה'}
-            </button>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-6 pb-3">
-          <p className="text-xs text-slate-600">
-            <span className="font-bold">{STYLES.find(s => s.id === active)?.label}</span>
-            {' — '}
-            {STYLES.find(s => s.id === active)?.tagline}
+    <div className="min-h-screen bg-slate-50 py-8" dir="rtl">
+      <div className="max-w-3xl mx-auto px-6 space-y-6">
+        <header className="space-y-2">
+          <a
+            href="#/"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:text-slate-900"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            חזרה לאתר
+          </a>
+          <h1 className="text-3xl font-black text-slate-900">בחירת עיצוב לאתר</h1>
+          <p className="text-base text-slate-600 leading-relaxed">
+            אותו אתר, אותם דפים, אותם פיצ'רים — רק עיצוב אחר. בוחרים אופציה, הולכים לאתר הרגיל ורואים אותו צבוע בסגנון החדש. אפשר להחליף בכל רגע.
           </p>
-        </div>
-      </header>
+        </header>
 
-      {/* Mocked app shell, in the chosen style */}
-      <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-        {/* Header + chips */}
-        <Section title="ראש העמוד + טאבים">
-          <C.PageHeader />
-          <C.CategoryChips />
-        </Section>
-
-        {/* Place cards */}
-        <Section title="כרטיסי מסעדות / אטרקציות (התצוגה הראשית)">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {previewPlaces.map(place => (
-              <button key={place.id} onClick={() => setShowModalFor(place.id)} className="text-right">
-                <C.PlaceCard place={place} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {THEMES.map(t => {
+            const isActive = active === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActive(t.id)}
+                className={`text-right p-5 rounded-2xl border-2 transition-all relative ${
+                  isActive
+                    ? 'border-slate-900 shadow-lg ring-4 ring-slate-900/10'
+                    : 'border-slate-200 hover:border-slate-400 bg-white'
+                }`}
+                style={isActive ? { background: t.bg } : undefined}
+              >
+                {isActive && (
+                  <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900 text-white text-xs font-bold">
+                    <Check className="w-3 h-3" />
+                    פעיל
+                  </span>
+                )}
+                <div className="flex items-center gap-3 mb-2">
+                  <span
+                    className="inline-block w-10 h-10 rounded-xl flex-shrink-0"
+                    style={{ background: t.accent }}
+                  />
+                  <div>
+                    <h2 className="text-lg font-black text-slate-900">{t.label}</h2>
+                    <p className="text-xs text-slate-500 font-medium">{t.tagline}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 leading-relaxed">{t.subtitle}</p>
+                <div className="mt-3 flex items-center gap-2 text-xs font-bold">
+                  <span className="px-2 py-1 rounded-md" style={{ background: t.bg, border: '1px solid rgba(0,0,0,0.08)' }}>
+                    רקע
+                  </span>
+                  <span className="px-2 py-1 rounded-md text-white" style={{ background: t.accent }}>
+                    פעולה
+                  </span>
+                </div>
               </button>
-            ))}
+            );
+          })}
+        </div>
+
+        {/* What changes / what stays */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 text-sm leading-relaxed text-slate-700 space-y-3">
+          <h3 className="text-base font-bold text-slate-900">מה משתנה בכל סגנון?</h3>
+          <ul className="list-disc pr-5 space-y-1.5">
+            <li><strong>צבעי המותג</strong> — כפתורים, טאבים, אייקונים פעילים</li>
+            <li><strong>רדיוסים</strong> — כמה עגולים הכרטיסים והכפתורים</li>
+            <li><strong>צללים</strong> — האם יש (Airbnb) או רק קווים (Wolt / Notion)</li>
+            <li><strong>צבעי רקע</strong> — לבן חמים / אפור קריר / לבן נייר</li>
+            <li><strong>גופן</strong> — Inter במקום Rubik בחלק מהסגנונות</li>
+          </ul>
+          <h3 className="text-base font-bold text-slate-900 pt-2">מה לא משתנה?</h3>
+          <ul className="list-disc pr-5 space-y-1.5">
+            <li>הפיצ'רים, המבנה של הדפים, הניווט</li>
+            <li>התוכן (המסעדות, האטרקציות, המפה)</li>
+            <li>הלוגיקה — חיפוש, סינון, הוספה לטיול, רענון מ-Google</li>
+          </ul>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <span className="font-bold">פעיל עכשיו:</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 font-bold text-slate-900">
+              {THEMES.find(t => t.id === active)?.label}
+            </span>
           </div>
-        </Section>
-
-        {/* Map */}
-        <Section title="תצוגת מפה">
-          <C.MapViewSkin />
-        </Section>
-
-        {/* Hotels */}
-        <Section title="מלונות">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {previewHotels.map(hotel => (
-              <C.HotelCard key={hotel.id} hotel={hotel} />
-            ))}
-          </div>
-        </Section>
-
-        {/* Itinerary */}
-        <Section title="מסלול יומי">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <C.ItineraryDayCard items={dayOne} day={1} date="2026-06-15" />
-            <C.ItineraryDayCard items={previewItinerary.filter(i => i.day === 2)} day={2} date="2026-06-16" />
-          </div>
-        </Section>
-
-        {/* Budget */}
-        <Section title="תקציב">
-          <div className="max-w-md">
-            <C.BudgetCard categories={previewBudget} />
-          </div>
-        </Section>
-      </main>
-
-      {/* Modal preview */}
-      {modalPlace && (
-        <div
-          onClick={() => setShowModalFor(null)}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in"
-        >
-          <div onClick={e => e.stopPropagation()} className="w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scale-in">
-            <C.PlaceModal place={modalPlace} />
+          <div className="flex items-center gap-2">
+            {active !== 'current' && (
+              <button
+                onClick={() => setActive('current')}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-slate-300 text-sm font-bold text-slate-700 hover:bg-slate-100"
+              >
+                <RotateCcw className="w-4 h-4" />
+                איפוס לעיצוב המקורי
+              </button>
+            )}
+            <a
+              href="#/"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-slate-900 text-white text-sm font-bold hover:bg-slate-800"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              עבור לאתר לראות
+            </a>
           </div>
         </div>
-      )}
-
-      {chosen && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-full shadow-lg text-sm font-medium animate-in fade-in slide-in-from-bottom-2">
-          ✓ בחרת ב-{STYLES.find(s => s.id === chosen)?.label}. הודיע לי בצ'אט כדי לקדם לפרודקשן.
-        </div>
-      )}
+      </div>
     </div>
   );
 };
-
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <section className="space-y-2">
-    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</h2>
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden p-4">{children}</div>
-  </section>
-);
