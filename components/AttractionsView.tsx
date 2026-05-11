@@ -330,6 +330,16 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         }));
     }, [trip.attractions, trip.aiAttractions, trip.hotels]);
 
+    // When switching to map view, auto-focus on the first trip city (= the
+    // city of the earliest-checkin hotel) instead of staying on "all route".
+    // Honors any explicit city pick the user has already made.
+    useEffect(() => {
+        if (viewMode !== 'map') return;
+        if (selectedCity !== 'all') return;
+        const first = presentCities[0]?.display;
+        if (first) setSelectedCity(first);
+    }, [viewMode, presentCities, selectedCity]);
+
     const itemWalkingMinutes = useCallback((a: { lat?: number; lng?: number }): number | null => {
         if (typeof a.lat !== 'number' || typeof a.lng !== 'number') return null;
         let best = Infinity;
@@ -1776,9 +1786,9 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                                 const nearHotel = dedup.filter(c => isNearHotelTitle(c.title));
                                                 const uniqueCats = [...main, ...nearHotel];
                                                 return (
-                                                    <div className="mb-3 overflow-x-auto pb-2 scrollbar-hide">
-                                                        <div className="flex gap-2">
-                                                            <button onClick={() => setSelectedCategory('all')} className={`min-h-9 px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === 'all' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
+                                                    <div className="mb-3 overflow-x-auto md:overflow-visible pb-2 scrollbar-hide">
+                                                        <div className="flex flex-nowrap md:flex-wrap gap-1.5 md:gap-2">
+                                                            <button onClick={() => setSelectedCategory('all')} className={`min-h-8 md:min-h-9 px-3 md:px-4 py-1.5 md:py-2 rounded-full text-2xs md:text-xs font-bold border whitespace-nowrap ${selectedCategory === 'all' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
                                                             {uniqueCats.map(c => (
                                                                 <CategoryChip
                                                                     key={c.id}
@@ -2046,7 +2056,11 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
                         title={data.googleEnrichedAt
                             ? `רענון מ-Google (עודכן לאחרונה: ${new Date(data.googleEnrichedAt).toLocaleDateString('he-IL')})`
                             : 'רענון מ-Google Maps (פעם ראשונה — אחת ל-30 יום)'}
-                        className={`p-1.5 rounded-lg transition-colors ${data.googlePlaceId ? 'text-blue-500 hover:bg-blue-50' : 'text-slate-300 hover:bg-slate-50 hover:text-slate-400'} ${refreshingGoogle ? 'opacity-60 cursor-wait' : ''}`}
+                        className={`p-1.5 rounded-lg transition-colors border ${
+                            data.googlePlaceId
+                                ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                                : 'bg-white text-blue-500 border-blue-200 hover:bg-blue-50'
+                        } ${refreshingGoogle ? 'opacity-60 cursor-wait' : ''}`}
                     >
                         <RefreshCw className={`w-4 h-4 ${refreshingGoogle ? 'animate-spin' : ''}`} />
                     </button>

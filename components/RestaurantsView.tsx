@@ -34,35 +34,103 @@ interface ExtendedRestaurant extends Restaurant {
 const getCuisineVisuals = (cuisine: string = '') => {
     const c = cuisine.toLowerCase();
 
+    // ── Specific national cuisines first (so "British" beats "pub" → Nightlife,
+    //     and "Greek" doesn't fall through to the generic Restaurant bucket).
+
+    if (c.includes('greek'))
+        return { icon: '🫒', gradient: 'bg-gradient-to-br from-sky-500 to-blue-700 text-white', label: 'Greek' };
+
+    if (c.includes('indian') || c.includes('biryani') || c.includes('tandoor'))
+        return { icon: '🍛', gradient: 'bg-gradient-to-br from-orange-600 to-red-700 text-white', label: 'Indian' };
+
+    if (c.includes('mexican') || c.includes('taco') || c.includes('mezcal'))
+        return { icon: '🌮', gradient: 'bg-gradient-to-br from-lime-500 to-green-700 text-white', label: 'Mexican' };
+
+    if (c.includes('french'))
+        return { icon: '🥐', gradient: 'bg-gradient-to-br from-blue-600 to-indigo-800 text-white', label: 'French' };
+
+    if (c.includes('chinese') || c.includes('cantonese') || c.includes('dim sum'))
+        return { icon: '🥟', gradient: 'bg-gradient-to-br from-red-600 to-rose-800 text-white', label: 'Chinese' };
+
+    if (c.includes('korean'))
+        return { icon: '🌶️', gradient: 'bg-gradient-to-br from-rose-500 to-red-700 text-white', label: 'Korean' };
+
+    if (c.includes('vietnamese') || c.includes('pho'))
+        return { icon: '🍲', gradient: 'bg-gradient-to-br from-emerald-600 to-teal-800 text-white', label: 'Vietnamese' };
+
+    if (c.includes('spanish') || c.includes('tapas') || c.includes('paella'))
+        return { icon: '🥘', gradient: 'bg-gradient-to-br from-yellow-500 to-orange-700 text-white', label: 'Spanish' };
+
+    if (c.includes('mediterranean'))
+        return { icon: '🌊', gradient: 'bg-gradient-to-br from-cyan-500 to-blue-700 text-white', label: 'Mediterranean' };
+
+    if (c.includes('lebanese') || c.includes('middle eastern') || c.includes('arabic'))
+        return { icon: '🌯', gradient: 'bg-gradient-to-br from-amber-700 to-orange-900 text-white', label: 'Middle Eastern' };
+
+    if (c.includes('british') || c.includes('english'))
+        return { icon: '🥧', gradient: 'bg-gradient-to-br from-slate-600 to-slate-900 text-white', label: 'British' };
+
+    if (c.includes('german') || c.includes('austrian'))
+        return { icon: '🥨', gradient: 'bg-gradient-to-br from-yellow-600 to-amber-800 text-white', label: 'German' };
+
+    if (c.includes('swiss'))
+        return { icon: '🧀', gradient: 'bg-gradient-to-br from-red-600 to-red-900 text-white', label: 'Swiss' };
+
+    if (c.includes('steak'))
+        return { icon: '🥩', gradient: 'bg-gradient-to-br from-red-700 to-red-950 text-white', label: 'Steakhouse' };
+
+    if (c.includes('vegan') || c.includes('vegetarian') || c.includes('healthy'))
+        return { icon: '🥗', gradient: 'bg-gradient-to-br from-green-500 to-emerald-700 text-white', label: 'Vegan' };
+
+    if (c.includes('european'))
+        return { icon: '🇪🇺', gradient: 'bg-gradient-to-br from-indigo-600 to-blue-800 text-white', label: 'European' };
+
+    // ── Generic / category-style buckets after the specific cuisines.
+
     if (c.includes('fine') || c.includes('michelin') || c.includes('luxury'))
         return { icon: '💎', gradient: 'bg-gradient-to-br from-slate-800 to-black text-white', label: 'Luxury' };
 
     if (c.includes('street') || c.includes('market') || c.includes('stall'))
         return { icon: '🥢', gradient: 'bg-gradient-to-br from-orange-400 to-red-500 text-white', label: 'Street Food' };
 
-    if (c.includes('burger') || c.includes('american'))
+    if (c.includes('burger') || c.includes('smash'))
         return { icon: '🍔', gradient: 'bg-gradient-to-br from-red-500 to-orange-600 text-white', label: 'Burger' };
 
     if (c.includes('pizza') || c.includes('italian'))
         return { icon: '🍕', gradient: 'bg-gradient-to-br from-green-500 to-emerald-700 text-white', label: 'Italian' };
 
-    if (c.includes('sushi') || c.includes('japanese') || c.includes('ramen'))
+    if (c.includes('sushi') || c.includes('japanese') || c.includes('ramen') || c.includes('izakaya') || c.includes('yakiniku') || c.includes('omakase') || c.includes('tsukemen'))
         return { icon: '🍜', gradient: 'bg-gradient-to-br from-rose-400 to-pink-600 text-white', label: 'Japanese' };
 
-    if (c.includes('coffee') || c.includes('cafe') || c.includes('brunch'))
+    if (c.includes('coffee') || c.includes('cafe') || c.includes('café') || c.includes('brunch') || c.includes('bakery'))
         return { icon: '☕', gradient: 'bg-gradient-to-br from-amber-600 to-brown-800 text-white', label: 'Cafe' };
 
-    if (c.includes('bar') || c.includes('cocktail') || c.includes('pub'))
-        return { icon: '🍸', gradient: 'bg-gradient-to-br from-purple-600 to-indigo-800 text-white', label: 'Nightlife' };
+    if (c.includes('cocktail') || c.includes('rooftop'))
+        return { icon: '🍸', gradient: 'bg-gradient-to-br from-purple-600 to-indigo-800 text-white', label: 'Cocktails' };
+
+    if (c.includes('bar') || c.includes('pub'))
+        return { icon: '🍺', gradient: 'bg-gradient-to-br from-amber-700 to-yellow-900 text-white', label: 'Bar' };
 
     if (c.includes('seafood'))
         return { icon: '🦞', gradient: 'bg-gradient-to-br from-blue-400 to-cyan-600 text-white', label: 'Seafood' };
 
-    if (c.includes('thai') || c.includes('asian'))
-        return { icon: '🌶️', gradient: 'bg-gradient-to-br from-orange-500 to-yellow-500 text-white', label: 'Asian' };
+    if (c.includes('thai') || c.includes('isaan'))
+        return { icon: '🌶️', gradient: 'bg-gradient-to-br from-orange-500 to-yellow-500 text-white', label: 'Thai' };
 
-    if (c.includes('dessert') || c.includes('ice cream'))
+    if (c.includes('asian'))
+        return { icon: '🥢', gradient: 'bg-gradient-to-br from-orange-500 to-amber-600 text-white', label: 'Asian' };
+
+    if (c.includes('dessert') || c.includes('ice cream') || c.includes('sweet'))
         return { icon: '🍦', gradient: 'bg-gradient-to-br from-pink-300 to-rose-400 text-white', label: 'Sweets' };
+
+    if (c.includes('american'))
+        return { icon: '🍔', gradient: 'bg-gradient-to-br from-red-500 to-orange-600 text-white', label: 'American' };
+
+    if (c.includes('bbq') || c.includes('grill') || c.includes('barbecue'))
+        return { icon: '🔥', gradient: 'bg-gradient-to-br from-orange-600 to-red-800 text-white', label: 'BBQ' };
+
+    if (c.includes('buffet'))
+        return { icon: '🍽️', gradient: 'bg-gradient-to-br from-purple-500 to-pink-600 text-white', label: 'Buffet' };
 
     if (c.includes('local') || c.includes('authentic') || c.includes('georgian'))
         return { icon: '🍲', gradient: 'bg-gradient-to-br from-amber-500 to-orange-700 text-white', label: 'Local Authentic' };
@@ -390,6 +458,16 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             count: cityByKey.get(k)!.count,
         }));
     }, [trip.restaurants, trip.aiRestaurants, trip.hotels]);
+
+    // When switching to map view, auto-focus on the first trip city (= the
+    // city of the earliest-checkin hotel) instead of staying on "all route".
+    // Honors any explicit city pick the user has already made.
+    useEffect(() => {
+        if (viewMode !== 'map') return;
+        if (selectedCity !== 'all') return;
+        const first = presentCities[0]?.display;
+        if (first) setSelectedCity(first);
+    }, [viewMode, presentCities, selectedCity]);
 
     // Walking minutes from a place to its NEAREST hotel — null when either
     // the place or every hotel is missing coords. Used by the distance filter
@@ -2195,9 +2273,9 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                                 const nearHotel = dedup.filter(c => isNearHotelTitle(c.title));
                                                 const uniqueCats = [...main, ...nearHotel];
                                                 return (
-                                                    <div className="mb-3 overflow-x-auto pb-2 scrollbar-hide">
-                                                        <div className="flex gap-2">
-                                                            <button onClick={() => setSelectedCategory('all')} className={`min-h-9 px-4 py-2 rounded-full text-xs font-bold border whitespace-nowrap ${selectedCategory === 'all' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
+                                                    <div className="mb-3 overflow-x-auto md:overflow-visible pb-2 scrollbar-hide">
+                                                        <div className="flex flex-nowrap md:flex-wrap gap-1.5 md:gap-2">
+                                                            <button onClick={() => setSelectedCategory('all')} className={`min-h-8 md:min-h-9 px-3 md:px-4 py-1.5 md:py-2 rounded-full text-2xs md:text-xs font-bold border whitespace-nowrap ${selectedCategory === 'all' ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200'}`}>הכל</button>
                                                             {uniqueCats.map(c => (
                                                                 <CategoryChip
                                                                     key={c.id}
@@ -2468,7 +2546,11 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
                         title={data.googleEnrichedAt
                             ? `רענון מ-Google (עודכן לאחרונה: ${new Date(data.googleEnrichedAt).toLocaleDateString('he-IL')})`
                             : 'רענון מ-Google Maps (פעם ראשונה — אחת ל-30 יום)'}
-                        className={`p-1.5 rounded-lg transition-colors ${data.googlePlaceId ? 'text-blue-500 hover:bg-blue-50' : 'text-slate-300 hover:bg-slate-50 hover:text-slate-400'} ${refreshingGoogle ? 'opacity-60 cursor-wait' : ''}`}
+                        className={`p-1.5 rounded-lg transition-colors border ${
+                            data.googlePlaceId
+                                ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                                : 'bg-white text-blue-500 border-blue-200 hover:bg-blue-50'
+                        } ${refreshingGoogle ? 'opacity-60 cursor-wait' : ''}`}
                     >
                         <RefreshCw className={`w-4 h-4 ${refreshingGoogle ? 'animate-spin' : ''}`} />
                     </button>
