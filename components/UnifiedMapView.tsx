@@ -2459,6 +2459,17 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 const end = validStops[i + 1];
                 if (!start.coords || !end.coords) continue;
 
+                // Skip same-city phantom legs (e.g. "Ko Chang" → "Koh Chang"
+                // when two hotels in the same city show up with different
+                // transliterations). These freeze the page on mobile because
+                // each phantom leg kicks off a Gemini transport-mode call.
+                // A "leg" is a between-cities connection — within a city we
+                // don't need a polyline, an AI mode classification, or a
+                // distance pill.
+                const startKey = cityKey(start.name);
+                const endKey = cityKey(end.name);
+                if (startKey && endKey && startKey === endKey) continue;
+
                 const lineColor = STOP_COLORS[i % STOP_COLORS.length];
                 const legKeyLookup = `${cleanCityName(start.name).toLowerCase()}__${cleanCityName(end.name).toLowerCase()}`;
                 const aiLeg = legClassifications[legKeyLookup];
