@@ -45,6 +45,13 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          # Google Maps key for the Places API (New) "Refresh from Google"
+          # feature on saved + AI-recommended places. SAFE TO INCLUDE IN
+          # THE BUNDLE only because the key has HTTP-referrer restrictions
+          # in Cloud Console limiting it to your GitHub Pages domain, plus
+          # API restrictions (Places API New + Maps Embed only) and a hard
+          # 200/day Place Details quota cap.
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
