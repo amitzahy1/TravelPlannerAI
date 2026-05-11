@@ -25,8 +25,10 @@ import { findCuisineProfile, buildAuthenticFoodSpec } from './localCuisineCatalo
 // button twice, or when the module re-mounts).
 const inFlightTrips = new Set<string>();
 
-// Slim research prompts — Google Search grounding does the heavy lifting,
-// so we don't enumerate worldwide authority sources or full chain lists.
+// Multi-source-aware research prompt. Google Search grounding does the
+// heavy lifting; we explicitly name the source families we want covered so
+// the model doesn't keep returning generic mid-tier picks. Stays one call
+// per city (cost-neutral vs. the old prompt) but with much wider coverage.
 const buildRestaurantPrompt = (city: string, countryHint?: string) => {
 const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 const cuisineProfile = findCuisineProfile(city, countryHint);
@@ -51,6 +53,49 @@ CATEGORIES (use EXACTLY these Hebrew titles):
 SPEC FOR "אוכל מקומי אותנטי":
 ${authenticSpec}
 
+═══ SOURCE COVERAGE — THIS IS THE QUALITY BAR ═══
+Across the WHOLE city result, pull from ALL of these source families. Do
+NOT load up on one family and skip the rest. Each family below should
+contribute ≥3 picks somewhere in the categories above:
+
+A. INTL_AUTHORITATIVE — World's 50 Best Restaurants (current year + last 2
+   years), Asia's 50 Best Restaurants, Michelin Guide (Stars + Bib Gourmand
+   for this country), James Beard, Eater 38, Eater Heatmaps. Tag the
+   recommendationSource with the specific list (e.g. "Asia's 50 Best 2025",
+   "Michelin Bib Gourmand 2025").
+
+B. LOCAL_RANKINGS — Country-specific platforms: Wongnai (Thailand), Tabelog
+   (Japan), Dianping (China), TheFork (EU), Yelp (US), Zomato (India),
+   Mangoplate (Korea). Pull top-rated places with hundreds+ of local
+   reviews.
+
+C. EDITORIAL — Time Out [city], The Infatuation, Eater city guides, NYT
+   "36 Hours in [city]", Conde Nast Traveler, AFAR, Bon Appétit, Lonely
+   Planet, Atlas Obscura. Cite the specific publication.
+
+D. LOCAL_PRESS_AND_VOICES — Named food creators currently covering the
+   region: Mark Wiens (Thailand/global), Sirin Manomaiphibul (Thailand),
+   Andrew Zimmern, Robbie Swinnerton (Japan), local English-language paper
+   food critics (Bangkok Post, Japan Times, etc.). Mention the creator/
+   outlet in recommendationSource.
+
+E. SOCIAL_HIDDEN_GEMS — Places that went viral on TikTok or Instagram in
+   the last 18 months (find via aggregator articles: BuzzFeed/Eater
+   "TikTokMadeMeEatIt" round-ups, Klook Insta-cafes lists, viral cafe
+   round-ups, r/[city] top recommendations). Also hawker stalls,
+   hole-in-the-wall legends, Atlas Obscura quirky picks.
+
+F. TRENDING_NOW — Newly opened (last 12–18 months), recently won an
+   award (current year), pop-up / chef's-table residencies, places with
+   surging reservation difficulty. Flag explicitly in recommendationSource
+   (e.g. "Opened Sept 2025", "Just won [award] 2026").
+
+ALSO: search in the LOCAL LANGUAGE too — Thai for Thailand, Japanese for
+Japan, etc. — local rankings are not in English and the best Wongnai/
+Tabelog picks won't appear in English-only search results.
+
+═══ END SOURCE COVERAGE ═══
+
 EXCLUDE GLOBAL/REGIONAL CHAINS — McDonald's, KFC, Burger King, Subway,
 Pizza Hut, Domino's, Papa John's, Pizza Company, Pizza Marzano, Starbucks,
 Costa, Krispy Kreme, Dunkin', etc. Better an empty category than chain-padded.
@@ -59,9 +104,12 @@ NAME INTEGRITY (CRITICAL): "name"/"nameEnglish" must be the venue display
 name. NEVER use a street address, "Moo X", "Soi Y", or coordinates as the
 name. If you can't find a real venue name, OMIT the entry.
 
-For each restaurant set "recommendationSource" to the specific authority
-where you found it (e.g. "Michelin Guide", "Time Out", "Wongnai", "r/Bangkok").
-"Local Favorite" or "Top-Rated" only as last fallback.
+For each restaurant set "recommendationSource" to the specific list/voice
+where you found it. Examples: "Asia's 50 Best 2025 #13", "Michelin Bib
+Gourmand 2025", "Mark Wiens 2024", "Time Out Bangkok 2025", "Wongnai
+Users' Choice 2024", "TikTok viral 2025 (Klook list)", "Atlas Obscura".
+"Local Favorite" / "Top-Rated" ONLY when no better source exists. Generic
+sources are a quality failure.
 
 For "googleMapsUrl": include the actual URL from search results, not a
 guessed one. Omit the field if you don't have one.
@@ -97,13 +145,61 @@ CATEGORIES (use EXACTLY these Hebrew titles):
 
 An attraction can appear in two categories if equally relevant.
 
+═══ SOURCE COVERAGE — THIS IS THE QUALITY BAR ═══
+Across the whole city result, pull from ALL of these source families. Each
+family should contribute ≥3 picks somewhere in the categories above:
+
+A. INTL_AUTHORITATIVE — Lonely Planet "Best in [year]", Conde Nast Traveler
+   "Hot List", National Geographic "Best of the World", Time "World's
+   Greatest Places", TripAdvisor Travelers' Choice, UNESCO World Heritage,
+   Monocle culture coverage. Tag the recommendationSource with the specific
+   list (e.g. "Lonely Planet 2025", "UNESCO World Heritage").
+
+B. LOCAL_RANKINGS — Klook Top, Viator Top Experiences, GetYourGuide Top,
+   the official Tourism Authority's picks for this country, and local-
+   language ranking platforms.
+
+C. EDITORIAL — Time Out [city], Atlas Obscura (especially hidden gems +
+   architectural oddities + unusual museums), AFAR, Travel + Leisure, NYT
+   Travel, BBC Travel, Frommer's, Fodor's, Lonely Planet articles. Cite
+   the specific publication.
+
+D. LOCAL_PRESS_AND_VOICES — Travel YouTubers currently covering the region
+   (Drew Binsky, Karl Rock, Sam Chui, Backpacker Steve, Mark Wiens for
+   food-adjacent), local English-language travel writers, tourism board
+   ambassadors. Mention the creator in recommendationSource.
+
+E. SOCIAL_HIDDEN_GEMS — Atlas Obscura hidden gems, Instagram-famous photo
+   spots (last 18 months), TikTok-viral spots surfaced via aggregator
+   coverage, r/[city] top recommendations, off-the-beaten-path forum
+   threads.
+
+F. TRENDING_NOW — Newly opened museums / exhibits / parks (last 18 months),
+   current-year festivals and seasonal events, new immersive experiences,
+   recently reopened heritage sites. Flag explicitly (e.g. "Opened Dec 2025").
+
+G. OUTDOOR_AND_ADVENTURE — National parks (with the official name + park
+   code), dive sites + snorkel reefs, hiking trails (AllTrails), kayak /
+   SUP routes, waterfalls, viewpoints. Especially important for islands
+   and rural destinations.
+
+H. FAMILY_FRIENDLY — Explicit pass for places that work with kids of
+   various ages — interactive museums, water parks, ethical animal
+   sanctuaries (e.g. Elephant Nature Park, NOT riding camps), themed
+   indoor playgrounds. Cross-reference family-travel guides.
+
+ALSO: search in the LOCAL LANGUAGE — local rankings are not in English.
+
+═══ END SOURCE COVERAGE ═══
+
 NAME INTEGRITY (CRITICAL): "name"/"nameEnglish" must be the venue display
 name (e.g. "Wat Pho", "Tiffany's Show Pattaya"). NEVER use a street address,
 "Moo X", or coordinates as the name. Omit if no real venue name found.
 
-"recommendationSource" = the specific source ("Lonely Planet", "Atlas Obscura",
-"UNESCO", "Time Out", local tourism board). "Top-Rated"/"Local Favorite" only
-as fallback.
+"recommendationSource" = the specific list/voice (e.g. "Lonely Planet 2025",
+"Atlas Obscura — Cool & Unusual", "UNESCO World Heritage", "Time Out [city]",
+"Drew Binsky 2024", "Opened Sept 2025"). Generic "Top-Rated"/"Local Favorite"
+is a quality failure — only as last resort.
 
 "googleMapsUrl": only the actual URL from search results — never fabricated.
 
