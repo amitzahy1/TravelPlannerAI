@@ -331,6 +331,97 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
     const [selectedCity, setSelectedCity] = useState<string>('all');
+
+    // Bulk "Refresh all from Google" — sequential enrichment with progress.
+    const [bulkRefreshing, setBulkRefreshing] = useState<null | 'saved' | 'ai'>(null);
+    const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, updated: 0, skippedCached: 0 });
+
+    const handleBulkRefreshSaved = async () => {
+        if (bulkRefreshing) return;
+        const flat = trip.restaurants.flatMap(cat => cat.restaurants.map(r => ({
+            id: r.id,
+            name: r.name,
+            lat: r.lat,
+            lng: r.lng,
+            googlePlaceId: r.googlePlaceId,
+            googleEnrichedAt: r.googleEnrichedAt,
+            _catId: cat.id,
+        })));
+        if (flat.length === 0) { toast.info('אין מקומות שמורים לרענון'); return; }
+        setBulkRefreshing('saved');
+        setBulkProgress({ current: 0, total: flat.length, updated: 0, skippedCached: 0 });
+        try {
+            const { bulkEnrichPlaces, PlacesKeyError } = await import('../services/placesService');
+            const outcome = await bulkEnrichPlaces(
+                flat,
+                (id, patch) => {
+                    const next = trip.restaurants.map(cat => ({
+                        ...cat,
+                        restaurants: cat.restaurants.map(r => r.id === id ? { ...r, ...patch } : r),
+                    }));
+                    onUpdateTrip({ ...trip, restaurants: next });
+                },
+                (s) => setBulkProgress(s),
+            );
+            if (outcome.stoppedOnQuota) {
+                toast.error(`הגעת למכסת היומית של Google. עודכנו ${outcome.updated}, ${outcome.skippedCached} כבר היו עדכניים. נסה שוב מחר.`);
+            } else {
+                toast.success(`רענון הסתיים · ${outcome.updated} עודכנו · ${outcome.skippedCached} כבר היו עדכניים · ${outcome.notFound} לא נמצאו ב-Google`);
+            }
+        } catch (err: any) {
+            const { PlacesKeyError } = await import('../services/placesService');
+            if (err instanceof PlacesKeyError) toast.error('Google Maps API key error — בדוק את ההגדרות');
+            else toast.error('נכשל לרענן. נסה שוב.');
+            console.error('[GooglePlaces] bulk refresh saved failed', err);
+        } finally {
+            setBulkRefreshing(null);
+        }
+    };
+
+    const handleBulkRefreshAi = async () => {
+        if (bulkRefreshing) return;
+        const flat = aiCategories.flatMap(cat => cat.restaurants.map(r => ({
+            id: r.id,
+            name: r.name,
+            lat: r.lat,
+            lng: r.lng,
+            googlePlaceId: r.googlePlaceId,
+            googleEnrichedAt: r.googleEnrichedAt,
+        })));
+        if (flat.length === 0) { toast.info('אין המלצות AI לרענון'); return; }
+        setBulkRefreshing('ai');
+        setBulkProgress({ current: 0, total: flat.length, updated: 0, skippedCached: 0 });
+        try {
+            const { bulkEnrichPlaces, PlacesKeyError } = await import('../services/placesService');
+            // Capture latest snapshot once, mutate it as patches arrive, persist at end.
+            let working = aiCategories;
+            const outcome = await bulkEnrichPlaces(
+                flat,
+                (id, patch) => {
+                    working = working.map(c => ({
+                        ...c,
+                        restaurants: c.restaurants.map(r => r.id === id ? { ...r, ...patch } : r),
+                    }));
+                    setAiCategories(working);
+                },
+                (s) => setBulkProgress(s),
+            );
+            persistAiRestaurants(working);
+            if (outcome.stoppedOnQuota) {
+                toast.error(`הגעת למכסת היומית של Google. עודכנו ${outcome.updated}, ${outcome.skippedCached} כבר היו עדכניים. נסה שוב מחר.`);
+            } else {
+                toast.success(`רענון הסתיים · ${outcome.updated} עודכנו · ${outcome.skippedCached} כבר היו עדכניים · ${outcome.notFound} לא נמצאו ב-Google`);
+            }
+        } catch (err: any) {
+            const { PlacesKeyError } = await import('../services/placesService');
+            if (err instanceof PlacesKeyError) toast.error('Google Maps API key error — בדוק את ההגדרות');
+            else toast.error('נכשל לרענן. נסה שוב.');
+            console.error('[GooglePlaces] bulk refresh AI failed', err);
+        } finally {
+            setBulkRefreshing(null);
+        }
+    };
+
     // New cross-cutting filters (apply to both list and map): cuisine/type,
     // price level, max walking minutes from any hotel.
     const [filterCuisines, setFilterCuisines] = useState<Set<string>>(new Set());
@@ -1802,17 +1893,37 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                         ]}
                     />
                 </div>
-                {activeTab === 'recommended' && (
+                <div className="flex items-center gap-2">
+                    {/* Bulk refresh from Google — visible on whichever tab is active. */}
                     <button
                         type="button"
-                        onClick={() => setSearchExpanded(v => !v)}
-                        aria-label={searchExpanded ? 'סגור חיפוש' : 'חפש מסעדה'}
-                        aria-expanded={searchExpanded}
-                        className={`flex items-center justify-center w-9 h-9 rounded-full border transition-all ${searchExpanded ? 'bg-orange-600 border-orange-600 text-white shadow' : 'bg-white border-slate-200 text-slate-500 hover:border-orange-300 hover:text-orange-600'}`}
+                        onClick={() => activeTab === 'my_list' ? handleBulkRefreshSaved() : handleBulkRefreshAi()}
+                        disabled={!!bulkRefreshing}
+                        title={activeTab === 'my_list' ? 'רענן את כל הרשימה שלי מ-Google' : 'רענן את כל ההמלצות מ-Google'}
+                        aria-label="רענן הכל מ-Google"
+                        className={`flex items-center gap-1.5 h-9 px-3 rounded-full border text-xs font-bold transition-all ${
+                            bulkRefreshing
+                                ? 'bg-blue-50 text-blue-700 border-blue-200 cursor-wait'
+                                : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+                        }`}
                     >
-                        {searchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+                        <RefreshCw className={`w-3.5 h-3.5 ${bulkRefreshing ? 'animate-spin' : ''}`} />
+                        {bulkRefreshing
+                            ? `${bulkProgress.current}/${bulkProgress.total}`
+                            : 'רענן הכל'}
                     </button>
-                )}
+                    {activeTab === 'recommended' && (
+                        <button
+                            type="button"
+                            onClick={() => setSearchExpanded(v => !v)}
+                            aria-label={searchExpanded ? 'סגור חיפוש' : 'חפש מסעדה'}
+                            aria-expanded={searchExpanded}
+                            className={`flex items-center justify-center w-9 h-9 rounded-full border transition-all ${searchExpanded ? 'bg-orange-600 border-orange-600 text-white shadow' : 'bg-white border-slate-200 text-slate-500 hover:border-orange-300 hover:text-orange-600'}`}
+                        >
+                            {searchExpanded ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Search input — expands only when the user opens it from the AI tab. */}

@@ -43,6 +43,14 @@
 const API_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 const PLACES_HOST = 'https://places.googleapis.com';
 
+// One-time boot log so the user can quickly check from the browser console
+// whether the build picked up the key. Truncates the value for safety.
+if (typeof window !== 'undefined') {
+  const present = !!API_KEY;
+  const preview = API_KEY ? `${API_KEY.slice(0, 6)}…${API_KEY.slice(-4)}` : '(missing)';
+  console.log(`[GooglePlaces] API key on boot: present=${present} preview=${preview}`);
+}
+
 const DETAILS_FIELD_MASK = [
   'id',
   'displayName',
@@ -103,13 +111,18 @@ const headers = (extraMask?: string): HeadersInit => {
 };
 
 async function handleResponse(res: Response): Promise<any> {
-  if (res.status === 429) throw new PlacesQuotaExceededError();
+  if (res.status === 429) {
+    console.warn('[GooglePlaces] 429 quota exceeded — daily cap reached, try again tomorrow');
+    throw new PlacesQuotaExceededError();
+  }
   if (res.status === 403) {
     const body = await res.text().catch(() => '');
+    console.error('[GooglePlaces] 403 forbidden — probably HTTP-referrer restriction blocking the current domain, or wrong API key. Body:', body.slice(0, 400));
     throw new PlacesKeyError(body.slice(0, 200));
   }
   if (!res.ok) {
     const body = await res.text().catch(() => '');
+    console.error(`[GooglePlaces] ${res.status} error:`, body.slice(0, 400));
     throw new Error(`Places API error ${res.status}: ${body.slice(0, 200)}`);
   }
   return res.json();
@@ -137,6 +150,7 @@ export async function findPlaceId(
     },
     maxResultCount: 1,
   };
+  console.log(`[GooglePlaces] findPlaceId → searchText`, { name, lat, lng });
   const res = await fetch(`${PLACES_HOST}/v1/places:searchText`, {
     method: 'POST',
     headers: headers(SEARCH_FIELD_MASK),
@@ -144,6 +158,7 @@ export async function findPlaceId(
   });
   const data = await handleResponse(res);
   const first = data?.places?.[0];
+  console.log(`[GooglePlaces] findPlaceId ← `, { name, foundId: first?.id ?? null, foundName: first?.displayName?.text });
   return first?.id ?? null;
 }
 
@@ -156,11 +171,20 @@ export async function findPlaceId(
  */
 export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
   if (!placeId) throw new Error('placeId is required');
+  console.log(`[GooglePlaces] getPlaceDetails →`, placeId);
   const res = await fetch(`${PLACES_HOST}/v1/places/${encodeURIComponent(placeId)}`, {
     method: 'GET',
     headers: headers(),
   });
   const data = await handleResponse(res);
+  console.log(`[GooglePlaces] getPlaceDetails ←`, {
+    placeId,
+    displayName: data?.displayName?.text,
+    rating: data?.rating,
+    reviewCount: data?.userRatingCount,
+    hasPhotos: !!(data?.photos?.length),
+    hasHours: !!(data?.regularOpeningHours?.weekdayDescriptions?.length),
+  });
 
   // Resolve first photo into a 800px CDN URL. We pass the API key in the
   // query string because the photo media endpoint follows a 302 to a Google
@@ -231,6 +255,74 @@ export interface EnrichmentPatch {
   // (caller decides whether to apply via the merge helper).
   googleRating?: number;
   googleReviewCount?: number;
+}
+
+export interface BulkEnrichInput extends EnrichableInput {
+  id: string;
+}
+
+export interface BulkEnrichOutcome {
+  updated: number;
+  skippedCached: number;
+  notFound: number;
+  failed: number;
+  stoppedOnQuota: boolean;
+}
+
+/**
+ * Sequentially enrich a list of saved places. Skips items that were enriched
+ * within the last 30 days (zero cost). Adds a small delay between calls so we
+ * stay under the 60/minute quota cap. Stops cleanly on PlacesQuotaExceededError
+ * so a partial result is still useful — the rest can resume tomorrow.
+ *
+ * The `onPatch` callback is called once per successfully-enriched item with
+ * the place id and the EnrichmentPatch. The caller is responsible for merging
+ * the patch into its data store.
+ */
+export async function bulkEnrichPlaces(
+  places: BulkEnrichInput[],
+  onPatch: (id: string, patch: EnrichmentPatch) => void,
+  onProgress?: (state: { current: number; total: number; updated: number; skippedCached: number }) => void,
+  options: { delayMs?: number; force?: boolean } = {}
+): Promise<BulkEnrichOutcome> {
+  const delayMs = options.delayMs ?? 600;
+  const outcome: BulkEnrichOutcome = {
+    updated: 0,
+    skippedCached: 0,
+    notFound: 0,
+    failed: 0,
+    stoppedOnQuota: false,
+  };
+  for (let i = 0; i < places.length; i++) {
+    const place = places[i];
+    onProgress?.({ current: i, total: places.length, updated: outcome.updated, skippedCached: outcome.skippedCached });
+    try {
+      const patch = await enrichSavedPlace(place, { force: options.force });
+      if (patch) {
+        onPatch(place.id, patch);
+        outcome.updated++;
+      } else if (place.googlePlaceId && !isEnrichmentStale(place.googleEnrichedAt)) {
+        outcome.skippedCached++;
+      } else {
+        outcome.notFound++;
+      }
+    } catch (err: any) {
+      if (err instanceof PlacesQuotaExceededError) {
+        outcome.stoppedOnQuota = true;
+        onProgress?.({ current: i, total: places.length, updated: outcome.updated, skippedCached: outcome.skippedCached });
+        return outcome;
+      }
+      // PlacesKeyError or unexpected error — also stop, surface to caller.
+      if (err instanceof PlacesKeyError) throw err;
+      outcome.failed++;
+      console.warn('[GooglePlaces] bulk enrich failed for', place.name, err);
+    }
+    if (i < places.length - 1 && delayMs > 0) {
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+  onProgress?.({ current: places.length, total: places.length, updated: outcome.updated, skippedCached: outcome.skippedCached });
+  return outcome;
 }
 
 /**
