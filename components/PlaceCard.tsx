@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, MapIcon, Trophy, Plus, Navigation, AlertTriangle } from 'lucide-react';
+import { Star, MapIcon, Trophy, Plus, Navigation, AlertTriangle, RefreshCw } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
 import { getEnglishName } from '../utils/displayName';
@@ -23,6 +23,12 @@ export interface PlaceCardProps {
         verification_needed?: boolean;
         geocodeFailed?: boolean;
         verificationStatus?: 'verified' | 'ambiguous' | 'not_found' | 'manual';
+        /** Optional CDN photo URL (e.g. Google Places). Takes precedence over the stock/Wiki photo. */
+        photoUrl?: string;
+        /** Optional Google Places refresh — only render the 🔄 button if provided. */
+        onRefreshGoogle?: () => Promise<void>;
+        /** Timestamp of last Google enrichment (epoch ms). Used to show "Fresh"/"Stale" indicator. */
+        googleEnrichedAt?: number;
 }
 
 /**
@@ -48,7 +54,11 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         verification_needed,
         geocodeFailed,
         verificationStatus,
+        photoUrl,
+        onRefreshGoogle,
+        googleEnrichedAt,
 }) => {
+        const [refreshing, setRefreshing] = useState(false);
         // Same OR as the modal banner so the badge and the "כדאי לבדוק" panel
         // appear together — never one without the other.
         const showVerificationBadge = !!verification_needed || !!geocodeFailed
@@ -66,26 +76,26 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                 ? getFoodImage(searchName, description, tags)
                 : getAttractionImage(searchName, description, tags);
 
-        const [imgSrc, setImgSrc] = useState(initialUrl);
-        const [realPhotoTried, setRealPhotoTried] = useState(false);
+        // Google Places photo wins over stock + Wikipedia fallback when present.
+        const [imgSrc, setImgSrc] = useState(photoUrl || initialUrl);
+        const [realPhotoTried, setRealPhotoTried] = useState(!!photoUrl);
 
         useEffect(() => {
-                setImgSrc(initialUrl);
-                setRealPhotoTried(false);
-        }, [initialUrl]);
+                setImgSrc(photoUrl || initialUrl);
+                setRealPhotoTried(!!photoUrl);
+        }, [photoUrl, initialUrl]);
 
         // Try to upgrade the stock-photo fallback to a real photo from Wikipedia.
-        // Pass the explicit place type so the resolver validates results against
-        // it — 'Sorn' the K-pop singer doesn't get returned when we're asking
-        // about 'Sorn' the Bangkok restaurant.
+        // Skip entirely if Google Places already gave us a photo.
         useEffect(() => {
+                if (photoUrl) return;
                 let cancelled = false;
                 resolveRealPlaceImage(searchName, location, type).then(real => {
                         if (!cancelled && real) setImgSrc(real);
                         if (!cancelled) setRealPhotoTried(true);
                 });
                 return () => { cancelled = true; };
-        }, [searchName, location, type]);
+        }, [photoUrl, searchName, location, type]);
 
         const handleError = () => {
                 // Self-Healing Fallback — if the Wikipedia image 404s, go back to
@@ -142,6 +152,24 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                         )}
                                 </div>
                                 <div className="flex gap-1 pointer-events-auto flex-shrink-0">
+                                        {onRefreshGoogle && (
+                                                <button
+                                                        onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                if (refreshing) return;
+                                                                setRefreshing(true);
+                                                                try { await onRefreshGoogle(); } finally { setRefreshing(false); }
+                                                        }}
+                                                        disabled={refreshing}
+                                                        title={googleEnrichedAt
+                                                                ? `רענון מ-Google (עודכן לאחרונה: ${new Date(googleEnrichedAt).toLocaleDateString('he-IL')})`
+                                                                : 'רענון מ-Google Maps'}
+                                                        className={`w-7 h-7 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/15 rounded-full text-white hover:bg-white hover:text-slate-900 transition-all active:scale-90 ${refreshing ? 'opacity-60 cursor-wait' : ''}`}
+                                                        aria-label="רענון מ-Google Maps"
+                                                >
+                                                        <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+                                                </button>
+                                        )}
                                         <a
                                                 href={mapsUrl}
                                                 target="_blank"

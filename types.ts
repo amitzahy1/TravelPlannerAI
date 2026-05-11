@@ -251,6 +251,24 @@ export interface Restaurant {
   cuisine?: string;
   price?: string;
   region?: string;
+
+  // Google Places (New) enrichment — populated on demand via the
+  // "🔄 Refresh from Google" button. Cached in Firestore for 30 days;
+  // see services/placesService.ts for cost discipline.
+  googlePlaceId?: string;
+  googleEnrichedAt?: number; // epoch ms — refetch if older than 30 days
+  googlePhotoUrl?: string;   // resolved CDN URL, safe to render
+  googleOpeningHours?: string[]; // weekday descriptions ("Monday: 9 AM – 10 PM")
+  googleOpenNow?: boolean;
+  googlePhone?: string;
+  googleWebsiteUri?: string;
+  googleMapsUriCanonical?: string;
+  googlePriceLevel?:
+    | 'PRICE_LEVEL_FREE'
+    | 'PRICE_LEVEL_INEXPENSIVE'
+    | 'PRICE_LEVEL_MODERATE'
+    | 'PRICE_LEVEL_EXPENSIVE'
+    | 'PRICE_LEVEL_VERY_EXPENSIVE';
 }
 
 export interface RestaurantCategory {
@@ -303,6 +321,23 @@ export interface Attraction {
   activity_type?: "Adventure" | "Culture" | "Relaxation" | "Shopping" | string;
   duration?: string; // "1-2 hours"
   visual_tag?: string; // "temple_gold", "beach_sunset" for Image Mapper
+
+  // Google Places (New) enrichment — same shape as Restaurant. Cached in
+  // Firestore for 30 days. See services/placesService.ts for cost discipline.
+  googlePlaceId?: string;
+  googleEnrichedAt?: number;
+  googlePhotoUrl?: string;
+  googleOpeningHours?: string[];
+  googleOpenNow?: boolean;
+  googlePhone?: string;
+  googleWebsiteUri?: string;
+  googleMapsUriCanonical?: string;
+  googlePriceLevel?:
+    | 'PRICE_LEVEL_FREE'
+    | 'PRICE_LEVEL_INEXPENSIVE'
+    | 'PRICE_LEVEL_MODERATE'
+    | 'PRICE_LEVEL_EXPENSIVE'
+    | 'PRICE_LEVEL_VERY_EXPENSIVE';
 }
 
 export interface AttractionCategory {

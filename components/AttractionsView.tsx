@@ -1865,6 +1865,41 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
 
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
+    const [refreshingGoogle, setRefreshingGoogle] = useState(false);
+
+    const handleGoogleRefresh = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (refreshingGoogle) return;
+        setRefreshingGoogle(true);
+        try {
+            const { enrichSavedPlace } = await import('../services/placesService');
+            const patch = await enrichSavedPlace({
+                name: data.name,
+                lat: data.lat,
+                lng: data.lng,
+                googlePlaceId: data.googlePlaceId,
+                googleEnrichedAt: data.googleEnrichedAt,
+            }, { force: true });
+            if (!patch) {
+                toast.info('לא נמצא תוצאה ב-Google Maps עבור המקום הזה');
+                return;
+            }
+            onUpdate(patch as Partial<Attraction>);
+            toast.success(`המקום עודכן מ-Google${patch.googleRating ? ' · ★ ' + patch.googleRating : ''}`);
+        } catch (err: any) {
+            const { PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
+            if (err instanceof PlacesQuotaExceededError) {
+                toast.error(err.message);
+            } else if (err instanceof PlacesKeyError) {
+                toast.error('Google Maps API key error — בדוק את ההגדרות');
+            } else {
+                toast.error('נכשל לרענן מ-Google. נסה שוב.');
+            }
+            console.error('[GooglePlaces] refresh failed', err);
+        } finally {
+            setRefreshingGoogle(false);
+        }
+    };
 
     // Use intelligent image mapper
     // Don't pass data.location — "Bangkok, Thailand" would push everything
@@ -1880,9 +1915,13 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
     // it on the saved item. After the first successful resolve, every
     // future render (and every other device) reads imageUrl directly with
     // no network call.
-    const [resolvedSrc, setResolvedSrc] = useState<string>(data.imageUrl || mappedUrl);
+    const [resolvedSrc, setResolvedSrc] = useState<string>(data.googlePhotoUrl || data.imageUrl || mappedUrl);
 
     useEffect(() => {
+        if (data.googlePhotoUrl) {
+            setResolvedSrc(data.googlePhotoUrl);
+            return;
+        }
         if (data.imageUrl) {
             setResolvedSrc(data.imageUrl);
             return;
@@ -1963,6 +2002,16 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
                         className={`p-1.5 rounded-lg transition-colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'}`}
                     >
                         <Heart className={`w-4 h-4 ${data.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+                    </button>
+                    <button
+                        onClick={handleGoogleRefresh}
+                        disabled={refreshingGoogle}
+                        title={data.googleEnrichedAt
+                            ? `רענון מ-Google (עודכן לאחרונה: ${new Date(data.googleEnrichedAt).toLocaleDateString('he-IL')})`
+                            : 'רענון מ-Google Maps (פעם ראשונה — אחת ל-30 יום)'}
+                        className={`p-1.5 rounded-lg transition-colors ${data.googlePlaceId ? 'text-blue-500 hover:bg-blue-50' : 'text-slate-300 hover:bg-slate-50 hover:text-slate-400'} ${refreshingGoogle ? 'opacity-60 cursor-wait' : ''}`}
+                    >
+                        <RefreshCw className={`w-4 h-4 ${refreshingGoogle ? 'animate-spin' : ''}`} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(); }}

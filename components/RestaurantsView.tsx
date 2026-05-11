@@ -2281,6 +2281,41 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
 
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
+    const [refreshingGoogle, setRefreshingGoogle] = useState(false);
+
+    const handleGoogleRefresh = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (refreshingGoogle) return;
+        setRefreshingGoogle(true);
+        try {
+            const { enrichSavedPlace, PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
+            const patch = await enrichSavedPlace({
+                name: data.name,
+                lat: data.lat,
+                lng: data.lng,
+                googlePlaceId: data.googlePlaceId,
+                googleEnrichedAt: data.googleEnrichedAt,
+            }, { force: true });
+            if (!patch) {
+                toast.info('לא נמצא תוצאה ב-Google Maps עבור המקום הזה');
+                return;
+            }
+            onUpdate(patch as Partial<Restaurant>);
+            toast.success(`המקום עודכן מ-Google${patch.googleRating ? ' · ★ ' + patch.googleRating : ''}`);
+        } catch (err: any) {
+            const { PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
+            if (err instanceof PlacesQuotaExceededError) {
+                toast.error(err.message);
+            } else if (err instanceof PlacesKeyError) {
+                toast.error('Google Maps API key error — בדוק את ההגדרות');
+            } else {
+                toast.error('נכשל לרענן מ-Google. נסה שוב.');
+            }
+            console.error('[GooglePlaces] refresh failed', err);
+        } finally {
+            setRefreshingGoogle(false);
+        }
+    };
 
     // Intelligent Mappers
     // Don't include data.location — "Bangkok, Thailand" would force every
@@ -2290,12 +2325,18 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
     const { url: mappedUrl, label: visualLabel } = getFoodImage(data.name || '', data.description || '', tags);
     const visuals = getCuisineVisuals(data.cuisine || visualLabel);
 
-    // Fallback Image. If a real photo has already been resolved and persisted
-    // (data.imageUrl), use it; otherwise fall back to the category stock and
-    // try to upgrade asynchronously.
-    const [resolvedSrc, setResolvedSrc] = useState<string>(data.imageUrl || mappedUrl);
+    // Fallback Image. Priority order:
+    //   1. data.googlePhotoUrl   — fresh Google Places photo (user-refreshed)
+    //   2. data.imageUrl         — previously resolved Wikipedia/Wikidata image
+    //   3. mappedUrl             — cuisine-based stock photo
+    // Then async-upgrade from Wikipedia only if no Google photo set yet.
+    const [resolvedSrc, setResolvedSrc] = useState<string>(data.googlePhotoUrl || data.imageUrl || mappedUrl);
 
     useEffect(() => {
+        if (data.googlePhotoUrl) {
+            setResolvedSrc(data.googlePhotoUrl);
+            return;
+        }
         if (data.imageUrl) {
             setResolvedSrc(data.imageUrl);
             return;
@@ -2381,6 +2422,16 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
                         className={`p-1.5 rounded-lg transition-colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'}`}
                     >
                         <Heart className={`w-4 h-4 ${data.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+                    </button>
+                    <button
+                        onClick={handleGoogleRefresh}
+                        disabled={refreshingGoogle}
+                        title={data.googleEnrichedAt
+                            ? `רענון מ-Google (עודכן לאחרונה: ${new Date(data.googleEnrichedAt).toLocaleDateString('he-IL')})`
+                            : 'רענון מ-Google Maps (פעם ראשונה — אחת ל-30 יום)'}
+                        className={`p-1.5 rounded-lg transition-colors ${data.googlePlaceId ? 'text-blue-500 hover:bg-blue-50' : 'text-slate-300 hover:bg-slate-50 hover:text-slate-400'} ${refreshingGoogle ? 'opacity-60 cursor-wait' : ''}`}
+                    >
+                        <RefreshCw className={`w-4 h-4 ${refreshingGoogle ? 'animate-spin' : ''}`} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(); }}
