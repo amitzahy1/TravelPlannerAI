@@ -210,16 +210,9 @@ export const LayoutFixed: React.FC<LayoutProps> = ({
                                                 <div className="flex items-center gap-2 flex-shrink-0">
                                                         <LoginButton />
 
-                                                        {/* Mobile: quick-create new trip — always visible so users
-                                                            never have to dig through the menu to start one. */}
-                                                        <button
-                                                                onClick={() => onOpenAdmin()}
-                                                                className="lg:hidden p-2.5 bg-blue-600 rounded-xl text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 flex-shrink-0 shadow-md shadow-blue-500/30"
-                                                                aria-label="צור טיול חדש"
-                                                                title="טיול חדש"
-                                                        >
-                                                                <Plus className="w-5 h-5" aria-hidden="true" />
-                                                        </button>
+                                                        {/* Mobile "+ new trip" button removed — same action lives in
+                                                            the menu drawer + trips dropdown, so the standalone
+                                                            mobile button was redundant clutter. */}
 
                                                         {/* Mobile: persistent mailbox surface — only when there
                                                             are actual pending items. Empty-state discovery happens

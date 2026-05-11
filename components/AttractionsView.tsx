@@ -19,6 +19,7 @@ import { canEditTrip, isTripOwner, isViewerOnly } from '../utils/tripPermissions
 import { useAuth } from '../contexts/AuthContext';
 import { getUserPremiumState, markPremiumRunUsed, getCategoryRefreshes, incrementCategoryRefresh, CategoryRefreshEntry } from '../services/firestoreService';
 import { getLocalAI, setLocalAI } from '../utils/localTripAI';
+import { isAdmin } from '../utils/isAdmin';
 import { findClosedPlaces } from '../utils/closedPlaceCheck';
 
 import { cleanTextForMap } from '../utils/textUtils';
@@ -72,36 +73,13 @@ const AttractionRecommendationCard: React.FC<{
     isAdded: boolean,
     onAdd: (rec: any, cat: string) => void,
     onClick: () => void,
-    onRefreshGoogle?: (patch: Partial<Attraction>) => void,
-}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick, onRefreshGoogle }) => {
+}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick }) => {
     const nameForMap = cleanTextForMap(rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
     const cityForMap = cleanTextForMap(rec.verifiedCity) || cleanTextForMap(rec.region) || cleanTextForMap(tripDestinationEnglish || tripDestination);
     const countryCode = detectCountryCode(rec.verifiedCountry, tripDestinationEnglish, tripDestination);
     const mapsUrl = safeMapsUrl(rec.googleMapsUrl, nameForMap, locationForMap, cityForMap, countryCode);
     const visuals = getAttractionVisuals(rec.type);
-
-    const handleRefreshGoogle = onRefreshGoogle ? async () => {
-        try {
-            const { enrichSavedPlace, PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
-            const patch = await enrichSavedPlace({
-                name: rec.name,
-                lat: rec.lat,
-                lng: rec.lng,
-                googlePlaceId: rec.googlePlaceId,
-                googleEnrichedAt: rec.googleEnrichedAt,
-            }, { force: true });
-            if (!patch) { toast.info('לא נמצא תוצאה ב-Google Maps עבור המקום הזה'); return; }
-            onRefreshGoogle(patch as Partial<Attraction>);
-            toast.success(`המקום עודכן מ-Google${patch.googleRating ? ' · ★ ' + patch.googleRating : ''}`);
-        } catch (err: any) {
-            const { PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
-            if (err instanceof PlacesQuotaExceededError) toast.error(err.message);
-            else if (err instanceof PlacesKeyError) toast.error('Google Maps API key error — בדוק את ההגדרות');
-            else toast.error('נכשל לרענן מ-Google. נסה שוב.');
-            console.error('[GooglePlaces] refresh failed', err);
-        }
-    } : undefined;
 
     return (
         <PlaceCard
@@ -122,8 +100,7 @@ const AttractionRecommendationCard: React.FC<{
             geocodeFailed={rec.geocodeFailed}
             verificationStatus={rec.verificationStatus}
             photoUrl={rec.googlePhotoUrl}
-            onRefreshGoogle={handleRefreshGoogle}
-            googleEnrichedAt={rec.googleEnrichedAt}
+            googleNotFound={rec.googleNotFound}
         />
     );
 };
@@ -198,9 +175,39 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         persistAiAttractions(next);
     };
 
+    // Admin-gated controls (bulk refresh, delete-all-not-found).
+    const userIsAdmin = isAdmin(user);
+
     // Bulk "Refresh all from Google" — sequential enrichment with progress.
     const [bulkRefreshing, setBulkRefreshing] = useState<null | 'saved' | 'ai'>(null);
     const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, updated: 0, skippedCached: 0 });
+    const [confirmDeleteNotFound, setConfirmDeleteNotFound] = useState(false);
+
+    const notFoundCount = useMemo(() => {
+        const list = activeTab === 'my_list'
+            ? trip.attractions.flatMap(c => c.attractions)
+            : aiCategories.flatMap(c => c.attractions);
+        return list.filter(a => (a as any).googleNotFound).length;
+    }, [activeTab, trip.attractions, aiCategories]);
+
+    const handleDeleteAllNotFound = () => {
+        if (activeTab === 'my_list') {
+            const next = trip.attractions.map(cat => ({
+                ...cat,
+                attractions: cat.attractions.filter(a => !(a as any).googleNotFound),
+            }));
+            onUpdateTrip({ ...trip, attractions: next });
+        } else {
+            const next = aiCategories.map(c => ({
+                ...c,
+                attractions: c.attractions.filter(a => !(a as any).googleNotFound),
+            }));
+            setAiCategories(next);
+            persistAiAttractions(next);
+        }
+        toast.success(`נמחקו ${notFoundCount} אטרקציות שלא נמצאו ב-Google Maps`);
+        setConfirmDeleteNotFound(false);
+    };
 
     const handleBulkRefreshSaved = async () => {
         if (bulkRefreshing) return;
@@ -1456,24 +1463,40 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                         ]}
                     />
                 </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => activeTab === 'my_list' ? handleBulkRefreshSaved() : handleBulkRefreshAi()}
-                        disabled={!!bulkRefreshing}
-                        title={activeTab === 'my_list' ? 'רענן את כל הרשימה שלי מ-Google' : 'רענן את כל ההמלצות מ-Google'}
-                        aria-label="רענן הכל מ-Google"
-                        className={`flex items-center gap-1.5 h-9 px-3 rounded-full border text-xs font-bold transition-all ${
-                            bulkRefreshing
-                                ? 'bg-blue-50 text-blue-700 border-blue-200 cursor-wait'
-                                : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
-                        }`}
-                    >
-                        <RefreshCw className={`w-3.5 h-3.5 ${bulkRefreshing ? 'animate-spin' : ''}`} />
-                        {bulkRefreshing
-                            ? `${bulkProgress.current}/${bulkProgress.total}`
-                            : 'רענן הכל'}
-                    </button>
+                <div className="flex items-center gap-2 min-w-0 flex-shrink">
+                    {userIsAdmin && (
+                        <button
+                            type="button"
+                            onClick={() => activeTab === 'my_list' ? handleBulkRefreshSaved() : handleBulkRefreshAi()}
+                            disabled={!!bulkRefreshing}
+                            title={activeTab === 'my_list' ? 'רענן את כל הרשימה שלי מ-Google' : 'רענן את כל ההמלצות מ-Google'}
+                            aria-label="רענן הכל מ-Google"
+                            className={`flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-full border text-xs font-bold transition-all flex-shrink-0 ${
+                                bulkRefreshing
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200 cursor-wait'
+                                    : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+                            }`}
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 flex-shrink-0 ${bulkRefreshing ? 'animate-spin' : ''}`} />
+                            <span className="hidden sm:inline">
+                                {bulkRefreshing ? `${bulkProgress.current}/${bulkProgress.total}` : 'רענן הכל'}
+                            </span>
+                            {bulkRefreshing && <span className="sm:hidden text-[10px]">{bulkProgress.current}</span>}
+                        </button>
+                    )}
+                    {userIsAdmin && notFoundCount > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setConfirmDeleteNotFound(true)}
+                            title={`מחק ${notFoundCount} אטרקציות שלא נמצאו ב-Google Maps`}
+                            aria-label="מחק את כל הלא-נמצאו"
+                            className="flex items-center gap-1 h-9 px-2.5 sm:px-3 rounded-full border border-red-200 bg-white text-red-600 text-xs font-bold hover:bg-red-50 flex-shrink-0"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">מחק לא-נמצאו</span>
+                            <span className="text-[10px]">{notFoundCount}</span>
+                        </button>
+                    )}
                     {activeTab === 'recommended' && (
                         <button
                             type="button"
@@ -1624,7 +1647,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 <div className="space-y-3 animate-fade-in">
                     <div className="flex justify-between items-center"><h3 className="text-base font-black text-slate-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-2xs text-slate-500 underline">נקה</button></div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {searchResults.map(res => <AttractionRecommendationCard key={res.id} rec={res} tripDestination={trip.destination} isAdded={addedIds.has(res.id) || trip.attractions.some(c => c.attractions.some(a => a.name === res.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(res)} onRefreshGoogle={(patch) => applyAiAttractionPatch(res.id, patch)} />)}
+                        {searchResults.map(res => <AttractionRecommendationCard key={res.id} rec={res} tripDestination={trip.destination} isAdded={addedIds.has(res.id) || trip.attractions.some(c => c.attractions.some(a => a.name === res.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(res)} />)}
                     </div>
                 </div>
             )}
@@ -1938,7 +1961,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                             )}
 
                                             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                                                {filteredRecommendations.map(rec => <AttractionRecommendationCard key={rec.id} rec={rec} tripDestination={trip.destination} isAdded={addedIds.has(rec.id) || trip.attractions.some(c => c.attractions.some(a => a.name === rec.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(rec)} onRefreshGoogle={(patch) => applyAiAttractionPatch(rec.id, patch)} />)}
+                                                {filteredRecommendations.map(rec => <AttractionRecommendationCard key={rec.id} rec={rec} tripDestination={trip.destination} isAdded={addedIds.has(rec.id) || trip.attractions.some(c => c.attractions.some(a => a.name === rec.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(rec)} />)}
                                             </div>
                                         </>
                                     )}
@@ -1956,6 +1979,20 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                     onClose={() => setSelectedPlace(null)}
                     isAdded={trip.attractions.some(c => c.attractions.some(a => a.name === selectedPlace?.name))}
                     onAddToPlan={() => handleToggleRec(selectedPlace, selectedPlace?.categoryTitle || 'תכנון טיול')}
+                    onRefreshGoogle={(patch) => {
+                        const idMatch = (a: { id: string }) => a.id === selectedPlace.id;
+                        const inSaved = trip.attractions.some(c => c.attractions.some(idMatch));
+                        if (inSaved) {
+                            const nextSaved = trip.attractions.map(cat => ({
+                                ...cat,
+                                attractions: cat.attractions.map(a => idMatch(a) ? { ...a, ...patch } : a),
+                            }));
+                            onUpdateTrip({ ...trip, attractions: nextSaved });
+                        } else {
+                            applyAiAttractionPatch(selectedPlace.id, patch);
+                        }
+                        setSelectedPlace(prev => prev ? { ...prev, ...patch } : prev);
+                    }}
                 />
             )}
 
@@ -1977,6 +2014,16 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 cancelText="ביטול"
                 onConfirm={() => setShowRefreshLimitModal(false)}
                 onClose={() => setShowRefreshLimitModal(false)}
+            />
+            <ConfirmModal
+                isOpen={confirmDeleteNotFound}
+                title={`למחוק ${notFoundCount} אטרקציות שלא נמצאו ב-Google Maps?`}
+                message="האטרקציות הללו לא נמצאו בחיפוש של Google Places. ייתכן שהן סגורות או לא קיימות. הפעולה אינה ניתנת לביטול."
+                confirmText="מחק הכל"
+                cancelText="ביטול"
+                isDangerous
+                onConfirm={handleDeleteAllNotFound}
+                onClose={() => setConfirmDeleteNotFound(false)}
             />
             <ConfirmModal
                 isOpen={!!confirmDeleteId}
@@ -2019,41 +2066,6 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
 
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
-    const [refreshingGoogle, setRefreshingGoogle] = useState(false);
-
-    const handleGoogleRefresh = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (refreshingGoogle) return;
-        setRefreshingGoogle(true);
-        try {
-            const { enrichSavedPlace } = await import('../services/placesService');
-            const patch = await enrichSavedPlace({
-                name: data.name,
-                lat: data.lat,
-                lng: data.lng,
-                googlePlaceId: data.googlePlaceId,
-                googleEnrichedAt: data.googleEnrichedAt,
-            }, { force: true });
-            if (!patch) {
-                toast.info('לא נמצא תוצאה ב-Google Maps עבור המקום הזה');
-                return;
-            }
-            onUpdate(patch as Partial<Attraction>);
-            toast.success(`המקום עודכן מ-Google${patch.googleRating ? ' · ★ ' + patch.googleRating : ''}`);
-        } catch (err: any) {
-            const { PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
-            if (err instanceof PlacesQuotaExceededError) {
-                toast.error(err.message);
-            } else if (err instanceof PlacesKeyError) {
-                toast.error('Google Maps API key error — בדוק את ההגדרות');
-            } else {
-                toast.error('נכשל לרענן מ-Google. נסה שוב.');
-            }
-            console.error('[GooglePlaces] refresh failed', err);
-        } finally {
-            setRefreshingGoogle(false);
-        }
-    };
 
     // Use intelligent image mapper
     // Don't pass data.location — "Bangkok, Thailand" would push everything
@@ -2143,6 +2155,15 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
                                     {data.rating}
                                 </div>
                             )}
+                            {data.googleNotFound && (
+                                <div
+                                    title="לא נמצא ב-Google Maps — ייתכן שהמקום סגור או לא קיים"
+                                    className="flex items-center gap-0.5 text-2xs font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded"
+                                >
+                                    <X className="w-3 h-3" />
+                                    <span>לא נמצא</span>
+                                </div>
+                            )}
                         </div>
 
                         <p className="text-xs text-slate-400 truncate mt-1">{data.description || data.location}</p>
@@ -2156,20 +2177,6 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
                         className={`p-1.5 rounded-lg transition-colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'}`}
                     >
                         <Heart className={`w-4 h-4 ${data.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-                    </button>
-                    <button
-                        onClick={handleGoogleRefresh}
-                        disabled={refreshingGoogle}
-                        title={data.googleEnrichedAt
-                            ? `רענון מ-Google (עודכן לאחרונה: ${new Date(data.googleEnrichedAt).toLocaleDateString('he-IL')})`
-                            : 'רענון מ-Google Maps (פעם ראשונה — אחת ל-30 יום)'}
-                        className={`p-1.5 rounded-lg transition-colors border ${
-                            data.googlePlaceId
-                                ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
-                                : 'bg-white text-blue-500 border-blue-200 hover:bg-blue-50'
-                        } ${refreshingGoogle ? 'opacity-60 cursor-wait' : ''}`}
-                    >
-                        <RefreshCw className={`w-4 h-4 ${refreshingGoogle ? 'animate-spin' : ''}`} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(); }}

@@ -269,6 +269,10 @@ export interface Restaurant {
     | 'PRICE_LEVEL_MODERATE'
     | 'PRICE_LEVEL_EXPENSIVE'
     | 'PRICE_LEVEL_VERY_EXPENSIVE';
+  /** Set when Google Places search returned no match for this name + coords.
+   *  Surfaces as a small red X badge in the UI. Re-tries after 30 days via
+   *  the same stale-cache logic that gates normal enrichment. */
+  googleNotFound?: boolean;
 }
 
 export interface RestaurantCategory {
@@ -338,6 +342,8 @@ export interface Attraction {
     | 'PRICE_LEVEL_MODERATE'
     | 'PRICE_LEVEL_EXPENSIVE'
     | 'PRICE_LEVEL_VERY_EXPENSIVE';
+  /** Set when Google Places search returned no match. See Restaurant.googleNotFound. */
+  googleNotFound?: boolean;
 }
 
 export interface AttractionCategory {

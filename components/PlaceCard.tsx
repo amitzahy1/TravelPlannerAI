@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, MapIcon, Trophy, Plus, Navigation, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Star, MapIcon, Trophy, Plus, Navigation, AlertTriangle, X } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
 import { getEnglishName } from '../utils/displayName';
@@ -25,10 +25,8 @@ export interface PlaceCardProps {
         verificationStatus?: 'verified' | 'ambiguous' | 'not_found' | 'manual';
         /** Optional CDN photo URL (e.g. Google Places). Takes precedence over the stock/Wiki photo. */
         photoUrl?: string;
-        /** Optional Google Places refresh — only render the 🔄 button if provided. */
-        onRefreshGoogle?: () => Promise<void>;
-        /** Timestamp of last Google enrichment (epoch ms). Used to show "Fresh"/"Stale" indicator. */
-        googleEnrichedAt?: number;
+        /** Set when Google Places couldn't find this place — shows a small X badge. */
+        googleNotFound?: boolean;
 }
 
 /**
@@ -55,10 +53,8 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
         geocodeFailed,
         verificationStatus,
         photoUrl,
-        onRefreshGoogle,
-        googleEnrichedAt,
+        googleNotFound,
 }) => {
-        const [refreshing, setRefreshing] = useState(false);
         // Same OR as the modal banner so the badge and the "כדאי לבדוק" panel
         // appear together — never one without the other.
         const showVerificationBadge = !!verification_needed || !!geocodeFailed
@@ -137,9 +133,18 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                  like "FINE DINING 💎" / "MICHELIN GUIDE". */}
                         <div className="absolute top-2 inset-x-2 flex items-start justify-between gap-1.5 z-30 pointer-events-none">
                                 <div className="flex items-center gap-1 min-w-0 flex-1">
-                                        <span dir="ltr" className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[9px] font-black text-white uppercase tracking-wide truncate text-center">
+                                        <span dir="ltr" className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[9px] font-black text-white uppercase tracking-wide truncate">
                                                 {visualLabel}
                                         </span>
+                                        {googleNotFound && (
+                                                <span
+                                                        title="לא נמצא ב-Google Maps — ייתכן שהמקום סגור או לא קיים"
+                                                        aria-label="לא נמצא ב-Google Maps"
+                                                        className="flex items-center px-1.5 py-0.5 rounded-md backdrop-blur-md bg-red-500/85 border border-red-300/70 text-[8.5px] font-black text-white flex-shrink-0"
+                                                >
+                                                        <X className="w-2.5 h-2.5" />
+                                                </span>
+                                        )}
                                         {showVerificationBadge && (
                                                 <span
                                                         title="כדאי לוודא שעות פתיחה / זמינות לפני הביקור"
@@ -152,24 +157,6 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                         )}
                                 </div>
                                 <div className="flex gap-1 pointer-events-auto flex-shrink-0">
-                                        {onRefreshGoogle && (
-                                                <button
-                                                        onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                if (refreshing) return;
-                                                                setRefreshing(true);
-                                                                try { await onRefreshGoogle(); } finally { setRefreshing(false); }
-                                                        }}
-                                                        disabled={refreshing}
-                                                        title={googleEnrichedAt
-                                                                ? `רענון מ-Google (עודכן לאחרונה: ${new Date(googleEnrichedAt).toLocaleDateString('he-IL')})`
-                                                                : 'רענון מ-Google Maps'}
-                                                        className={`w-7 h-7 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/15 rounded-full text-white hover:bg-white hover:text-slate-900 transition-all active:scale-90 ${refreshing ? 'opacity-60 cursor-wait' : ''}`}
-                                                        aria-label="רענון מ-Google Maps"
-                                                >
-                                                        <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-                                                </button>
-                                        )}
                                         <a
                                                 href={mapsUrl}
                                                 target="_blank"
@@ -190,22 +177,18 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                 </div>
                         </div>
 
-                        {/* Content Container */}
+                        {/* Content Container — location row intentionally removed; full
+                                 address is in the modal. */}
                         <div className="absolute inset-x-0 bottom-0 p-3 flex flex-col gap-1 z-10 pointer-events-none">
                                 <h3 className="text-base font-black text-white leading-tight line-clamp-2 drop-shadow-sm" dir="ltr">
                                         {displayName}
                                 </h3>
 
-                                <div className="flex items-center gap-1 text-slate-300 text-[10px] font-medium opacity-90">
-                                        <Navigation className="w-2.5 h-2.5 flex-shrink-0" />
-                                        <span className="truncate">{location}</span>
-                                </div>
-
                                 {/* Bottom row: rating + recommendationSource on a single
                                          pill so the recommendation has the full width when
-                                         present. Rating sits inline with the source — saves
-                                         a row and lets the long Michelin / Asia 50 Best
-                                         text use almost the entire card width. */}
+                                         present. The inner <span> is dir="ltr" so truncation
+                                         drops the END of long URL-like sources (e.g.
+                                         "IAMKOHCHANG.COM…") instead of the start. */}
                                 {(rating || recommendationSource) && (
                                         <div className="flex items-center gap-1 mt-0.5">
                                                 {rating && (
@@ -217,7 +200,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                                 {recommendationSource && (
                                                         <span className="flex items-center gap-1 text-yellow-300 text-[9px] font-black uppercase tracking-tight bg-black/45 px-1.5 py-0.5 rounded-md backdrop-blur-sm min-w-0 flex-1">
                                                                 <Trophy className="w-2.5 h-2.5 flex-shrink-0" />
-                                                                <span className="truncate">{recommendationSource.replace('Bib', 'Michelin')}</span>
+                                                                <span dir="ltr" className="truncate text-start min-w-0">{recommendationSource.replace('Bib', 'Michelin')}</span>
                                                         </span>
                                                 )}
                                         </div>

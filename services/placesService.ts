@@ -242,7 +242,7 @@ export interface EnrichableInput {
 }
 
 export interface EnrichmentPatch {
-  googlePlaceId: string;
+  googlePlaceId?: string;
   googleEnrichedAt: number;
   googlePhotoUrl?: string;
   googleOpeningHours?: string[];
@@ -255,6 +255,9 @@ export interface EnrichmentPatch {
   // (caller decides whether to apply via the merge helper).
   googleRating?: number;
   googleReviewCount?: number;
+  /** True when Text Search returned no match — surfaces an X badge on the card.
+   *  Caller should clear googlePlaceId / googlePhotoUrl etc. (they'll be undefined). */
+  googleNotFound?: boolean;
 }
 
 export interface BulkEnrichInput extends EnrichableInput {
@@ -300,8 +303,9 @@ export async function bulkEnrichPlaces(
       const patch = await enrichSavedPlace(place, { force: options.force });
       if (patch) {
         onPatch(place.id, patch);
-        outcome.updated++;
-      } else if (place.googlePlaceId && !isEnrichmentStale(place.googleEnrichedAt)) {
+        if (patch.googleNotFound) outcome.notFound++;
+        else outcome.updated++;
+      } else if (!isEnrichmentStale(place.googleEnrichedAt)) {
         outcome.skippedCached++;
       } else {
         outcome.notFound++;
@@ -340,8 +344,10 @@ export async function enrichSavedPlace(
   place: EnrichableInput,
   options: { force?: boolean } = {}
 ): Promise<EnrichmentPatch | null> {
-  // Cache hit — skip API entirely.
-  if (!options.force && place.googlePlaceId && !isEnrichmentStale(place.googleEnrichedAt)) {
+  // Cache hit — skip API entirely. Also covers the not-found case: once we've
+  // tried and failed, we won't re-hit Google for 30 days.
+  const cachedAndFresh = !options.force && !isEnrichmentStale(place.googleEnrichedAt);
+  if (cachedAndFresh && (place.googlePlaceId || (place as any).googleNotFound)) {
     return null;
   }
 
@@ -350,7 +356,14 @@ export async function enrichSavedPlace(
   if (!placeId) {
     if (typeof place.lat !== 'number' || typeof place.lng !== 'number') return null;
     const found = await findPlaceId(place.name, place.lat, place.lng);
-    if (!found) return null;
+    if (!found) {
+      // Lookup failed — return a patch that records the failure so the caller
+      // can show an X badge AND skip Google for the next 30 days.
+      return {
+        googleEnrichedAt: Date.now(),
+        googleNotFound: true,
+      };
+    }
     placeId = found;
   }
 
@@ -368,5 +381,6 @@ export async function enrichSavedPlace(
     googlePriceLevel: details.priceLevel,
     googleRating: details.rating,
     googleReviewCount: details.reviewCount,
+    googleNotFound: false, // clear stale flag if a previously-not-found place is now indexed
   };
 }

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X, Trophy, AlertTriangle, ExternalLink, Globe } from 'lucide-react';
+import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X, Trophy, AlertTriangle, ExternalLink, Globe, RefreshCw } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
 import { safeMapsUrl } from '../utils/mapsUrl';
 import { getEnglishName } from '../utils/displayName';
 import { findSource, googleSearchFor } from '../utils/sourceCatalog';
 import { detectCountryCode } from '../utils/countryCodes';
+import { toast } from '../stores/useToastStore';
 
 
 interface GlobalPlaceModalProps {
@@ -14,6 +15,9 @@ interface GlobalPlaceModalProps {
         onClose: () => void;
         onAddToPlan: () => void;
         isAdded?: boolean;
+        /** Apply a Google Places enrichment patch back to the parent's store.
+         *  When provided, the modal renders a 🔄 refresh button in the action row. */
+        onRefreshGoogle?: (patch: Record<string, any>) => void;
 }
 
 import { createPortal } from 'react-dom';
@@ -86,7 +90,7 @@ const getSmartSubtitle = (item: any) => {
         return null;
 };
 
-export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, onClose, onAddToPlan, isAdded }) => {
+export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, onClose, onAddToPlan, isAdded, onRefreshGoogle }) => {
         if (!item) return null;
 
         // Prefer the English name for display + for any lookup. AI returns `name`
@@ -113,7 +117,13 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                 : getAttractionImage(searchName, item.description || '', [originalTag]);
 
         const placeType = (type === 'food' || type === 'restaurant') ? 'restaurant' : 'attraction';
-        const [imageUrl, setImageUrl] = useState<string>(stockUrl);
+        // Priority: Google Places photo (live) → stock photo. Wikipedia upgrade
+        // is skipped when Google already provided a photo. This matches the
+        // small card's resolution order so the modal photo stays in sync after
+        // a 🔄 refresh.
+        const googlePhotoUrl: string | undefined = (item as any).googlePhotoUrl;
+        const [imageUrl, setImageUrl] = useState<string>(googlePhotoUrl || stockUrl);
+        const [refreshingGoogle, setRefreshingGoogle] = useState(false);
         const [sourceOpen, setSourceOpen] = useState(false);
         const sourcePopoverRef = useRef<HTMLDivElement>(null);
         useEffect(() => {
@@ -130,13 +140,49 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                 };
         }, [sourceOpen]);
         useEffect(() => {
-                setImageUrl(stockUrl);
+                setImageUrl(googlePhotoUrl || stockUrl);
+                if (googlePhotoUrl) return; // Google photo wins — skip Wikipedia upgrade.
                 let cancelled = false;
                 resolveRealPlaceImage(searchName, item.location || '', placeType).then(real => {
                         if (!cancelled && real) setImageUrl(real);
                 });
                 return () => { cancelled = true; };
-        }, [searchName, item.location, placeType, stockUrl]);
+        }, [searchName, item.location, placeType, stockUrl, googlePhotoUrl]);
+
+        const handleGoogleRefresh = onRefreshGoogle ? async (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (refreshingGoogle) return;
+                setRefreshingGoogle(true);
+                try {
+                        const { enrichSavedPlace, PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
+                        const patch = await enrichSavedPlace({
+                                name: item.name,
+                                lat: item.lat,
+                                lng: item.lng,
+                                googlePlaceId: item.googlePlaceId,
+                                googleEnrichedAt: item.googleEnrichedAt,
+                        }, { force: true });
+                        if (!patch) {
+                                toast.info('לא נמצא תוצאה ב-Google Maps עבור המקום הזה');
+                                return;
+                        }
+                        onRefreshGoogle(patch);
+                        if (patch.googleNotFound) {
+                                toast.info('לא נמצא ב-Google Maps — סומן ב-X');
+                        } else {
+                                toast.success(`המקום עודכן מ-Google${patch.googleRating ? ' · ★ ' + patch.googleRating : ''}`);
+                                if (patch.googlePhotoUrl) setImageUrl(patch.googlePhotoUrl);
+                        }
+                } catch (err: any) {
+                        const { PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
+                        if (err instanceof PlacesQuotaExceededError) toast.error(err.message);
+                        else if (err instanceof PlacesKeyError) toast.error('Google Maps API key error — בדוק את ההגדרות');
+                        else toast.error('נכשל לרענן מ-Google. נסה שוב.');
+                        console.error('[GooglePlaces] modal refresh failed', err);
+                } finally {
+                        setRefreshingGoogle(false);
+                }
+        } : undefined;
 
         // Build the navigation address — append a category suffix for non-hotel
         // entries so Google Maps disambiguates "Sorn" the K-pop singer from
@@ -157,6 +203,24 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                 <button onClick={onClose} aria-label="סגירה" className="absolute top-3 left-3 z-20 p-2.5 bg-black/55 hover:bg-black/75 text-white rounded-full backdrop-blur-md ring-1 ring-white/30 shadow-lg transition-all active:scale-95">
                                         <X className="w-6 h-6" />
                                 </button>
+
+                                {handleGoogleRefresh && (
+                                        <button
+                                                onClick={handleGoogleRefresh}
+                                                disabled={refreshingGoogle}
+                                                aria-label="רענן מ-Google Maps"
+                                                title={item.googleEnrichedAt
+                                                        ? `רענן מ-Google (עודכן: ${new Date(item.googleEnrichedAt).toLocaleDateString('he-IL')})`
+                                                        : 'רענן מ-Google Maps'}
+                                                className={`absolute top-3 right-3 z-20 p-2.5 rounded-full backdrop-blur-md ring-1 shadow-lg transition-all active:scale-95 ${
+                                                        item.googlePlaceId
+                                                                ? 'bg-blue-500/85 hover:bg-blue-500 text-white ring-blue-300/60'
+                                                                : 'bg-black/55 hover:bg-black/75 text-white ring-white/30'
+                                                } ${refreshingGoogle ? 'opacity-70 cursor-wait' : ''}`}
+                                        >
+                                                <RefreshCw className={`w-5 h-5 ${refreshingGoogle ? 'animate-spin' : ''}`} />
+                                        </button>
+                                )}
 
                                 <div className="h-44 sm:h-52 w-full relative flex-shrink-0">
                                         <img src={imageUrl} alt={displayName} loading="lazy" decoding="async" className="w-full h-full object-cover" />

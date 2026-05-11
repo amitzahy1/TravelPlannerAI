@@ -102,7 +102,13 @@ const getCuisineVisuals = (cuisine: string = '') => {
     if (c.includes('sushi') || c.includes('japanese') || c.includes('ramen') || c.includes('izakaya') || c.includes('yakiniku') || c.includes('omakase') || c.includes('tsukemen'))
         return { icon: '🍜', gradient: 'bg-gradient-to-br from-rose-400 to-pink-600 text-white', label: 'Japanese' };
 
-    if (c.includes('coffee') || c.includes('cafe') || c.includes('café') || c.includes('brunch') || c.includes('bakery'))
+    // Bakery / patisserie / pastry gets its own bucket so it doesn't fall
+    // through to the generic Cafe label. Match BEFORE the cafe matcher.
+    if (c.includes('bakery') || c.includes('patisserie') || c.includes('pastry')
+        || c.includes('boulangerie') || c.includes('croissant') || c.includes('viennoiserie'))
+        return { icon: '🥐', gradient: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white', label: 'Bakery' };
+
+    if (c.includes('coffee') || c.includes('cafe') || c.includes('café') || c.includes('brunch'))
         return { icon: '☕', gradient: 'bg-gradient-to-br from-amber-600 to-brown-800 text-white', label: 'Cafe' };
 
     if (c.includes('cocktail') || c.includes('rooftop'))
@@ -155,6 +161,7 @@ import { ActionsMenu } from './ActionsMenu';
 import { CategoryChip } from './CategoryChip';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { normalizeCityForChip, isProvinceOrCountryName } from '../utils/cityNormalize';
+import { isAdmin } from '../utils/isAdmin';
 
 
 // Sorting helper: Favorites first, then Rating
@@ -181,8 +188,7 @@ const RestaurantCard: React.FC<{
     isAdded: boolean,
     onAdd: (r: ExtendedRestaurant, cat: string) => void,
     onClick: () => void,
-    onRefreshGoogle?: (patch: Partial<Restaurant>) => void,
-}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick, onRefreshGoogle }) => {
+}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick }) => {
 
     const nameForMap = cleanTextForMap(rec.nameEnglish || rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
@@ -191,28 +197,6 @@ const RestaurantCard: React.FC<{
     const mapsUrl = safeMapsUrl(rec.googleMapsUrl, nameForMap, locationForMap, cityForMap, countryCode);
 
     const visuals = getCuisineVisuals(rec.cuisine);
-
-    const handleRefreshGoogle = onRefreshGoogle ? async () => {
-        try {
-            const { enrichSavedPlace, PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
-            const patch = await enrichSavedPlace({
-                name: rec.name,
-                lat: rec.lat,
-                lng: rec.lng,
-                googlePlaceId: rec.googlePlaceId,
-                googleEnrichedAt: rec.googleEnrichedAt,
-            }, { force: true });
-            if (!patch) { toast.info('לא נמצא תוצאה ב-Google Maps עבור המקום הזה'); return; }
-            onRefreshGoogle(patch as Partial<Restaurant>);
-            toast.success(`המקום עודכן מ-Google${patch.googleRating ? ' · ★ ' + patch.googleRating : ''}`);
-        } catch (err: any) {
-            const { PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
-            if (err instanceof PlacesQuotaExceededError) toast.error(err.message);
-            else if (err instanceof PlacesKeyError) toast.error('Google Maps API key error — בדוק את ההגדרות');
-            else toast.error('נכשל לרענן מ-Google. נסה שוב.');
-            console.error('[GooglePlaces] refresh failed', err);
-        }
-    } : undefined;
 
     return (
         <PlaceCard
@@ -235,8 +219,7 @@ const RestaurantCard: React.FC<{
             geocodeFailed={rec.geocodeFailed}
             verificationStatus={rec.verificationStatus}
             photoUrl={rec.googlePhotoUrl}
-            onRefreshGoogle={handleRefreshGoogle}
-            googleEnrichedAt={rec.googleEnrichedAt}
+            googleNotFound={rec.googleNotFound}
         />
     );
 };
@@ -332,9 +315,41 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
     const [selectedCity, setSelectedCity] = useState<string>('all');
 
+    // Admin-gated controls (bulk refresh, delete-all-not-found).
+    const userIsAdmin = isAdmin(user);
+
     // Bulk "Refresh all from Google" — sequential enrichment with progress.
     const [bulkRefreshing, setBulkRefreshing] = useState<null | 'saved' | 'ai'>(null);
     const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, updated: 0, skippedCached: 0 });
+    const [confirmDeleteNotFound, setConfirmDeleteNotFound] = useState(false);
+
+    // How many places in the active tab are flagged googleNotFound — drives
+    // visibility of the "מחק את כל הלא-נמצאו" admin button.
+    const notFoundCount = useMemo(() => {
+        const list = activeTab === 'my_list'
+            ? trip.restaurants.flatMap(c => c.restaurants)
+            : aiCategories.flatMap(c => c.restaurants);
+        return list.filter(r => (r as any).googleNotFound).length;
+    }, [activeTab, trip.restaurants, aiCategories]);
+
+    const handleDeleteAllNotFound = () => {
+        if (activeTab === 'my_list') {
+            const next = trip.restaurants.map(cat => ({
+                ...cat,
+                restaurants: cat.restaurants.filter(r => !(r as any).googleNotFound),
+            }));
+            onUpdateTrip({ ...trip, restaurants: next });
+        } else {
+            const next = aiCategories.map(c => ({
+                ...c,
+                restaurants: c.restaurants.filter(r => !(r as any).googleNotFound),
+            }));
+            setAiCategories(next);
+            persistAiRestaurants(next);
+        }
+        toast.success(`נמחקו ${notFoundCount} מסעדות שלא נמצאו ב-Google Maps`);
+        setConfirmDeleteNotFound(false);
+    };
 
     const handleBulkRefreshSaved = async () => {
         if (bulkRefreshing) return;
@@ -1893,25 +1908,41 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                         ]}
                     />
                 </div>
-                <div className="flex items-center gap-2">
-                    {/* Bulk refresh from Google — visible on whichever tab is active. */}
-                    <button
-                        type="button"
-                        onClick={() => activeTab === 'my_list' ? handleBulkRefreshSaved() : handleBulkRefreshAi()}
-                        disabled={!!bulkRefreshing}
-                        title={activeTab === 'my_list' ? 'רענן את כל הרשימה שלי מ-Google' : 'רענן את כל ההמלצות מ-Google'}
-                        aria-label="רענן הכל מ-Google"
-                        className={`flex items-center gap-1.5 h-9 px-3 rounded-full border text-xs font-bold transition-all ${
-                            bulkRefreshing
-                                ? 'bg-blue-50 text-blue-700 border-blue-200 cursor-wait'
-                                : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
-                        }`}
-                    >
-                        <RefreshCw className={`w-3.5 h-3.5 ${bulkRefreshing ? 'animate-spin' : ''}`} />
-                        {bulkRefreshing
-                            ? `${bulkProgress.current}/${bulkProgress.total}`
-                            : 'רענן הכל'}
-                    </button>
+                <div className="flex items-center gap-2 min-w-0 flex-shrink">
+                    {/* Bulk refresh + delete-not-found are admin-only utilities. */}
+                    {userIsAdmin && (
+                        <button
+                            type="button"
+                            onClick={() => activeTab === 'my_list' ? handleBulkRefreshSaved() : handleBulkRefreshAi()}
+                            disabled={!!bulkRefreshing}
+                            title={activeTab === 'my_list' ? 'רענן את כל הרשימה שלי מ-Google' : 'רענן את כל ההמלצות מ-Google'}
+                            aria-label="רענן הכל מ-Google"
+                            className={`flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-full border text-xs font-bold transition-all flex-shrink-0 ${
+                                bulkRefreshing
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200 cursor-wait'
+                                    : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+                            }`}
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 flex-shrink-0 ${bulkRefreshing ? 'animate-spin' : ''}`} />
+                            <span className="hidden sm:inline">
+                                {bulkRefreshing ? `${bulkProgress.current}/${bulkProgress.total}` : 'רענן הכל'}
+                            </span>
+                            {bulkRefreshing && <span className="sm:hidden text-[10px]">{bulkProgress.current}</span>}
+                        </button>
+                    )}
+                    {userIsAdmin && notFoundCount > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setConfirmDeleteNotFound(true)}
+                            title={`מחק ${notFoundCount} מסעדות שלא נמצאו ב-Google Maps`}
+                            aria-label="מחק את כל הלא-נמצאו"
+                            className="flex items-center gap-1 h-9 px-2.5 sm:px-3 rounded-full border border-red-200 bg-white text-red-600 text-xs font-bold hover:bg-red-50 flex-shrink-0"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">מחק לא-נמצאו</span>
+                            <span className="text-[10px]">{notFoundCount}</span>
+                        </button>
+                    )}
                     {activeTab === 'recommended' && (
                         <button
                             type="button"
@@ -2096,7 +2127,6 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 isAdded={addedIds.has(res.id) || trip.restaurants.some(c => c.restaurants.some(r => r.name === res.name))}
                                 onAdd={handleToggleRec}
                                 onClick={() => setSelectedPlace(res as ExtendedRestaurant)}
-                                onRefreshGoogle={(patch) => applyAiRestaurantPatch(res.id, patch)}
                             />
                         ))}
                     </div>
@@ -2437,7 +2467,6 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                                         isAdded={addedIds.has(rec.id) || trip.restaurants.some(c => c.restaurants.some(r => r.name === rec.name))}
                                                         onAdd={handleToggleRec}
                                                         onClick={() => setSelectedPlace(rec)}
-                                                        onRefreshGoogle={(patch) => applyAiRestaurantPatch(rec.id, patch)}
                                                     />
                                                 ))}
                                             </div>
@@ -2457,6 +2486,22 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                     onClose={() => setSelectedPlace(null)}
                     isAdded={trip.restaurants.some(c => c.restaurants.some(r => r.name === selectedPlace?.name))}
                     onAddToPlan={() => handleToggleRec(selectedPlace, selectedPlace?.categoryTitle || 'תכנון טיול')}
+                    onRefreshGoogle={(patch) => {
+                        // Apply the patch to whichever list the open place belongs to.
+                        const idMatch = (r: { id: string }) => r.id === selectedPlace.id;
+                        const inSaved = trip.restaurants.some(c => c.restaurants.some(idMatch));
+                        if (inSaved) {
+                            const nextSaved = trip.restaurants.map(cat => ({
+                                ...cat,
+                                restaurants: cat.restaurants.map(r => idMatch(r) ? { ...r, ...patch } : r),
+                            }));
+                            onUpdateTrip({ ...trip, restaurants: nextSaved });
+                        } else {
+                            applyAiRestaurantPatch(selectedPlace.id, patch);
+                        }
+                        // Reflect immediately in the open modal too.
+                        setSelectedPlace(prev => prev ? { ...prev, ...patch } : prev);
+                    }}
                 />
             )}
 
@@ -2478,6 +2523,16 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 cancelText=""
                 onConfirm={() => setShowRefreshLimitModal(false)}
                 onClose={() => setShowRefreshLimitModal(false)}
+            />
+            <ConfirmModal
+                isOpen={confirmDeleteNotFound}
+                title={`למחוק ${notFoundCount} מסעדות שלא נמצאו ב-Google Maps?`}
+                message="המסעדות הללו לא נמצאו בחיפוש של Google Places. ייתכן שהן סגורות או לא קיימות. הפעולה אינה ניתנת לביטול."
+                confirmText="מחק הכל"
+                cancelText="ביטול"
+                isDangerous
+                onConfirm={handleDeleteAllNotFound}
+                onClose={() => setConfirmDeleteNotFound(false)}
             />
             <ConfirmModal
                 isOpen={!!confirmDeleteId}
@@ -2509,41 +2564,6 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
 
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(data.notes || '');
-    const [refreshingGoogle, setRefreshingGoogle] = useState(false);
-
-    const handleGoogleRefresh = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (refreshingGoogle) return;
-        setRefreshingGoogle(true);
-        try {
-            const { enrichSavedPlace, PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
-            const patch = await enrichSavedPlace({
-                name: data.name,
-                lat: data.lat,
-                lng: data.lng,
-                googlePlaceId: data.googlePlaceId,
-                googleEnrichedAt: data.googleEnrichedAt,
-            }, { force: true });
-            if (!patch) {
-                toast.info('לא נמצא תוצאה ב-Google Maps עבור המקום הזה');
-                return;
-            }
-            onUpdate(patch as Partial<Restaurant>);
-            toast.success(`המקום עודכן מ-Google${patch.googleRating ? ' · ★ ' + patch.googleRating : ''}`);
-        } catch (err: any) {
-            const { PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
-            if (err instanceof PlacesQuotaExceededError) {
-                toast.error(err.message);
-            } else if (err instanceof PlacesKeyError) {
-                toast.error('Google Maps API key error — בדוק את ההגדרות');
-            } else {
-                toast.error('נכשל לרענן מ-Google. נסה שוב.');
-            }
-            console.error('[GooglePlaces] refresh failed', err);
-        } finally {
-            setRefreshingGoogle(false);
-        }
-    };
 
     // Intelligent Mappers
     // Don't include data.location — "Bangkok, Thailand" would force every
@@ -2638,6 +2658,15 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
                                     {data.googleRating}
                                 </div>
                             )}
+                            {data.googleNotFound && (
+                                <div
+                                    title="לא נמצא ב-Google Maps — ייתכן שהמקום סגור או לא קיים"
+                                    className="flex items-center gap-0.5 text-2xs font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded"
+                                >
+                                    <X className="w-3 h-3" />
+                                    <span>לא נמצא</span>
+                                </div>
+                            )}
                         </div>
 
                         <p className="text-xs text-slate-400 truncate mt-1">{data.description || data.location}</p>
@@ -2650,20 +2679,6 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
                         className={`p-1.5 rounded-lg transition-colors ${data.isFavorite ? 'bg-red-50 text-red-500' : 'hover:bg-slate-50 text-slate-300 hover:text-slate-400'}`}
                     >
                         <Heart className={`w-4 h-4 ${data.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-                    </button>
-                    <button
-                        onClick={handleGoogleRefresh}
-                        disabled={refreshingGoogle}
-                        title={data.googleEnrichedAt
-                            ? `רענון מ-Google (עודכן לאחרונה: ${new Date(data.googleEnrichedAt).toLocaleDateString('he-IL')})`
-                            : 'רענון מ-Google Maps (פעם ראשונה — אחת ל-30 יום)'}
-                        className={`p-1.5 rounded-lg transition-colors border ${
-                            data.googlePlaceId
-                                ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
-                                : 'bg-white text-blue-500 border-blue-200 hover:bg-blue-50'
-                        } ${refreshingGoogle ? 'opacity-60 cursor-wait' : ''}`}
-                    >
-                        <RefreshCw className={`w-4 h-4 ${refreshingGoogle ? 'animate-spin' : ''}`} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(); }}
