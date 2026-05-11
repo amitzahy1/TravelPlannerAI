@@ -40,8 +40,10 @@ import { DemoWelcomePage } from './pages/DemoWelcomePage';
 import { MenuLayoutDemo } from './pages/MenuLayoutDemo';
 import { GuestTripView } from './components/GuestTripView';
 import { withActivityLog } from './services/activityLog';
+import { DesignPreview } from './components/DesignPreview';
 
 const isMenuDemoRoute = (): boolean => window.location.hash.startsWith('#/demo/menu');
+const isDesignPreviewRoute = (): boolean => window.location.hash.startsWith('#/design-preview');
 
 const getJoinShareIdFromHash = (): { shareId: string; role: 'editor' | 'viewer' } | null => {
   const hash = window.location.hash;
@@ -73,13 +75,20 @@ const AppContent: React.FC = () => {
   // the user can preview the 3 layout options without needing to log in.
   // Reload-friendly: re-renders when the hash changes.
   const [isDemoRoute, setIsDemoRoute] = useState(isMenuDemoRoute());
+  const [isDesignRoute, setIsDesignRoute] = useState(isDesignPreviewRoute());
   useEffect(() => {
-    const onHash = () => setIsDemoRoute(isMenuDemoRoute());
+    const onHash = () => {
+      setIsDemoRoute(isMenuDemoRoute());
+      setIsDesignRoute(isDesignPreviewRoute());
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
   if (isDemoRoute) {
     return <MenuLayoutDemo />;
+  }
+  if (isDesignRoute) {
+    return <DesignPreview />;
   }
 
   const { user, signIn, loading: authLoading } = useAuth();
