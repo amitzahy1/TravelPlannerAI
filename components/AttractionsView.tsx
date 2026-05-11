@@ -71,14 +71,37 @@ const AttractionRecommendationCard: React.FC<{
     tripDestinationEnglish?: string,
     isAdded: boolean,
     onAdd: (rec: any, cat: string) => void,
-    onClick: () => void
-}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick }) => {
+    onClick: () => void,
+    onRefreshGoogle?: (patch: Partial<Attraction>) => void,
+}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick, onRefreshGoogle }) => {
     const nameForMap = cleanTextForMap(rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
     const cityForMap = cleanTextForMap(rec.verifiedCity) || cleanTextForMap(rec.region) || cleanTextForMap(tripDestinationEnglish || tripDestination);
     const countryCode = detectCountryCode(rec.verifiedCountry, tripDestinationEnglish, tripDestination);
     const mapsUrl = safeMapsUrl(rec.googleMapsUrl, nameForMap, locationForMap, cityForMap, countryCode);
     const visuals = getAttractionVisuals(rec.type);
+
+    const handleRefreshGoogle = onRefreshGoogle ? async () => {
+        try {
+            const { enrichSavedPlace, PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
+            const patch = await enrichSavedPlace({
+                name: rec.name,
+                lat: rec.lat,
+                lng: rec.lng,
+                googlePlaceId: rec.googlePlaceId,
+                googleEnrichedAt: rec.googleEnrichedAt,
+            }, { force: true });
+            if (!patch) { toast.info('לא נמצא תוצאה ב-Google Maps עבור המקום הזה'); return; }
+            onRefreshGoogle(patch as Partial<Attraction>);
+            toast.success(`המקום עודכן מ-Google${patch.googleRating ? ' · ★ ' + patch.googleRating : ''}`);
+        } catch (err: any) {
+            const { PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
+            if (err instanceof PlacesQuotaExceededError) toast.error(err.message);
+            else if (err instanceof PlacesKeyError) toast.error('Google Maps API key error — בדוק את ההגדרות');
+            else toast.error('נכשל לרענן מ-Google. נסה שוב.');
+            console.error('[GooglePlaces] refresh failed', err);
+        }
+    } : undefined;
 
     return (
         <PlaceCard
@@ -98,6 +121,9 @@ const AttractionRecommendationCard: React.FC<{
             verification_needed={rec.verification_needed}
             geocodeFailed={rec.geocodeFailed}
             verificationStatus={rec.verificationStatus}
+            photoUrl={rec.googlePhotoUrl}
+            onRefreshGoogle={handleRefreshGoogle}
+            googleEnrichedAt={rec.googleEnrichedAt}
         />
     );
 };
@@ -161,6 +187,17 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             setLocalAI(latest.id, { aiAttractions: next });
         }
     };
+
+    // Apply a Google Places enrichment patch to a single AI-recommended attraction.
+    const applyAiAttractionPatch = (recId: string, patch: Partial<Attraction>) => {
+        const next = aiCategories.map(c => ({
+            ...c,
+            attractions: c.attractions.map(a => a.id === recId ? { ...a, ...patch } : a),
+        }));
+        setAiCategories(next);
+        persistAiAttractions(next);
+    };
+
     const [loadingRecs, setLoadingRecs] = useState(false);
     const [recError, setRecError] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -1470,7 +1507,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 <div className="space-y-3 animate-fade-in">
                     <div className="flex justify-between items-center"><h3 className="text-base font-black text-slate-800">תוצאות חיפוש</h3><button onClick={clearSearch} className="text-2xs text-slate-500 underline">נקה</button></div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {searchResults.map(res => <AttractionRecommendationCard key={res.id} rec={res} tripDestination={trip.destination} isAdded={addedIds.has(res.id) || trip.attractions.some(c => c.attractions.some(a => a.name === res.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(res)} />)}
+                        {searchResults.map(res => <AttractionRecommendationCard key={res.id} rec={res} tripDestination={trip.destination} isAdded={addedIds.has(res.id) || trip.attractions.some(c => c.attractions.some(a => a.name === res.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(res)} onRefreshGoogle={(patch) => applyAiAttractionPatch(res.id, patch)} />)}
                     </div>
                 </div>
             )}
@@ -1784,7 +1821,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                             )}
 
                                             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                                                {filteredRecommendations.map(rec => <AttractionRecommendationCard key={rec.id} rec={rec} tripDestination={trip.destination} isAdded={addedIds.has(rec.id) || trip.attractions.some(c => c.attractions.some(a => a.name === rec.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(rec)} />)}
+                                                {filteredRecommendations.map(rec => <AttractionRecommendationCard key={rec.id} rec={rec} tripDestination={trip.destination} isAdded={addedIds.has(rec.id) || trip.attractions.some(c => c.attractions.some(a => a.name === rec.name))} onAdd={handleToggleRec} onClick={() => setSelectedPlace(rec)} onRefreshGoogle={(patch) => applyAiAttractionPatch(rec.id, patch)} />)}
                                             </div>
                                         </>
                                     )}

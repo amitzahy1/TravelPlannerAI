@@ -112,8 +112,9 @@ const RestaurantCard: React.FC<{
     tripDestinationEnglish?: string,
     isAdded: boolean,
     onAdd: (r: ExtendedRestaurant, cat: string) => void,
-    onClick: () => void
-}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick }) => {
+    onClick: () => void,
+    onRefreshGoogle?: (patch: Partial<Restaurant>) => void,
+}> = ({ rec, tripDestination, tripDestinationEnglish, isAdded, onAdd, onClick, onRefreshGoogle }) => {
 
     const nameForMap = cleanTextForMap(rec.nameEnglish || rec.name);
     const locationForMap = cleanTextForMap(rec.location) || cleanTextForMap(tripDestinationEnglish || tripDestination);
@@ -122,6 +123,28 @@ const RestaurantCard: React.FC<{
     const mapsUrl = safeMapsUrl(rec.googleMapsUrl, nameForMap, locationForMap, cityForMap, countryCode);
 
     const visuals = getCuisineVisuals(rec.cuisine);
+
+    const handleRefreshGoogle = onRefreshGoogle ? async () => {
+        try {
+            const { enrichSavedPlace, PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
+            const patch = await enrichSavedPlace({
+                name: rec.name,
+                lat: rec.lat,
+                lng: rec.lng,
+                googlePlaceId: rec.googlePlaceId,
+                googleEnrichedAt: rec.googleEnrichedAt,
+            }, { force: true });
+            if (!patch) { toast.info('לא נמצא תוצאה ב-Google Maps עבור המקום הזה'); return; }
+            onRefreshGoogle(patch as Partial<Restaurant>);
+            toast.success(`המקום עודכן מ-Google${patch.googleRating ? ' · ★ ' + patch.googleRating : ''}`);
+        } catch (err: any) {
+            const { PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
+            if (err instanceof PlacesQuotaExceededError) toast.error(err.message);
+            else if (err instanceof PlacesKeyError) toast.error('Google Maps API key error — בדוק את ההגדרות');
+            else toast.error('נכשל לרענן מ-Google. נסה שוב.');
+            console.error('[GooglePlaces] refresh failed', err);
+        }
+    } : undefined;
 
     return (
         <PlaceCard
@@ -143,6 +166,9 @@ const RestaurantCard: React.FC<{
             verification_needed={(rec as any).verification_needed}
             geocodeFailed={rec.geocodeFailed}
             verificationStatus={rec.verificationStatus}
+            photoUrl={rec.googlePhotoUrl}
+            onRefreshGoogle={handleRefreshGoogle}
+            googleEnrichedAt={rec.googleEnrichedAt}
         />
     );
 };
@@ -203,6 +229,17 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         } else {
             setLocalAI(latest.id, { aiRestaurants: next });
         }
+    };
+
+    // Apply a Google Places enrichment patch to a single AI-recommended restaurant
+    // (looked up by id). Updates both local state and persistence.
+    const applyAiRestaurantPatch = (recId: string, patch: Partial<Restaurant>) => {
+        const next = aiCategories.map(c => ({
+            ...c,
+            restaurants: c.restaurants.map(r => r.id === recId ? { ...r, ...patch } : r),
+        }));
+        setAiCategories(next);
+        persistAiRestaurants(next);
     };
 
     // AI State — for viewers, hydrate from localStorage on top of the shared
@@ -1870,6 +1907,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 isAdded={addedIds.has(res.id) || trip.restaurants.some(c => c.restaurants.some(r => r.name === res.name))}
                                 onAdd={handleToggleRec}
                                 onClick={() => setSelectedPlace(res as ExtendedRestaurant)}
+                                onRefreshGoogle={(patch) => applyAiRestaurantPatch(res.id, patch)}
                             />
                         ))}
                     </div>
@@ -2210,6 +2248,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                                         isAdded={addedIds.has(rec.id) || trip.restaurants.some(c => c.restaurants.some(r => r.name === rec.name))}
                                                         onAdd={handleToggleRec}
                                                         onClick={() => setSelectedPlace(rec)}
+                                                        onRefreshGoogle={(patch) => applyAiRestaurantPatch(rec.id, patch)}
                                                     />
                                                 ))}
                                             </div>
