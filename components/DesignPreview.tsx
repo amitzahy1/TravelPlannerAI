@@ -161,8 +161,12 @@ export const DesignPreview: React.FC = () => {
                     {isPicked ? 'נבחר' : 'בחר את זה'}
                   </button>
                 </header>
-                <div className="p-5 bg-slate-50 rounded-b-[1.4rem] flex items-center justify-center min-h-[280px]">
-                  {surface.id === 'logo' ? <LogoSizes Component={v.Component} /> : <v.Component />}
+                <div className="p-5 bg-slate-50 rounded-b-[1.4rem] min-h-[280px]">
+                  {surface.id === 'logo' ? (
+                    <div className="flex flex-col items-center gap-6 py-4"><LogoSizes Component={v.Component} /></div>
+                  ) : (
+                    <v.Component />
+                  )}
                 </div>
               </div>
             );

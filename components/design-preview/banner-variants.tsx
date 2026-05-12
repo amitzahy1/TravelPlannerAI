@@ -38,7 +38,7 @@ export const BannerA: React.FC = () => (
 
 /** B — Glassmorphic over hero (current pattern, refined) */
 export const BannerB: React.FC = () => (
-  <div className="relative h-56 rounded-3xl overflow-hidden shadow-xl" dir="rtl">
+  <div className="relative h-56 w-full rounded-3xl overflow-hidden shadow-xl" dir="rtl">
     <img src={HERO_PHOTO} alt="" className="absolute inset-0 w-full h-full object-cover" />
     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent" />
     <span className="absolute top-4 right-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md bg-white/85 text-xs font-black text-slate-900">
@@ -108,7 +108,7 @@ export const BannerC: React.FC = () => (
 
 /** D — Story-card portrait (mobile-first, vertical, photo-immersive) */
 export const BannerD: React.FC = () => (
-  <div className="rounded-3xl overflow-hidden shadow-xl relative bg-slate-900 h-[420px] max-w-sm mx-auto" dir="rtl">
+  <div className="rounded-3xl overflow-hidden shadow-xl relative bg-slate-900 h-[420px] w-full max-w-sm mx-auto" dir="rtl">
     <img src={HERO_PHOTO} alt="" className="absolute inset-0 w-full h-full object-cover" />
     <div className="absolute inset-0 bg-gradient-to-b from-slate-900/30 via-transparent to-slate-900/95" />
     <div className="absolute top-4 inset-x-4 flex items-center justify-between">
