@@ -2,7 +2,7 @@
  *  Photo is FULL-height edge-to-edge (no thumbnail), no walking minutes,
  *  always show cuisine + recommendation source. */
 import React from 'react';
-import { Star, Trophy } from 'lucide-react';
+import { Star, Trophy, Plus, Navigation } from 'lucide-react';
 import { previewPlaces, ACCENT, ACCENT_SOFT, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, HAIRLINE } from './fixtures';
 
 const place = previewPlaces[0];
@@ -33,11 +33,16 @@ export const PlaceA: React.FC = () => (
   </article>
 );
 
-/** B — Tall portrait photo right (100×140 vertical) */
+/** B — Round 9 refinement: tall portrait photo + "add to trip" and "navigate" actions */
 export const PlaceB: React.FC = () => (
   <article className="flex bg-white rounded-2xl overflow-hidden cursor-pointer h-36" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)' }} dir="rtl">
     <div className="flex-1 min-w-0 px-4 py-3 flex flex-col">
-      <h3 className="text-[16px] font-semibold tracking-tight truncate" style={{ color: TEXT_PRIMARY }}>{place.name}</h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-[16px] font-semibold tracking-tight truncate" style={{ color: TEXT_PRIMARY }}>{place.name}</h3>
+        <span className="inline-flex items-center gap-1 text-[12px] font-semibold flex-shrink-0" style={{ color: TEXT_PRIMARY }}>
+          <Star className="w-3 h-3 fill-current" style={{ color: ACCENT }} /> {place.rating}
+        </span>
+      </div>
       <div className="flex items-center gap-2 mt-1">
         <span className="text-[12px] font-medium" style={{ color: TEXT_SECONDARY }}>{place.cuisine}</span>
         <span className="w-0.5 h-0.5 rounded-full" style={{ background: TEXT_MUTED }} />
@@ -46,13 +51,28 @@ export const PlaceB: React.FC = () => (
         <span className="text-[12px] font-semibold" style={{ color: TEXT_MUTED }}>{place.priceLevel}</span>
       </div>
       <p className="text-[12px] mt-2 line-clamp-2 leading-relaxed" style={{ color: TEXT_SECONDARY }}>{place.description}</p>
-      <div className="mt-auto flex items-center justify-between">
-        <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: ACCENT }}>
-          <Trophy className="w-3 h-3" /> {place.recommendationSource}
+      <div className="mt-auto flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold truncate" style={{ color: ACCENT }}>
+          <Trophy className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{place.recommendationSource}</span>
         </span>
-        <span className="inline-flex items-center gap-1 text-[12px] font-semibold" style={{ color: TEXT_PRIMARY }}>
-          <Star className="w-3 h-3 fill-current" style={{ color: ACCENT }} /> {place.rating}
-        </span>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button
+            aria-label="ניווט"
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-slate-100 border"
+            style={{ borderColor: HAIRLINE, color: TEXT_SECONDARY }}
+            onClick={e => e.preventDefault()}
+          >
+            <Navigation className="w-3.5 h-3.5" />
+          </button>
+          <button
+            aria-label="הוסף לטיול"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-white transition-opacity hover:opacity-90"
+            style={{ background: ACCENT }}
+            onClick={e => e.preventDefault()}
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
     </div>
     <img src={place.photoUrl} alt="" className="w-24 sm:w-28 h-full object-cover flex-shrink-0" />
@@ -99,7 +119,7 @@ export const PlaceD: React.FC = () => (
 
 export const PLACE_VARIANTS = [
   { id: 'A', title: 'A — תמונה ריבועית', subtitle: 'תמונה 140×140 בקצה ימין; טקסט וקטגוריה משמאל', Component: PlaceA },
-  { id: 'B', title: 'B — תמונה אנכית', subtitle: 'תמונה אנכית צרה (28w); תצוגה דחוסה יותר', Component: PlaceB },
+  { id: 'B', title: 'B — תמונה אנכית + פעולות', subtitle: 'תמונה אנכית צרה; כפתורי הוספה-לטיול וניווט בתחתית', Component: PlaceB },
   { id: 'C', title: 'C — עריכת כתב-עת', subtitle: 'תיאור ארוך; מקור ההמלצה ככותרת קטנה למעלה', Component: PlaceC },
   { id: 'D', title: 'D — תמונה כרקע', subtitle: 'הכרטיס כולו הוא התמונה; טקסט צף מעל גרדיאנט', Component: PlaceD },
 ];

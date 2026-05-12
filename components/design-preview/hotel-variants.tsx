@@ -41,7 +41,7 @@ export const HotelA: React.FC = () => (
   </Shell>
 );
 
-/** B — Nights badge in the slot */
+/** B — City badge in the slot (refined Round 9: city replaces nights pill) */
 export const HotelB: React.FC = () => (
   <Shell>
     <img src={hotel.photoUrl} alt="" className="w-44 h-44 object-cover flex-shrink-0" />
@@ -49,7 +49,7 @@ export const HotelB: React.FC = () => (
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-[16px] font-semibold tracking-tight truncate" style={{ color: TEXT_PRIMARY }}>{hotel.name}</h3>
-          <p className="text-[13px] truncate mt-1" style={{ color: TEXT_SECONDARY }}>{hotel.city} · {hotel.address}</p>
+          <p className="text-[13px] truncate mt-1" style={{ color: TEXT_SECONDARY }}>{hotel.address}</p>
         </div>
         <span className="inline-flex items-center gap-1 text-[13px] font-semibold flex-shrink-0" style={{ color: TEXT_PRIMARY }}>
           <Star className="w-3.5 h-3.5 fill-current" style={{ color: ACCENT }} /> {hotel.rating}
@@ -61,11 +61,11 @@ export const HotelB: React.FC = () => (
         <Field label="חדרים" value={`${hotel.roomCount}`} />
         <Field label="אורחים" value={`${hotel.guestCount}`} />
       </div>
-      <div className="mt-auto pt-3 flex items-baseline justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TEXT_MUTED }}>שהות</span>
-        <span className="inline-flex items-baseline gap-1.5 px-3 py-1.5 rounded-full" style={{ background: ACCENT_SOFT }}>
-          <span className="text-[20px] font-semibold leading-none tabular-nums" style={{ color: ACCENT }}>{hotel.nights}</span>
-          <span className="text-[12px] font-medium" style={{ color: ACCENT }}>לילות</span>
+      <div className="mt-auto pt-3 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TEXT_MUTED }}>יעד</span>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{ background: ACCENT_SOFT }}>
+          <MapPin className="w-3.5 h-3.5" style={{ color: ACCENT }} />
+          <span className="text-[14px] font-semibold leading-none" style={{ color: ACCENT }}>{hotel.city}</span>
         </span>
       </div>
     </div>
@@ -142,7 +142,7 @@ const Field: React.FC<{ label: string; value: string }> = ({ label, value }) => 
 
 export const HOTEL_VARIANTS = [
   { id: 'A', title: 'A — שם העיר', subtitle: 'במקום מחיר, מוצג שם העיר עם אייקון מיקום', Component: HotelA },
-  { id: 'B', title: 'B — תג לילות', subtitle: 'פיל צבעוני בולט עם מספר הלילות', Component: HotelB },
+  { id: 'B', title: 'B — תג עיר', subtitle: 'פיל צבעוני עם שם העיר ואייקון מיקום במקום הלילות', Component: HotelB },
   { id: 'C', title: 'C — קוד אישור', subtitle: 'מספר ההזמנה גדול וברור — סגנון רשמי', Component: HotelC },
   { id: 'D', title: 'D — ספירה לאחור', subtitle: 'כמה ימים עד הצ׳ק-אין; מעורר ציפייה', Component: HotelD },
 ];

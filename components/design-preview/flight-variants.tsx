@@ -7,17 +7,32 @@ import { previewFlights, ACCENT, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, HAIRL
 
 const flight = previewFlights[0];
 
-const PassShell: React.FC<{ stub: React.ReactNode }> = ({ stub }) => (
+const PassShell: React.FC<{
+  stub: React.ReactNode;
+  headerLogoSize?: 'sm' | 'lg';
+  headerRight?: { label: string; value: string };
+}> = ({ stub, headerLogoSize = 'sm', headerRight }) => {
+  const logoBoxClass = headerLogoSize === 'lg' ? 'w-11 h-11' : 'w-7 h-7';
+  const logoImgClass = headerLogoSize === 'lg' ? 'w-9 h-9' : 'w-6 h-6';
+  const headerPadY = headerLogoSize === 'lg' ? 'py-3' : 'py-2';
+  return (
   <article className="bg-white rounded-2xl overflow-hidden cursor-pointer max-w-md" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)' }} dir="ltr">
-    {/* Airline color thin header strip with logo + name (24px tall, premium rule) */}
-    <header className="px-4 py-2 flex items-center justify-between" style={{ background: flight.airlineColor }}>
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
-          <img src={flight.airlineLogoUrl} alt="" className="w-6 h-6 object-contain" />
+    {/* Airline color header strip with logo + name */}
+    <header className={`px-4 ${headerPadY} flex items-center justify-between`} style={{ background: flight.airlineColor }}>
+      <div className="flex items-center gap-2.5">
+        <div className={`${logoBoxClass} rounded-full bg-white flex items-center justify-center overflow-hidden flex-shrink-0`}>
+          <img src={flight.airlineLogoUrl} alt="" className={`${logoImgClass} object-contain`} />
         </div>
         <span className="text-white text-[11px] font-semibold uppercase tracking-wider">{flight.airline}</span>
       </div>
-      <span className="font-mono text-white text-[13px] font-semibold tabular-nums">{flight.flightNumber}</span>
+      {headerRight ? (
+        <div className="text-right">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-white/85 leading-none">{headerRight.label}</p>
+          <p className="font-mono text-white text-[14px] font-semibold tabular-nums leading-tight mt-1">{headerRight.value}</p>
+        </div>
+      ) : (
+        <span className="font-mono text-white text-[13px] font-semibold tabular-nums">{flight.flightNumber}</span>
+      )}
     </header>
     <div className="flex items-stretch">
       {/* Main */}
@@ -56,7 +71,8 @@ const PassShell: React.FC<{ stub: React.ReactNode }> = ({ stub }) => (
       </div>
     </div>
   </article>
-);
+  );
+};
 
 const Field: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div>
@@ -137,9 +153,11 @@ export const FlightC: React.FC = () => {
   );
 };
 
-/** D — Minimal logo-led stub */
+/** D — Round 9 refinement: enlarged airline logo in header + PNR top-right (replaces flight number) */
 export const FlightD: React.FC = () => (
   <PassShell
+    headerLogoSize="lg"
+    headerRight={{ label: 'PNR', value: flight.pnr || '—' }}
     stub={
       <>
         <div className="flex flex-col items-center justify-center pt-2">
@@ -160,5 +178,5 @@ export const FLIGHT_VARIANTS = [
   { id: 'A', title: 'A — PNR + משך', subtitle: 'מספר הזמנה גדול בסטאב + משך טיסה', Component: FlightA },
   { id: 'B', title: 'B — מחלקה + סטטוס', subtitle: 'מחלקת טיסה ותג סטטוס אישור/בזמן', Component: FlightB },
   { id: 'C', title: 'C — יום ותאריך', subtitle: 'דגש על יום בשבוע + מספר היום בטיול', Component: FlightC },
-  { id: 'D', title: 'D — לוגו מוגדל', subtitle: 'מינימליסטי; הלוגו של חברת התעופה תופס את הסטאב', Component: FlightD },
+  { id: 'D', title: 'D — לוגו מוגדל + PNR', subtitle: 'לוגו גדול בכותרת + PNR במקום מספר טיסה בפינה הימנית', Component: FlightD },
 ];

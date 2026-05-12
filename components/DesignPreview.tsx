@@ -28,11 +28,11 @@ type SurfaceId = 'banner' | 'itinerary' | 'hotels' | 'flights' | 'places' | 'adm
 
 const SURFACES: { id: SurfaceId; label: string; description: string; variants: any[] }[] = [
   { id: 'banner',    label: 'ראש דף הבית',     description: 'נשמר כפי שהוא — אתה אוהב את העיצוב הקיים', variants: [] },
-  { id: 'itinerary', label: 'יומן יומי',       description: 'תצוגת היום-יום של הטיול — 8 ימים, ללא אייקונים, צבע לכל עיר', variants: ITINERARY_VARIANTS },
+  { id: 'itinerary', label: 'יומן יומי',       description: 'ארבעה כיוונים שונים: פס צבע מלא / תמונת רקע / בלוק צד / גריד דו-עמודות',   variants: ITINERARY_VARIANTS },
   { id: 'hotels',    label: 'כרטיסי מלונות',   description: 'סגנון Booking — ללא מחיר ללילה; ארבע אופציות לחלל הפנוי',     variants: HOTEL_VARIANTS },
-  { id: 'flights',   label: 'כרטיסי טיסות',    description: 'כרטיס טיסה אמיתי עם לוגו חברת התעופה ו-PNR במקום SEAT/CLASS', variants: FLIGHT_VARIANTS },
-  { id: 'places',    label: 'מסעדות ואטרקציות', description: 'שורה עם תמונה במלוא הגובה, קטגוריה ומקור המלצה',             variants: PLACE_VARIANTS },
-  { id: 'admin',     label: 'דף ניהול הטיול',  description: 'כל הפרמטרים מהדף הקיים בארבעה פריסות שונות',                variants: ADMIN_VARIANTS },
+  { id: 'flights',   label: 'כרטיסי טיסות',    description: 'כרטיס טיסה אמיתי עם לוגו חברת התעופה. אופציה D כוללת לוגו מוגדל ו-PNR בכותרת', variants: FLIGHT_VARIANTS },
+  { id: 'places',    label: 'מסעדות ואטרקציות', description: 'שורה עם תמונה במלוא הגובה. אופציה B כוללת כפתורי הוספה-לטיול וניווט',          variants: PLACE_VARIANTS },
+  { id: 'admin',     label: 'דף ניהול הטיול',  description: 'אוחד ל-4 כפתורי-על; כל אחד פותח פאנל עם תת-טאבים. ארבע פריסות שונות',          variants: ADMIN_VARIANTS },
   { id: 'logo',      label: 'לוגו',             description: 'אותו לוגו — וריאציות של גופן, משקל ואנימציה',               variants: LOGO_VARIANTS },
 ];
 
