@@ -141,25 +141,32 @@ export const ItineraryView: React.FC<{
         return () => clearTimeout(t);
     }, [timeline]);
 
-    // Calculate favorite counts (Task 7)
+    // Counter shows ALL saved restaurants/attractions, not just favorites.
+    // (User has 27 saved restaurants but ★0 favorites → previous code showed
+    // "0 אוכל" which was misleading.) Favorites still sort to the top inside
+    // the popover.
     const favoriteRestaurants = useMemo(() => {
         const items: Restaurant[] = [];
         trip.restaurants?.forEach(cat =>
-            cat.restaurants.forEach(r => {
-                if (r.isFavorite) items.push(r);
-            })
+            cat.restaurants.forEach(r => items.push(r))
         );
-        return items;
+        return items.sort((a, b) => {
+            if (a.isFavorite && !b.isFavorite) return -1;
+            if (!a.isFavorite && b.isFavorite) return 1;
+            return (b.googleRating || 0) - (a.googleRating || 0);
+        });
     }, [trip.restaurants]);
 
     const favoriteAttractions = useMemo(() => {
         const items: Attraction[] = [];
         trip.attractions?.forEach(cat =>
-            cat.attractions.forEach(a => {
-                if (a.isFavorite) items.push(a);
-            })
+            cat.attractions.forEach(a => items.push(a))
         );
-        return items;
+        return items.sort((a, b) => {
+            if (a.isFavorite && !b.isFavorite) return -1;
+            if (!a.isFavorite && b.isFavorite) return 1;
+            return (b.rating || 0) - (a.rating || 0);
+        });
     }, [trip.attractions]);
 
     // Single source of truth for the "המלצות לשיפור" count + panel.
@@ -1017,7 +1024,7 @@ export const ItineraryView: React.FC<{
                                         {/* Header */}
                                         <div className="flex justify-between items-center mb-3">
                                             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-                                                {viewingCategory === 'hotels' ? 'מלונות' : viewingCategory === 'food' ? 'מסעדות מועדפות' : 'אטרקציות מועדפות'}
+                                                {viewingCategory === 'hotels' ? 'מלונות' : viewingCategory === 'food' ? 'הרשימה שלי — מסעדות' : 'הרשימה שלי — אטרקציות'}
                                             </h3>
                                             <div className="bg-slate-100 px-2 py-0.5 rounded text-2xs text-slate-400 font-mono hidden">POPUP MODE</div>
                                             <button onClick={() => setViewingCategory(null)} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
