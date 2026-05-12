@@ -4,7 +4,7 @@ import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
 import { safeMapsUrl } from '../utils/mapsUrl';
 import { getEnglishName } from '../utils/displayName';
-import { findSource, googleSearchFor } from '../utils/sourceCatalog';
+import { findSource, resolveSourceUrl } from '../utils/sourceCatalog';
 import { detectCountryCode } from '../utils/countryCodes';
 import { toast } from '../stores/useToastStore';
 
@@ -269,57 +269,21 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                                 const rawSource = String(item.recommendationSource).replace(/Bib/i, 'Michelin');
                                                 const entry = findSource(rawSource);
                                                 const cityHint = item.verifiedCity || item.location || '';
-                                                const searchHref = entry?.searchUrl ? entry.searchUrl(item.nameEnglish || item.name || displayName, cityHint) : googleSearchFor(item.nameEnglish || item.name || displayName, cityHint);
-                                                const homeHref = entry?.homepage || googleSearchFor(rawSource);
+                                                const href = resolveSourceUrl(rawSource, item.nameEnglish || item.name || displayName, cityHint);
                                                 return (
-                                                        <div className="relative flex items-center gap-2 mb-4 -mt-1">
-                                                                <button
-                                                                        type="button"
-                                                                        onClick={() => setSourceOpen(o => !o)}
-                                                                        aria-expanded={sourceOpen}
-                                                                        aria-haspopup="dialog"
+                                                        <div className="flex items-center gap-2 mb-4 -mt-1">
+                                                                <a
+                                                                        href={href}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        title={`פתח ב-${entry?.label || rawSource}`}
                                                                         className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 text-amber-800 text-2xs font-black uppercase tracking-wider px-2.5 py-1 rounded-lg shadow-sm hover:from-amber-100 hover:to-yellow-100 active:scale-95 transition-all"
                                                                 >
                                                                         <Trophy className="w-3 h-3 text-amber-600" aria-hidden="true" />
-                                                                        {entry?.label || rawSource}
-                                                                </button>
+                                                                        <span>{entry?.label || rawSource}</span>
+                                                                        <ExternalLink className="w-3 h-3 text-amber-600 opacity-70" aria-hidden="true" />
+                                                                </a>
                                                                 <span className="text-2xs font-bold text-slate-400">מקור המלצה</span>
-                                                                {sourceOpen && (
-                                                                        <div
-                                                                                ref={sourcePopoverRef}
-                                                                                role="dialog"
-                                                                                aria-label="מידע על מקור ההמלצה"
-                                                                                className="absolute top-full right-0 mt-2 z-30 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 p-4 animate-in fade-in slide-in-from-top-1"
-                                                                        >
-                                                                                <div className="flex items-center gap-2 mb-2">
-                                                                                        <Trophy className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                                                                                        <div className="text-sm font-black text-slate-800">{entry?.label || rawSource}</div>
-                                                                                </div>
-                                                                                <p className="text-xs text-slate-600 leading-relaxed mb-3" dir="auto">
-                                                                                        {entry?.description || `מקור: ${rawSource}. אין לנו מידע נוסף — בדוק בחיפוש Google למידע על המקור.`}
-                                                                                </p>
-                                                                                <div className="flex flex-col gap-1.5">
-                                                                                        <a
-                                                                                                href={searchHref}
-                                                                                                target="_blank"
-                                                                                                rel="noreferrer"
-                                                                                                className="inline-flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all"
-                                                                                        >
-                                                                                                <span>פתח באתר {entry?.label || 'המקור'}</span>
-                                                                                                <ExternalLink className="w-3.5 h-3.5" />
-                                                                                        </a>
-                                                                                        <a
-                                                                                                href={homeHref}
-                                                                                                target="_blank"
-                                                                                                rel="noreferrer"
-                                                                                                className="inline-flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-all"
-                                                                                        >
-                                                                                                <span>אתר הבית</span>
-                                                                                                <Globe className="w-3.5 h-3.5" />
-                                                                                        </a>
-                                                                                </div>
-                                                                        </div>
-                                                                )}
                                                         </div>
                                                 );
                                         })()}

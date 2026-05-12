@@ -136,7 +136,65 @@ const ENTRIES: Record<string, SourceEntry> = {
     homepage: 'https://www.foodpanda.com',
     searchUrl: (name, city) => `https://www.foodpanda.com/search?q=${enc(join([name, city]))}`,
   },
+  'wanderlog': {
+    label: 'Wanderlog',
+    description: 'אפליקציית תכנון טיולים פופולרית — אוסף המלצות והמקומות הטובים בכל יעד.',
+    homepage: 'https://wanderlog.com',
+    searchUrl: (name, city) => `https://wanderlog.com/search?q=${enc(join([name, city]))}`,
+  },
+  'iamkohchang': {
+    label: 'iamkohchang.com',
+    description: 'מדריך מקומי לקו צ\'אנג — המלצות מקיפות על מסעדות ואטרקציות באי.',
+    homepage: 'https://www.iamkohchang.com',
+  },
+  'eater 38': {
+    label: 'Eater 38',
+    description: 'רשימת ה-38 המסעדות החיוניות של Eater בכל עיר — דירוג עורכי קולינריה.',
+    homepage: 'https://www.eater.com',
+    searchUrl: (name, city) => `https://www.eater.com/search?q=${enc(join(['Eater 38', name, city]))}`,
+  },
+  'the infatuation': {
+    label: 'The Infatuation',
+    description: 'אתר ביקורת קולינרית הוליסטי — סקירות מעמיקות וכנות, פחות תיירותי יותר מקצועי.',
+    homepage: 'https://www.theinfatuation.com',
+    searchUrl: (name, city) => `https://www.theinfatuation.com/search?q=${enc(join([name, city]))}`,
+  },
+  'conde nast traveler': {
+    label: 'Condé Nast Traveler',
+    description: 'מגזין נסיעות יוקרה — Hot List שנתי, מאמרי "best of" איכותיים.',
+    homepage: 'https://www.cntraveler.com',
+    searchUrl: (name, city) => `https://www.cntraveler.com/search?q=${enc(join([name, city]))}`,
+  },
 };
+
+/**
+ * Last-resort: if the source string already looks like a domain (e.g.
+ * "iamkohchang.com", "thaitravelblog.com"), build a https URL directly so we
+ * deep-link to the actual site instead of falling back to Google search.
+ */
+function domainToUrl(raw: string): string | null {
+  if (!raw) return null;
+  const cleaned = raw.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').split(/[\s,;|]/)[0];
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(\.[a-z]{2,})$/i.test(cleaned) || /^[a-z0-9-]+\.[a-z]{2,}$/i.test(cleaned)) {
+    return `https://${cleaned}`;
+  }
+  return null;
+}
+
+/**
+ * Resolve the best URL to open for a given recommendation-source string.
+ * Priority: known catalog entry's search URL → catalog homepage → bare
+ * domain extracted from the source name → Google search fallback.
+ */
+export function resolveSourceUrl(rawLabel: string, name: string, city?: string): string {
+  const entry = findSource(rawLabel);
+  if (entry) {
+    return entry.searchUrl ? entry.searchUrl(name, city) : entry.homepage;
+  }
+  const direct = domainToUrl(rawLabel);
+  if (direct) return direct;
+  return googleSearchFor(name, city);
+}
 
 /**
  * Look up a source entry by the freeform label the AI returned. Tolerates

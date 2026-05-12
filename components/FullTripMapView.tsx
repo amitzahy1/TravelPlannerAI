@@ -47,6 +47,30 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
         const { prefs, setPrefs, view, setView } = useMapPreferences();
         const isMobile = useIsMobile();
         const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+
+        // Deferred map mount: render the page chrome + a loading skeleton
+        // INSTANTLY, then mount the heavy UnifiedMapView (Leaflet + AI leg
+        // classifier + geocoding pipeline) one tick later. The tab switch
+        // feels immediate — the map paints behind a brief spinner instead of
+        // hanging on the previous page.
+        const [mapMounted, setMapMounted] = useState(false);
+        useEffect(() => {
+                let cancelled = false;
+                // Two rAFs: one to let the skeleton paint, one to let layout settle.
+                const r1 = requestAnimationFrame(() => {
+                        const r2 = requestAnimationFrame(() => {
+                                if (!cancelled) setMapMounted(true);
+                        });
+                        // store r2 on a ref-like closure so we can cancel
+                        (window as any).__mapMountR2 = r2;
+                });
+                return () => {
+                        cancelled = true;
+                        cancelAnimationFrame(r1);
+                        const r2 = (window as any).__mapMountR2;
+                        if (r2) cancelAnimationFrame(r2);
+                };
+        }, []);
         const [missingSheetOpen, setMissingSheetOpen] = useState(false);
         const [locateState, setLocateState] = useState<LocateState>('idle');
         const [flyTo, setFlyTo] = useState<
@@ -265,22 +289,33 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                                         </div>
                                 </div>
 
-                                {/* Map */}
-                                <UnifiedMapView
-                                        trip={trip}
-                                        title={title}
-                                        height="100%"
-                                        layers={prefs}
-                                        tileTheme={prefs.theme}
-                                        compactView={view.city === 'all'}
-                                        embedded
-                                        activeCity={view.city === 'all' ? null : view.city}
-                                        walkingCircles={prefs.walkingCircles}
-                                        heatmap={prefs.heatmap}
-                                        flyTo={flyTo}
-                                        onItemsResolved={handleItemsResolved}
-                                        onUpdateTrip={onUpdateTrip}
-                                />
+                                {/* Map — deferred mount so the page chrome paints first */}
+                                {mapMounted ? (
+                                        <UnifiedMapView
+                                                trip={trip}
+                                                title={title}
+                                                height="100%"
+                                                layers={prefs}
+                                                tileTheme={prefs.theme}
+                                                compactView={view.city === 'all'}
+                                                embedded
+                                                activeCity={view.city === 'all' ? null : view.city}
+                                                walkingCircles={prefs.walkingCircles}
+                                                heatmap={prefs.heatmap}
+                                                flyTo={flyTo}
+                                                onItemsResolved={handleItemsResolved}
+                                                onUpdateTrip={onUpdateTrip}
+                                        />
+                                ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-slate-50">
+                                                <div className="relative w-16 h-16">
+                                                        <div className="absolute inset-0 rounded-full border-4 border-slate-200" />
+                                                        <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+                                                </div>
+                                                <p className="text-sm font-bold text-slate-600 animate-pulse">טוען מפה...</p>
+                                                <p className="text-xs text-slate-400">מאתחל מסלולים, מלונות ומקומות</p>
+                                        </div>
+                                )}
 
                                 {/* Bottom row */}
                                 <div className="absolute bottom-4 left-3 right-3 z-[1000] flex items-end justify-center pointer-events-none">

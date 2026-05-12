@@ -1019,8 +1019,8 @@ export const ItineraryView: React.FC<{
                                 <div className="fixed inset-0 z-[9990]" onClick={() => setViewingCategory(null)} />
 
                                 {/* Popover Content - Centered Top or positioned appropriately */}
-                                <div className="fixed top-24 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-[9999] animate-in slide-in-from-top-4 fade-in duration-200">
-                                    <div className="bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl p-4">
+                                <div className="fixed top-24 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-[9999] animate-in slide-in-from-top-4 fade-in duration-200">
+                                    <div className="bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-2xl p-3">
                                         {/* Header */}
                                         <div className="flex justify-between items-center mb-3">
                                             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
@@ -1032,84 +1032,64 @@ export const ItineraryView: React.FC<{
                                             </button>
                                         </div>
 
-                                        {/* Micro-Cards Grid - RICH DESIGN */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar p-1">
+                                        {/* Compact 1-column list — each row is a small horizontal card */}
+                                        <div className="flex flex-col gap-1.5 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                                             {(viewingCategory === 'hotels' ? (trip.hotels || []) :
                                                 viewingCategory === 'food' ? favoriteRestaurants :
                                                     favoriteAttractions
                                             ).map((item: any, idx: number) => {
-                                                // Dynamic Image Logic
                                                 const tags = [item.cuisine || item.type || ''];
-                                                const { url } = getPlaceImage(item.name || '', viewingCategory === 'food' ? 'food' : viewingCategory === 'attractions' ? 'attraction' : 'attraction', tags);
-
+                                                const { url } = getPlaceImage(item.name || '', viewingCategory === 'food' ? 'food' : 'attraction', tags);
+                                                const rating = item.rating || item.googleRating;
+                                                const subtitle = item.address || item.location || '';
+                                                const category = item.cuisine || item.type;
+                                                const nights = (() => {
+                                                    if (viewingCategory !== 'hotels') return null;
+                                                    const start = parseDateString(item.checkInDate || '');
+                                                    const end = parseDateString(item.checkOutDate || '');
+                                                    if (!start || !end) return null;
+                                                    const n = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                                                    return n > 0 ? `${n} לילות` : null;
+                                                })();
                                                 return (
-                                                    <div
+                                                    <button
                                                         key={item.id || idx}
+                                                        type="button"
                                                         onClick={() => {
                                                             setViewingCategory(null);
                                                             setScheduleItem({ item, type: viewingCategory === 'food' ? 'food' : 'attraction' });
                                                         }}
-                                                        className="relative flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer group h-full"
+                                                        className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-lg p-2 hover:bg-slate-50 hover:border-blue-300 transition-colors text-right group"
                                                     >
-                                                        {/* Image Header */}
-                                                        <div className="h-32 w-full bg-slate-100 relative overflow-hidden">
-                                                            <img
-                                                                src={item.imageUrl || item.image || url}
-                                                                alt=""
-                                                                className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
-                                                            />
-                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
-
-                                                            {/* Top Badge */}
-                                                            <div className="absolute top-2 right-2 flex gap-1">
-                                                                {(item.rating || item.googleRating) && (
-                                                                    <span className="bg-white/90 backdrop-blur text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
-                                                                        {item.rating || item.googleRating}<span className="text-yellow-500">★</span>
+                                                        <img
+                                                            src={item.imageUrl || item.image || url}
+                                                            alt=""
+                                                            loading="lazy"
+                                                            className="w-11 h-11 rounded-md object-cover bg-slate-100 flex-shrink-0"
+                                                        />
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-baseline gap-1.5">
+                                                                <span className="text-[13px] font-black text-slate-800 truncate" dir="ltr">{item.name}</span>
+                                                                {rating && (
+                                                                    <span className="text-[10px] font-bold text-slate-600 flex-shrink-0 tabular-nums">
+                                                                        {rating}<span className="text-yellow-500 ms-0.5">★</span>
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                        </div>
-
-                                                        {/* Content Body */}
-                                                        <div className="p-3 flex flex-col flex-1 gap-1">
-                                                            <h4 className="text-sm font-black text-slate-800 leading-tight line-clamp-2" dir="ltr">{item.name}</h4>
-
-                                                            <div className="flex items-start gap-1.5 text-xs text-slate-500 mt-1 line-clamp-2">
-                                                                <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                                                                <span dir="ltr">{item.address || item.location || 'Location available on map'}</span>
+                                                            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+                                                                {category && (
+                                                                    <span className="font-semibold truncate">{category}</span>
+                                                                )}
+                                                                {nights && (
+                                                                    <span className="font-bold text-indigo-600 flex-shrink-0">{nights}</span>
+                                                                )}
+                                                                {subtitle && (category || nights) && <span className="text-slate-300">·</span>}
+                                                                {subtitle && (
+                                                                    <span className="truncate" dir="ltr">{subtitle}</span>
+                                                                )}
                                                             </div>
-
-                                                            {/* Category Specific Info */}
-                                                            {viewingCategory === 'hotels' && (
-                                                                <div className="mt-2 pt-2 border-t border-slate-50 flex items-center justify-between text-xs">
-                                                                    <div className="flex items-center gap-1.5 text-slate-600 bg-slate-50 px-2 py-1 rounded-md">
-                                                                        <Calendar className="w-3.5 h-3.5 text-indigo-400" />
-                                                                        <span className="font-bold">{item.checkInDate ? `${parseDateString(item.checkInDate)?.getDate()}/${parseDateString(item.checkInDate)?.getMonth()! + 1}` : '--'} - {item.checkOutDate ? `${parseDateString(item.checkOutDate)?.getDate()}/${parseDateString(item.checkOutDate)?.getMonth()! + 1}` : '--'}</span>
-                                                                    </div>
-                                                                    {(() => {
-                                                                        const start = parseDateString(item.checkInDate || '');
-                                                                        const end = parseDateString(item.checkOutDate || '');
-                                                                        if (start && end) {
-                                                                            const diffTime = Math.abs(end.getTime() - start.getTime());
-                                                                            const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                                                            if (nights > 0) {
-                                                                                return <span className="text-2xs font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full">{nights} לילות</span>;
-                                                                            }
-                                                                        }
-                                                                        return null;
-                                                                    })()}
-                                                                </div>
-                                                            )}
-
-                                                            {(viewingCategory === 'food' || viewingCategory === 'attractions') && (
-                                                                <div className="mt-auto pt-2 flex items-center gap-2">
-                                                                    <span className="text-2xs font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-md">
-                                                                        {item.cuisine || item.type || (viewingCategory === 'food' ? 'Restaurant' : 'Activity')}
-                                                                    </span>
-                                                                </div>
-                                                            )}
                                                         </div>
-                                                    </div>
+                                                    </button>
                                                 );
                                             })}
 
@@ -1117,7 +1097,7 @@ export const ItineraryView: React.FC<{
                                             {((viewingCategory === 'hotels' && (trip.hotels || []).length === 0) ||
                                                 (viewingCategory === 'food' && favoriteRestaurants.length === 0) ||
                                                 (viewingCategory === 'attractions' && favoriteAttractions.length === 0)) && (
-                                                    <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
+                                                    <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
                                                         <div className={`p-4 rounded-full bg-slate-50 ${viewingCategory === 'hotels' ? 'text-indigo-200' : viewingCategory === 'food' ? 'text-orange-200' : 'text-emerald-200'}`}>
                                                             {viewingCategory === 'hotels' ? <Hotel className="w-8 h-8" /> : viewingCategory === 'food' ? <Utensils className="w-8 h-8" /> : <MapIcon className="w-8 h-8" />}
                                                         </div>
