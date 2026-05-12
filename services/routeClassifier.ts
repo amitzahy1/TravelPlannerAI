@@ -173,12 +173,20 @@ Respond ONLY with a JSON array, one object per leg, in the same order. Example:
 No explanation, no code fence, pure JSON.`;
 
         try {
-                const res = await generateWithFallback(
+                // Race the AI call against a 4-second hard timeout. If the AI
+                // is slow or the worker is retrying (5s wait on 500), we bail
+                // and let the map fall back to the distance-based heuristic
+                // immediately — keeps the page responsive even on a flaky AI.
+                const aiPromise = generateWithFallback(
                         null,
                         [{ role: 'user', parts: [{ text: prompt }] }],
                         { responseMimeType: 'application/json', temperature: 0.1 },
                         'FAST'
                 );
+                const timeoutPromise = new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error('classifyTripRoute timeout (4s)')), 4000)
+                );
+                const res = await Promise.race([aiPromise, timeoutPromise]);
                 const raw = (res.text || '').trim();
                 const parsed = JSON.parse(raw);
                 if (!Array.isArray(parsed) || parsed.length !== legs.length) {

@@ -2064,7 +2064,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         // bumps `popupRebuildToken` so we run once when it dismisses.
         if (popupOpenRef.current) return;
 
-        map.invalidateSize();
+        // Leaflet invalidateSize can throw "Cannot read _leaflet_pos" if the
+        // map pane DOM isn't ready yet. Wrap it so it doesn't tank the whole
+        // marker rebuild — the post-render rAF tick below will redo it safely.
+        try { map.invalidateSize(); } catch { /* DOM not ready yet, fine */ }
         markerLayer.clearLayers();
         routeLayer.clearLayers();
 
@@ -2769,7 +2772,13 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             });
         }
 
-        [100, 500].forEach(t => setTimeout(() => map.invalidateSize(), t));
+        // Single rAF-based size sync, guarded. Replaces the old [100,500]ms
+        // pair that stacked up timers on every re-render.
+        requestAnimationFrame(() => {
+            const m = mapInstanceRef.current;
+            if (!m) return;
+            try { m.invalidateSize(); } catch { /* still not ready, ignore */ }
+        });
     }, [mapItems, activeCity, trip, routeStops, airportCoords, legClassifications, waypointCoords, walkingCircles, heatmap, layerFlags.route, layerFlags.hotels, layerFlags.myLists, layerFlags.aiRestaurants, layerFlags.aiAttractions, mapZoom, popupRebuildToken]);
 
 
