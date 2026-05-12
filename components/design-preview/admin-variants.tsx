@@ -11,7 +11,10 @@ import {
 import { TRIP_NAME, TRIP_DATES, TRIP_CITIES, ACCENT, ACCENT_SOFT, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, HAIRLINE, PAGE_BG } from './fixtures';
 
 type Tab = { id: string; label: string; summary: string; icon: React.ComponentType<{ className?: string }> };
-type Group = { id: string; label: string; icon: React.ComponentType<{ className?: string }>; description: string; tabs: Tab[]; alerts?: number };
+// alertLevel: 'warn' for incomplete/missing data (amber), 'danger' for
+// blocking/broken issues (red). UX research finding: red badges should be
+// reserved for genuinely urgent state; amber covers "needs attention".
+type Group = { id: string; label: string; icon: React.ComponentType<{ className?: string }>; description: string; tabs: Tab[]; alerts?: number; alertLevel?: 'warn' | 'danger' };
 
 const GROUPS: Group[] = [
   {
@@ -40,7 +43,7 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    id: 'admin', label: 'ניהול ובקרה', icon: Settings, description: 'מכסות AI, ניטור ואזור מסוכן', alerts: 3,
+    id: 'admin', label: 'ניהול ובקרה', icon: Settings, description: 'מכסות AI, ניטור ואזור מסוכן', alerts: 3, alertLevel: 'warn',
     tabs: [
       { id: 'quotaFood', label: 'מכסת AI — מסעדות',   summary: 'נוצלה ב-9 לחודש',  icon: Zap },
       { id: 'quotaAttr', label: 'מכסת AI — אטרקציות', summary: 'נוצלה ב-4 לחודש',  icon: Zap },
@@ -199,7 +202,11 @@ export const AdminC: React.FC = () => {
               style={{ boxShadow: isActive ? `inset 0 0 0 2px ${ACCENT}` : '0 1px 3px rgba(0,0,0,0.04)' }}
             >
               {g.alerts && (
-                <span className="absolute top-2 left-2 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white" style={{ background: '#DC2626' }}>
+                <span
+                  className="absolute top-2 left-2 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white"
+                  style={{ background: g.alertLevel === 'danger' ? '#DC2626' : '#D97706' }}
+                  title={g.alertLevel === 'danger' ? 'דורש טיפול דחוף' : 'דורש השלמה'}
+                >
                   <AlertCircle className="w-2.5 h-2.5" /> {g.alerts}
                 </span>
               )}

@@ -24,8 +24,21 @@ const eventIcon: Record<string, React.ComponentType<{ className?: string; style?
 // are intrinsically narrow). The 4 variants below differ only on the day-card
 // header treatment.
 
+// Auto-fit grid: each day card is at least 220px wide; the layout fits as
+// many columns as the container allows. So at 375px (mobile) you get 1 col,
+// at ~680px you get 2-3 cols, at ~1100px+ you get 4 cols, at 1400px+ 5 cols.
+// This is the same primitive used by Booking.com / Airbnb result grids.
 const Grid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="grid grid-cols-2 gap-2.5" dir="rtl">{children}</div>
+  <div
+    dir="rtl"
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gap: '10px',
+    }}
+  >
+    {children}
+  </div>
 );
 
 /** A — Refined gradient banner (the round-9 baseline, cleaned up) */

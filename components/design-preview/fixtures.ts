@@ -81,11 +81,14 @@ export const TEXT_SECONDARY = '#475569'; // slate-600
 export const TEXT_MUTED = '#94A3B8';     // slate-400
 export const HAIRLINE = '#E2E8F0';       // slate-200
 
-// One color per city for the itinerary — chosen to be muted/premium, never loud.
+// One color per city — premium-saturated, visually distinct from each other AND
+// from the site's teal-700 accent. Each color hints at the city's character:
+// Bangkok (urban) → violet, Pattaya (beach/nightlife) → pink-rose, Koh Chang
+// (jungle island) → emerald. Soft variants are the matching 50-weight tints.
 export const CITY_COLORS: Record<string, { accent: string; soft: string; label: string }> = {
-  Bangkok:    { accent: '#0F766E', soft: '#F0FDFA', label: 'בנגקוק' },
-  Pattaya:    { accent: '#B45309', soft: '#FFFBEB', label: 'פטאיה' },
-  'Koh Chang':{ accent: '#7C2D12', soft: '#FEF3EC', label: 'קו צ׳אנג' },
+  Bangkok:    { accent: '#6D28D9', soft: '#F5F3FF', label: 'בנגקוק' },   // violet-700
+  Pattaya:    { accent: '#BE185D', soft: '#FDF2F8', label: 'פטאיה' },    // pink-700
+  'Koh Chang':{ accent: '#047857', soft: '#ECFDF5', label: 'קו צ׳אנג' }, // emerald-700
 };
 export const getCityColor = (city: string) =>
   CITY_COLORS[city] || { accent: TEXT_SECONDARY, soft: '#F1F5F9', label: city };
