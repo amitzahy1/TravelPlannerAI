@@ -180,6 +180,30 @@ export const previewHotels: PreviewHotel[] = [
   },
 ];
 
+// Mirrors production ROOM_COLORS (neutral slate/stone/amber palette, never bright)
+export const ROOM_COLORS = [
+  { bg: '#F1F5F9', border: '#CBD5E1', text: '#0F172A', badge: '#0F172A', num: '#FFFFFF' }, // slate
+  { bg: '#FAFAF9', border: '#D6D3D1', text: '#1C1917', badge: '#1C1917', num: '#FFFFFF' }, // stone
+  { bg: '#FEFCE8', border: '#FDE68A', text: '#78350F', badge: '#92400E', num: '#FFFFFF' }, // amber
+  { bg: '#F5F5F4', border: '#A8A29E', text: '#1C1917', badge: '#44403C', num: '#FFFFFF' }, // neutral
+];
+
+export interface PreviewRoom {
+  id: string;
+  label: string;
+  roomType: string;
+  adults: number;
+  children: number;
+  beds: string;
+  notes?: string;
+}
+
+export const previewRooms: PreviewRoom[] = [
+  { id: 'r1', label: 'משפחת כהן',  roomType: 'Deluxe Family Sea View',  adults: 2, children: 1, beds: 'King + Single', notes: 'נוף לים' },
+  { id: 'r2', label: 'הסבים',       roomType: 'Standard Double',         adults: 2, children: 0, beds: 'King Bed' },
+  { id: 'r3', label: 'הילדים',      roomType: 'Twin Room',               adults: 0, children: 2, beds: 'Twin Beds',     notes: 'סמוך לחדר הסבים' },
+];
+
 export const previewFlights: PreviewFlight[] = [
   {
     id: 'f1',
