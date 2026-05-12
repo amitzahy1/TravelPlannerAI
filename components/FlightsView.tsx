@@ -14,6 +14,7 @@ import { generateWithFallback } from '../services/aiService';
 import { toast } from '../stores/useToastStore';
 import { Sparkles } from 'lucide-react';
 import { PageIntro } from './ui/PageIntro';
+import { getAirlineBrandColor } from '../utils/airlineBrandColors';
 
 const formatDurationMs = (ms: number): string => {
   if (!isFinite(ms) || ms <= 0) return '';
@@ -436,25 +437,8 @@ const FlightRow: React.FC<{
               {heroDate || 'תאריך לא זמין'}
             </div>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              {airline && <span className="text-xs font-bold text-slate-500">{airline}</span>}
-              {flightNumber && <span className="text-xs font-mono font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">{flightNumber}</span>}
-              {(() => {
-                // Prefer a per-segment confirmation code (some bookings split
-                // outbound/return into different PNRs); fall back to the
-                // ticket-level PNR shared across all segments.
-                const pnr = (segment as any).confirmationCode || bookingPnr || '';
-                if (!pnr) return null;
-                return (
-                  <span
-                    className="inline-flex items-center gap-1 text-2xs font-mono font-black text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md"
-                    title="קוד הזמנה (PNR)"
-                    dir="ltr"
-                  >
-                    <span className="text-2xs font-bold text-blue-400">PNR</span>
-                    <span>{pnr}</span>
-                  </span>
-                );
-              })()}
+              {/* Airline + flight number moved into the boarding-pass colored
+                  header strip below; PNR moved into the stub zone on the right. */}
               {segment.status && segment.status !== 'SCHEDULED' && (
                 <span className={`text-2xs font-black px-2 py-0.5 rounded-md ${statusConfig[segment.status]?.cls || 'bg-slate-100 text-slate-600'}`}>
                   {statusConfig[segment.status]?.label}
@@ -518,26 +502,44 @@ const FlightRow: React.FC<{
           </div>
         </div>
 
-        {/* Row 2 — boarding-pass route strip. Three-column grid: airline logo
-            + departure / timeline / arrival. The middle column expands to fill
-            available width so the dotted line + duration chip always fit
-            cleanly on tiny screens — no minWidth hacks, no overflow. */}
-        <div dir="ltr" className="relative grid grid-cols-[auto_auto_1fr_auto] items-center gap-3 bg-gradient-to-l from-slate-50 to-white rounded-2xl p-3 border border-slate-100">
-          {/* Left accent strip (boarding-pass feel) */}
-          <span aria-hidden className="absolute left-0 top-3 bottom-3 w-1 rounded-pill bg-gradient-to-b from-blue-500 to-sky-400" />
-
-          <div className="w-10 h-10 rounded-xl border border-slate-100 bg-white shadow-card overflow-hidden flex items-center justify-center p-0.5 ml-1">
-            <img src={logoUrl} alt={airline || 'airline'}
-              onError={e => (e.currentTarget.style.display = 'none')}
-              loading="lazy" decoding="async"
-              className="w-full h-full object-contain" />
+        {/* Row 2 — Round-11 boarding-pass with airline-color top header. */}
+        <div dir="ltr" className="relative rounded-2xl overflow-hidden border border-slate-100 shadow-card">
+          {/* Airline-color top header strip — logo + airline name (left) +
+              flight number (right). Replaces the old left accent strip. */}
+          <div
+            className="flex items-center justify-between px-3 py-2 text-white"
+            style={{ background: getAirlineBrandColor(flightNumber) }}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img
+                  src={logoUrl}
+                  alt={airline || 'airline'}
+                  onError={e => (e.currentTarget.style.display = 'none')}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-6 h-6 object-contain"
+                />
+              </div>
+              {airline && (
+                <span className="text-xs font-bold uppercase tracking-wide truncate">{airline}</span>
+              )}
+            </div>
+            {flightNumber && (
+              <span className="font-mono text-xs font-black tabular-nums tracking-wider flex-shrink-0">{flightNumber}</span>
+            )}
           </div>
+
+          {/* Boarding-pass body — main content + perforated divider + stub */}
+          <div className="flex items-stretch bg-gradient-to-l from-slate-50 to-white">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 flex-1 min-w-0 p-3">
 
           {/* Departure */}
           <div className="text-left min-w-0">
+            <div className="text-2xs font-bold uppercase tracking-widest text-slate-400 leading-none mb-1">From</div>
             <div className="text-2xl font-black text-slate-900 leading-none tracking-[0.04em] font-mono tabular-nums">{segment.fromCode || '—'}</div>
             <div className="text-xs font-bold text-slate-600 leading-none mt-1 font-mono tabular-nums">{depTime || '—'}</div>
-            <div className="text-2xs text-slate-400 mt-0.5 truncate max-w-[90px]">{fromLabel}</div>
+            <div className="text-2xs text-slate-400 mt-0.5 truncate max-w-[120px]">{fromLabel}</div>
           </div>
 
           {/* Timeline */}
@@ -601,12 +603,49 @@ const FlightRow: React.FC<{
 
           {/* Arrival */}
           <div className="text-right min-w-0">
+            <div className="text-2xs font-bold uppercase tracking-widest text-slate-400 leading-none mb-1">To</div>
             <div className="text-2xl font-black text-slate-900 leading-none tracking-[0.04em] font-mono tabular-nums inline-flex items-start gap-0.5 justify-end">
               {segment.toCode || '—'}
               {dayDiff > 0 && <span className="text-2xs font-black text-orange-500 mt-0.5">+{dayDiff}</span>}
             </div>
             <div className="text-xs font-bold text-slate-600 leading-none mt-1 font-mono tabular-nums">{arrTime || '—'}</div>
-            <div className="text-2xs text-slate-400 mt-0.5 truncate max-w-[90px]">{toLabel}</div>
+            <div className="text-2xs text-slate-400 mt-0.5 truncate max-w-[120px]">{toLabel}</div>
+          </div>
+          </div>
+
+          {/* Perforated divider — dashed vertical line + circular cutouts */}
+          {(() => {
+            const stubPnr = (segment as any).confirmationCode || bookingPnr || '';
+            const stubDuration = duration || '';
+            if (!stubPnr && !stubDuration) return null;
+            return (
+              <>
+                <div className="relative w-5 flex-shrink-0 bg-slate-50">
+                  <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-r-2 border-dashed border-slate-300" />
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white border border-slate-100" />
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white border border-slate-100" />
+                </div>
+                {/* Stub zone — PNR + Duration stacked */}
+                <div className="flex-shrink-0 w-24 sm:w-28 p-3 bg-slate-50 flex flex-col justify-center gap-2.5">
+                  {stubPnr && (
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-none">Booking</p>
+                      <p className="font-mono text-[12px] font-black tracking-wider tabular-nums text-slate-900 mt-1">{stubPnr}</p>
+                    </div>
+                  )}
+                  {stubDuration && (
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-none">Duration</p>
+                      <p className="text-[12px] font-black text-slate-700 mt-1 inline-flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 text-slate-400" />
+                        {stubDuration}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
           </div>
         </div>
 
