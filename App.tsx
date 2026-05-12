@@ -9,7 +9,9 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Trip } from './types';
 import { LandingPage } from './components/LandingPage';
 import { UnifiedMapView } from './components/UnifiedMapView';
-import { FullTripMapView } from './components/FullTripMapView';
+// FullTripMapView is lazy-loaded so the Suspense fallback shows a loading
+// state immediately on tab click — the bundle splits into its own chunk
+// and the page transition feels animated instead of frozen.
 import { useTrips, useTripMutations } from './hooks/useTrips';
 import { useTripStore } from './stores/useTripStore';
 
@@ -21,6 +23,7 @@ const AdminView = React.lazy(() => import('./components/AdminView').then(module 
 const DiscoverView = React.lazy(() => import('./components/DiscoverView').then(module => ({ default: module.DiscoverView })));
 const RestaurantsView = React.lazy(() => import('./components/RestaurantsView').then(module => ({ default: module.RestaurantsView })));
 const AttractionsView = React.lazy(() => import('./components/AttractionsView').then(module => ({ default: module.AttractionsView })));
+const FullTripMapView = React.lazy(() => import('./components/FullTripMapView').then(module => ({ default: module.FullTripMapView })));
 
 import { JoinTripModal } from './components/JoinTripModal';
 import { WhatsNewModal } from './components/WhatsNewModal';
@@ -525,8 +528,12 @@ const AppContent: React.FC = () => {
 
     return (
       <React.Suspense fallback={
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6">
+          <div className="relative w-14 h-14">
+            <div className="absolute inset-0 rounded-full border-4 border-slate-200" />
+            <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+          </div>
+          <p className="text-sm font-bold text-slate-600 animate-pulse">טוען...</p>
         </div>
       }>
         {(() => {

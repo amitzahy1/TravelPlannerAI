@@ -12,7 +12,7 @@ import { Calendar as CalendarIntroIcon } from 'lucide-react';
 import { exportTripPDF } from '../utils/generateTripHTML';
 import { downloadTripIcal } from '../utils/generateTripIcal';
 import { FileText as FileTextIcon, CalendarDays as CalendarDaysIcon } from 'lucide-react';
-import { resolveLocationName, extractRobustCity, cleanCityName } from '../utils/geoData'; // Imported from new DB
+import { resolveLocationName, extractRobustCity, cleanCityName, displayCityName } from '../utils/geoData'; // Imported from new DB
 import { getCityTheme, buildCityColorMap, lookupCityTheme } from '../utils/cityColors'; // Color Engine
 import {
     MapPin, Calendar, Navigation, Info, ExternalLink,
@@ -1041,8 +1041,18 @@ export const ItineraryView: React.FC<{
                                                 const tags = [item.cuisine || item.type || ''];
                                                 const { url } = getPlaceImage(item.name || '', viewingCategory === 'food' ? 'food' : 'attraction', tags);
                                                 const rating = item.rating || item.googleRating;
-                                                const subtitle = item.address || item.location || '';
                                                 const category = item.cuisine || item.type;
+                                                const recBy = item.recommendationSource;
+                                                // City only — never the full address. Try verifiedCity / city /
+                                                // explicit fields first, then extract from the address string.
+                                                const rawAddress = item.address || item.location || '';
+                                                let city = item.verifiedCity || item.city || '';
+                                                if (!city && rawAddress) {
+                                                    try { city = extractRobustCity(rawAddress, item.name || '', trip); } catch { city = ''; }
+                                                }
+                                                if (city) {
+                                                    try { city = displayCityName(city, 'he') || city; } catch { /* keep raw */ }
+                                                }
                                                 const nights = (() => {
                                                     if (viewingCategory !== 'hotels') return null;
                                                     const start = parseDateString(item.checkInDate || '');
@@ -1059,35 +1069,40 @@ export const ItineraryView: React.FC<{
                                                             setViewingCategory(null);
                                                             setScheduleItem({ item, type: viewingCategory === 'food' ? 'food' : 'attraction' });
                                                         }}
-                                                        className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-lg p-2 hover:bg-slate-50 hover:border-blue-300 transition-colors text-right group"
+                                                        className="flex items-start gap-2.5 bg-white border border-slate-200 rounded-lg p-2 hover:bg-slate-50 hover:border-blue-300 transition-colors text-right group"
                                                     >
                                                         <img
                                                             src={item.imageUrl || item.image || url}
                                                             alt=""
                                                             loading="lazy"
-                                                            className="w-11 h-11 rounded-md object-cover bg-slate-100 flex-shrink-0"
+                                                            className="w-12 h-12 rounded-md object-cover bg-slate-100 flex-shrink-0"
                                                         />
                                                         <div className="flex-1 min-w-0">
-                                                            <div className="flex items-baseline gap-1.5">
-                                                                <span className="text-[13px] font-black text-slate-800 truncate" dir="ltr">{item.name}</span>
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <span className="text-[13px] font-black text-slate-800 truncate min-w-0" dir="ltr">{item.name}</span>
                                                                 {rating && (
-                                                                    <span className="text-[10px] font-bold text-slate-600 flex-shrink-0 tabular-nums">
-                                                                        {rating}<span className="text-yellow-500 ms-0.5">★</span>
+                                                                    <span className="inline-flex items-center gap-0.5 text-[11px] font-black text-slate-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md flex-shrink-0 tabular-nums">
+                                                                        <span className="text-yellow-500">★</span>{rating}
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+                                                            <div className="flex items-center flex-wrap gap-x-1.5 text-[11px] text-slate-500 mt-0.5">
                                                                 {category && (
-                                                                    <span className="font-semibold truncate">{category}</span>
+                                                                    <span className="font-semibold text-slate-600 whitespace-normal">{category}</span>
                                                                 )}
                                                                 {nights && (
                                                                     <span className="font-bold text-indigo-600 flex-shrink-0">{nights}</span>
                                                                 )}
-                                                                {subtitle && (category || nights) && <span className="text-slate-300">·</span>}
-                                                                {subtitle && (
-                                                                    <span className="truncate" dir="ltr">{subtitle}</span>
+                                                                {city && (category || nights) && <span className="text-slate-300">·</span>}
+                                                                {city && (
+                                                                    <span className="font-medium whitespace-nowrap">{city}</span>
                                                                 )}
                                                             </div>
+                                                            {recBy && viewingCategory !== 'hotels' && (
+                                                                <div className="text-[10px] text-amber-700 mt-0.5 font-bold truncate" dir="ltr">
+                                                                    🏆 {String(recBy).replace(/Bib/i, 'Michelin')}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </button>
                                                 );
