@@ -1,168 +1,155 @@
-/** 4 admin/trip-management page layout proposals. These are SCHEMATIC mockups —
- *  the goal is to communicate the layout structure, not pixel-perfect copy. */
+/** Round 8 — 4 refined "Dashboard cards" admin layouts.
+ *  Every section from the existing AdminView is represented in each variant. */
 import React from 'react';
-import { Plane, Hotel, Calendar, Users, Share2, AlertTriangle, ChevronDown, ChevronLeft, Sparkles, MapPin, Edit3, FileText } from 'lucide-react';
-import { TRIP_NAME, TRIP_DATES, TRIP_CITIES, ACCENT, ACCENT_SOFT } from './fixtures';
+import {
+  Calendar, MapPin, Users, Plane, Hotel, Sparkles, Share2, FileText,
+  Zap, Wand2, Activity, ShieldAlert, ChevronLeft, Settings, ScrollText,
+} from 'lucide-react';
+import { TRIP_NAME, TRIP_DATES, TRIP_CITIES, ACCENT, ACCENT_SOFT, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, HAIRLINE } from './fixtures';
 
+// All admin sections from AdminView, grouped logically.
 const sections = [
-  { id: 'basics', icon: <Calendar />, label: 'פרטים בסיסיים', summary: `${TRIP_NAME} · ${TRIP_DATES}` },
-  { id: 'cities', icon: <MapPin />, label: 'יעדים', summary: `${TRIP_CITIES.length} ערים, 18 לילות` },
-  { id: 'travelers', icon: <Users />, label: 'נוסעים', summary: '6 מבוגרים, 3 ילדים' },
-  { id: 'hotels', icon: <Hotel />, label: 'מלונות', summary: '4 שמורים, 0 חסרים' },
-  { id: 'flights', icon: <Plane />, label: 'טיסות', summary: '5 קטעים, 2 הלוך/חזור' },
-  { id: 'share', icon: <Share2 />, label: 'שיתוף ויצוא', summary: '2 משתפים · PDF זמין' },
-  { id: 'danger', icon: <AlertTriangle />, label: 'אזור מסוכן', summary: 'אפס מחקר · מחיקת טיול' },
+  // Overview
+  { id: 'name',      icon: Settings,    label: 'שם הטיול',           summary: TRIP_NAME,                                     group: 'overview' },
+  { id: 'cities',    icon: MapPin,      label: 'יעדים',              summary: `${TRIP_CITIES.length} ערים · 18 לילות`,         group: 'overview' },
+  { id: 'dates',     icon: Calendar,    label: 'תאריכים',            summary: TRIP_DATES,                                    group: 'overview' },
+  { id: 'travelers', icon: Users,       label: 'נוסעים',             summary: '6 מבוגרים · 3 ילדים',                          group: 'overview' },
+  // Logistics
+  { id: 'flights',   icon: Plane,       label: 'טיסות',              summary: '5 קטעים · 2 הלוך/חזור',                        group: 'logistics' },
+  { id: 'hotels',    icon: Hotel,       label: 'מלונות',             summary: '4 מלונות · ללא חוסרים',                         group: 'logistics' },
+  { id: 'research',  icon: Sparkles,    label: 'מחקר מעמיק',         summary: 'ChatGPT / Gemini / Claude',                  group: 'logistics' },
+  // Tools
+  { id: 'share',     icon: Share2,      label: 'שתף טיול',           summary: '2 משתפים פעילים',                              group: 'tools' },
+  { id: 'pdf',       icon: FileText,    label: 'ייצא PDF',           summary: 'הורד גרסה להדפסה',                              group: 'tools' },
+  { id: 'quotaFood', icon: Zap,         label: 'מכסת AI — מסעדות',    summary: 'נוצלה ב-9 לחודש · אפס',                       group: 'tools' },
+  { id: 'quotaAttr', icon: Zap,         label: 'מכסת AI — אטרקציות',  summary: 'נוצלה ב-4 לחודש · אפס',                       group: 'tools' },
+  { id: 'magic',     icon: Wand2,       label: 'ייבוא חכם',           summary: 'הדבק טקסט / PDF',                              group: 'tools' },
+  // Audit
+  { id: 'activity',  icon: Activity,    label: 'יומן פעילות',         summary: '24 שינויים השבוע',                             group: 'audit' },
+  { id: 'health',    icon: ShieldAlert, label: 'בריאות הנתונים',      summary: '3 גיאוקודים חסרים',                            group: 'audit' },
+  { id: 'logs',      icon: ScrollText,  label: 'יומני מערכת',         summary: 'גישה לאדמין בלבד',                             group: 'audit' },
+  // Danger
+  { id: 'danger',    icon: ShieldAlert, label: 'מחק טיול',            summary: 'פעולה בלתי הפיכה',                             group: 'danger' },
 ];
 
-/** A — Dashboard cards (each section a clickable big card, no tabs) */
+const groupLabels: Record<string, string> = {
+  overview:  'פרטי הטיול',
+  logistics: 'תוכן הטיול',
+  tools:     'כלים ושיתוף',
+  audit:     'ניטור',
+  danger:    'אזור מסוכן',
+};
+const groupOrder = ['overview', 'logistics', 'tools', 'audit', 'danger'];
+
+const SectionCard: React.FC<{
+  section: typeof sections[number];
+  size?: 'sm' | 'md' | 'lg';
+  layout?: 'grid' | 'row';
+}> = ({ section, size = 'md', layout = 'grid' }) => {
+  const Icon = section.icon;
+  const isDanger = section.group === 'danger';
+  if (layout === 'row') {
+    return (
+      <button className="w-full flex items-center gap-3 bg-white rounded-2xl p-4 text-right hover:bg-slate-50 transition-colors" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+        <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: isDanger ? '#FEF2F2' : ACCENT_SOFT, color: isDanger ? '#B91C1C' : ACCENT }}>
+          <Icon className="w-4 h-4" />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[14px] font-semibold truncate" style={{ color: TEXT_PRIMARY }}>{section.label}</span>
+          <span className="block text-[12px] truncate" style={{ color: TEXT_SECONDARY }}>{section.summary}</span>
+        </span>
+        <ChevronLeft className="w-4 h-4 flex-shrink-0" style={{ color: TEXT_MUTED }} />
+      </button>
+    );
+  }
+  const pad = size === 'lg' ? 'p-5' : size === 'sm' ? 'p-3.5' : 'p-4';
+  return (
+    <button className={`text-right bg-white rounded-2xl ${pad} hover:bg-slate-50 transition-colors group`} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+      <div className="flex items-start gap-3">
+        <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: isDanger ? '#FEF2F2' : ACCENT_SOFT, color: isDanger ? '#B91C1C' : ACCENT }}>
+          <Icon className="w-4 h-4" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <h4 className="text-[14px] font-semibold" style={{ color: TEXT_PRIMARY }}>{section.label}</h4>
+          <p className="text-[12px] mt-0.5 truncate" style={{ color: TEXT_SECONDARY }}>{section.summary}</p>
+        </div>
+        <ChevronLeft className="w-4 h-4 mt-2 flex-shrink-0 group-hover:translate-x-[-2px] transition-transform" style={{ color: TEXT_MUTED }} />
+      </div>
+    </button>
+  );
+};
+
+const TripHeader: React.FC<{ subtitle?: string }> = ({ subtitle }) => (
+  <header className="mb-5" dir="rtl">
+    <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: TEXT_MUTED }}>ניהול טיול</p>
+    <h2 className="text-[22px] font-semibold tracking-tight mt-1" style={{ color: TEXT_PRIMARY }}>{TRIP_NAME}</h2>
+    <p className="text-[13px] mt-0.5" style={{ color: TEXT_SECONDARY }}>{subtitle || `${TRIP_DATES} · ${TRIP_CITIES.map(c => c.name).join(' · ')}`}</p>
+  </header>
+);
+
+/** A — Symmetric grid */
 export const AdminA: React.FC = () => (
   <div className="bg-slate-50 p-5 rounded-2xl" dir="rtl">
-    <header className="mb-5">
-      <p className="text-xs font-bold text-slate-500">ניהול טיול</p>
-      <h2 className="text-2xl font-black text-slate-900 tracking-tight">{TRIP_NAME}</h2>
-    </header>
+    <TripHeader />
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {sections.map(s => (
-        <button key={s.id} className="text-right bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-md hover:border-slate-300 transition-all group">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: ACCENT_SOFT, color: ACCENT }}>
-              {React.cloneElement(s.icon as React.ReactElement<any>, { className: 'w-5 h-5' })}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-black text-slate-900 group-hover:text-slate-700">{s.label}</h3>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">{s.summary}</p>
-            </div>
-            <ChevronLeft className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
-          </div>
-        </button>
+      {sections.map(s => <SectionCard key={s.id} section={s} />)}
+    </div>
+  </div>
+);
+
+/** B — Hero card + utility grid */
+export const AdminB: React.FC = () => (
+  <div className="bg-slate-50 p-5 rounded-2xl space-y-3" dir="rtl">
+    {/* Hero spanning the trip name + cities + dates */}
+    <div className="bg-white rounded-2xl p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: TEXT_MUTED }}>טיול פעיל</p>
+        <h2 className="text-[28px] font-semibold tracking-tight mt-1" style={{ color: TEXT_PRIMARY }}>{TRIP_NAME}</h2>
+        <p className="text-[13px] mt-1" style={{ color: TEXT_SECONDARY }}>{TRIP_DATES} · {TRIP_CITIES.map(c => `${c.name} (${c.nights})`).join(' · ')}</p>
+      </div>
+      <div className="flex gap-2 flex-shrink-0">
+        <button className="px-4 py-2 rounded-full text-[13px] font-semibold text-white" style={{ background: ACCENT }}>שתף</button>
+        <button className="px-4 py-2 rounded-full text-[13px] font-semibold border" style={{ borderColor: HAIRLINE, color: TEXT_PRIMARY }}>ייצא PDF</button>
+      </div>
+    </div>
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      {sections.filter(s => !['name', 'share', 'pdf'].includes(s.id)).map(s => (
+        <SectionCard key={s.id} section={s} size="sm" />
       ))}
     </div>
   </div>
 );
 
-/** B — Linear single page (sticky nav, all sections expanded on one scroll) */
-export const AdminB: React.FC = () => (
-  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden" dir="rtl">
-    <div className="sticky top-0 px-5 py-3 bg-white border-b border-slate-200 z-10">
-      <h2 className="text-base font-black text-slate-900 mb-2 tracking-tight">{TRIP_NAME}</h2>
-      <nav className="flex gap-1 overflow-x-auto -mx-1 px-1 pb-1">
-        {sections.map((s, i) => (
-          <a key={s.id} href={`#section-${s.id}`} className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${i === 0 ? '' : 'text-slate-500 hover:bg-slate-100'}`}
-             style={i === 0 ? { background: ACCENT_SOFT, color: ACCENT } : undefined}>
-            {s.label}
-          </a>
-        ))}
-      </nav>
-    </div>
-    <div className="divide-y divide-slate-100">
-      {sections.slice(0, 4).map(s => (
-        <section key={s.id} id={`section-${s.id}`} className="px-5 py-4">
-          <header className="flex items-baseline justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span style={{ color: ACCENT }}>{React.cloneElement(s.icon as React.ReactElement<any>, { className: 'w-4 h-4' })}</span>
-              <h3 className="text-sm font-black text-slate-900">{s.label}</h3>
-            </div>
-            <button className="text-xs font-bold text-slate-500 hover:text-slate-900 inline-flex items-center gap-1">
-              <Edit3 className="w-3 h-3" /> ערוך
-            </button>
-          </header>
-          <p className="text-xs text-slate-600">{s.summary}</p>
+/** C — Section-grouped */
+export const AdminC: React.FC = () => (
+  <div className="bg-slate-50 p-5 rounded-2xl" dir="rtl">
+    <TripHeader />
+    <div className="space-y-5">
+      {groupOrder.map(g => (
+        <section key={g}>
+          <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-2.5 ps-1" style={{ color: TEXT_MUTED }}>{groupLabels[g]}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {sections.filter(s => s.group === g).map(s => <SectionCard key={s.id} section={s} size="sm" />)}
+          </div>
         </section>
       ))}
     </div>
   </div>
 );
 
-/** C — Wizard / accordion (collapsed sections, open one at a time) */
-export const AdminC: React.FC = () => (
-  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden" dir="rtl">
-    <header className="px-5 py-4 border-b border-slate-200">
-      <h2 className="text-lg font-black text-slate-900 tracking-tight">{TRIP_NAME}</h2>
-      <p className="text-xs text-slate-500">לחץ על שלב כדי לפתוח אותו</p>
-    </header>
-    <div className="divide-y divide-slate-100">
-      {sections.map((s, i) => {
-        const isOpen = i === 0;
-        return (
-          <div key={s.id}>
-            <button className="w-full px-5 py-4 flex items-center gap-3 text-right hover:bg-slate-50 transition-colors">
-              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${isOpen ? 'text-white' : 'bg-slate-100 text-slate-500'}`}
-                    style={isOpen ? { background: ACCENT } : undefined}>
-                {i + 1}
-              </span>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-black text-slate-900">{s.label}</h3>
-                <p className="text-xs text-slate-500 truncate">{s.summary}</p>
-              </div>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isOpen && (
-              <div className="px-5 pb-5 pt-1 bg-slate-50 text-xs text-slate-600 leading-relaxed space-y-2">
-                <p>תיאור מפורט של השלב הזה — שדות לעריכה, סטטיסטיקות, וכפתורי פעולה רלוונטיים.</p>
-                <button className="px-3 py-1.5 rounded-lg text-white text-xs font-bold" style={{ background: ACCENT }}>
-                  שמור והמשך
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  </div>
-);
-
-/** D — Two-column workspace (sticky left meta, right scrolling content) */
+/** D — Compact list-rows */
 export const AdminD: React.FC = () => (
-  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex min-h-[400px]" dir="rtl">
-    <aside className="w-56 flex-shrink-0 bg-slate-50 border-l border-slate-200 p-4 flex flex-col gap-4">
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">טיול פעיל</p>
-        <h3 className="text-base font-black text-slate-900 mt-0.5 tracking-tight">{TRIP_NAME}</h3>
-        <p className="text-xs text-slate-500 mt-0.5">{TRIP_DATES}</p>
-      </div>
-      <div className="flex flex-col gap-2 text-xs">
-        <button className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg font-bold hover:bg-white text-slate-700">
-          <Share2 className="w-3.5 h-3.5" /> שתף
-        </button>
-        <button className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg font-bold hover:bg-white text-slate-700">
-          <FileText className="w-3.5 h-3.5" /> ייצא PDF
-        </button>
-        <button className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg font-bold hover:bg-white text-slate-700">
-          <Sparkles className="w-3.5 h-3.5" /> מחקר AI
-        </button>
-      </div>
-      <div className="mt-auto pt-3 border-t border-slate-200">
-        <button className="w-full px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-700 hover:bg-rose-50">
-          ⚠ מחק טיול
-        </button>
-      </div>
-    </aside>
-    <div className="flex-1 p-5 space-y-3 overflow-y-auto">
-      <nav className="flex gap-1 mb-2 text-xs font-bold">
-        <span className="px-2.5 py-1 rounded-lg" style={{ background: ACCENT_SOFT, color: ACCENT }}>פרטים</span>
-        <span className="px-2.5 py-1 rounded-lg text-slate-500 hover:bg-slate-100">לוגיסטיקה</span>
-        <span className="px-2.5 py-1 rounded-lg text-slate-500 hover:bg-slate-100">תוכן</span>
-        <span className="px-2.5 py-1 rounded-lg text-slate-500 hover:bg-slate-100">משתתפים</span>
-      </nav>
-      <div className="space-y-2.5">
-        {sections.slice(0, 5).map(s => (
-          <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50">
-            <span style={{ color: ACCENT }}>{React.cloneElement(s.icon as React.ReactElement<any>, { className: 'w-4 h-4' })}</span>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-black text-slate-900">{s.label}</h4>
-              <p className="text-xs text-slate-500 truncate">{s.summary}</p>
-            </div>
-            <Edit3 className="w-3.5 h-3.5 text-slate-400" />
-          </div>
-        ))}
-      </div>
+  <div className="bg-slate-50 p-5 rounded-2xl" dir="rtl">
+    <TripHeader />
+    <div className="space-y-2">
+      {sections.map(s => <SectionCard key={s.id} section={s} layout="row" />)}
     </div>
   </div>
 );
 
 export const ADMIN_VARIANTS = [
-  { id: 'A', title: 'A — Dashboard cards', subtitle: 'כל סקציה ככרטיס לחיץ; ללא טאבים, ללא מבוך', Component: AdminA },
-  { id: 'B', title: 'B — Single page', subtitle: 'דף אחד גלילי עם ניווט "anchor links" קבוע בראש', Component: AdminB },
-  { id: 'C', title: 'C — Wizard / accordion', subtitle: 'שלב-אחר-שלב עם פתיחה אחת בכל פעם', Component: AdminC },
-  { id: 'D', title: 'D — Two-column workspace', subtitle: 'סייד-בר קבוע למטה-דאטה מימין + אזור עבודה משמאל', Component: AdminD },
+  { id: 'A', title: 'A — גריד סימטרי', subtitle: '2 עמודות, כל סקציה ככרטיס שווה. נקי וברור', Component: AdminA },
+  { id: 'B', title: 'B — כרטיס-הירו + גריד', subtitle: 'כותרת הטיול ככרטיס גדול עם פעולות + שאר ה־cards', Component: AdminB },
+  { id: 'C', title: 'C — קבוצות לפי תפקיד', subtitle: 'הסקציות מקובצות תחת כותרות (פרטים / תוכן / כלים / ניטור)', Component: AdminC },
+  { id: 'D', title: 'D — רשימה דחוסה', subtitle: 'כל סקציה בשורה אופקית; הרבה על המסך בבת אחת', Component: AdminD },
 ];

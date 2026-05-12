@@ -16,28 +16,27 @@ import { isAdmin } from '../utils/isAdmin';
 import { useAuth } from '../contexts/AuthContext';
 import { Lock, Check, ArrowLeft, ChevronDown } from 'lucide-react';
 
-import { BANNER_VARIANTS } from './design-preview/banner-variants';
 import { ITINERARY_VARIANTS } from './design-preview/itinerary-variants';
 import { HOTEL_VARIANTS } from './design-preview/hotel-variants';
 import { FLIGHT_VARIANTS } from './design-preview/flight-variants';
 import { PLACE_VARIANTS } from './design-preview/place-variants';
 import { ADMIN_VARIANTS } from './design-preview/admin-variants';
 import { LOGO_VARIANTS } from './design-preview/logo-variants';
-import { ACCENT, ACCENT_SOFT } from './design-preview/fixtures';
+import { ACCENT, ACCENT_SOFT, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED } from './design-preview/fixtures';
 
 type SurfaceId = 'banner' | 'itinerary' | 'hotels' | 'flights' | 'places' | 'admin' | 'logo';
 
 const SURFACES: { id: SurfaceId; label: string; description: string; variants: any[] }[] = [
-  { id: 'banner',    label: 'ראש דף הבית',     description: 'כותרת הטיול עם הסטטיסטיקות (מקומות / אוכל / מלונות / טיסות)', variants: BANNER_VARIANTS },
-  { id: 'itinerary', label: 'יומן יומי',       description: 'תצוגת היום-יום של הטיול במסך הראשי',                       variants: ITINERARY_VARIANTS },
-  { id: 'hotels',    label: 'כרטיסי מלונות',   description: 'איך כל מלון מופיע ברשימת המלונות',                          variants: HOTEL_VARIANTS },
-  { id: 'flights',   label: 'כרטיסי טיסות',    description: 'איך טיסה מוצגת — כולל אופציית כרטיס טיסה אמיתי',           variants: FLIGHT_VARIANTS },
-  { id: 'places',    label: 'מסעדות ואטרקציות', description: 'הכרטיסיות העיקריות שאתה רואה רוב הזמן',                   variants: PLACE_VARIANTS },
-  { id: 'admin',     label: 'דף ניהול הטיול',  description: 'איך נראה הדף שאמרת שצריך לבנות מחדש',                       variants: ADMIN_VARIANTS },
-  { id: 'logo',      label: 'לוגו',             description: '4 כיווני לוגו לבחירה',                                         variants: LOGO_VARIANTS },
+  { id: 'banner',    label: 'ראש דף הבית',     description: 'נשמר כפי שהוא — אתה אוהב את העיצוב הקיים', variants: [] },
+  { id: 'itinerary', label: 'יומן יומי',       description: 'תצוגת היום-יום של הטיול — 8 ימים, ללא אייקונים, צבע לכל עיר', variants: ITINERARY_VARIANTS },
+  { id: 'hotels',    label: 'כרטיסי מלונות',   description: 'סגנון Booking — ללא מחיר ללילה; ארבע אופציות לחלל הפנוי',     variants: HOTEL_VARIANTS },
+  { id: 'flights',   label: 'כרטיסי טיסות',    description: 'כרטיס טיסה אמיתי עם לוגו חברת התעופה ו-PNR במקום SEAT/CLASS', variants: FLIGHT_VARIANTS },
+  { id: 'places',    label: 'מסעדות ואטרקציות', description: 'שורה עם תמונה במלוא הגובה, קטגוריה ומקור המלצה',             variants: PLACE_VARIANTS },
+  { id: 'admin',     label: 'דף ניהול הטיול',  description: 'כל הפרמטרים מהדף הקיים בארבעה פריסות שונות',                variants: ADMIN_VARIANTS },
+  { id: 'logo',      label: 'לוגו',             description: 'אותו לוגו — וריאציות של גופן, משקל ואנימציה',               variants: LOGO_VARIANTS },
 ];
 
-const STORAGE_KEY = 'design_picks_v2';
+const STORAGE_KEY = 'design_picks_v3';
 
 function readPicks(): Partial<Record<SurfaceId, string>> {
   try {
@@ -63,7 +62,10 @@ export const DesignPreview: React.FC = () => {
   };
 
   const surface = useMemo(() => SURFACES.find(s => s.id === activeSurface)!, [activeSurface]);
-  const completeCount = Object.keys(picks).filter(k => picks[k as SurfaceId]).length;
+  // Banner is fixed ("keep current") — count it as auto-resolved, not a pick.
+  const surfacesNeedingPick = SURFACES.filter(s => s.id !== 'banner');
+  const completeCount = surfacesNeedingPick.filter(s => picks[s.id]).length;
+  const totalCount = surfacesNeedingPick.length;
 
   if (!isAdmin(user)) {
     return (
@@ -93,9 +95,9 @@ export const DesignPreview: React.FC = () => {
             <h1 className="text-base font-black text-slate-900 tracking-tight">בחירת עיצוב</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-500">{completeCount} / {SURFACES.length} בחירות</span>
+            <span className="text-xs font-bold text-slate-500">{completeCount} / {totalCount} בחירות</span>
             <div className="h-1.5 w-32 rounded-full bg-slate-100 overflow-hidden">
-              <div className="h-full transition-all" style={{ width: `${(completeCount / SURFACES.length) * 100}%`, background: ACCENT }} />
+              <div className="h-full transition-all" style={{ width: `${(completeCount / totalCount) * 100}%`, background: ACCENT }} />
             </div>
           </div>
         </div>
@@ -132,6 +134,19 @@ export const DesignPreview: React.FC = () => {
           <p className="text-sm text-slate-500 mt-1">{surface.description}</p>
         </section>
 
+        {surface.id === 'banner' ? (
+          <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: TEXT_MUTED }}>החלטה</p>
+            <h3 className="text-[22px] font-semibold tracking-tight" style={{ color: TEXT_PRIMARY }}>נשאר עם הקיים</h3>
+            <p className="text-[14px] mt-2 max-w-md mx-auto leading-relaxed" style={{ color: TEXT_SECONDARY }}>
+              ציינת שאתה אוהב את העיצוב של ראש דף הבית כפי שהוא היום, אז אין כאן מה לבחור — נשאיר את הכותרת והסטטיסטיקות בדיוק כפי שהן.
+              באג הספירה (0 מקומות / 0 אוכל) כבר תוקן ופרוס.
+            </p>
+            <a href="#/" className="inline-flex items-center gap-1.5 mt-5 px-4 py-2 rounded-full text-[13px] font-semibold" style={{ background: ACCENT_SOFT, color: ACCENT }}>
+              צפה בכותרת באתר
+            </a>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {surface.variants.map((v: any) => {
             const isPicked = picks[surface.id] === v.id;
@@ -172,6 +187,7 @@ export const DesignPreview: React.FC = () => {
             );
           })}
         </div>
+        )}
 
         {/* Bottom summary */}
         <section className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4">
@@ -183,10 +199,16 @@ export const DesignPreview: React.FC = () => {
             {SURFACES.map(s => {
               const picked = picks[s.id];
               const variantTitle = picked ? s.variants.find((v: any) => v.id === picked)?.title : null;
+              const isBannerFixed = s.id === 'banner';
               return (
                 <div key={s.id} className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-slate-50">
                   <span className="text-sm font-bold text-slate-700">{s.label}</span>
-                  {picked ? (
+                  {isBannerFixed ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black" style={{ color: TEXT_SECONDARY }}>
+                      <Check className="w-3.5 h-3.5" />
+                      נשאר כפי שהוא
+                    </span>
+                  ) : picked ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-black" style={{ color: ACCENT }}>
                       <Check className="w-3.5 h-3.5" />
                       {variantTitle}
@@ -198,9 +220,9 @@ export const DesignPreview: React.FC = () => {
               );
             })}
           </div>
-          {completeCount === SURFACES.length && (
+          {completeCount === totalCount && (
             <div className="rounded-2xl p-4 text-sm font-bold text-center" style={{ background: ACCENT_SOFT, color: ACCENT }}>
-              ✓ סיימת לבחור את כל הסקציות! שלח לי בצ׳אט את האותיות (לדוגמה: B / B / A / C / A / D / A) ואני אבנה את הכל.
+              ✓ סיימת לבחור! שלח לי בצ׳אט את האותיות בסדר: יומן / מלונות / טיסות / מסעדות / ניהול / לוגו (לדוגמה: B / A / C / A / B / D).
             </div>
           )}
         </section>
