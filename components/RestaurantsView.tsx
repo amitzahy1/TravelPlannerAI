@@ -1947,28 +1947,17 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                     />
                 </div>
                 <div className="flex items-center gap-2 min-w-0 flex-shrink">
-                    {/* Bulk refresh + delete-not-found are admin-only utilities. */}
-                    {userIsAdmin && (
-                        <button
-                            type="button"
-                            onClick={() => activeTab === 'my_list' ? handleBulkRefreshSaved() : handleBulkRefreshAi()}
-                            disabled={!!bulkRefreshing}
-                            title={activeTab === 'my_list' ? 'רענן את כל הרשימה שלי מ-Google' : 'רענן את כל ההמלצות מ-Google'}
-                            aria-label="רענן הכל מ-Google"
-                            className={`flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-full border text-xs font-bold transition-all flex-shrink-0 ${
-                                bulkRefreshing
-                                    ? 'bg-blue-50 text-blue-700 border-blue-200 cursor-wait'
-                                    : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
-                            }`}
+                    {/* Bulk-refresh progress badge — the action lives inside the 3-dot menu (owner-only). */}
+                    {ownerOnly && userIsAdmin && bulkRefreshing && (
+                        <span
+                            className="flex items-center gap-1.5 h-9 px-2.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold flex-shrink-0"
+                            title="מרענן מ-Google ברקע"
                         >
-                            <RefreshCw className={`w-3.5 h-3.5 flex-shrink-0 ${bulkRefreshing ? 'animate-spin' : ''}`} />
-                            <span className="hidden sm:inline">
-                                {bulkRefreshing ? `${bulkProgress.current}/${bulkProgress.total}` : 'רענן הכל'}
-                            </span>
-                            {bulkRefreshing && <span className="sm:hidden text-[10px]">{bulkProgress.current}</span>}
-                        </button>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>{bulkProgress.current}/{bulkProgress.total}</span>
+                        </span>
                     )}
-                    {userIsAdmin && notFoundCount > 0 && (
+                    {ownerOnly && userIsAdmin && notFoundCount > 0 && (
                         <button
                             type="button"
                             onClick={() => setConfirmDeleteNotFound(true)}
@@ -2106,7 +2095,8 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                         <MapIcon className="w-3.5 h-3.5" /> מפה
                     </button>
                 </div>
-                {aiCategories.length > 0 && !viewerMode && (
+                {/* Owner-only — every action below triggers a paid Gemini/Places call. */}
+                {ownerOnly && (aiCategories.length > 0 || userIsAdmin) && (
                     <ActionsMenu
                         align="end"
                         items={[
@@ -2139,13 +2129,29 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 onSelect: () => setConfirmNearHotel(true),
                                 disabled: loadingRecs || isResearchingAll || (trip.hotels || []).filter(h => typeof h.lat === 'number').length === 0,
                             },
-                            {
+                            ...(userIsAdmin && activeTab === 'recommended' && aiCategories.flatMap(c => c.restaurants).length > 0 ? [{
+                                icon: <RefreshCw className={`w-4 h-4 ${bulkRefreshing === 'ai' ? 'animate-spin' : ''}`} />,
+                                label: bulkRefreshing === 'ai'
+                                    ? `מרענן מ-Google · ${bulkProgress.current}/${bulkProgress.total}`
+                                    : 'רענן הכל מ-Google',
+                                onSelect: handleBulkRefreshAi,
+                                disabled: !!bulkRefreshing,
+                            }] : []),
+                            ...(userIsAdmin && activeTab === 'my_list' && trip.restaurants.flatMap(c => c.restaurants).length > 0 ? [{
+                                icon: <RefreshCw className={`w-4 h-4 ${bulkRefreshing === 'saved' ? 'animate-spin' : ''}`} />,
+                                label: bulkRefreshing === 'saved'
+                                    ? `מרענן מ-Google · ${bulkProgress.current}/${bulkProgress.total}`
+                                    : 'רענן את הרשימה שלי מ-Google',
+                                onSelect: handleBulkRefreshSaved,
+                                disabled: !!bulkRefreshing,
+                            }] : []),
+                            ...(aiCategories.length > 0 ? [{
                                 icon: <Trash2 className="w-4 h-4" />,
                                 label: 'אפס מחקר',
                                 onSelect: () => setConfirmReset(true),
                                 disabled: loadingRecs || isResearchingAll,
                                 danger: true,
-                            },
+                            }] : []),
                         ]}
                     />
                 )}
@@ -2461,7 +2467,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                                                     label={displayTitle(c.title)}
                                                                     isActive={selectedCategory === c.id}
                                                                     isRefreshing={refreshingCategoryId === c.id}
-                                                                    canRefresh={!viewerMode}
+                                                                    canRefresh={ownerOnly}
                                                                     refreshDisabled={refreshingCategoryId !== null}
                                                                     onSelect={() => setSelectedCategory(c.id)}
                                                                     onRefresh={() => refreshSingleCategory(c)}

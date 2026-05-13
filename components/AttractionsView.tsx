@@ -1774,7 +1774,8 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                         <MapIcon className="w-3.5 h-3.5" /> מפה
                     </button>
                 </div>
-                {!viewerMode && (aiCategories.length > 0 || userIsAdmin) && (
+                {/* Owner-only — every action below triggers a paid Gemini/Places call. */}
+                {ownerOnly && (aiCategories.length > 0 || userIsAdmin) && (
                     <ActionsMenu
                         align="end"
                         items={[
@@ -2121,7 +2122,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                                                     label={displayTitle(c.title)}
                                                                     isActive={selectedCategory === c.id}
                                                                     isRefreshing={refreshingCategoryId === c.id}
-                                                                    canRefresh={!viewerMode}
+                                                                    canRefresh={ownerOnly}
                                                                     refreshDisabled={refreshingCategoryId !== null}
                                                                     onSelect={() => setSelectedCategory(c.id)}
                                                                     onRefresh={() => refreshSingleCategory(c)}
