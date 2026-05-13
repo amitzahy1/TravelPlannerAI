@@ -673,14 +673,15 @@ const WORKER_TRIP_SCHEMA: any = {
 async function analyzeTripWithGemini(text: string, attachments: any[], existingTrips: any[], apiKey: string) {
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // Aligned with the client's SEARCH chain in aiService.ts — forwarded
-        // email PDFs are often complex confirmation docs (multi-leg flight,
-        // hotel with rooms, transfers), so we lead with the preview model.
+        // Flash-first chain — Pro is ~5-10x the cost of Flash and on most
+        // booking PDFs (single-leg flights, hotel confirms) Flash returns
+        // the same structured JSON. Pro stays in the chain as escalation
+        // when Flash output is malformed or incomplete.
         const CANDIDATES = [
-                "gemini-3.1-pro-preview",  // 1. PRIMARY: best at complex document reasoning
-                "gemini-2.5-pro",          // 2. BACKUP: stable Pro, reliable
-                "gemini-3-flash-preview",  // 3. FALLBACK: Gemini 3 Flash preview
-                "gemini-2.5-flash",        // 4. LAST RESORT: fast fallback
+                "gemini-2.5-flash",        // 1. PRIMARY: cheap + fast, handles 80%+ of booking docs
+                "gemini-3-flash-preview",  // 2. BACKUP: Gemini 3 Flash preview
+                "gemini-3.1-pro-preview",  // 3. ESCALATION: best at complex multi-leg docs
+                "gemini-2.5-pro",          // 4. LAST RESORT: stable Pro
         ];
 
         // THIS IS A SYSTEM GENERATED PROMPT -- DO NOT EDIT MANUALLY IF NOT SYNCING WITH AISERVICE.TS
