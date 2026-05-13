@@ -243,6 +243,53 @@ export const incrementCategoryRefresh = async (
   }
 };
 
+// Per-day estimated Google Places API spend, in ILS. Used to enforce a soft
+// daily cap on bulk-enrich runs so a single accidental click can't burn the
+// month's budget like it did on 2026-05-11 (₪7.99 in one bulk run).
+//
+// The number is an ESTIMATE — we count calls × $0.025 (Enterprise tier) × 3.7
+// ILS/USD. The real bill from Google can vary by SKU mix, but this is close
+// enough for a guardrail.
+const PLACES_SPEND_FIELD = 'placesSpend';
+export const PLACES_USD_PER_CALL = 0.025;
+export const PLACES_ILS_PER_USD = 3.7;
+export const PLACES_ILS_PER_CALL = PLACES_USD_PER_CALL * PLACES_ILS_PER_USD; // ~₪0.0925
+
+export interface PlacesSpendEntry {
+  date: string;       // YYYY-MM-DD
+  estimatedIls: number;
+}
+
+const todayIso = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+export const getPlacesSpendToday = async (userId: string): Promise<number> => {
+  try {
+    const ref = doc(db, USERS_COLLECTION, userId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return 0;
+    const entry = (snap.data() as Record<string, unknown>)[PLACES_SPEND_FIELD] as PlacesSpendEntry | undefined;
+    if (!entry || entry.date !== todayIso()) return 0;
+    return Number(entry.estimatedIls) || 0;
+  } catch { return 0; }
+};
+
+export const incrementPlacesSpend = async (userId: string, estimatedIls: number): Promise<void> => {
+  try {
+    const ref = doc(db, USERS_COLLECTION, userId);
+    const snap = await getDoc(ref);
+    const today = todayIso();
+    const prev = (snap.exists() ? (snap.data() as Record<string, unknown>)[PLACES_SPEND_FIELD] : null) as PlacesSpendEntry | null;
+    const base = prev && prev.date === today ? (Number(prev.estimatedIls) || 0) : 0;
+    const updated: PlacesSpendEntry = { date: today, estimatedIls: base + estimatedIls };
+    await setDoc(ref, { [PLACES_SPEND_FIELD]: updated }, { merge: true });
+  } catch (error) {
+    console.error('Error incrementing places spend:', error);
+  }
+};
+
 // --- SHARING FUNCTIONS ---
 
 /**

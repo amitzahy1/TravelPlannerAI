@@ -20,7 +20,7 @@ import { getLocalAI, setLocalAI, clearLocalAI, hasLocalAI } from '../utils/local
 import { findClosedPlaces } from '../utils/closedPlaceCheck';
 import { toast } from '../stores/useToastStore';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserPremiumState, markPremiumRunUsed, getCategoryRefreshes, incrementCategoryRefresh, CategoryRefreshEntry } from '../services/firestoreService';
+import { getUserPremiumState, markPremiumRunUsed, getCategoryRefreshes, incrementCategoryRefresh, CategoryRefreshEntry, getPlacesSpendToday, incrementPlacesSpend, PLACES_ILS_PER_CALL } from '../services/firestoreService';
 
 // Extended interface for internal use
 interface ExtendedRestaurant extends Restaurant {
@@ -351,7 +351,40 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setConfirmDeleteNotFound(false);
     };
 
+    // Mirror of AttractionsView: soft daily Places cap + confirm-before-spend.
+    // The May 11 budget incident came from an accidental one-click bulk run;
+    // this gates both bulk paths behind an explicit confirmation and a hard
+    // per-day ceiling stored in Firestore.
+    const PLACES_DAILY_CAP_ILS = 5;
+    const [bulkConfirm, setBulkConfirm] = useState<null | { mode: 'saved' | 'ai'; count: number; estimateIls: number }>(null);
+
     const handleBulkRefreshSaved = async () => {
+        if (bulkRefreshing || !userId) return;
+        const count = trip.restaurants.flatMap(c => c.restaurants).length;
+        if (count === 0) { toast.info('אין מקומות שמורים לרענון'); return; }
+        const spentToday = await getPlacesSpendToday(userId);
+        const estimate = count * PLACES_ILS_PER_CALL;
+        if (spentToday + estimate > PLACES_DAILY_CAP_ILS) {
+            toast.error(`הגעת לתקרת ההוצאה היומית של Google Places (₪${PLACES_DAILY_CAP_ILS}). היום כבר עלה ₪${spentToday.toFixed(2)}. נסה שוב מחר.`);
+            return;
+        }
+        setBulkConfirm({ mode: 'saved', count, estimateIls: estimate });
+    };
+
+    const handleBulkRefreshAi = async () => {
+        if (bulkRefreshing || !userId) return;
+        const count = aiCategories.flatMap(c => c.restaurants).length;
+        if (count === 0) { toast.info('אין המלצות AI לרענון'); return; }
+        const spentToday = await getPlacesSpendToday(userId);
+        const estimate = count * PLACES_ILS_PER_CALL;
+        if (spentToday + estimate > PLACES_DAILY_CAP_ILS) {
+            toast.error(`הגעת לתקרת ההוצאה היומית של Google Places (₪${PLACES_DAILY_CAP_ILS}). היום כבר עלה ₪${spentToday.toFixed(2)}. נסה שוב מחר.`);
+            return;
+        }
+        setBulkConfirm({ mode: 'ai', count, estimateIls: estimate });
+    };
+
+    const executeBulkRefreshSaved = async () => {
         if (bulkRefreshing) return;
         const flat = trip.restaurants.flatMap(cat => cat.restaurants.map(r => ({
             id: r.id,
@@ -362,7 +395,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             googleEnrichedAt: r.googleEnrichedAt,
             _catId: cat.id,
         })));
-        if (flat.length === 0) { toast.info('אין מקומות שמורים לרענון'); return; }
+        if (flat.length === 0) return;
         setBulkRefreshing('saved');
         setBulkProgress({ current: 0, total: flat.length, updated: 0, skippedCached: 0 });
         try {
@@ -378,6 +411,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 },
                 (s) => setBulkProgress(s),
             );
+            if (userId && outcome.updated > 0) {
+                await incrementPlacesSpend(userId, outcome.updated * PLACES_ILS_PER_CALL);
+            }
             if (outcome.stoppedOnQuota) {
                 toast.error(`הגעת למכסת היומית של Google. עודכנו ${outcome.updated}, ${outcome.skippedCached} כבר היו עדכניים. נסה שוב מחר.`);
             } else {
@@ -393,7 +429,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         }
     };
 
-    const handleBulkRefreshAi = async () => {
+    const executeBulkRefreshAi = async () => {
         if (bulkRefreshing) return;
         const flat = aiCategories.flatMap(cat => cat.restaurants.map(r => ({
             id: r.id,
@@ -403,12 +439,11 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             googlePlaceId: r.googlePlaceId,
             googleEnrichedAt: r.googleEnrichedAt,
         })));
-        if (flat.length === 0) { toast.info('אין המלצות AI לרענון'); return; }
+        if (flat.length === 0) return;
         setBulkRefreshing('ai');
         setBulkProgress({ current: 0, total: flat.length, updated: 0, skippedCached: 0 });
         try {
             const { bulkEnrichPlaces, PlacesKeyError } = await import('../services/placesService');
-            // Capture latest snapshot once, mutate it as patches arrive, persist at end.
             let working = aiCategories;
             const outcome = await bulkEnrichPlaces(
                 flat,
@@ -422,6 +457,9 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                 (s) => setBulkProgress(s),
             );
             persistAiRestaurants(working);
+            if (userId && outcome.updated > 0) {
+                await incrementPlacesSpend(userId, outcome.updated * PLACES_ILS_PER_CALL);
+            }
             if (outcome.stoppedOnQuota) {
                 toast.error(`הגעת למכסת היומית של Google. עודכנו ${outcome.updated}, ${outcome.skippedCached} כבר היו עדכניים. נסה שוב מחר.`);
             } else {
@@ -2533,6 +2571,20 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 isDangerous
                 onConfirm={handleDeleteAllNotFound}
                 onClose={() => setConfirmDeleteNotFound(false)}
+            />
+            <ConfirmModal
+                isOpen={!!bulkConfirm}
+                title={`לרענן ${bulkConfirm?.count ?? 0} מקומות מ-Google?`}
+                message={`פעולה זו תקרא ל-Google Places עבור ${bulkConfirm?.count ?? 0} מקומות (כ-₪${(bulkConfirm?.estimateIls ?? 0).toFixed(2)}). מקומות שכבר עודכנו ב-30 הימים האחרונים יישלפו מהקאש בחינם, אז העלות בפועל עשויה להיות נמוכה יותר.`}
+                confirmText="כן, רענן"
+                cancelText="ביטול"
+                onConfirm={() => {
+                    const mode = bulkConfirm?.mode;
+                    setBulkConfirm(null);
+                    if (mode === 'saved') executeBulkRefreshSaved();
+                    else if (mode === 'ai') executeBulkRefreshAi();
+                }}
+                onClose={() => setBulkConfirm(null)}
             />
             <ConfirmModal
                 isOpen={!!confirmDeleteId}
