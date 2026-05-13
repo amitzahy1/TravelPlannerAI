@@ -1301,7 +1301,7 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
     }
   }
 
-  // 3. Send to SMART chain (starts with gemini-3-pro-preview)
+  // 3. Send to the SMART model chain (see SMART_CANDIDATES at the top of this file).
   const response = await generateWithFallback(
     null,
     [{ role: 'user', parts: contentParts }],

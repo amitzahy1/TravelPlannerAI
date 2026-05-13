@@ -66,6 +66,27 @@ const attractionMatchesCity = (attraction: Pick<Attraction, 'location' | 'region
         || locationMatchesCity(attraction.description || '', city);
 };
 
+// Map a thrown AI/network error to a Hebrew toast message so the user can
+// self-diagnose quota vs billing vs connectivity issues without opening
+// devtools. Falls back to the caller-supplied label when no pattern matches.
+const describeAiError = (err: unknown, fallback: string): string => {
+    const msg = String((err as any)?.message || err || '').toLowerCase();
+    if (!msg) return fallback;
+    if (msg.includes('perday') || msg.includes('per_day') || msg.includes('per day') || msg.includes('quota') || msg.includes('429')) {
+        return 'מכסת ה-AI היומית של Google נגמרה. נסה שוב מחר או הפעל חשבון בתשלום.';
+    }
+    if (msg.includes('freetier') || msg.includes('free tier') || msg.includes('limit: 0') || msg.includes('billing') || msg.includes('payment')) {
+        return 'חשבון Google Cloud דורש הפעלת חיוב כדי להמשיך.';
+    }
+    if (msg.includes('timeout') || msg.includes('timed out') || msg.includes('etimedout') || msg.includes('aborted')) {
+        return 'התשובה מ-AI נקטעה (timeout). נסה שוב.';
+    }
+    if (msg.includes('network') || msg.includes('failed to fetch') || msg.includes('networkerror')) {
+        return 'בעיית חיבור לאינטרנט. בדוק את הרשת ונסה שוב.';
+    }
+    return fallback;
+};
+
 const AttractionRecommendationCard: React.FC<{
     rec: any,
     tripDestination: string,
@@ -873,9 +894,118 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
             }
         } catch (e) {
             console.error('refreshSingleCategory error:', e);
-            toast.error('שגיאה בעדכון הקטגוריה');
+            toast.error(describeAiError(e, 'שגיאה בעדכון הקטגוריה'));
         } finally {
             setRefreshingCategoryId(null);
+        }
+    };
+
+    // Append additional attractions for the currently-filtered city without
+    // overwriting existing ones. Reuses the per-category refresh quota schema
+    // (1 paid + 3 free / month) keyed by city to avoid runaway AI spend.
+    const addMoreForCity = async (cityDisplay: string) => {
+        if (!userId || viewerMode) return;
+        const cityEn = displayCityName(cityDisplay, 'en') || cityDisplay;
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const key = `${trip.id}:addmore:${cityEn.toLowerCase()}`;
+        const entry = categoryRefreshes[key];
+        const PAID_LIMIT = 1;
+        const FREE_LIMIT = 3;
+        const entryInCurrentMonth = entry && entry.month === currentMonth;
+        const paidUsed = entryInCurrentMonth ? entry.paid : 0;
+        const freeUsed = entryInCurrentMonth ? entry.free : 0;
+        const canUsePaid = ownerOnly && paidUsed < PAID_LIMIT;
+        const canUseFree = freeUsed < FREE_LIMIT;
+        if (!canUsePaid && !canUseFree) {
+            setShowRefreshLimitModal(true);
+            return;
+        }
+        const tier: 'paid' | 'free' = canUsePaid ? 'paid' : 'free';
+
+        setIsResearchingAll(true);
+        try {
+            const existingForCity = aiCategories
+                .flatMap(c => c.attractions || [])
+                .filter(a => attractionMatchesCity(a, cityDisplay));
+            const existingNames = existingForCity
+                .map(a => a.nameEnglish || a.name)
+                .filter(Boolean);
+            const existingList = existingNames.slice(0, 80).join(', ') || '(none)';
+            const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+            const prompt = `You are a travel expert. As of ${currentDate}, find ADDITIONAL attractions in "${cityEn}" that are NOT in this list:
+${existingList}
+Return 10-15 NEW, currently operating places that COMPLEMENT the list above (hidden gems, lesser-known spots, recent openings, local favorites). Omit any permanently or temporarily closed attraction.
+Group them into 2-4 thematic Hebrew categories (for example: "פינות נסתרות", "אוכל וקפה", "אמנות ועיצוב", "טבע בעיר").
+Respond in JSON:
+{ "categories": [ { "title", "attractions": [ { "name", "nameEnglish", "description", "location", "type", "rating", "recommendationSource", "googleMapsUrl", "business_status" } ] } ] }
+Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be in English. Category titles must be in Hebrew.`;
+
+            const response = await generateWithFallback(
+                null,
+                [{ role: 'user', parts: [{ text: prompt }] }],
+                { responseMimeType: 'application/json', temperature: 0.4 },
+                'SEARCH',
+                tier,
+            );
+            const rawData = JSON.parse(response.text || '{}');
+            const existingNamesLower = new Set(
+                existingNames.flatMap(n => [n.toLowerCase()])
+                    .concat(existingForCity.map(a => (a.name || '').toLowerCase()))
+            );
+            const ts = Date.now();
+            const newCategories: AttractionCategory[] = (rawData.categories || [])
+                .map((rc: any, i: number) => {
+                    const fresh = (rc.attractions || [])
+                        .filter((a: any) => {
+                            if (a.business_status !== 'OPERATIONAL') return false;
+                            const n1 = (a.nameEnglish || '').toLowerCase();
+                            const n2 = (a.name || '').toLowerCase();
+                            return !existingNamesLower.has(n1) && !existingNamesLower.has(n2);
+                        })
+                        .map((a: any, j: number) => ({
+                            ...a,
+                            region: cityEn,
+                            id: `ai-attr-addmore-${ts}-${i}-${j}`,
+                            categoryTitle: rc.title,
+                        }));
+                    return {
+                        id: `cat-addmore-${ts}-${i}`,
+                        title: rc.title || `המלצות נוספות ל${cityDisplay}`,
+                        region: cityEn,
+                        attractions: fresh,
+                    } as AttractionCategory;
+                })
+                .filter((cat: AttractionCategory) => cat.attractions.length > 0);
+
+            const newCount = newCategories.reduce((sum, c) => sum + c.attractions.length, 0);
+            if (newCount === 0) {
+                toast.warning(`לא נמצאו אטרקציות חדשות עבור ${cityDisplay}`);
+                return;
+            }
+
+            const updated = [...aiCategories, ...newCategories];
+            setAiCategories(updated);
+            persistAiAttractions(updated);
+            await incrementCategoryRefresh(userId, key, tier);
+            setCategoryRefreshes(prev => {
+                const prevEntry = prev[key];
+                const inMonth = prevEntry && prevEntry.month === currentMonth;
+                return {
+                    ...prev,
+                    [key]: {
+                        paid: (inMonth ? prevEntry.paid : 0) + (tier === 'paid' ? 1 : 0),
+                        free: (inMonth ? prevEntry.free : 0) + (tier === 'free' ? 1 : 0),
+                        month: currentMonth,
+                    },
+                };
+            });
+            toast.success(`נוספו ${newCount} אטרקציות חדשות ל${cityDisplay}`);
+            geocodeAndPersistAttractions(updated);
+        } catch (e) {
+            console.error('addMoreForCity error:', e);
+            toast.error(describeAiError(e, `שגיאה בהוספת אטרקציות ל${cityDisplay}`));
+        } finally {
+            setIsResearchingAll(false);
         }
     };
 
@@ -1464,25 +1594,14 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                     />
                 </div>
                 <div className="flex items-center gap-2 min-w-0 flex-shrink">
-                    {userIsAdmin && (
-                        <button
-                            type="button"
-                            onClick={() => activeTab === 'my_list' ? handleBulkRefreshSaved() : handleBulkRefreshAi()}
-                            disabled={!!bulkRefreshing}
-                            title={activeTab === 'my_list' ? 'רענן את כל הרשימה שלי מ-Google' : 'רענן את כל ההמלצות מ-Google'}
-                            aria-label="רענן הכל מ-Google"
-                            className={`flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-full border text-xs font-bold transition-all flex-shrink-0 ${
-                                bulkRefreshing
-                                    ? 'bg-blue-50 text-blue-700 border-blue-200 cursor-wait'
-                                    : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
-                            }`}
+                    {userIsAdmin && bulkRefreshing && (
+                        <span
+                            className="flex items-center gap-1.5 h-9 px-2.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold flex-shrink-0"
+                            title="מרענן מ-Google ברקע"
                         >
-                            <RefreshCw className={`w-3.5 h-3.5 flex-shrink-0 ${bulkRefreshing ? 'animate-spin' : ''}`} />
-                            <span className="hidden sm:inline">
-                                {bulkRefreshing ? `${bulkProgress.current}/${bulkProgress.total}` : 'רענן הכל'}
-                            </span>
-                            {bulkRefreshing && <span className="sm:hidden text-[10px]">{bulkProgress.current}</span>}
-                        </button>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>{bulkProgress.current}/{bulkProgress.total}</span>
+                        </span>
                     )}
                     {userIsAdmin && notFoundCount > 0 && (
                         <button
@@ -1600,7 +1719,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                         <MapIcon className="w-3.5 h-3.5" /> מפה
                     </button>
                 </div>
-                {aiCategories.length > 0 && !viewerMode && (
+                {!viewerMode && (aiCategories.length > 0 || userIsAdmin) && (
                     <ActionsMenu
                         align="end"
                         items={[
@@ -1624,19 +1743,41 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                     disabled: isBusy,
                                 };
                             })(),
+                            ...(selectedCity !== 'all' && aiCategories.length > 0 ? [{
+                                icon: <Plus className="w-4 h-4" />,
+                                label: `הוסף עוד אטרקציות ל${selectedCity}`,
+                                onSelect: () => addMoreForCity(selectedCity),
+                                disabled: loadingRecs || isResearchingAll || refreshingCategoryId !== null,
+                            }] : []),
                             {
                                 icon: <Hotel className="w-4 h-4" />,
                                 label: 'מצא אטרקציות באזור המלון',
                                 onSelect: () => setConfirmNearHotel(true),
                                 disabled: loadingRecs || isResearchingAll || (trip.hotels || []).filter(h => typeof h.lat === 'number').length === 0,
                             },
-                            {
+                            ...(userIsAdmin && activeTab === 'recommended' && aiCategories.flatMap(c => c.attractions).length > 0 ? [{
+                                icon: <RefreshCw className={`w-4 h-4 ${bulkRefreshing === 'ai' ? 'animate-spin' : ''}`} />,
+                                label: bulkRefreshing === 'ai'
+                                    ? `מרענן מ-Google · ${bulkProgress.current}/${bulkProgress.total}`
+                                    : 'רענן הכל מ-Google',
+                                onSelect: handleBulkRefreshAi,
+                                disabled: !!bulkRefreshing,
+                            }] : []),
+                            ...(userIsAdmin && activeTab === 'my_list' && trip.attractions.flatMap(c => c.attractions).length > 0 ? [{
+                                icon: <RefreshCw className={`w-4 h-4 ${bulkRefreshing === 'saved' ? 'animate-spin' : ''}`} />,
+                                label: bulkRefreshing === 'saved'
+                                    ? `מרענן מ-Google · ${bulkProgress.current}/${bulkProgress.total}`
+                                    : 'רענן את הרשימה שלי מ-Google',
+                                onSelect: handleBulkRefreshSaved,
+                                disabled: !!bulkRefreshing,
+                            }] : []),
+                            ...(aiCategories.length > 0 ? [{
                                 icon: <Trash2 className="w-4 h-4" />,
                                 label: 'אפס מחקר',
                                 onSelect: () => setConfirmReset(true),
                                 disabled: loadingRecs || isResearchingAll,
                                 danger: true,
-                            },
+                            }] : []),
                         ]}
                     />
                 )}
