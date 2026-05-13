@@ -868,9 +868,22 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                     categoryTitle: catTitle,
                 }));
 
-            if (freshAttractions.length > 0) {
+            const existingNamesLower = new Set(
+                (cat.attractions || [])
+                    .flatMap(a => [(a.name || '').toLowerCase(), ((a as any).nameEnglish || '').toLowerCase()])
+                    .filter(Boolean)
+            );
+            const novelAttractions = freshAttractions.filter((a: any) => {
+                const n1 = (a.name || '').toLowerCase();
+                const n2 = (a.nameEnglish || '').toLowerCase();
+                return !existingNamesLower.has(n1) && !existingNamesLower.has(n2);
+            });
+
+            if (novelAttractions.length > 0) {
+                // Append to the existing list so the user keeps everything
+                // they already saw, plus the new finds. (Was replace-all.)
                 const updated = aiCategories.map(c =>
-                    c.id === cat.id ? { ...c, attractions: freshAttractions } : c
+                    c.id === cat.id ? { ...c, attractions: [...(c.attractions || []), ...novelAttractions] } : c
                 );
                 setAiCategories(updated);
                 persistAiAttractions(updated);
@@ -887,10 +900,12 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                         },
                     };
                 });
-                toast.success(`${catTitle} עודכן בהצלחה`);
+                toast.success(`נוספו ${novelAttractions.length} אטרקציות חדשות לקטגוריית ${catTitle}`);
                 geocodeAndPersistAttractions(updated);
+            } else if (freshAttractions.length > 0) {
+                toast.info(`לא נמצאו אטרקציות חדשות לקטגוריית ${catTitle} מעבר למה שכבר יש`);
             } else {
-                toast.warning(`לא נמצאו תוצאות חדשות עבור ${catTitle}`);
+                toast.warning(`לא נמצאו תוצאות עבור ${catTitle}`);
             }
         } catch (e) {
             console.error('refreshSingleCategory error:', e);
@@ -1731,7 +1746,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 return {
                                     icon: <RotateCw className={`w-4 h-4 ${isBusy ? 'animate-spin' : ''}`} />,
                                     label: activeCat
-                                        ? `רענן את "${displayTitle(activeCat.title)}"`
+                                        ? `מצא עוד ב"${displayTitle(activeCat.title)}"`
                                         : selectedCity !== 'all'
                                             ? `רענן את ${selectedCity}`
                                             : 'רענן את כל הערים',

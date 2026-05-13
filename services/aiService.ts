@@ -17,10 +17,12 @@ const getAuthHeader = async (): Promise<Record<string, string>> => {
 
 const GOOGLE_MODELS = {
   // Tier 1: Used for SMART/ANALYZE intent (trip extraction, PDF parsing, structured JSON).
-  // Ordered fastest-first — 2.5-flash-lite handles realistic trip-extraction with 100% accuracy
-  // at ~2s, while pro takes 15+s for no quality gain on this task. Gemini 3 Flash is a quality
-  // backstop if 2.5 models are exhausted; 2.5-pro stays as absolute last resort for heavy PDFs.
+  // Ordered fastest+cheapest first. gemini-3.1-flash-lite is GA as of May 2026
+  // and Google bills it as "frontier-class performance at a fraction of the cost"
+  // — strictly better than 2.5-flash-lite for the same price point, so it sits at
+  // the top of the chain. Pro stays as the absolute last resort for heavy PDFs.
   SMART_CANDIDATES: [
+    "gemini-3.1-flash-lite",
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
     "gemini-3-flash-preview",
@@ -34,12 +36,14 @@ const GOOGLE_MODELS = {
   RESEARCH_CANDIDATES: [
     "gemini-2.5-flash",                                   // PRIMARY — fast + grounded (~3–8s)
     "gemini-3-flash-preview",                             // FALLBACK 1 — Gemini 3 Flash
-    "gemini-2.5-pro",                                     // FALLBACK 2 — escalate when Flash output is thin
-    "gemini-2.5-flash-lite",                              // FALLBACK 3 — cheapest Gemini option
-    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 4 — non-Google last resort
+    "gemini-3.1-flash-lite",                              // FALLBACK 2 — cheapest GA option
+    "gemini-2.5-pro",                                     // FALLBACK 3 — escalate when Flash output is thin
+    "gemini-2.5-flash-lite",                              // FALLBACK 4 — legacy cheap option
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 5 — non-Google last resort
   ],
   // Tier 3: Used for FAST intent (chat, quick suggestions)
   FAST_CANDIDATES: [
+    "gemini-3.1-flash-lite",
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
     "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // last resort if all Gemini quota gone
