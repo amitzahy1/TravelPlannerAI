@@ -101,9 +101,11 @@ export const GuestTripView: React.FC<GuestTripViewProps> = ({ shareId, role, onS
                     switch (currentTab) {
                         case 'flights': return <FlightsView trip={trip} onUpdateTrip={onUpdate} />;
                         case 'hotels': return <HotelsView trip={trip} onUpdateTrip={onUpdate} />;
+                        case 'food':
                         case 'restaurants': return <RestaurantsView trip={trip} onUpdateTrip={onUpdate} />;
                         case 'attractions': return <AttractionsView trip={trip} onUpdateTrip={onUpdate} />;
-                        case 'map_full': return <FullTripMapView trip={trip} title="מפת הטיול המלאה" onSwitchTab={setCurrentTab} onUpdateTrip={onUpdate} />;
+                        case 'map_full':
+                        case 'map': return <FullTripMapView trip={trip} title="מפת הטיול המלאה" onSwitchTab={setCurrentTab} onUpdateTrip={onUpdate} />;
                         case 'itinerary': return <ItineraryView trip={trip} onUpdateTrip={onUpdate} onSwitchTab={setCurrentTab} onRefresh={noop} />;
                         default: return <ItineraryView trip={trip} onUpdateTrip={onUpdate} onSwitchTab={setCurrentTab} />;
                     }

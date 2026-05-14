@@ -306,7 +306,14 @@ const AppContent: React.FC = () => {
   // require auth + collaborators membership). Login is offered via top banner.
   if (!user) {
     if (joinShareId) {
-      return <GuestTripView shareId={joinShareId.shareId} role={joinShareId.role} onSignIn={signIn} />;
+      // Wrap in HashRouter so hooks like useSearchParams / useLocation
+      // (used by useMapPreferences, FullTripMapView, etc.) have a Router
+      // context even before the user logs in.
+      return (
+        <HashRouter>
+          <GuestTripView shareId={joinShareId.shareId} role={joinShareId.role} onSignIn={signIn} />
+        </HashRouter>
+      );
     }
     return <LandingPage onLogin={signIn} />;
   }

@@ -11,8 +11,9 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Trip } from '../types';
-import { Keyboard, Layers, LocateFixed, LocateOff } from 'lucide-react';
+import { Keyboard, Layers, LocateFixed, LocateOff, MapPin, Compass, Sparkles } from 'lucide-react';
 import { UnifiedMapView } from './UnifiedMapView';
 import { LayersPanel } from './map/LayersPanel';
 import { MissingDataSheet } from './map/MissingDataSheet';
@@ -48,25 +49,44 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
         const isMobile = useIsMobile();
         const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
-        // Deferred map mount: render the page chrome + a loading skeleton
-        // INSTANTLY, then mount the heavy UnifiedMapView (Leaflet + AI leg
-        // classifier + geocoding pipeline) one tick later. The tab switch
-        // feels immediate — the map paints behind a brief spinner instead of
-        // hanging on the previous page.
+        // Deferred map mount: render the page chrome + a polished loading
+        // animation, then mount the heavy UnifiedMapView (Leaflet + AI leg
+        // classifier + geocoding pipeline). Enforces a minimum visible duration
+        // (~1.4s) so the staged "טוען מפה / מאתחל מקומות / סורק מסלולים"
+        // sequence actually reads — without it the spinner flashes for
+        // ~30ms on fast machines and the user feels the page snap awkwardly.
         const [mapMounted, setMapMounted] = useState(false);
+        const [loadingStage, setLoadingStage] = useState(0);
+        const LOADING_STAGES = [
+                { icon: MapPin, label: 'טוען את המפה', sub: 'מאתחל שכבות גיאוגרפיות...' },
+                { icon: Compass, label: 'מאתר מקומות', sub: 'מלונות, מסעדות ואטרקציות...' },
+                { icon: Sparkles, label: 'מחבר מסלולים', sub: 'מסדר את הטיול על הציר הכרונולוגי...' },
+        ];
         useEffect(() => {
                 let cancelled = false;
-                // Two rAFs: one to let the skeleton paint, one to let layout settle.
-                const r1 = requestAnimationFrame(() => {
-                        const r2 = requestAnimationFrame(() => {
-                                if (!cancelled) setMapMounted(true);
+                const MIN_LOADER_MS = 1400;
+                const STAGE_INTERVAL_MS = 450;
+                const startedAt = performance.now();
+                // Two rAFs to let the loader paint before any heavy work begins.
+                let r1 = requestAnimationFrame(() => {
+                        if (cancelled) return;
+                        let r2 = requestAnimationFrame(() => {
+                                if (cancelled) return;
+                                const elapsed = performance.now() - startedAt;
+                                const remaining = Math.max(0, MIN_LOADER_MS - elapsed);
+                                setTimeout(() => {
+                                        if (!cancelled) setMapMounted(true);
+                                }, remaining);
                         });
-                        // store r2 on a ref-like closure so we can cancel
                         (window as any).__mapMountR2 = r2;
                 });
+                const stageTimer = setInterval(() => {
+                        setLoadingStage(s => (s + 1) % LOADING_STAGES.length);
+                }, STAGE_INTERVAL_MS);
                 return () => {
                         cancelled = true;
                         cancelAnimationFrame(r1);
+                        clearInterval(stageTimer);
                         const r2 = (window as any).__mapMountR2;
                         if (r2) cancelAnimationFrame(r2);
                 };
@@ -307,13 +327,78 @@ export const FullTripMapView: React.FC<FullTripMapViewProps> = ({ trip, onSwitch
                                                 onUpdateTrip={onUpdateTrip}
                                         />
                                 ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-slate-50">
-                                                <div className="relative w-16 h-16">
-                                                        <div className="absolute inset-0 rounded-full border-4 border-slate-200" />
-                                                        <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+                                        <div className="w-full h-full flex flex-col items-center justify-center gap-5 bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/40 overflow-hidden relative">
+                                                {/* Subtle animated grid backdrop */}
+                                                <div
+                                                        className="absolute inset-0 opacity-[0.04]"
+                                                        style={{
+                                                                backgroundImage:
+                                                                        'linear-gradient(to right, #1e3a8a 1px, transparent 1px), linear-gradient(to bottom, #1e3a8a 1px, transparent 1px)',
+                                                                backgroundSize: '32px 32px',
+                                                        }}
+                                                        aria-hidden="true"
+                                                />
+
+                                                {/* Pulsing rings */}
+                                                <div className="relative w-24 h-24 flex items-center justify-center">
+                                                        <motion.div
+                                                                className="absolute inset-0 rounded-full bg-blue-500/15"
+                                                                animate={{ scale: [1, 1.7, 1.7], opacity: [0.6, 0, 0] }}
+                                                                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+                                                        />
+                                                        <motion.div
+                                                                className="absolute inset-0 rounded-full bg-indigo-500/15"
+                                                                animate={{ scale: [1, 1.7, 1.7], opacity: [0.6, 0, 0] }}
+                                                                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut', delay: 0.6 }}
+                                                        />
+                                                        {/* Solid spinner ring */}
+                                                        <div className="relative w-20 h-20 rounded-full border-[3px] border-slate-200 bg-white shadow-lg shadow-blue-500/10 flex items-center justify-center">
+                                                                <motion.div
+                                                                        className="absolute inset-0 rounded-full border-[3px] border-blue-500 border-t-transparent"
+                                                                        animate={{ rotate: 360 }}
+                                                                        transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
+                                                                />
+                                                                <AnimatePresence mode="wait">
+                                                                        <motion.div
+                                                                                key={loadingStage}
+                                                                                initial={{ opacity: 0, scale: 0.5, rotate: -20 }}
+                                                                                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                                                                                exit={{ opacity: 0, scale: 0.5, rotate: 20 }}
+                                                                                transition={{ duration: 0.28 }}
+                                                                                className="text-blue-600"
+                                                                        >
+                                                                                {React.createElement(LOADING_STAGES[loadingStage].icon, { className: 'w-7 h-7' })}
+                                                                        </motion.div>
+                                                                </AnimatePresence>
+                                                        </div>
                                                 </div>
-                                                <p className="text-sm font-bold text-slate-600 animate-pulse">טוען מפה...</p>
-                                                <p className="text-xs text-slate-400">מאתחל מסלולים, מלונות ומקומות</p>
+
+                                                <div className="relative z-10 text-center px-6">
+                                                        <AnimatePresence mode="wait">
+                                                                <motion.div
+                                                                        key={loadingStage}
+                                                                        initial={{ opacity: 0, y: 6 }}
+                                                                        animate={{ opacity: 1, y: 0 }}
+                                                                        exit={{ opacity: 0, y: -6 }}
+                                                                        transition={{ duration: 0.25 }}
+                                                                >
+                                                                        <p className="text-base font-black text-slate-800">{LOADING_STAGES[loadingStage].label}</p>
+                                                                        <p className="text-xs text-slate-500 mt-1">{LOADING_STAGES[loadingStage].sub}</p>
+                                                                </motion.div>
+                                                        </AnimatePresence>
+                                                </div>
+
+                                                {/* Three-dot progress */}
+                                                <div className="relative z-10 flex gap-1.5">
+                                                        {LOADING_STAGES.map((_, i) => (
+                                                                <motion.div
+                                                                        key={i}
+                                                                        className={`h-1.5 rounded-full ${i === loadingStage ? 'bg-blue-500' : 'bg-slate-300'}`}
+                                                                        animate={{ width: i === loadingStage ? 24 : 6 }}
+                                                                        transition={{ duration: 0.3 }}
+                                                                />
+                                                        ))}
+                                                </div>
                                         </div>
                                 )}
 
