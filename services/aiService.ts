@@ -543,16 +543,49 @@ export const parseDeepResearchText = async (rawText: string): Promise<DeepResear
   // FAST PATH: input is already valid JSON in our schema. Skip Flash-Lite —
   // sending 50KB of JSON to the LLM only to receive 50KB back blows the
   // Worker's 25s timeout and costs money for zero value.
+  //
+  // Two accepted shapes:
+  //   A) Native Deep schema: { restaurants: [...], attractions: [...] }
+  //   B) Quick schema (from buildExternalAiPrompt):
+  //      { kind: 'attractions'|'restaurants', categories: [{ title, attractions|restaurants: [...] }] }
+  // Shape B is flattened into A — each item gets `categoryTitle` from its parent.
   const cleanedRaw = rawText.replace(/^```json\s*|\s*```$/g, '').trim();
   try {
     const direct = JSON.parse(cleanedRaw);
+
+    // Shape A
     if (direct && (Array.isArray(direct.restaurants) || Array.isArray(direct.attractions))) {
-      console.log('[DeepResearch] Fast-path: input is already valid JSON, skipping Flash-Lite');
+      console.log('[DeepResearch] Fast-path: native Deep JSON, skipping Flash-Lite');
       return {
         restaurants: Array.isArray(direct.restaurants) ? direct.restaurants : [],
         attractions: Array.isArray(direct.attractions) ? direct.attractions : [],
         newRestaurantCategories: Array.isArray(direct.newRestaurantCategories) ? direct.newRestaurantCategories : [],
         newAttractionCategories: Array.isArray(direct.newAttractionCategories) ? direct.newAttractionCategories : [],
+      };
+    }
+
+    // Shape B — Quick-prompt categories schema. Flatten and tag each item
+    // with categoryTitle from its parent.
+    if (direct && (direct.kind === 'attractions' || direct.kind === 'restaurants') && Array.isArray(direct.categories)) {
+      console.log('[DeepResearch] Fast-path: Quick-schema JSON, flattening categories');
+      const itemKey: 'attractions' | 'restaurants' = direct.kind;
+      const flattened: any[] = [];
+      const titles: string[] = [];
+      for (const cat of direct.categories) {
+        const title = typeof cat?.title === 'string' ? cat.title.trim() : '';
+        if (!title) continue;
+        titles.push(title);
+        const items = Array.isArray(cat?.[itemKey]) ? cat[itemKey] : [];
+        for (const item of items) {
+          if (!item || typeof item.name !== 'string') continue;
+          flattened.push({ ...item, categoryTitle: title });
+        }
+      }
+      return {
+        restaurants: itemKey === 'restaurants' ? flattened : [],
+        attractions: itemKey === 'attractions' ? flattened : [],
+        newRestaurantCategories: itemKey === 'restaurants' ? titles : [],
+        newAttractionCategories: itemKey === 'attractions' ? titles : [],
       };
     }
   } catch {
