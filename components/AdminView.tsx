@@ -1144,19 +1144,37 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             <Terminal className="w-4 h-4 text-blue-600" />
                                         </div>
                                         <div>
-                                            <h3 className="text-base font-black text-slate-800">ייבוא מטקסט חופשי</h3>
-                                            <p className="text-xs text-slate-500">הדבק תוכנית טיול בעברית או באנגלית — ה-AI יזהה מלונות, טיסות והעברות וישלב לטיול</p>
+                                            <h3 className="text-base font-black text-slate-800">ייבוא תוכנית טיול מטקסט</h3>
+                                            <p className="text-xs text-slate-500">הדבק תיאור טקסטואלי של הטיול — ה-AI יזהה מלונות, טיסות והעברות</p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-3 text-[11px] text-amber-800 flex items-start gap-2">
+                                        <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" />
+                                        <div>
+                                            <span className="font-bold">לא ל-JSON של מקומות.</span> אם יש לך פלט JSON מ-Gemini / ChatGPT / Claude עם מסעדות או אטרקציות — עבור לטאב <button onClick={() => setActiveTab('external_ai')} className="underline font-bold text-amber-900">מקומות מ-AI</button>.
                                         </div>
                                     </div>
                                     <textarea
                                         className="w-full h-32 p-3 bg-slate-50 rounded-lg border border-slate-200 focus:border-blue-400 outline-none resize-none text-xs"
-                                        placeholder="הדבק כאן את כל פרטי הטיול: מלונות עם תאריכי צ'ק-אין/אאוט, טיסות עם מספר וזמנים, העברות בין ערים..."
+                                        placeholder={`לדוגמה: "הלוך 5 ביוני, El Al LY083, נחיתה 10:30. מלון Hilton Bangkok 5-7 ביוני, צ'ק-אין 14:00. רכבת לפטאיה 7 ביוני..."`}
                                         value={freeText}
                                         onChange={e => setFreeText(e.target.value)}
                                     />
+                                    {/* JSON detection — redirect to the right tab before wasting an AI call */}
+                                    {freeText.trim().startsWith('{') && (
+                                        <div className="mt-2 bg-rose-50 border border-rose-200 rounded-md p-2.5 text-[11px] text-rose-700 flex items-center justify-between gap-2">
+                                            <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> זה נראה כמו JSON. הטופס הזה לא מפענח JSON — תופנה לכלי הנכון.</span>
+                                            <button
+                                                onClick={() => { setExtAiJson(freeText); setFreeText(''); setActiveTab('external_ai'); setAiDepth('quick'); }}
+                                                className="px-2.5 py-1 bg-rose-600 text-white rounded-md font-bold text-[11px] hover:bg-rose-700 shrink-0"
+                                            >
+                                                העבר ל"מקומות מ-AI"
+                                            </button>
+                                        </div>
+                                    )}
                                     <button
                                         onClick={handleFreeTextImport}
-                                        disabled={!freeText.trim() || isFreeTextProcessing}
+                                        disabled={!freeText.trim() || isFreeTextProcessing || freeText.trim().startsWith('{')}
                                         className="mt-3 w-full py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
                                     >
                                         {isFreeTextProcessing ? <><Loader2 className="w-4 h-4 animate-spin" /> ניתוח...</> : <><Sparkles className="w-4 h-4" /> נתח וייבא</>}
