@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment, HotelRoom, Transport } from '../types';
 import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble, ShieldCheck, RefreshCw, Search, Copy, ExternalLink } from 'lucide-react';
 import { buildExternalAiPrompt, parseExternalAiResponse, mergeExternalAiIntoTrip, existingPlaceNames, type Kind as ExternalAiKind } from '../services/externalAiImport';
+import { mergeDeepResearchData, type DeepResearchPayload } from '../services/deepResearchMerge';
 import { isTripOwner } from '../utils/tripPermissions';
 import { getUserPremiumState, resetPremiumRunUsed } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
@@ -127,7 +128,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'import' | 'external_ai' | 'owner' | 'health' | 'logs'>('overview');
     // Depth toggle inside 'external_ai' tab — replaces the standalone
     // 'deep_research' tab. Both flows now live under "מקומות מ-AI".
-    const [aiDepth, setAiDepth] = useState<'quick' | 'deep'>('quick');
+    // 'json' mode is a pure-paste shortcut that NEVER calls AI — auto-detects
+    // either Quick shape ({kind, categories}) or Deep shape ({restaurants, attractions}).
+    const [aiDepth, setAiDepth] = useState<'quick' | 'deep' | 'json'>('quick');
+    const [jsonOnlyText, setJsonOnlyText] = useState('');
+    const [jsonOnlyError, setJsonOnlyError] = useState<string | null>(null);
     const { user } = useAuth();
     const [premiumFood, setPremiumFood] = useState<number | null>(null);
     const [premiumAttractions, setPremiumAttractions] = useState<number | null>(null);
@@ -741,6 +746,76 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         }
     };
 
+    // JSON-only paste path — strict, never calls AI. Accepts both the Quick
+    // shape ({kind, categories}) and the Deep native shape ({restaurants, attractions}).
+    // Brace-carves to recover from wrapping prose / ```json fences. On any
+    // failure we surface the error inline instead of falling back to an
+    // LLM round-trip (that's what the Deep tab does).
+    const handleJsonOnlyApply = () => {
+        if (!activeTrip || !jsonOnlyText.trim()) return;
+        setJsonOnlyError(null);
+
+        const stripped = jsonOnlyText.replace(/```json|```/g, '').trim();
+        const firstBrace = stripped.indexOf('{');
+        const lastBrace = stripped.lastIndexOf('}');
+        if (firstBrace < 0 || lastBrace <= firstBrace) {
+            const msg = 'לא נמצא JSON תקין (חסרים סוגריים מסולסלים).';
+            setJsonOnlyError(msg);
+            toast.error(msg);
+            return;
+        }
+        const candidate = stripped.slice(firstBrace, lastBrace + 1);
+
+        let parsed: any;
+        try {
+            parsed = JSON.parse(candidate);
+        } catch (err: any) {
+            const msg = `JSON לא תקין: ${err?.message?.slice(0, 100) || 'parse error'}`;
+            setJsonOnlyError(msg);
+            toast.error(msg);
+            return;
+        }
+
+        // Shape B — Quick schema. Flatten and route through externalAiImport.
+        if (parsed && (parsed.kind === 'attractions' || parsed.kind === 'restaurants') && Array.isArray(parsed.categories)) {
+            try {
+                const extParsed = parseExternalAiResponse(candidate, parsed.kind);
+                const updated = mergeExternalAiIntoTrip(activeTrip, extParsed);
+                handleAiUpdate(updated);
+                toast.success(`נוספו ${extParsed.total} ${parsed.kind === 'attractions' ? 'אטרקציות' : 'מסעדות'} — ללא קריאת AI.`);
+                extParsed.warnings.forEach(w => toast.warning(w));
+                setJsonOnlyText('');
+                return;
+            } catch (err: any) {
+                const msg = err?.message || 'שגיאה בעיבוד JSON';
+                setJsonOnlyError(msg);
+                toast.error(msg);
+                return;
+            }
+        }
+
+        // Shape A — native Deep schema. Pass straight to mergeDeepResearchData.
+        if (parsed && (Array.isArray(parsed.restaurants) || Array.isArray(parsed.attractions))) {
+            const payload: DeepResearchPayload = {
+                restaurants: Array.isArray(parsed.restaurants) ? parsed.restaurants : [],
+                attractions: Array.isArray(parsed.attractions) ? parsed.attractions : [],
+                newRestaurantCategories: Array.isArray(parsed.newRestaurantCategories) ? parsed.newRestaurantCategories : [],
+                newAttractionCategories: Array.isArray(parsed.newAttractionCategories) ? parsed.newAttractionCategories : [],
+            };
+            const { trip: merged, stats } = mergeDeepResearchData(activeTrip, payload);
+            handleAiUpdate(merged);
+            const added = stats.newRestaurants + stats.newAttractions;
+            const enriched = stats.enrichedRestaurants + stats.enrichedAttractions;
+            toast.success(`נוספו ${added} פריטים חדשים${enriched ? `, ${enriched} העשרות` : ''} — ללא קריאת AI.`);
+            setJsonOnlyText('');
+            return;
+        }
+
+        const msg = 'הסכמה לא מזוהה. צפויות שתי צורות: {"kind":"attractions","categories":[...]} או {"restaurants":[...],"attractions":[...]}.';
+        setJsonOnlyError(msg);
+        toast.error(msg);
+    };
+
     const handleFreeTextApply = () => {
         if (!freeTextResult || !activeTrip) return;
 
@@ -1235,6 +1310,18 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                 </div>
                                             </div>
                                         </button>
+                                        <button
+                                            onClick={() => setAiDepth('json')}
+                                            className={`flex-1 py-2.5 rounded-lg font-bold text-sm border transition text-right px-3 ${aiDepth === 'json' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'}`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <FileText className="w-4 h-4" />
+                                                <div>
+                                                    <div>JSON ישיר</div>
+                                                    <div className={`text-[10px] font-normal ${aiDepth === 'json' ? 'opacity-90' : 'text-slate-500'}`}>הדבקה ישירה — ללא קריאת AI, מיידי</div>
+                                                </div>
+                                            </div>
+                                        </button>
                                     </div>
                                 </div>
 
@@ -1343,6 +1430,49 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             onSave(newTrips);
                                         }}
                                     />
+                                )}
+
+                                {aiDepth === 'json' && (
+                                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="bg-slate-100 p-2 rounded-lg">
+                                                <FileText className="w-4 h-4 text-slate-700" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-base font-black text-slate-800">JSON ישיר — ללא AI</h3>
+                                                <p className="text-xs text-slate-500">הדבק JSON שכבר הכנת. מזהה אוטומטית את הסכמה ומוסיף ישירות לטיול.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3 text-[11px] text-slate-600 leading-relaxed">
+                                            <div className="font-bold text-slate-700 mb-1">סכמות נתמכות:</div>
+                                            <div className="font-mono text-[10px] mb-1">{'{ "kind": "attractions" | "restaurants", "categories": [...] }'}</div>
+                                            <div className="font-mono text-[10px]">{'{ "restaurants": [...], "attractions": [...] }'}</div>
+                                            <div className="mt-2 text-slate-500">אפשר להדביק עם או בלי ```json``` — נשטף אוטומטית.</div>
+                                        </div>
+
+                                        <textarea
+                                            value={jsonOnlyText}
+                                            onChange={e => { setJsonOnlyText(e.target.value); setJsonOnlyError(null); }}
+                                            placeholder='{"kind":"attractions","categories":[...]}'
+                                            className="w-full h-40 p-2.5 bg-slate-50 rounded-lg border border-slate-200 focus:border-slate-500 outline-none resize-none text-[11px] font-mono mb-3"
+                                        />
+
+                                        {jsonOnlyError && (
+                                            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-[11px] p-2 rounded-lg mb-3">
+                                                ⚠️ {jsonOnlyError}
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={handleJsonOnlyApply}
+                                            disabled={!jsonOnlyText.trim()}
+                                            className="w-full py-2.5 bg-slate-800 text-white rounded-lg font-bold text-sm hover:bg-slate-900 disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle className="w-4 h-4" />
+                                            ייבא ישירות (ללא AI)
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         )}

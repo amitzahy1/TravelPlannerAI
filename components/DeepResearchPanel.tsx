@@ -4,6 +4,7 @@ import { Sparkles, Copy, Check, Loader2, Upload, Search, ArrowDownToLine, FileTe
 import { buildDeepRestaurantPrompt, buildDeepAttractionPrompt, getDeepResearchCities } from '../services/deepResearchPrompts';
 import { parseDeepResearchText } from '../services/aiService';
 import { mergeDeepResearchData, MergeStats } from '../services/deepResearchMerge';
+import { parseExternalAiResponse, mergeExternalAiIntoTrip } from '../services/externalAiImport';
 import { toast } from '../stores/useToastStore';
 
 interface DeepResearchPanelProps {
@@ -72,6 +73,31 @@ export const DeepResearchPanel: React.FC<DeepResearchPanelProps> = ({ trip, onUp
     toast.success(`נטען קובץ: ${file.name}`);
   };
 
+  /**
+   * Detect when the pasted text is already the strict Quick-mode JSON shape
+   * (`{kind, categories}`). Routes those through the synchronous parser so we
+   * skip the heavy AI re-parse — which was 504'ing on the Cloudflare worker.
+   */
+  const tryFastPathQuickJson = (
+    raw: string,
+  ): { merged: Trip; stats: { added: number } } | null => {
+    let trimmed = raw.trim();
+    if (trimmed.startsWith('```')) {
+      trimmed = trimmed.replace(/^```(?:json)?\s*/, '').replace(/```\s*$/, '').trim();
+    }
+    if (!trimmed.startsWith('{')) return null;
+    let candidate: any;
+    try { candidate = JSON.parse(trimmed); } catch { return null; }
+    const kind = candidate?.kind;
+    if (kind !== 'attractions' && kind !== 'restaurants') return null;
+    if (!Array.isArray(candidate?.categories)) return null;
+    // Looks like Quick-mode JSON. Route through the synchronous parser.
+    const parsed = parseExternalAiResponse(trimmed, kind);
+    const merged = mergeExternalAiIntoTrip(trip, parsed);
+    parsed.warnings.forEach(w => toast.warning(w));
+    return { merged, stats: { added: parsed.total } };
+  };
+
   const handlePreview = async () => {
     if (!rawText.trim() || rawText.trim().length < 50) {
       toast.error('הדבק טקסט מלא של תוצאות המחקר (לפחות 50 תווים).');
@@ -79,6 +105,26 @@ export const DeepResearchPanel: React.FC<DeepResearchPanelProps> = ({ trip, onUp
     }
     setIsParsing(true);
     setPreview(null);
+
+    // FAST PATH — pasted text is already in our Quick-mode JSON shape.
+    // Skip the AI re-parse entirely; commit directly. This avoids the
+    // Cloudflare 504s when users hand us clean JSON in the Deep panel.
+    try {
+      const fast = tryFastPathQuickJson(rawText);
+      if (fast) {
+        onUpdateTrip(fast.merged);
+        toast.success(`זוהה JSON תקני — ${fast.stats.added} פריטים נוספו ישירות לטיול ללא קריאת AI.`);
+        setRawText('');
+        setIsParsing(false);
+        setTab('generate');
+        return;
+      }
+    } catch (err: any) {
+      // JSON looked right but parsing rejected it — fall through to AI parse
+      // (the user may have a hybrid format we should try to recover from).
+      console.warn('[DeepResearch] fast-path JSON parse failed, falling back to AI parse', err);
+    }
+
     try {
       const parsed = await parseDeepResearchText(rawText);
       const merged = mergeDeepResearchData(trip, parsed);
@@ -92,7 +138,14 @@ export const DeepResearchPanel: React.FC<DeepResearchPanelProps> = ({ trip, onUp
       }
     } catch (err: any) {
       console.error('[DeepResearch] parse failed', err);
-      toast.error(`נכשל בניתוח: ${err?.message?.slice(0, 120) || 'שגיאה לא ידועה'}`);
+      const msg: string = err?.message || 'שגיאה לא ידועה';
+      // Surface the 504 specifically — it's an infrastructure issue, not
+      // bad user input. Tell them how to recover.
+      if (/504|GeminiTimeout|All AI models failed/i.test(msg)) {
+        toast.error('שרת ה-AI עומס (504) — נסה שוב בעוד דקה, או השתמש במצב "מהיר" אם יש לך JSON.');
+      } else {
+        toast.error(`נכשל בניתוח: ${msg.slice(0, 120)}`);
+      }
     } finally {
       setIsParsing(false);
     }
