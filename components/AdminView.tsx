@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment, HotelRoom, Transport } from '../types';
-import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble, ShieldCheck, RefreshCw, Search } from 'lucide-react';
+import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble, ShieldCheck, RefreshCw, Search, Copy, ExternalLink } from 'lucide-react';
+import { buildExternalAiPrompt, parseExternalAiResponse, mergeExternalAiIntoTrip, existingPlaceNames, type Kind as ExternalAiKind } from '../services/externalAiImport';
 import { isTripOwner } from '../utils/tripPermissions';
 import { getUserPremiumState, resetPremiumRunUsed } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
@@ -131,6 +132,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [freeText, setFreeText] = useState('');
     const [isFreeTextProcessing, setIsFreeTextProcessing] = useState(false);
     const [freeTextResult, setFreeTextResult] = useState<{ hotels: HotelBooking[], flights: FlightSegment[], transports: Transport[], summary: string } | null>(null);
+
+    // External-AI import (Gemini / ChatGPT / Claude.ai web → paste JSON back)
+    const [extAiKind, setExtAiKind] = useState<ExternalAiKind>('attractions');
+    const [extAiJson, setExtAiJson] = useState('');
+    const [extAiError, setExtAiError] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
     const [tripToDelete, setTripToDelete] = useState<string | null>(null);
     const [tripToLeave, setTripToLeave] = useState<string | null>(null); // NEW: For shared trip leave confirmation
@@ -694,6 +700,40 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         setPendingApplyData(null);
     };
 
+    // ────────────────────────────────────────────────────────────────────
+    // External-AI import (Gemini / ChatGPT / Claude.ai web → paste JSON)
+    // ────────────────────────────────────────────────────────────────────
+    const extAiPrompt = useMemo(() => {
+        if (!activeTrip) return '';
+        const dest = activeTrip.destinationEnglish || activeTrip.destination || '';
+        return buildExternalAiPrompt(dest, extAiKind, existingPlaceNames(activeTrip, extAiKind));
+    }, [activeTrip, extAiKind]);
+
+    const handleExtAiCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(extAiPrompt);
+            toast.success('הפרומפט הועתק — הדבק ב-Gemini / ChatGPT / Claude');
+        } catch {
+            toast.error('לא הצלחתי להעתיק — סמן ידנית והעתק');
+        }
+    };
+
+    const handleExtAiApply = () => {
+        if (!activeTrip || !extAiJson.trim()) return;
+        setExtAiError(null);
+        try {
+            const parsed = parseExternalAiResponse(extAiJson, extAiKind);
+            const updated = mergeExternalAiIntoTrip(activeTrip, parsed);
+            handleAiUpdate(updated);
+            toast.success(`נוספו ${parsed.total} ${extAiKind === 'attractions' ? 'אטרקציות' : 'מסעדות'} לטיול`);
+            setExtAiJson('');
+        } catch (err: any) {
+            const msg = err?.message || 'שגיאה לא ידועה';
+            setExtAiError(msg);
+            toast.error(msg);
+        }
+    };
+
     const handleFreeTextApply = () => {
         if (!freeTextResult || !activeTrip) return;
 
@@ -1179,6 +1219,101 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         )}
                                     </div>
                                 </div>
+                                {/* External AI Import — Gemini / ChatGPT / Claude.ai web */}
+                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-7">
+                                        <div className="flex items-center gap-4">
+                                            <div className="bg-white/20 p-3 rounded-lg">
+                                                <ExternalLink className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-black text-white">הוסף מקומות דרך Gemini / ChatGPT / Claude</h3>
+                                                <p className="text-emerald-100 text-sm mt-1">העתק פרומפט, הדבק ב-AI חופשי באינטרנט, החזר את ה-JSON</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="p-7 space-y-5">
+                                        {/* Kind selector */}
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setExtAiKind('attractions')}
+                                                className={`flex-1 py-2.5 rounded-lg font-bold text-sm border transition ${extAiKind === 'attractions' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'}`}
+                                            >
+                                                🎯 אטרקציות
+                                            </button>
+                                            <button
+                                                onClick={() => setExtAiKind('restaurants')}
+                                                className={`flex-1 py-2.5 rounded-lg font-bold text-sm border transition ${extAiKind === 'restaurants' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'}`}
+                                            >
+                                                🍽️ מסעדות
+                                            </button>
+                                        </div>
+
+                                        {/* Step 1 */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                                    <span className="bg-emerald-100 text-emerald-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
+                                                    העתק את הפרומפט והדבק ב-AI
+                                                </div>
+                                                <button
+                                                    onClick={handleExtAiCopy}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700"
+                                                >
+                                                    <Copy className="w-3.5 h-3.5" /> העתק
+                                                </button>
+                                            </div>
+                                            <textarea
+                                                readOnly
+                                                value={extAiPrompt}
+                                                className="w-full h-40 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs font-mono text-slate-700 outline-none resize-none"
+                                                onClick={e => (e.target as HTMLTextAreaElement).select()}
+                                            />
+                                            <div className="flex flex-wrap gap-2 text-xs">
+                                                <a href="https://gemini.google.com/app" target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md font-bold border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1">
+                                                    Gemini <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                                <a href="https://chat.openai.com/" target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-md font-bold border border-emerald-200 hover:bg-emerald-100 inline-flex items-center gap-1">
+                                                    ChatGPT <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                                <a href="https://claude.ai/new" target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-orange-50 text-orange-700 rounded-md font-bold border border-orange-200 hover:bg-orange-100 inline-flex items-center gap-1">
+                                                    Claude <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        {/* Step 2 */}
+                                        <div className="space-y-2">
+                                            <div className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                                <span className="bg-emerald-100 text-emerald-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                                                הדבק כאן את ה-JSON שה-AI החזיר
+                                            </div>
+                                            <textarea
+                                                value={extAiJson}
+                                                onChange={e => { setExtAiJson(e.target.value); setExtAiError(null); }}
+                                                placeholder='{"kind":"attractions","categories":[...]}'
+                                                className="w-full h-40 p-3 bg-slate-50 rounded-lg border border-slate-200 focus:border-emerald-400 outline-none resize-none text-xs font-mono"
+                                            />
+                                            {extAiError && (
+                                                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-2.5 rounded-lg">
+                                                    ⚠️ {extAiError}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Step 3 */}
+                                        <button
+                                            onClick={handleExtAiApply}
+                                            disabled={!extAiJson.trim()}
+                                            className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle className="w-4 h-4" />
+                                            <span className="bg-white/20 w-5 h-5 rounded-full flex items-center justify-center text-xs">3</span>
+                                            הוסף לטיול
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl p-8 text-white text-center">
                                     <Sparkles className="w-14 h-14 mx-auto mb-4 text-yellow-300" />
                                     <h3 className="text-2xl font-black mb-2">Magic Import — קבצים</h3>
