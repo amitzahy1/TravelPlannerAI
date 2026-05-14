@@ -746,6 +746,32 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         }
     };
 
+    // Escape literal control chars (\n, \r, \t, etc.) that appear *inside*
+    // string literals. LLM-generated JSON frequently has multi-line string
+    // values that violate the JSON spec — JSON.parse rejects them with
+    // "Bad control character in string literal". This walk respects backslash
+    // escapes and "..." boundaries.
+    const sanitizeJsonControlChars = (s: string): string => {
+        let out = '';
+        let inString = false;
+        let escape = false;
+        for (let i = 0; i < s.length; i++) {
+            const c = s[i];
+            if (escape) { out += c; escape = false; continue; }
+            if (c === '\\') { out += c; escape = true; continue; }
+            if (c === '"') { inString = !inString; out += c; continue; }
+            if (inString) {
+                if (c === '\n') { out += '\\n'; continue; }
+                if (c === '\r') { out += '\\r'; continue; }
+                if (c === '\t') { out += '\\t'; continue; }
+                const code = c.charCodeAt(0);
+                if (code < 0x20) { out += '\\u' + code.toString(16).padStart(4, '0'); continue; }
+            }
+            out += c;
+        }
+        return out;
+    };
+
     // JSON-only paste path — strict, never calls AI. Accepts both the Quick
     // shape ({kind, categories}) and the Deep native shape ({restaurants, attractions}).
     // Brace-carves to recover from wrapping prose / ```json fences. On any
@@ -767,13 +793,25 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         const candidate = stripped.slice(firstBrace, lastBrace + 1);
 
         let parsed: any;
+        let sanitized = false;
         try {
             parsed = JSON.parse(candidate);
-        } catch (err: any) {
-            const msg = `JSON לא תקין: ${err?.message?.slice(0, 100) || 'parse error'}`;
-            setJsonOnlyError(msg);
-            toast.error(msg);
-            return;
+        } catch (firstErr: any) {
+            // Common failure: LLM emitted literal newlines inside string values
+            // ("Bad control character in string literal"). Retry with control
+            // chars escaped — recovers most AI-generated JSON.
+            try {
+                parsed = JSON.parse(sanitizeJsonControlChars(candidate));
+                sanitized = true;
+            } catch (secondErr: any) {
+                const msg = `JSON לא תקין: ${secondErr?.message?.slice(0, 100) || firstErr?.message?.slice(0, 100) || 'parse error'}`;
+                setJsonOnlyError(msg);
+                toast.error(msg);
+                return;
+            }
+        }
+        if (sanitized) {
+            toast.warning('זוהו תווי שורה לא חוקיים בתוך מחרוזות — תוקנו אוטומטית.');
         }
 
         // Shape B — Quick schema. Flatten and route through externalAiImport.
