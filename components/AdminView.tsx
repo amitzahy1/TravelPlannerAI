@@ -840,11 +840,30 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                 newRestaurantCategories: Array.isArray(parsed.newRestaurantCategories) ? parsed.newRestaurantCategories : [],
                 newAttractionCategories: Array.isArray(parsed.newAttractionCategories) ? parsed.newAttractionCategories : [],
             };
+            const existingAiRestaurants = (activeTrip.aiRestaurants || []).reduce((s, c) => s + c.restaurants.length, 0);
+            const existingAiAttractions = (activeTrip.aiAttractions || []).reduce((s, c) => s + c.attractions.length, 0);
+            console.log('[JSON-only] before merge:', {
+                incomingRestaurants: payload.restaurants?.length || 0,
+                incomingAttractions: payload.attractions?.length || 0,
+                existingAiRestaurants,
+                existingAiAttractions,
+            });
             const { trip: merged, stats } = mergeDeepResearchData(activeTrip, payload);
+            console.log('[JSON-only] merge stats:', stats);
             handleAiUpdate(merged);
             const added = stats.newRestaurants + stats.newAttractions;
             const enriched = stats.enrichedRestaurants + stats.enrichedAttractions;
-            toast.success(`נוספו ${added} פריטים חדשים${enriched ? `, ${enriched} העשרות` : ''} — ללא קריאת AI.`);
+            const skipped = stats.skippedRestaurants + stats.skippedAttractions;
+            const parts: string[] = [];
+            if (added) parts.push(`${added} חדשים`);
+            if (enriched) parts.push(`${enriched} העשרות`);
+            if (skipped) parts.push(`${skipped} כבר קיימים (דולגו)`);
+            const summary = parts.length ? parts.join(', ') : 'אין שינויים';
+            if (added === 0 && enriched === 0 && skipped > 0) {
+                toast.warning(`${summary}. הפריטים כבר נמצאים ב"מקומות מ-AI" של הטיול. בדוק את הטאב מסעדות/אטרקציות לראות אותם.`);
+            } else {
+                toast.success(`${summary} — ללא קריאת AI.`);
+            }
             setJsonOnlyText('');
             return;
         }
