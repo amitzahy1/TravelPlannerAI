@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Trip } from '../types';
 import { createSharedTrip, ensureSharedTripInvite } from '../services/firestoreService';
 import { X, Link, Copy, Check, Users, Shield, Globe, Plus, Pencil, Eye } from 'lucide-react';
@@ -82,9 +83,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
                 setTimeout(() => setCopiedRole(null), 2000);
         };
 
-        return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative">
+        return createPortal(
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+                        <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative my-auto">
                                 <button
                                         onClick={onClose}
                                         className="absolute top-4 left-4 p-2 bg-slate-100/50 hover:bg-slate-100 rounded-full text-slate-500 transition-all z-10"
@@ -203,6 +204,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
                                         )}
                                 </div>
                         </div>
-                </div>
+                </div>,
+                document.body
         );
 };

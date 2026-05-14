@@ -116,34 +116,6 @@ export const GuestTripView: React.FC<GuestTripViewProps> = ({ shareId, role, onS
 
     return (
         <>
-            <motion.div
-                initial={{ y: -40, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-                className="sticky top-0 z-[80] bg-gradient-to-l from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-lg"
-                dir="rtl"
-            >
-                <div className="max-w-screen-md mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <div className="shrink-0 w-7 h-7 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                            <Eye className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="min-w-0">
-                            <div className="text-[11px] font-black opacity-90 tracking-wider uppercase">מצב צפייה</div>
-                            <div className="text-[12px] font-bold opacity-95 truncate">{cta}</div>
-                        </div>
-                    </div>
-                    <button
-                        onClick={handleSignIn}
-                        disabled={signingIn}
-                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-indigo-700 text-xs font-black shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60"
-                    >
-                        <LogIn className="w-3.5 h-3.5" />
-                        <span>{signingIn ? '…' : 'התחבר עם Google'}</span>
-                    </button>
-                </div>
-            </motion.div>
-
             <Layout
                 activeTrip={trip}
                 trips={[trip]}
@@ -154,6 +126,33 @@ export const GuestTripView: React.FC<GuestTripViewProps> = ({ shareId, role, onS
                 onUpdateTrip={noop}
                 onDeleteTrip={noop}
             >
+                <motion.div
+                    initial={{ y: -40, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+                    className="rounded-2xl bg-gradient-to-l from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-lg mb-4"
+                    dir="rtl"
+                >
+                    <div className="px-4 py-2.5 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="shrink-0 w-7 h-7 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                                <Eye className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="text-[11px] font-black opacity-90 tracking-wider uppercase">מצב צפייה</div>
+                                <div className="text-[12px] font-bold opacity-95 truncate">{cta}</div>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleSignIn}
+                            disabled={signingIn}
+                            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-indigo-700 text-xs font-black shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60"
+                        >
+                            <LogIn className="w-3.5 h-3.5" />
+                            <span>{signingIn ? '…' : 'התחבר עם Google'}</span>
+                        </button>
+                    </div>
+                </motion.div>
                 <main role="main" tabIndex={-1}>
                     {renderContent()}
                 </main>

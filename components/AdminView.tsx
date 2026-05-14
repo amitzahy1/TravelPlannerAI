@@ -124,7 +124,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     const [isSaving, setIsSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'deep_research' | 'owner' | 'health' | 'logs'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'import' | 'deep_research' | 'owner' | 'health' | 'logs'>('overview');
     const { user } = useAuth();
     const [premiumFood, setPremiumFood] = useState<number | null>(null);
     const [premiumAttractions, setPremiumAttractions] = useState<number | null>(null);
@@ -932,6 +932,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             {[
                                 { id: 'overview' as const, label: 'פרטים כלליים', icon: Layout },
                                 { id: 'logistics' as const, label: 'טיסות ומלונות', icon: Plane },
+                                ...(isOwner ? [{ id: 'import' as const, label: 'ייבוא חכם', icon: UploadCloud }] : []),
                                 ...(isOwner ? [{ id: 'deep_research' as const, label: 'מחקר מעמיק', icon: Search }] : []),
                                 ...(isOwner ? [{ id: 'owner' as const, label: 'ניהול מתקדם', icon: ShieldCheck }] : []),
                             ].map(tab => {
@@ -1110,6 +1111,23 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {activeTab === 'import' && isOwner && (
+                            <div className="space-y-4 animate-fade-in">
+                                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="bg-purple-100 p-2 rounded-lg">
+                                            <Sparkles className="w-4 h-4 text-purple-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-black text-slate-800">Magic Import — קבצים</h3>
+                                            <p className="text-xs text-slate-500">גרור PDF/תמונה וה-AI יחלץ את הנתונים</p>
+                                        </div>
+                                    </div>
+                                    <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={true} />
+                                </div>
                             </div>
                         )}
 
@@ -1311,15 +1329,6 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             <span className="bg-white/20 w-5 h-5 rounded-full flex items-center justify-center text-xs">3</span>
                                             הוסף לטיול
                                         </button>
-                                    </div>
-                                </div>
-
-                                <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl p-8 text-white text-center">
-                                    <Sparkles className="w-14 h-14 mx-auto mb-4 text-yellow-300" />
-                                    <h3 className="text-2xl font-black mb-2">Magic Import — קבצים</h3>
-                                    <p className="text-purple-100 mb-6">גרור PDF וה-AI יחלץ את הנתונים</p>
-                                    <div className="bg-white/10 rounded-lg p-6">
-                                        <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={false} />
                                     </div>
                                 </div>
 
