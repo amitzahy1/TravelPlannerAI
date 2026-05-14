@@ -428,6 +428,37 @@ Required shape:
   "newRestaurantCategories": [ /* any new Hebrew category titles you proposed */ ]
 }
 
+═══════════════════════════════════════════════════════════════════════════════
+STRING ESCAPING — STRICT (every string field MUST follow these)
+═══════════════════════════════════════════════════════════════════════════════
+The output is parsed by \`JSON.parse\` with no leniency. The two failures we
+see most often:
+
+1. LITERAL NEWLINES inside string values — FORBIDDEN.
+   Every string value (description, location, priceLevel, etc.) MUST be on
+   ONE LINE. No raw \\n, \\r, or \\t inside quotes. If you need a paragraph
+   break, use the escape sequence \\n IN THE STRING (not a real line break).
+   WRONG:  "priceLevel": "
+   $$$$
+   "
+   RIGHT:  "priceLevel": "$$$$"
+
+2. UNESCAPED DOUBLE QUOTES inside string values — FORBIDDEN.
+   Hebrew acronyms with gershayim (e.g. להט"ב, צה"ל, ארה"ב) break the JSON
+   because the \`"\` looks like a string terminator. Two options, in order
+   of preference:
+     (a) Use the Hebrew gershayim character \`״\` (U+05F4) — e.g. \`להט״ב\`,
+         \`צה״ל\`, \`ארה״ב\`. This is the typographically correct form anyway.
+     (b) Escape the double-quote: \`להט\\"ב\`.
+   Same rule for English quotes inside Hebrew text (\`he said "hi"\` → write
+   \`he said \\"hi\\"\` or use Hebrew quotation marks „ ").
+
+3. NO TABS inside strings. Use a single space.
+
+If your JSON would have ANY raw newline or unescaped \`"\` inside a string
+value — REWRITE IT before sending. The parser is strict; corruption forces
+a manual cleanup pass.
+
 COMMON MISTAKES TO AVOID  (especially for Gemini Deep Research / Gemini 2.5 Pro)
 - Do NOT prepend "Here is the deep research result:" or any preamble.
 - Do NOT append a "Sources" / "References" / "Citations" section after the JSON.
@@ -684,6 +715,32 @@ Required shape:
   "attractions": [ /* ${Math.max(80, cityCount * 50)}–${Math.max(150, cityCount * 70)} entries — at least 8 per category per city */ ],
   "newAttractionCategories": [ /* any new Hebrew category titles you proposed */ ]
 }
+
+═══════════════════════════════════════════════════════════════════════════════
+STRING ESCAPING — STRICT (every string field MUST follow these)
+═══════════════════════════════════════════════════════════════════════════════
+The output is parsed by \`JSON.parse\` with no leniency. The two failures we
+see most often:
+
+1. LITERAL NEWLINES inside string values — FORBIDDEN.
+   Every string value MUST be on ONE LINE. No raw newlines/tabs inside quotes.
+   If you need a paragraph break, use the escape sequence \\n IN THE STRING
+   (not a real line break).
+   WRONG:  "description": "פסקה ראשונה.
+   פסקה שנייה."
+   RIGHT:  "description": "פסקה ראשונה. פסקה שנייה."
+
+2. UNESCAPED DOUBLE QUOTES inside string values — FORBIDDEN.
+   Hebrew acronyms with gershayim (e.g. להט"ב, צה"ל, ארה"ב) break the JSON
+   because the \`"\` looks like a string terminator. Two options:
+     (a) Use the Hebrew gershayim character \`״\` (U+05F4) — \`להט״ב\`,
+         \`צה״ל\`, \`ארה״ב\`. Typographically correct anyway.
+     (b) Escape the double-quote: \`להט\\"ב\`.
+
+3. NO TABS inside strings. Use a single space.
+
+If your JSON would have ANY raw newline or unescaped \`"\` inside a string —
+REWRITE IT before sending.
 
 COMMON MISTAKES TO AVOID  (especially for Gemini Deep Research / Gemini 2.5 Pro)
 - Do NOT prepend any preamble. Do NOT append a "Sources" section.

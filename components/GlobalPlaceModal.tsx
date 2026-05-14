@@ -288,26 +288,6 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                                 );
                                         })()}
 
-                                        {(() => {
-                                                const lowConfidence = typeof item.verificationConfidence === 'number' && item.verificationConfidence < 0.5;
-                                                const showWarning = item.verification_needed || item.geocodeFailed || item.verificationStatus === 'not_found' || item.verificationStatus === 'ambiguous' || lowConfidence;
-                                                if (!showWarning) return null;
-                                                const reason = item.verificationReason
-                                                        || (item.verificationStatus === 'ambiguous' ? 'מצאנו כתובת אבל היא רחוקה מהיעד או חלקית.'
-                                                        :  item.verificationStatus === 'not_found' ? 'לא מצאנו את המקום במאגר OSM.'
-                                                        :  lowConfidence ? 'התאמה בביטחון נמוך — ייתכן שזה לא המקום הנכון.'
-                                                        :  'לא הצלחנו לאמת את המקום אוטומטית.');
-                                                return (
-                                                        <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
-                                                                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                                                                <div className="text-xs text-amber-900 leading-relaxed">
-                                                                        <div className="font-black mb-0.5">כדאי לבדוק לפני הביקור</div>
-                                                                        <div className="font-medium text-amber-800">{reason} בדוק שעות פתיחה וכתובת ב-Google Maps לפני שתבקר.</div>
-                                                                </div>
-                                                        </div>
-                                                );
-                                        })()}
-
                                         <p className="text-sm text-slate-600 leading-relaxed mb-6 font-medium text-right" dir="auto">
                                                 {/* Clean Description without prefix, assuming AI fixes language. If English detected, we just show it clean. */}
                                                 {item.description || (type === 'food' || type === 'restaurant' ? 'מסעדה מצוינת ששווה בדיקה.' : 'אטרקציה שווה ביקור.')}

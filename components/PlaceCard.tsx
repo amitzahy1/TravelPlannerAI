@@ -145,16 +145,6 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                                         <X className="w-2.5 h-2.5" />
                                                 </span>
                                         )}
-                                        {showVerificationBadge && (
-                                                <span
-                                                        title="כדאי לוודא שעות פתיחה / זמינות לפני הביקור"
-                                                        aria-label="כדאי לבדוק לפני הביקור"
-                                                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md backdrop-blur-md bg-amber-500/85 border border-amber-300/70 text-[8.5px] font-black text-white uppercase tracking-wide flex-shrink-0"
-                                                >
-                                                        <AlertTriangle className="w-2.5 h-2.5" />
-                                                        <span>בדוק</span>
-                                                </span>
-                                        )}
                                 </div>
                                 <div className="flex gap-1 pointer-events-auto flex-shrink-0">
                                         <a

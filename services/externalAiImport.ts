@@ -123,6 +123,22 @@ DESCRIPTIONS IN HEBREW (1–2 short sentences each, traveler-facing). Be
 specific — say WHY this place is worth visiting (the unusual exhibit, the
 sunset angle, the signature dish) — not generic "great place to visit".
 ${excludeBlock}
+═══ STRING ESCAPING — STRICT ═══
+Output is parsed by \`JSON.parse\` (no leniency). Two corruptions we keep seeing:
+
+1. LITERAL NEWLINES inside string values — FORBIDDEN. Every string MUST be on
+   ONE LINE. No raw newlines/tabs inside quotes.
+   WRONG:  "description": "שורה אחת.
+   שורה שנייה."
+   RIGHT:  "description": "שורה אחת. שורה שנייה."
+
+2. UNESCAPED DOUBLE QUOTES inside strings — FORBIDDEN. Hebrew acronyms with
+   gershayim (להט"ב, צה"ל, ארה"ב) break the JSON. Use the Hebrew gershayim
+   \`״\` (U+05F4) instead: \`להט״ב\`, \`צה״ל\`, \`ארה״ב\` (or escape: \`להט\\"ב\`).
+
+If any string value would contain a raw newline or an unescaped \`"\` —
+rewrite it before sending.
+
 ═══ OUTPUT — JSON ONLY ═══
 No prose, no markdown fences, no explanations, no leading/trailing text.
 EXACTLY this shape:

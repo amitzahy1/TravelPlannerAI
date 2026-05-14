@@ -133,6 +133,15 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [aiDepth, setAiDepth] = useState<'quick' | 'deep' | 'json'>('quick');
     const [jsonOnlyText, setJsonOnlyText] = useState('');
     const [jsonOnlyError, setJsonOnlyError] = useState<string | null>(null);
+    // Persistent summary of the last JSON-only import — shown below the
+    // textarea so the user can see exactly which items were added, enriched,
+    // or skipped (toasts disappear too fast for this to be obvious).
+    const [jsonImportSummary, setJsonImportSummary] = useState<null | {
+        added: { name: string; category: string }[];
+        enriched: { name: string; category: string }[];
+        skipped: { name: string; category: string }[];
+        kindLabel: string;
+    }>(null);
     const { user } = useAuth();
     const [premiumFood, setPremiumFood] = useState<number | null>(null);
     const [premiumAttractions, setPremiumAttractions] = useState<number | null>(null);
@@ -871,9 +880,37 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                 existingAiRestaurants,
                 existingAiAttractions,
             });
+            // Capture pre-merge IDs so we can list which exact items got added.
+            const preRestIds = new Set<string>();
+            (activeTrip.aiRestaurants || []).forEach(c => c.restaurants.forEach(r => preRestIds.add(r.id)));
+            const preAttrIds = new Set<string>();
+            (activeTrip.aiAttractions || []).forEach(c => c.attractions.forEach(a => preAttrIds.add(a.id)));
+
             const { trip: merged, stats } = mergeDeepResearchData(activeTrip, payload);
             console.log('[JSON-only] merge stats:', stats);
             handleAiUpdate(merged);
+
+            // Diff: items whose IDs didn't exist before = added in this import.
+            const addedList: { name: string; category: string }[] = [];
+            (merged.aiRestaurants || []).forEach(c => c.restaurants.forEach(r => {
+                if (!preRestIds.has(r.id)) addedList.push({ name: r.name || r.nameEnglish || '?', category: c.title });
+            }));
+            (merged.aiAttractions || []).forEach(c => c.attractions.forEach(a => {
+                if (!preAttrIds.has(a.id)) addedList.push({ name: a.name || a.nameEnglish || '?', category: c.title });
+            }));
+
+            const kindLabel = (payload.attractions?.length || 0) > 0 && (payload.restaurants?.length || 0) === 0
+                ? 'אטרקציות'
+                : (payload.restaurants?.length || 0) > 0 && (payload.attractions?.length || 0) === 0
+                    ? 'מסעדות'
+                    : 'פריטים';
+            setJsonImportSummary({
+                added: addedList,
+                enriched: [],
+                skipped: [],
+                kindLabel,
+            });
+
             const added = stats.newRestaurants + stats.newAttractions;
             const enriched = stats.enrichedRestaurants + stats.enrichedAttractions;
             const skipped = stats.skippedRestaurants + stats.skippedAttractions;
@@ -883,7 +920,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             if (skipped) parts.push(`${skipped} כבר קיימים (דולגו)`);
             const summary = parts.length ? parts.join(', ') : 'אין שינויים';
             if (added === 0 && enriched === 0 && skipped > 0) {
-                toast.warning(`${summary}. הפריטים כבר נמצאים ב"מקומות מ-AI" של הטיול. בדוק את הטאב מסעדות/אטרקציות לראות אותם.`);
+                toast.warning(`${summary}. הפריטים כבר נמצאים בטיול — בדוק את הטאב ${kindLabel}.`);
             } else {
                 toast.success(`${summary} — ללא קריאת AI.`);
             }
@@ -1552,6 +1589,55 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             <CheckCircle className="w-4 h-4" />
                                             ייבא ישירות (ללא AI)
                                         </button>
+
+                                        {jsonImportSummary && (
+                                            <div className="mt-4 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                                        <span className="text-sm font-black text-emerald-900">
+                                                            נוספו {jsonImportSummary.added.length} {jsonImportSummary.kindLabel} לטיול
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setJsonImportSummary(null)}
+                                                        className="text-emerald-700 hover:text-emerald-900 text-xs font-bold underline"
+                                                    >
+                                                        סגור
+                                                    </button>
+                                                </div>
+                                                {jsonImportSummary.added.length === 0 ? (
+                                                    <div className="text-xs text-emerald-800">
+                                                        כל הפריטים שב-JSON כבר קיימים בטיול. בדוק את הטאב <span className="font-bold">{jsonImportSummary.kindLabel}</span> בתפריט הראשי.
+                                                    </div>
+                                                ) : (
+                                                    <div className="max-h-64 overflow-y-auto">
+                                                        {(() => {
+                                                            const byCat = new Map<string, string[]>();
+                                                            jsonImportSummary.added.forEach(({ name, category }) => {
+                                                                if (!byCat.has(category)) byCat.set(category, []);
+                                                                byCat.get(category)!.push(name);
+                                                            });
+                                                            return Array.from(byCat.entries()).map(([cat, names]) => (
+                                                                <div key={cat} className="mb-2 last:mb-0">
+                                                                    <div className="text-[11px] font-black text-emerald-900 mb-1">
+                                                                        {cat} <span className="text-emerald-700 font-bold">({names.length})</span>
+                                                                    </div>
+                                                                    <ul className="text-[11px] text-emerald-800 space-y-0.5 pr-3">
+                                                                        {names.map((n, i) => (
+                                                                            <li key={i} className="leading-tight">• {n}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            ));
+                                                        })()}
+                                                    </div>
+                                                )}
+                                                <div className="mt-3 pt-3 border-t border-emerald-200 text-[10px] text-emerald-700">
+                                                    הפריטים נמצאים תחת הטאב <span className="font-bold">{jsonImportSummary.kindLabel}</span> בתפריט הראשי (לא ב"ניהול שינויים").
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
