@@ -18,6 +18,7 @@ import { SkeletonCardGrid } from './ui/Skeleton';
 import { canEditTrip, isTripOwner, isViewerOnly } from '../utils/tripPermissions';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserPremiumState, markPremiumRunUsed, getCategoryRefreshes, incrementCategoryRefresh, CategoryRefreshEntry, getPlacesSpendToday, incrementPlacesSpend, PLACES_ILS_PER_CALL } from '../services/firestoreService';
+import { isPlacesDisabled } from '../services/placesService';
 import { getLocalAI, setLocalAI } from '../utils/localTripAI';
 import { isAdmin } from '../utils/isAdmin';
 import { findClosedPlaces } from '../utils/closedPlaceCheck';
@@ -1811,7 +1812,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 onSelect: () => setConfirmNearHotel(true),
                                 disabled: loadingRecs || isResearchingAll || (trip.hotels || []).filter(h => typeof h.lat === 'number').length === 0,
                             },
-                            ...(userIsAdmin && activeTab === 'recommended' && aiCategories.flatMap(c => c.attractions).length > 0 ? [{
+                            ...(!isPlacesDisabled() && userIsAdmin && activeTab === 'recommended' && aiCategories.flatMap(c => c.attractions).length > 0 ? [{
                                 icon: <RefreshCw className={`w-4 h-4 ${bulkRefreshing === 'ai' ? 'animate-spin' : ''}`} />,
                                 label: bulkRefreshing === 'ai'
                                     ? `מרענן מ-Google · ${bulkProgress.current}/${bulkProgress.total}`
@@ -1819,7 +1820,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 onSelect: handleBulkRefreshAi,
                                 disabled: !!bulkRefreshing,
                             }] : []),
-                            ...(userIsAdmin && activeTab === 'my_list' && trip.attractions.flatMap(c => c.attractions).length > 0 ? [{
+                            ...(!isPlacesDisabled() && userIsAdmin && activeTab === 'my_list' && trip.attractions.flatMap(c => c.attractions).length > 0 ? [{
                                 icon: <RefreshCw className={`w-4 h-4 ${bulkRefreshing === 'saved' ? 'animate-spin' : ''}`} />,
                                 label: bulkRefreshing === 'saved'
                                     ? `מרענן מ-Google · ${bulkProgress.current}/${bulkProgress.total}`

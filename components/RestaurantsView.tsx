@@ -21,6 +21,7 @@ import { findClosedPlaces } from '../utils/closedPlaceCheck';
 import { toast } from '../stores/useToastStore';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserPremiumState, markPremiumRunUsed, getCategoryRefreshes, incrementCategoryRefresh, CategoryRefreshEntry, getPlacesSpendToday, incrementPlacesSpend, PLACES_ILS_PER_CALL } from '../services/firestoreService';
+import { isPlacesDisabled } from '../services/placesService';
 
 // Extended interface for internal use
 interface ExtendedRestaurant extends Restaurant {
@@ -2129,7 +2130,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 onSelect: () => setConfirmNearHotel(true),
                                 disabled: loadingRecs || isResearchingAll || (trip.hotels || []).filter(h => typeof h.lat === 'number').length === 0,
                             },
-                            ...(userIsAdmin && activeTab === 'recommended' && aiCategories.flatMap(c => c.restaurants).length > 0 ? [{
+                            ...(!isPlacesDisabled() && userIsAdmin && activeTab === 'recommended' && aiCategories.flatMap(c => c.restaurants).length > 0 ? [{
                                 icon: <RefreshCw className={`w-4 h-4 ${bulkRefreshing === 'ai' ? 'animate-spin' : ''}`} />,
                                 label: bulkRefreshing === 'ai'
                                     ? `מרענן מ-Google · ${bulkProgress.current}/${bulkProgress.total}`
@@ -2137,7 +2138,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 onSelect: handleBulkRefreshAi,
                                 disabled: !!bulkRefreshing,
                             }] : []),
-                            ...(userIsAdmin && activeTab === 'my_list' && trip.restaurants.flatMap(c => c.restaurants).length > 0 ? [{
+                            ...(!isPlacesDisabled() && userIsAdmin && activeTab === 'my_list' && trip.restaurants.flatMap(c => c.restaurants).length > 0 ? [{
                                 icon: <RefreshCw className={`w-4 h-4 ${bulkRefreshing === 'saved' ? 'animate-spin' : ''}`} />,
                                 label: bulkRefreshing === 'saved'
                                     ? `מרענן מ-Google · ${bulkProgress.current}/${bulkProgress.total}`

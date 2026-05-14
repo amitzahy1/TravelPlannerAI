@@ -28,7 +28,21 @@
         "Michelin",
         "Local Legend"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.752534,100.504737"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.752534,100.504737",
+      "googlePlaceId": "ChIJaxq89xaZ4jARQtKhE1uqq9c",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: Closed",
+        "Wednesday: 9:00 AM – 7:30 PM",
+        "Thursday: 9:00 AM – 7:30 PM",
+        "Friday: 9:00 AM – 7:30 PM",
+        "Saturday: 9:00 AM – 7:30 PM",
+        "Sunday: Closed"
+      ],
+      "googlePhone": "+66 2 223 9384",
+      "googleWebsiteUri": "https://www.instagram.com/jayfaibangkok",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740220744
     },
     {
       "name": "100 Mahaseth",
@@ -57,7 +71,20 @@
         "Trendy",
         "Chef-driven"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.729029,100.518231"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.729029,100.518231",
+      "googlePlaceId": "ChIJ3-YDqtCY4jARdkcQthC1q9Q",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 11:30 AM – 10:30 PM",
+        "Wednesday: 11:30 AM – 10:30 PM",
+        "Thursday: 11:30 AM – 10:30 PM",
+        "Friday: 11:30 AM – 10:30 PM",
+        "Saturday: 11:30 AM – 10:30 PM",
+        "Sunday: 11:30 AM – 10:30 PM"
+      ],
+      "googlePhone": "+66 2 235 0023",
+      "googleWebsiteUri": "https://www.100mahaseth.com/",
+      "googleEnrichedAt": 1778740221965
     },
     {
       "name": "Som Tum Nua",
@@ -87,7 +114,20 @@
         "Bib Gourmand"
       ],
       "michelin": true,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.744436,100.534358"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.744436,100.534358",
+      "googlePlaceId": "ChIJe5jdmNeZ4jARNzb36wTdDws",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 9:30 PM",
+        "Tuesday: 11:00 AM – 9:30 PM",
+        "Wednesday: 11:00 AM – 9:30 PM",
+        "Thursday: 11:00 AM – 9:30 PM",
+        "Friday: 11:00 AM – 9:30 PM",
+        "Saturday: 11:00 AM – 9:30 PM",
+        "Sunday: 11:00 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 80 068 1022",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740223310
     },
     {
       "name": "Go-Ang Pratunam Chicken Rice",
@@ -111,7 +151,21 @@
         "Bib Gourmand",
         "Comfort food"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.749640,100.542086"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.749640,100.542086",
+      "googlePlaceId": "ChIJj_WIE_Kf4jARywEFZ_PhZtE",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 9:30 PM",
+        "Tuesday: 9:00 AM – 9:30 PM",
+        "Wednesday: 9:00 AM – 9:30 PM",
+        "Thursday: 9:00 AM – 9:30 PM",
+        "Friday: 9:00 AM – 9:30 PM",
+        "Saturday: 9:00 AM – 9:30 PM",
+        "Sunday: 9:00 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 2 251 5299",
+      "googleWebsiteUri": "https://www.facebook.com/GoAngPratunamChickenRice",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740224631
     },
     {
       "name": "Guay Jub Ouan Pochana",
@@ -134,7 +188,21 @@
         "Yaowarat",
         "Bib Gourmand"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.740625,100.509195"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.740625,100.509195",
+      "googlePlaceId": "ChIJ_f2SjiGZ4jARZ_oV924fllg",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 10:30 AM – 12:00 AM",
+        "Wednesday: 10:30 AM – 12:00 AM",
+        "Thursday: 10:30 AM – 12:00 AM",
+        "Friday: 10:30 AM – 12:00 AM",
+        "Saturday: 10:30 AM – 12:00 AM",
+        "Sunday: 10:30 AM – 12:00 AM"
+      ],
+      "googlePhone": "+66 61 782 4223",
+      "googleWebsiteUri": "https://www.wongnai.com/restaurants/8827KJ-%E0%B8%81%E0%B9%8B%E0%B8%A7%E0%B8%A2%E0%B8%88%E0%B8%B1%E0%B9%8A%E0%B8%9A-%E0%B8%AD%E0%B9%89%E0%B8%A7%E0%B8%99%E0%B9%82%E0%B8%A0%E0%B8%8A%E0%B8%99%E0%B8%B2",
+      "googlePriceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "googleEnrichedAt": 1778740225848
     },
     {
       "name": "Phed Mark",
@@ -156,7 +224,20 @@
         "Trendy",
         "Instagrammable"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.720303,100.583861"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.720303,100.583861",
+      "googlePlaceId": "ChIJ115G2E-f4jARGSJGa50Ly6A",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 7:00 PM",
+        "Tuesday: 10:00 AM – 7:00 PM",
+        "Wednesday: 10:00 AM – 7:00 PM",
+        "Thursday: 10:00 AM – 7:00 PM",
+        "Friday: 10:00 AM – 7:00 PM",
+        "Saturday: 10:00 AM – 7:00 PM",
+        "Sunday: 10:00 AM – 7:00 PM"
+      ],
+      "googlePhone": "+66 83 893 8989",
+      "googleWebsiteUri": "https://www.instagram.com/phedmarkbkk/",
+      "googleEnrichedAt": 1778740227075
     },
     {
       "name": "Charmgang",
@@ -179,7 +260,20 @@
         "Trendy",
         "Date night"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.732902,100.515090"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.732902,100.515090",
+      "googlePlaceId": "ChIJVfEm3omZ4jARgvvkaIhAh7o",
+      "googleOpeningHours": [
+        "Monday: 6:00 – 9:30 PM",
+        "Tuesday: 6:00 – 9:30 PM",
+        "Wednesday: 6:00 – 9:30 PM",
+        "Thursday: 6:00 – 9:30 PM",
+        "Friday: 6:00 – 9:30 PM",
+        "Saturday: 12:00 – 1:30 PM, 6:00 – 9:30 PM",
+        "Sunday: 12:00 – 1:30 PM, 6:00 – 9:30 PM"
+      ],
+      "googlePhone": "+66 98 882 3251",
+      "googleWebsiteUri": "https://facebook.com/charmgangcurryshop",
+      "googleEnrichedAt": 1778740228266
     },
     {
       "name": "Polo Fried Chicken (Soi Polo)",
@@ -200,7 +294,21 @@
         "Iconic",
         "Comfort food"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.732573,100.547966"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.732573,100.547966",
+      "googlePlaceId": "ChIJ--rTNief4jARBGLQAL_tfHw",
+      "googleOpeningHours": [
+        "Monday: 7:00 AM – 9:00 PM",
+        "Tuesday: 7:00 AM – 9:00 PM",
+        "Wednesday: 7:00 AM – 9:00 PM",
+        "Thursday: 7:00 AM – 9:00 PM",
+        "Friday: 7:00 AM – 9:00 PM",
+        "Saturday: 7:00 AM – 9:00 PM",
+        "Sunday: 7:00 AM – 9:00 PM"
+      ],
+      "googlePhone": "+66 81 300 4444",
+      "googleWebsiteUri": "https://www.facebook.com/p/%E0%B9%84%E0%B8%81%E0%B9%88%E0%B8%97%E0%B8%AD%E0%B8%94%E0%B9%80%E0%B8%88%E0%B9%8A%E0%B8%81%E0%B8%B5-Polo-Fried-Chicken-100063475514687/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740229644
     },
     {
       "name": "Thip Samai",
@@ -223,7 +331,21 @@
         "Pad Thai",
         "Late Night"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.752763,100.504824"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.752763,100.504824",
+      "googlePlaceId": "ChIJxU5YeBaZ4jARvm8EVZYGjGk",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 12:00 AM",
+        "Tuesday: Closed",
+        "Wednesday: 9:00 AM – 12:00 AM",
+        "Thursday: 9:00 AM – 12:00 AM",
+        "Friday: 9:00 AM – 12:00 AM",
+        "Saturday: 9:00 AM – 12:00 AM",
+        "Sunday: 9:00 AM – 12:00 AM"
+      ],
+      "googlePhone": "+66 2 226 6666",
+      "googleWebsiteUri": "https://thipsamai.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740230888
     },
     {
       "name": "Baan Tepa",
@@ -248,7 +370,10 @@
         "Tasting menu",
         "Date night"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.769400,100.507491"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.769400,100.507491",
+      "googlePlaceId": "ChIJgwxNqEKZ4jARQcncN3uegWw",
+      "googlePhone": "+66 86 533 4097",
+      "googleEnrichedAt": 1778740232115
     },
     {
       "name": "Gaggan Anand",
@@ -273,7 +398,21 @@
         "Theatrical",
         "World 50 Best"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.740759,100.567568"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.740759,100.567568",
+      "googlePlaceId": "ChIJi_nHcf-f4jARAI6VOXH0wII",
+      "googleOpeningHours": [
+        "Monday: 5:30 PM – 12:00 AM",
+        "Tuesday: Closed",
+        "Wednesday: Closed",
+        "Thursday: 5:30 PM – 12:00 AM",
+        "Friday: 5:30 PM – 12:00 AM",
+        "Saturday: 5:30 PM – 12:00 AM",
+        "Sunday: 5:30 PM – 12:00 AM"
+      ],
+      "googlePhone": "+66 98 883 1022",
+      "googleWebsiteUri": "https://gaggan.com/",
+      "googlePriceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "googleEnrichedAt": 1778740233354
     },
     {
       "name": "Sühring",
@@ -297,7 +436,21 @@
         "European",
         "Tasting menu"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.710822,100.545524"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.710822,100.545524",
+      "googlePlaceId": "ChIJa4FyWkef4jARYosTC995W8U",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: Closed",
+        "Wednesday: 6:00 – 10:00 PM",
+        "Thursday: 12:30 – 2:30 PM, 6:00 – 10:00 PM",
+        "Friday: 12:30 – 2:30 PM, 6:00 – 10:00 PM",
+        "Saturday: 12:30 – 2:30 PM, 6:00 – 10:00 PM",
+        "Sunday: 12:30 – 2:30 PM, 6:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 107 2777",
+      "googleWebsiteUri": "http://www.restaurantsuhring.com/",
+      "googlePriceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "googleEnrichedAt": 1778740234567
     },
     {
       "name": "Le Du",
@@ -320,7 +473,21 @@
         "Asia 50 Best",
         "Modern Thai"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.725058,100.529305"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.725058,100.529305",
+      "googlePlaceId": "ChIJL7-My9KY4jARzlw1ffk9vo8",
+      "googleOpeningHours": [
+        "Monday: 6:00 – 11:00 PM",
+        "Tuesday: 6:00 – 11:00 PM",
+        "Wednesday: 6:00 – 11:00 PM",
+        "Thursday: 12:00 – 2:00 PM, 6:00 – 11:00 PM",
+        "Friday: 12:00 – 2:00 PM, 6:00 – 11:00 PM",
+        "Saturday: 12:00 – 2:00 PM, 6:00 – 11:00 PM",
+        "Sunday: Closed"
+      ],
+      "googlePhone": "+66 92 919 9969",
+      "googleWebsiteUri": "http://ledubkk.com/",
+      "googlePriceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "googleEnrichedAt": 1778740235813
     },
     {
       "name": "Sorn",
@@ -344,7 +511,20 @@
         "Southern Thai",
         "Tasting menu"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.737825,100.466153"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.737825,100.466153",
+      "googlePlaceId": "ChIJWfYJ3QWf4jAR9erXv7kK7sA",
+      "googleOpeningHours": [
+        "Monday: 6:00 – 10:00 PM",
+        "Tuesday: 6:00 – 10:00 PM",
+        "Wednesday: 6:00 – 10:00 PM",
+        "Thursday: 6:00 – 10:00 PM",
+        "Friday: 6:00 – 10:00 PM",
+        "Saturday: Closed",
+        "Sunday: 6:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 99 081 1119",
+      "googleWebsiteUri": "http://www.sornfinesouthern.com/#",
+      "googleEnrichedAt": 1778740237043
     },
     {
       "name": "80/20",
@@ -367,7 +547,20 @@
         "Tasting menu",
         "Talad Noi"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.673107,100.542612"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.673107,100.542612",
+      "googlePlaceId": "ChIJz4dTqxCZ4jARg1Ozcy1B_XM",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: Closed",
+        "Wednesday: 6:00 – 11:00 PM",
+        "Thursday: 6:00 – 11:00 PM",
+        "Friday: 6:00 – 11:00 PM",
+        "Saturday: 6:00 – 11:00 PM",
+        "Sunday: 6:00 – 11:00 PM"
+      ],
+      "googlePhone": "+66 99 118 2200",
+      "googleWebsiteUri": "https://www.8020bkk.com/",
+      "googleEnrichedAt": 1778740238295
     },
     {
       "name": "Mensho Tokyo",
@@ -395,7 +588,21 @@
         "Japanese",
         "Vegan-friendly"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.731070,100.570641"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.731070,100.570641",
+      "googlePlaceId": "ChIJGVjGJOKf4jARu9eQ8w3Vod4",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 9:30 PM",
+        "Tuesday: 11:00 AM – 9:30 PM",
+        "Wednesday: 11:00 AM – 9:30 PM",
+        "Thursday: 11:00 AM – 9:30 PM",
+        "Friday: 11:00 AM – 9:30 PM",
+        "Saturday: 11:00 AM – 9:30 PM",
+        "Sunday: 11:00 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 91 887 9492",
+      "googleWebsiteUri": "https://mensho.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740239554
     },
     {
       "name": "Tonkotsu Kazan Ramen",
@@ -415,7 +622,21 @@
       "tags": [
         "Authentic Japanese"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.735615,100.562901"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.735615,100.562901",
+      "googlePlaceId": "ChIJeaL_mhqf4jAR7wgDhjY26zI",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 11:00 PM",
+        "Tuesday: 11:00 AM – 11:00 PM",
+        "Wednesday: 11:00 AM – 11:00 PM",
+        "Thursday: 11:00 AM – 11:00 PM",
+        "Friday: 11:00 AM – 11:00 PM",
+        "Saturday: 11:00 AM – 11:00 PM",
+        "Sunday: 11:00 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 83 718 6038",
+      "googleWebsiteUri": "https://www.facebook.com/kazanramenthai/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740240798
     },
     {
       "name": "Bankara Ramen",
@@ -435,7 +656,21 @@
       "tags": [
         "Japanese"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.734790,100.572057"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.734790,100.572057",
+      "googlePlaceId": "ChIJvXK6CgGf4jAR_2Xxh-nF1aY",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 10:30 PM",
+        "Tuesday: 11:00 AM – 10:30 PM",
+        "Wednesday: 11:00 AM – 10:30 PM",
+        "Thursday: 11:00 AM – 10:30 PM",
+        "Friday: 11:00 AM – 10:30 PM",
+        "Saturday: 11:00 AM – 10:30 PM",
+        "Sunday: 11:00 AM – 10:30 PM"
+      ],
+      "googlePhone": "+66 2 662 5162",
+      "googleWebsiteUri": "https://www.facebook.com/BankaraRamen/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740242042
     },
     {
       "name": "Lust Ramen",
@@ -456,7 +691,19 @@
         "Fusion",
         "Trendy"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.780958,100.544677"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.780958,100.544677",
+      "googlePlaceId": "ChIJxVrIz7yd4jARt9aLRU8gxaE",
+      "googleOpeningHours": [
+        "Monday: 9:30 AM – 9:00 PM",
+        "Tuesday: 9:30 AM – 9:00 PM",
+        "Wednesday: 9:30 AM – 9:00 PM",
+        "Thursday: 9:30 AM – 9:00 PM",
+        "Friday: 9:30 AM – 9:00 PM",
+        "Saturday: 9:30 AM – 9:00 PM",
+        "Sunday: 9:30 AM – 9:00 PM"
+      ],
+      "googlePhone": "+66 96 218 6837",
+      "googleEnrichedAt": 1778740243292
     },
     {
       "name": "Ippudo",
@@ -477,7 +724,21 @@
         "Reliable",
         "Family-Friendly"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.746369,100.534697"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.746369,100.534697",
+      "googlePlaceId": "ChIJZyhnKAqf4jAR0oSpjlzP7Cw",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 9:30 PM",
+        "Tuesday: 10:00 AM – 9:30 PM",
+        "Wednesday: 10:00 AM – 9:30 PM",
+        "Thursday: 10:00 AM – 9:30 PM",
+        "Friday: 10:00 AM – 9:30 PM",
+        "Saturday: 10:00 AM – 9:30 PM",
+        "Sunday: 10:00 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 99 406 1313",
+      "googleWebsiteUri": "https://www.ippudothailand.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740244587
     },
     {
       "name": "Mokkori Silom Ramen",
@@ -498,7 +759,21 @@
         "Spicy",
         "Japanese"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.728159,100.528998"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.728159,100.528998",
+      "googlePlaceId": "ChIJ7RgdT9OY4jARgtSz7ZO58lk",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 10:30 AM – 2:30 PM, 5:00 – 11:00 PM",
+        "Wednesday: 10:30 AM – 2:30 PM, 5:00 – 11:00 PM",
+        "Thursday: 10:30 AM – 2:30 PM, 5:00 – 11:00 PM",
+        "Friday: 10:30 AM – 2:30 PM, 5:00 – 11:00 PM",
+        "Saturday: 10:30 AM – 2:30 PM, 5:00 – 11:00 PM",
+        "Sunday: 10:30 AM – 2:30 PM, 5:00 – 11:00 PM"
+      ],
+      "googlePhone": "+66 2 634 2319",
+      "googleWebsiteUri": "http://facebook.com/mokkorisilom",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740245822
     },
     {
       "name": "Fujiyama Go Go",
@@ -519,7 +794,21 @@
         "Tsukemen",
         "Interactive"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.735646,100.598303"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.735646,100.598303",
+      "googlePlaceId": "ChIJ_RwRyf-e4jARC2FvDNjFkKw",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 11:00 PM",
+        "Tuesday: 11:00 AM – 11:00 PM",
+        "Wednesday: 11:00 AM – 11:00 PM",
+        "Thursday: 11:00 AM – 11:00 PM",
+        "Friday: 11:00 AM – 11:00 PM",
+        "Saturday: 11:00 AM – 11:00 PM",
+        "Sunday: 11:00 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 2 662 6115",
+      "googleWebsiteUri": "https://www.megumigroup.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740247153
     },
     {
       "name": "Peppina",
@@ -542,7 +831,21 @@
         "AVPN Certified",
         "Wood-fired"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.737712,100.567483"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.737712,100.567483",
+      "googlePlaceId": "ChIJQ0cFbPye4jARKjjpGD8_chs",
+      "googleOpeningHours": [
+        "Monday: 11:30 AM – 3:00 PM, 5:00 – 11:00 PM",
+        "Tuesday: 11:30 AM – 3:00 PM, 5:00 – 11:00 PM",
+        "Wednesday: 11:30 AM – 3:00 PM, 5:00 – 11:00 PM",
+        "Thursday: 11:30 AM – 3:00 PM, 5:00 – 11:00 PM",
+        "Friday: 11:30 AM – 3:00 PM, 5:00 – 11:00 PM",
+        "Saturday: 11:00 AM – 11:00 PM",
+        "Sunday: 11:00 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 2 119 7677",
+      "googleWebsiteUri": "http://www.peppina.asia/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740248428
     },
     {
       "name": "Massilia",
@@ -564,7 +867,21 @@
         "Award-winning",
         "Top 50"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.740113,100.549463"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.740113,100.549463",
+      "googlePlaceId": "ChIJaRuc0N2e4jARKfOKXq3WkLI",
+      "googleOpeningHours": [
+        "Monday: 11:30 AM – 11:00 PM",
+        "Tuesday: 11:30 AM – 11:00 PM",
+        "Wednesday: 11:30 AM – 11:00 PM",
+        "Thursday: 11:30 AM – 11:00 PM",
+        "Friday: 11:30 AM – 11:00 PM",
+        "Saturday: 11:30 AM – 11:00 PM",
+        "Sunday: 11:30 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 94 552 2025",
+      "googleWebsiteUri": "https://www.massiliabkk.com/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740249689
     },
     {
       "name": "Vesuvio",
@@ -585,7 +902,21 @@
         "Wood-fired",
         "Hidden gem"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.739598,100.555809"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.739598,100.555809",
+      "googlePlaceId": "ChIJJVN_zeae4jARlwTQBfUSBls",
+      "googleOpeningHours": [
+        "Monday: 12:00 PM – 12:00 AM",
+        "Tuesday: 12:00 PM – 12:00 AM",
+        "Wednesday: 12:00 PM – 12:00 AM",
+        "Thursday: 12:00 PM – 12:00 AM",
+        "Friday: 12:00 PM – 12:00 AM",
+        "Saturday: 12:00 PM – 12:00 AM",
+        "Sunday: 12:00 PM – 12:00 AM"
+      ],
+      "googlePhone": "+66 2 254 5411",
+      "googleWebsiteUri": "http://vesuviopizzabangkok.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740250901
     },
     {
       "name": "Pala Pizza",
@@ -606,7 +937,21 @@
         "By the slice",
         "Casual"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.736894,100.560920"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.736894,100.560920",
+      "googlePlaceId": "ChIJc90ABuOe4jARvO5E1UXZcZI",
+      "googleOpeningHours": [
+        "Monday: 7:00 AM – 10:30 PM",
+        "Tuesday: 7:00 AM – 10:30 PM",
+        "Wednesday: 7:00 AM – 10:30 PM",
+        "Thursday: 7:00 AM – 10:30 PM",
+        "Friday: 7:00 AM – 10:30 PM",
+        "Saturday: 7:00 AM – 10:30 PM",
+        "Sunday: 7:00 AM – 10:30 PM"
+      ],
+      "googlePhone": "+66 2 259 1228",
+      "googleWebsiteUri": "http://www.palapizzabangkok.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740252140
     },
     {
       "name": "Otto Pizza",
@@ -626,7 +971,20 @@
       "tags": [
         "Wood-fired"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.732754,100.582250"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.732754,100.582250",
+      "googlePlaceId": "ChIJxQX26Pif4jARh0_o7g3fi2c",
+      "googleOpeningHours": [
+        "Monday: 11:30 AM – 11:00 PM",
+        "Tuesday: 11:30 AM – 11:00 PM",
+        "Wednesday: 11:30 AM – 11:00 PM",
+        "Thursday: 11:30 AM – 11:00 PM",
+        "Friday: 11:30 AM – 11:00 PM",
+        "Saturday: 11:30 AM – 11:00 PM",
+        "Sunday: 11:30 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 2 254 8878",
+      "googleWebsiteUri": "https://linktr.ee/ottopizzabkk",
+      "googleEnrichedAt": 1778740253405
     },
     {
       "name": "Smizzle Burger",
@@ -653,7 +1011,20 @@
         "Smash Burger",
         "Trendy"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.750537,100.538698"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.750537,100.538698",
+      "googlePlaceId": "ChIJ_0WzlKif4jARH8dvWrKxzIQ",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 9:30 PM",
+        "Tuesday: 10:00 AM – 9:30 PM",
+        "Wednesday: 10:00 AM – 9:30 PM",
+        "Thursday: 10:00 AM – 9:30 PM",
+        "Friday: 10:00 AM – 9:30 PM",
+        "Saturday: 10:00 AM – 9:30 PM",
+        "Sunday: 10:00 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 61 484 9292",
+      "googleWebsiteUri": "https://www.facebook.com/smizzleburger",
+      "googleEnrichedAt": 1778740254693
     },
     {
       "name": "Barney's Burger Joint",
@@ -674,7 +1045,20 @@
         "Smash Burger",
         "Wagyu"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.782494,100.546485"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.782494,100.546485",
+      "googlePlaceId": "ChIJD7Gs1B2c4jART2PuI5seFus",
+      "googleOpeningHours": [
+        "Monday: 11:30 AM – 8:00 PM",
+        "Tuesday: 11:30 AM – 8:00 PM",
+        "Wednesday: 11:30 AM – 8:00 PM",
+        "Thursday: 11:30 AM – 8:00 PM",
+        "Friday: 11:30 AM – 8:00 PM",
+        "Saturday: 11:30 AM – 8:00 PM",
+        "Sunday: 11:30 AM – 8:00 PM"
+      ],
+      "googlePhone": "+66 97 126 2192",
+      "googleWebsiteUri": "https://www.facebook.com/barneysburger2015/",
+      "googleEnrichedAt": 1778740255894
     },
     {
       "name": "No Drama Burger",
@@ -694,7 +1078,20 @@
       "tags": [
         "Smash Burger"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.737868,100.515202"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.737868,100.515202",
+      "googlePlaceId": "ChIJb4Cok0Sf4jARpKYGuWqcAPk",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 10:00 PM",
+        "Tuesday: 11:00 AM – 10:00 PM",
+        "Wednesday: 11:00 AM – 10:00 PM",
+        "Thursday: 11:00 AM – 10:00 PM",
+        "Friday: 11:00 AM – 10:00 PM",
+        "Saturday: 11:00 AM – 10:00 PM",
+        "Sunday: 11:00 AM – 5:00 PM"
+      ],
+      "googlePhone": "+66 91 818 7032",
+      "googleWebsiteUri": "http://www.nodramaburger.com/",
+      "googleEnrichedAt": 1778740257182
     },
     {
       "name": "Pita Steak Burger",
@@ -714,7 +1111,21 @@
       "tags": [
         "Smash Burger"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.779100,100.543900"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.779100,100.543900",
+      "googlePlaceId": "ChIJBYCgo0J_4zARcoJIHjH__NI",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 8:00 PM",
+        "Tuesday: 10:00 AM – 8:00 PM",
+        "Wednesday: 10:00 AM – 8:00 PM",
+        "Thursday: 10:00 AM – 5:30 PM",
+        "Friday: Closed",
+        "Saturday: Closed",
+        "Sunday: Closed"
+      ],
+      "googlePhone": "+66 87 549 2744",
+      "googleWebsiteUri": "https://www.facebook.com/PitaSteakBurger?mibextid=ZbWKwL",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740258421
     },
     {
       "name": "Bar Us",
@@ -736,7 +1147,20 @@
         "Asia 50 Best",
         "Tasting menu"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.733291,100.582895"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.733291,100.582895",
+      "googlePlaceId": "ChIJG5QaZUKf4jARMm-GbfMbX4A",
+      "googleOpeningHours": [
+        "Monday: 6:00 PM – 12:00 AM",
+        "Tuesday: 6:00 PM – 12:00 AM",
+        "Wednesday: 6:00 PM – 12:00 AM",
+        "Thursday: 6:00 PM – 12:00 AM",
+        "Friday: 6:00 PM – 1:00 AM",
+        "Saturday: 6:00 PM – 1:00 AM",
+        "Sunday: 6:00 PM – 12:00 AM"
+      ],
+      "googlePhone": "+66 80 510 2686",
+      "googleWebsiteUri": "http://www.us-bar.com/",
+      "googleEnrichedAt": 1778740259677
     },
     {
       "name": "Tropic City",
@@ -757,7 +1181,12 @@
         "Tiki",
         "Asia 50 Best"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.730761,100.515376"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.730761,100.515376",
+      "googlePlaceId": "ChIJTcCxddmY4jAR6diNM1uwwWI",
+      "googlePhone": "+66 97 242 2890",
+      "googleWebsiteUri": "http://www.tropiccitybkk.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740260948
     },
     {
       "name": "Vesper",
@@ -778,7 +1207,20 @@
         "Classic",
         "Italian"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.727040,100.533444"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.727040,100.533444",
+      "googlePlaceId": "ChIJN4leQSyf4jARHG0tQIiRjic",
+      "googleOpeningHours": [
+        "Monday: 5:30 PM – 2:00 AM",
+        "Tuesday: 5:30 PM – 2:00 AM",
+        "Wednesday: 5:30 PM – 2:00 AM",
+        "Thursday: 5:30 PM – 2:00 AM",
+        "Friday: 5:30 PM – 2:00 AM",
+        "Saturday: 5:30 PM – 2:00 AM",
+        "Sunday: 5:30 PM – 2:00 AM"
+      ],
+      "googleWebsiteUri": "http://www.vesperbar.co/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740262189
     },
     {
       "name": "Teens of Thailand",
@@ -799,7 +1241,20 @@
         "Gin",
         "Speakeasy"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.739834,100.513909"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.739834,100.513909",
+      "googlePlaceId": "ChIJRyBsviaZ4jARj79PNOq0hBI",
+      "googleOpeningHours": [
+        "Monday: 12:00 PM – 1:00 AM",
+        "Tuesday: 12:00 PM – 1:00 AM",
+        "Wednesday: 12:00 PM – 1:00 AM",
+        "Thursday: 12:00 PM – 1:00 AM",
+        "Friday: 12:00 PM – 1:00 AM",
+        "Saturday: 12:00 PM – 1:00 AM",
+        "Sunday: 12:00 PM – 1:00 AM"
+      ],
+      "googleWebsiteUri": "https://m.facebook.com/teensofthailand",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740263450
     },
     {
       "name": "BKK Social Club",
@@ -820,7 +1275,20 @@
         "World 50 Best",
         "Hotel bar"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.725092,100.521458"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.725092,100.521458",
+      "googlePlaceId": "ChIJLwlh74qZ4jARfZDqGK5qtE4",
+      "googleOpeningHours": [
+        "Monday: 5:00 PM – 12:00 AM",
+        "Tuesday: 5:00 PM – 12:00 AM",
+        "Wednesday: 5:00 PM – 12:00 AM",
+        "Thursday: 5:00 PM – 12:00 AM",
+        "Friday: 5:00 PM – 12:00 AM",
+        "Saturday: 5:00 PM – 12:00 AM",
+        "Sunday: 5:00 PM – 12:00 AM"
+      ],
+      "googlePhone": "+66 2 032 0888",
+      "googleWebsiteUri": "https://www.fourseasons.com/bangkok/dining/lounges/bkk-social-club/?utm_source=google&utm_medium=organicsearch&utm_campaign=tor-ban-fab-mid-seo-na&utm_content=na-na&utm_term=na",
+      "googleEnrichedAt": 1778740264683
     },
     {
       "name": "Bamboo Bar (Mandarin Oriental)",
@@ -842,7 +1310,21 @@
         "Hotel",
         "Iconic"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.723885,100.514155"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.723885,100.514155",
+      "googlePlaceId": "ChIJF0QAycSY4jARv3t4vwi1r8A",
+      "googleOpeningHours": [
+        "Monday: 5:00 PM – 1:00 AM",
+        "Tuesday: 5:00 PM – 1:00 AM",
+        "Wednesday: 5:00 PM – 1:00 AM",
+        "Thursday: 5:00 PM – 1:00 AM",
+        "Friday: 5:00 PM – 2:00 AM",
+        "Saturday: 5:00 PM – 2:00 AM",
+        "Sunday: 5:00 PM – 1:00 AM"
+      ],
+      "googlePhone": "+66 2 659 9000",
+      "googleWebsiteUri": "https://www.mandarinoriental.com/en/bangkok/chao-phraya-river/dine/the-bamboo-bar?src=loc.yext.mobkk.ggl",
+      "googlePriceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "googleEnrichedAt": 1778740265957
     },
     {
       "name": "Rabbit Hole",
@@ -863,7 +1345,21 @@
         "Speakeasy",
         "Multi-level"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.729898,100.581121"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.729898,100.581121",
+      "googlePlaceId": "ChIJv47qiKyf4jARy55PeaiCrv4",
+      "googleOpeningHours": [
+        "Monday: 7:00 PM – 2:00 AM",
+        "Tuesday: 7:00 PM – 2:00 AM",
+        "Wednesday: 7:00 PM – 2:00 AM",
+        "Thursday: 7:00 PM – 2:00 AM",
+        "Friday: 7:00 PM – 2:00 AM",
+        "Saturday: 7:00 PM – 2:00 AM",
+        "Sunday: 7:00 PM – 2:00 AM"
+      ],
+      "googlePhone": "+66 98 532 3500",
+      "googleWebsiteUri": "http://rabbitholebkk.com/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740267210
     },
     {
       "name": "Asia Today",
@@ -883,7 +1379,20 @@
         "Modern",
         "Asian-inspired"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.739835,100.514143"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.739835,100.514143",
+      "googlePlaceId": "ChIJ7fP-fSOZ4jARAA57Wbj2Cpc",
+      "googleOpeningHours": [
+        "Monday: 2:00 PM – 1:00 AM",
+        "Tuesday: 2:00 PM – 1:00 AM",
+        "Wednesday: 2:00 PM – 1:00 AM",
+        "Thursday: 2:00 PM – 1:00 AM",
+        "Friday: 2:00 PM – 1:00 AM",
+        "Saturday: 2:00 PM – 1:00 AM",
+        "Sunday: 2:00 PM – 1:00 AM"
+      ],
+      "googlePhone": "+66 96 889 1313",
+      "googleWebsiteUri": "https://nightify.co/venues/asia-today/booking",
+      "googleEnrichedAt": 1778740268475
     },
     {
       "name": "Sweet Poppy",
@@ -904,7 +1413,21 @@
         "Outdoor",
         "Playground"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.884520,100.519245"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.884520,100.519245",
+      "googlePlaceId": "ChIJu0uuZ3mF4jARjm_Zfrw1qh8",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 9:00 PM",
+        "Tuesday: 10:00 AM – 9:00 PM",
+        "Wednesday: 10:00 AM – 9:00 PM",
+        "Thursday: 10:00 AM – 9:00 PM",
+        "Friday: 10:00 AM – 9:00 PM",
+        "Saturday: 8:00 AM – 9:00 PM",
+        "Sunday: 8:00 AM – 9:00 PM"
+      ],
+      "googlePhone": "+66 2 005 5206",
+      "googleWebsiteUri": "http://www.sweetpoppy.co.th/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740269750
     },
     {
       "name": "Wonder Woods Kids Café",
@@ -924,7 +1447,20 @@
         "Family-Friendly",
         "Toddlers"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.739200,100.581000"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.739200,100.581000",
+      "googlePlaceId": "ChIJqeQKx4BhHTERPGae-AzdOEw",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 7:00 PM",
+        "Tuesday: 9:00 AM – 7:00 PM",
+        "Wednesday: 9:00 AM – 7:00 PM",
+        "Thursday: 9:00 AM – 7:00 PM",
+        "Friday: 9:00 AM – 7:00 PM",
+        "Saturday: 9:00 AM – 7:00 PM",
+        "Sunday: 9:00 AM – 7:00 PM"
+      ],
+      "googlePhone": "+66 62 592 8822",
+      "googleWebsiteUri": "https://www.facebook.com/wonderwoodskidscafe",
+      "googleEnrichedAt": 1778740270998
     },
     {
       "name": "Pumpkin Art Town",
@@ -945,7 +1481,21 @@
         "Art",
         "Riverside"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=14.020800,100.525300"
+      "googleMapsUrl": "https://www.google.com/maps/?q=14.020800,100.525300",
+      "googlePlaceId": "ChIJ-xb15-KB4jARo1YcBF-S0NA",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: Closed",
+        "Wednesday: 10:30 AM – 8:00 PM",
+        "Thursday: 10:30 AM – 8:00 PM",
+        "Friday: 10:30 AM – 8:00 PM",
+        "Saturday: 10:30 AM – 8:00 PM",
+        "Sunday: 10:30 AM – 8:00 PM"
+      ],
+      "googlePhone": "+66 64 978 5505",
+      "googleWebsiteUri": "https://www.facebook.com/pumpkin.art.town/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740272249
     },
     {
       "name": "Dasa Café (Sukhumvit 26)",
@@ -967,7 +1517,20 @@
         "Books",
         "WiFi"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.728814,100.571750"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.728814,100.571750",
+      "googlePlaceId": "ChIJF1Le3wCf4jAR0w5oHyyVVt0",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 8:00 PM",
+        "Tuesday: 10:00 AM – 8:00 PM",
+        "Wednesday: 10:00 AM – 8:00 PM",
+        "Thursday: 10:00 AM – 8:00 PM",
+        "Friday: 10:00 AM – 8:00 PM",
+        "Saturday: 10:00 AM – 8:00 PM",
+        "Sunday: 10:00 AM – 8:00 PM"
+      ],
+      "googlePhone": "+66 2 661 2993",
+      "googleWebsiteUri": "http://www.dasabookcafe.com/",
+      "googleEnrichedAt": 1778740273516
     },
     {
       "name": "After You Dessert Café",
@@ -989,7 +1552,21 @@
         "Dessert",
         "Family-Friendly"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.745280,100.533901"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.745280,100.533901",
+      "googlePlaceId": "ChIJwwEur9Ke4jARE66WscTcJZs",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 10:00 PM",
+        "Tuesday: 11:00 AM – 10:00 PM",
+        "Wednesday: 11:00 AM – 10:00 PM",
+        "Thursday: 11:00 AM – 10:00 PM",
+        "Friday: 11:00 AM – 10:00 PM",
+        "Saturday: 11:00 AM – 10:00 PM",
+        "Sunday: 11:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 013 9017",
+      "googleWebsiteUri": "https://www.afteryoudessertcafe.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740274822
     },
     {
       "name": "Mr. Jones' Orphanage",
@@ -1010,7 +1587,10 @@
         "Photogenic",
         "Dessert"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.740100,100.582100"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.740100,100.582100",
+      "googlePlaceId": "ChIJNWFzh82e4jARRyML8k1slxo",
+      "googlePhone": "+66 2 658 1163",
+      "googleEnrichedAt": 1778740276039
     },
     {
       "name": "Roast Coffee & Eatery",
@@ -1031,7 +1611,21 @@
         "Brunch",
         "Specialty Coffee"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.731872,100.562827"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.731872,100.562827",
+      "googlePlaceId": "ChIJicwRRFOe4jARAcJ7qJDLIe8",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 10:00 PM",
+        "Tuesday: 9:00 AM – 10:00 PM",
+        "Wednesday: 9:00 AM – 10:00 PM",
+        "Thursday: 9:00 AM – 10:00 PM",
+        "Friday: 9:00 AM – 10:00 PM",
+        "Saturday: 9:00 AM – 10:00 PM",
+        "Sunday: 9:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 96 340 3029",
+      "googleWebsiteUri": "http://www.roastbkk.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740277311
     },
     {
       "name": "Sushi Masato",
@@ -1055,7 +1649,21 @@
         "Michelin",
         "Omakase"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.726942,100.567939"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.726942,100.567939",
+      "googlePlaceId": "ChIJob7bn_2e4jARUP-ZMAVjLc8",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 12:00 – 2:00 PM, 5:00 – 10:00 PM",
+        "Wednesday: 12:00 – 2:00 PM, 5:00 – 10:00 PM",
+        "Thursday: 12:00 – 2:00 PM, 5:00 – 10:00 PM",
+        "Friday: 12:00 – 2:00 PM, 5:00 – 10:00 PM",
+        "Saturday: 12:00 – 2:00 PM, 5:00 – 10:00 PM",
+        "Sunday: 12:00 – 2:00 PM, 5:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 97 234 1370",
+      "googleWebsiteUri": "http://www.sushimasato.com/",
+      "googlePriceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "googleEnrichedAt": 1778740278512
     },
     {
       "name": "Ginza Sushi Ichi",
@@ -1077,7 +1685,21 @@
         "Omakase",
         "Premium"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.743995,100.540743"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.743995,100.540743",
+      "googlePlaceId": "ChIJbXUt8DOf4jARorr_XaFh6NU",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 11:30 AM – 2:30 PM, 5:30 – 10:00 PM",
+        "Wednesday: 11:30 AM – 2:30 PM, 5:30 – 10:00 PM",
+        "Thursday: 11:30 AM – 2:30 PM, 5:30 – 10:00 PM",
+        "Friday: 11:30 AM – 2:30 PM, 5:30 – 10:00 PM",
+        "Saturday: 11:30 AM – 2:30 PM, 5:30 – 10:00 PM",
+        "Sunday: 11:30 AM – 2:30 PM, 5:30 – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 250 0014",
+      "googleWebsiteUri": "http://ginza-sushiichi.jp/english/shop/bangkok.html",
+      "googlePriceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "googleEnrichedAt": 1778740279776
     },
     {
       "name": "Sushi Cyu",
@@ -1098,7 +1720,20 @@
         "Omakase",
         "Lunch deal"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.726942,100.567939"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.726942,100.567939",
+      "googlePlaceId": "ChIJ-QdgyQGf4jARtQuomumX4Xo",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 9:30 PM",
+        "Tuesday: 11:00 AM – 9:30 PM",
+        "Wednesday: 11:00 AM – 9:30 PM",
+        "Thursday: 11:00 AM – 9:30 PM",
+        "Friday: 11:00 AM – 9:30 PM",
+        "Saturday: 11:00 AM – 9:30 PM",
+        "Sunday: 11:00 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 65 716 0450",
+      "googleWebsiteUri": "https://www.sushicyu.com/",
+      "googleEnrichedAt": 1778740281029
     },
     {
       "name": "Yamazaki",
@@ -1119,7 +1754,20 @@
         "Izakaya",
         "Sake"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.718896,100.597329"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.718896,100.597329",
+      "googlePlaceId": "ChIJfb_hisef4jARbDZUg9i9-Ss",
+      "googleOpeningHours": [
+        "Monday: 7:00 AM – 8:30 PM",
+        "Tuesday: 7:00 AM – 8:30 PM",
+        "Wednesday: 7:00 AM – 8:30 PM",
+        "Thursday: 7:00 AM – 8:30 PM",
+        "Friday: 7:00 AM – 8:30 PM",
+        "Saturday: 7:00 AM – 8:30 PM",
+        "Sunday: 7:00 AM – 8:30 PM"
+      ],
+      "googlePhone": "+66 2 255 8510",
+      "googleWebsiteUri": "https://www.yamazaki.co.th/",
+      "googleEnrichedAt": 1778740282398
     },
     {
       "name": "Aoyama Sushi",
@@ -1140,7 +1788,21 @@
         "Family-Friendly",
         "Casual"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.726942,100.567939"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.726942,100.567939",
+      "googlePlaceId": "ChIJW8FQ61HS1IkR8DVXc_Pfl9o",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 5:00 – 10:30 PM",
+        "Wednesday: 5:00 – 10:30 PM",
+        "Thursday: 5:00 – 10:30 PM",
+        "Friday: 5:00 – 10:30 PM",
+        "Saturday: 5:00 – 10:30 PM",
+        "Sunday: 5:00 – 10:30 PM"
+      ],
+      "googlePhone": "+1 416-494-7373",
+      "googleWebsiteUri": "https://m.facebook.com/pages/Aoyama-Sushi-Restaurant/137712542907521",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740283611
     },
     {
       "name": "Krua Apsorn",
@@ -1162,7 +1824,21 @@
         "Bib Gourmand",
         "Local Favorite"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.755213,100.501545"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.755213,100.501545",
+      "googlePlaceId": "ChIJN8lqeBSZ4jAReT6qXHgmoas",
+      "googleOpeningHours": [
+        "Monday: 10:30 AM – 7:30 PM",
+        "Tuesday: 10:30 AM – 7:30 PM",
+        "Wednesday: 10:30 AM – 7:30 PM",
+        "Thursday: 10:30 AM – 7:30 PM",
+        "Friday: 10:30 AM – 7:30 PM",
+        "Saturday: 10:30 AM – 7:30 PM",
+        "Sunday: 10:30 AM – 7:30 PM"
+      ],
+      "googlePhone": "+66 80 550 0310",
+      "googleWebsiteUri": "https://www.facebook.com/kruaapsorn/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740284858
     },
     {
       "name": "Nahm",
@@ -1185,7 +1861,21 @@
         "Asia 50 Best",
         "Traditional"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.723571,100.538971"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.723571,100.538971",
+      "googlePlaceId": "ChIJHULm2C-f4jAR-phOAtQVND4",
+      "googleOpeningHours": [
+        "Monday: 6:00 – 11:30 PM",
+        "Tuesday: 6:00 – 11:30 PM",
+        "Wednesday: 6:00 – 11:30 PM",
+        "Thursday: 6:00 – 11:30 PM",
+        "Friday: 6:00 – 11:30 PM",
+        "Saturday: 6:00 – 11:30 PM",
+        "Sunday: 6:00 – 11:30 PM"
+      ],
+      "googlePhone": "+66 2 625 3388",
+      "googleWebsiteUri": "http://www.nahmbangkok.com/",
+      "googlePriceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "googleEnrichedAt": 1778740286119
     },
     {
       "name": "Nusara",
@@ -1208,7 +1898,20 @@
         "Modern Thai",
         "Chef Ton"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.673107,100.542612"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.673107,100.542612",
+      "googlePlaceId": "ChIJe_d6d0OZ4jARL0uQgNHQRPI",
+      "googleOpeningHours": [
+        "Monday: 6:00 – 11:00 PM",
+        "Tuesday: 6:00 – 11:00 PM",
+        "Wednesday: 6:00 – 11:00 PM",
+        "Thursday: 6:00 – 11:00 PM",
+        "Friday: 6:00 – 11:00 PM",
+        "Saturday: 6:00 – 11:00 PM",
+        "Sunday: 6:00 – 11:00 PM"
+      ],
+      "googlePhone": "+66 97 293 5549",
+      "googleWebsiteUri": "https://www.nusarabkk.com/",
+      "googleEnrichedAt": 1778740287393
     },
     {
       "name": "Potong",
@@ -1232,7 +1935,21 @@
         "Thai-Chinese",
         "Chef Pam"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.739276,100.508438"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.739276,100.508438",
+      "googlePlaceId": "ChIJd7grWxeZ4jAR8KwClMpGmHo",
+      "googleOpeningHours": [
+        "Monday: 4:30 – 11:00 PM",
+        "Tuesday: 4:30 – 11:00 PM",
+        "Wednesday: Closed",
+        "Thursday: 4:30 – 11:00 PM",
+        "Friday: 4:30 – 11:00 PM",
+        "Saturday: 4:30 – 11:00 PM",
+        "Sunday: 4:30 – 11:00 PM"
+      ],
+      "googlePhone": "+66 82 979 3950",
+      "googleWebsiteUri": "http://www.restaurantpotong.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740288626
     },
     {
       "name": "Gaggan at Louis Vuitton",
@@ -1256,7 +1973,20 @@
         "LV",
         "New 2024"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.744000,100.544700"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.744000,100.544700",
+      "googlePlaceId": "ChIJq9HSntuf4jARTUCyz3WhgxE",
+      "googleOpeningHours": [
+        "Monday: 12:00 – 3:00 PM, 6:00 – 10:00 PM",
+        "Tuesday: Closed",
+        "Wednesday: Closed",
+        "Thursday: 12:00 – 3:00 PM, 6:00 – 10:00 PM",
+        "Friday: 12:00 – 3:00 PM, 6:00 – 10:00 PM",
+        "Saturday: 12:00 – 3:00 PM, 6:00 – 10:00 PM",
+        "Sunday: 12:00 – 3:00 PM, 6:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 61 413 6295",
+      "googleWebsiteUri": "https://th.louisvuitton.com/tha-th/magazine/articles/lv-the-place-bangkok",
+      "googleEnrichedAt": 1778740289874
     },
     {
       "name": "Samrub Samrub Thai",
@@ -1279,7 +2009,20 @@
         "Traditional Thai",
         "Tasting Menu"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.723500,100.528500"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.723500,100.528500",
+      "googlePlaceId": "ChIJP-vfELmZ4jARGlXpoG1esoU",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 5:30 – 11:00 PM",
+        "Wednesday: 5:30 – 11:00 PM",
+        "Thursday: 5:30 – 11:00 PM",
+        "Friday: 5:30 PM – 12:00 AM",
+        "Saturday: 5:30 PM – 12:00 AM",
+        "Sunday: Closed"
+      ],
+      "googlePhone": "+66 99 651 7292",
+      "googleWebsiteUri": "https://samrubsamrubthai.com/",
+      "googleEnrichedAt": 1778740291084
     },
     {
       "name": "Côte by Mauro Colagreco",
@@ -1303,7 +2046,21 @@
         "Riverside",
         "Capella"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.719500,100.512800"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.719500,100.512800",
+      "googlePlaceId": "ChIJf8OOlnmZ4jAR1XxCVTOPfPY",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: Closed",
+        "Wednesday: 12:00 – 2:00 PM, 6:00 – 10:00 PM",
+        "Thursday: 12:00 – 2:00 PM, 6:00 – 10:00 PM",
+        "Friday: 12:00 – 2:00 PM, 6:00 – 10:00 PM",
+        "Saturday: 12:00 – 2:00 PM, 6:00 – 10:00 PM",
+        "Sunday: 12:00 – 2:00 PM, 6:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 098 3888",
+      "googleWebsiteUri": "https://www.cotebkk.com/",
+      "googlePriceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "googleEnrichedAt": 1778740292300
     },
     {
       "name": "Santiaga",
@@ -1325,7 +2082,20 @@
         "Mexican",
         "Trendy"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.673107,100.542612"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.673107,100.542612",
+      "googlePlaceId": "ChIJYdgxLd2f4jARR1FnZjpb5cs",
+      "googleOpeningHours": [
+        "Monday: 5:30 – 9:30 PM",
+        "Tuesday: 5:30 – 9:30 PM",
+        "Wednesday: 5:30 – 9:30 PM",
+        "Thursday: 5:30 – 9:30 PM",
+        "Friday: 5:30 – 9:30 PM",
+        "Saturday: 5:30 – 9:30 PM",
+        "Sunday: Closed"
+      ],
+      "googlePhone": "+66 2 651 4399",
+      "googleWebsiteUri": "https://santiagabkk.com/",
+      "googleEnrichedAt": 1778740293519
     },
     {
       "name": "Duet by David Toutain",
@@ -1349,7 +2119,20 @@
         "Ritz-Carlton",
         "Plant-forward"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.739600,100.544000"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.739600,100.544000",
+      "googlePlaceId": "ChIJpfpcrtif4jARQh_9rsfIhhg",
+      "googleOpeningHours": [
+        "Monday: 5:30 – 10:00 PM",
+        "Tuesday: 5:30 – 10:00 PM",
+        "Wednesday: 5:30 – 10:00 PM",
+        "Thursday: 5:30 – 10:00 PM",
+        "Friday: 5:30 – 10:00 PM",
+        "Saturday: 5:30 – 10:00 PM",
+        "Sunday: 5:30 – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 180 7798",
+      "googleWebsiteUri": "https://www.duetbydavidtoutain.com/",
+      "googleEnrichedAt": 1778740294741
     },
     {
       "name": "Anne-Sophie Pic at Mandarin Oriental",
@@ -1373,7 +2156,20 @@
         "Mandarin Oriental",
         "Riverside"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.723400,100.511800"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.723400,100.511800",
+      "googlePlaceId": "ChIJe3wVISiZ4jARS_yp_4u6E_c",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: Closed",
+        "Wednesday: 12:00 – 3:30 PM, 6:30 – 11:30 PM",
+        "Thursday: 12:00 – 3:30 PM, 6:30 – 11:30 PM",
+        "Friday: 12:00 – 3:30 PM, 6:30 – 11:30 PM",
+        "Saturday: 12:00 – 3:30 PM, 6:30 – 11:30 PM",
+        "Sunday: 12:00 – 3:30 PM, 6:30 – 11:30 PM"
+      ],
+      "googlePhone": "+66 2 659 9000",
+      "googleWebsiteUri": "https://www.mandarinoriental.com/en/bangkok/chao-phraya-river/dine/anne-sophie-pic-at-le-normandie?src=loc.yext.mobkk.ggl",
+      "googleEnrichedAt": 1778740295988
     },
     {
       "name": "Kwantip (Auntie Pom)",
@@ -1397,7 +2193,20 @@
         "Samrub",
         "Traditional Thai"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.744000,100.560400"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.744000,100.560400",
+      "googlePlaceId": "ChIJzRYWLn-f4jARmNLLv5Ldd1E",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: Closed",
+        "Wednesday: Closed",
+        "Thursday: Closed",
+        "Friday: 11:30 AM – 3:30 PM, 6:00 – 10:00 PM",
+        "Saturday: 11:30 AM – 3:30 PM, 6:00 – 10:00 PM",
+        "Sunday: 11:30 AM – 3:30 PM, 6:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 61 178 9517",
+      "googleWebsiteUri": "http://www.kwantipbkk.com/",
+      "googleEnrichedAt": 1778740297220
     },
     {
       "name": "Doy Kuay Teow Reua",
@@ -1420,7 +2229,21 @@
         "Street Food",
         "Cheap Eats"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.767835,100.536135"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.767835,100.536135",
+      "googlePlaceId": "ChIJV3n3-rGe4jARrUnDLO8V4gY",
+      "googleOpeningHours": [
+        "Monday: 8:15 AM – 5:00 PM",
+        "Tuesday: 8:15 AM – 5:00 PM",
+        "Wednesday: 8:15 AM – 5:00 PM",
+        "Thursday: 8:15 AM – 5:00 PM",
+        "Friday: 8:15 AM – 5:00 PM",
+        "Saturday: 8:15 AM – 5:00 PM",
+        "Sunday: 8:15 AM – 5:00 PM"
+      ],
+      "googlePhone": "+66 81 619 1925",
+      "googleWebsiteUri": "https://www.facebook.com/%E0%B8%95%E0%B9%89%E0%B8%AD%E0%B8%A2%E0%B8%81%E0%B9%8B%E0%B8%A7%E0%B8%A2%E0%B9%80%E0%B8%95%E0%B8%B5%E0%B9%8B%E0%B8%A2%E0%B8%A7%E0%B9%80%E0%B8%A3%E0%B8%B7%E0%B8%AD-%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%A1%E0%B8%B0%E0%B8%81%E0%B8%AD%E0%B8%81-451582995004800/",
+      "googlePriceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "googleEnrichedAt": 1778740298470
     },
     {
       "name": "Soei",
@@ -1442,7 +2265,21 @@
         "Spicy Thai",
         "Local Favorite"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.697306,100.648754"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.697306,100.648754",
+      "googlePlaceId": "ChIJAx2v8wOc4jARXliaurJp-I0",
+      "googleOpeningHours": [
+        "Monday: 10:30 AM – 9:30 PM",
+        "Tuesday: 10:30 AM – 9:30 PM",
+        "Wednesday: 10:30 AM – 9:30 PM",
+        "Thursday: 10:30 AM – 9:30 PM",
+        "Friday: 10:30 AM – 9:30 PM",
+        "Saturday: Closed",
+        "Sunday: 10:30 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 61 096 1616",
+      "googleWebsiteUri": "http://www.soeirestaurant.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740299680
     },
     {
       "name": "Mit Ko Yuan",
@@ -1464,7 +2301,21 @@
         "Tom Yum Goong",
         "Old Town"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.753799,100.501078"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.753799,100.501078",
+      "googlePlaceId": "ChIJYzOn8BOZ4jARh8GAgyjqAIQ",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 1:30 PM, 4:00 – 9:30 PM",
+        "Tuesday: 11:00 AM – 1:30 PM, 4:00 – 9:30 PM",
+        "Wednesday: 11:00 AM – 1:30 PM, 4:00 – 9:30 PM",
+        "Thursday: 11:00 AM – 1:30 PM, 4:00 – 9:30 PM",
+        "Friday: 11:00 AM – 1:30 PM, 4:00 – 9:30 PM",
+        "Saturday: 11:00 AM – 1:30 PM, 4:00 – 9:30 PM",
+        "Sunday: 11:00 AM – 1:30 PM, 4:00 – 9:30 PM"
+      ],
+      "googlePhone": "+66 92 434 9996",
+      "googleWebsiteUri": "https://www.wongnai.com/restaurants/mitkoyuan",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740300908
     },
     {
       "name": "Jeh O Chula",
@@ -1487,7 +2338,21 @@
         "Late Night",
         "Long Queue"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.734884,100.521719"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.734884,100.521719",
+      "googlePlaceId": "ChIJFVMU6y6Z4jARfM273-HwetM",
+      "googleOpeningHours": [
+        "Monday: 4:00 PM – 12:00 AM",
+        "Tuesday: 4:00 PM – 12:00 AM",
+        "Wednesday: 4:00 PM – 12:00 AM",
+        "Thursday: 4:00 PM – 12:00 AM",
+        "Friday: 4:00 PM – 12:00 AM",
+        "Saturday: 4:00 PM – 12:00 AM",
+        "Sunday: 4:00 PM – 12:00 AM"
+      ],
+      "googlePhone": "+66 81 682 8816",
+      "googleWebsiteUri": "https://www.facebook.com/RanCeXow/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740302150
     },
     {
       "name": "Thong Smith",
@@ -1510,7 +2375,20 @@
         "EmQuartier",
         "Wagyu"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.746518,100.539692"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.746518,100.539692",
+      "googlePlaceId": "ChIJj1EAGdqf4jARlhbpXcxfhi8",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 068 6588",
+      "googleWebsiteUri": "https://www.facebook.com/%E0%B8%97%E0%B8%AD%E0%B8%87%E0%B8%AA%E0%B8%A1%E0%B8%B4%E0%B8%97%E0%B8%98%E0%B9%8C-ThongSmith-Central-World-103094481068291/",
+      "googleEnrichedAt": 1778740303418
     },
     {
       "name": "Osha Thai Restaurant & Bar",
@@ -1532,7 +2410,21 @@
         "Stylish Thai",
         "Lumpini"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.786253,100.545462"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.786253,100.545462",
+      "googlePlaceId": "ChIJH2rBq9ie4jAR2kriHxu0cJ4",
+      "googleOpeningHours": [
+        "Monday: 12:00 – 11:00 PM",
+        "Tuesday: 12:00 – 11:00 PM",
+        "Wednesday: 12:00 – 11:00 PM",
+        "Thursday: 12:00 – 11:00 PM",
+        "Friday: 12:00 – 11:00 PM",
+        "Saturday: 12:00 – 11:00 PM",
+        "Sunday: 12:00 – 11:00 PM"
+      ],
+      "googlePhone": "+66 2 256 6551",
+      "googleWebsiteUri": "http://royalosha.com/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740304715
     },
     {
       "name": "Jok Toh Diew",
@@ -1554,7 +2446,20 @@
         "Jok",
         "Chinatown"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.733803,100.560899"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.733803,100.560899",
+      "googlePlaceId": "ChIJB6taHcCZ4jARwVGY20Vy5dI",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 6:30 PM",
+        "Tuesday: 8:00 AM – 6:30 PM",
+        "Wednesday: 8:00 AM – 6:30 PM",
+        "Thursday: 8:00 AM – 6:30 PM",
+        "Friday: 8:00 AM – 6:30 PM",
+        "Saturday: 8:00 AM – 6:30 PM",
+        "Sunday: 8:00 AM – 6:30 PM"
+      ],
+      "googlePhone": "+66 81 919 9468",
+      "googleWebsiteUri": "https://www.facebook.com/share/1ZBMcFJSY9/?mibextid=wwXIfr",
+      "googleEnrichedAt": 1778740305945
     },
     {
       "name": "965 BKK",
@@ -1577,7 +2482,19 @@
         "Talat Noi",
         "Vintage"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.745684,100.538692"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.745684,100.538692",
+      "googlePlaceId": "ChIJzyd4esyZ4jARjDlkOpNhnbI",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 7:00 PM",
+        "Tuesday: Closed",
+        "Wednesday: 11:00 AM – 7:00 PM",
+        "Thursday: 11:00 AM – 7:00 PM",
+        "Friday: 11:00 AM – 7:00 PM",
+        "Saturday: 11:00 AM – 7:00 PM",
+        "Sunday: 11:00 AM – 7:00 PM"
+      ],
+      "googleWebsiteUri": "https://965bkk.com/",
+      "googleEnrichedAt": 1778740307258
     },
     {
       "name": "Foreste Cafe by Anna Nava",
@@ -1599,7 +2516,21 @@
         "Instagrammable",
         "Green"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.733000,100.545000"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.733000,100.545000",
+      "googlePlaceId": "ChIJk8CMTQWF4jAR8laapQxp4Mk",
+      "googleOpeningHours": [
+        "Monday: 7:00 AM – 6:00 PM",
+        "Tuesday: 7:00 AM – 6:00 PM",
+        "Wednesday: 7:00 AM – 6:00 PM",
+        "Thursday: 7:00 AM – 6:00 PM",
+        "Friday: 7:00 AM – 6:00 PM",
+        "Saturday: 7:00 AM – 6:00 PM",
+        "Sunday: 7:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 81 909 4031",
+      "googleWebsiteUri": "https://www.facebook.com/Foreste-cafe-289996118589519/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740308498
     },
     {
       "name": "Bubble in the Forest Cafe",
@@ -1622,7 +2553,21 @@
         "Day Trip",
         "Photogenic"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.789714,100.305939"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.789714,100.305939",
+      "googlePlaceId": "ChIJ05o1a-qV4jARXZZ5hSCp5qg",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 9:00 PM",
+        "Tuesday: 10:00 AM – 9:00 PM",
+        "Wednesday: 10:00 AM – 9:00 PM",
+        "Thursday: 10:00 AM – 9:00 PM",
+        "Friday: 10:00 AM – 9:00 PM",
+        "Saturday: 10:00 AM – 9:00 PM",
+        "Sunday: 10:00 AM – 9:00 PM"
+      ],
+      "googlePhone": "+66 65 727 6888",
+      "googleWebsiteUri": "http://www.facebook.com/bubbleintheforest",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740309755
     },
     {
       "name": "Cafe 747",
@@ -1645,7 +2590,21 @@
         "Day Trip",
         "Family"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.817623,100.531966"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.817623,100.531966",
+      "googlePlaceId": "ChIJj4_lFhVpHTERS9i0xvpbG1c",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 6:00 PM",
+        "Tuesday: 9:00 AM – 6:00 PM",
+        "Wednesday: 9:00 AM – 6:00 PM",
+        "Thursday: 9:00 AM – 6:00 PM",
+        "Friday: 9:00 AM – 6:00 PM",
+        "Saturday: 9:00 AM – 6:00 PM",
+        "Sunday: 9:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 99 567 7747",
+      "googleWebsiteUri": "https://www.facebook.com/747-Cafe-108658234180975",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740311004
     },
     {
       "name": "Capybara Coffee Bangkok",
@@ -1668,7 +2627,20 @@
         "Capybara",
         "Instagrammable"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.724310,100.583435"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.724310,100.583435",
+      "googlePlaceId": "ChIJu7cHFOmf4jAR_Ou1AtB1mPg",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 9:00 PM",
+        "Tuesday: 9:00 AM – 9:00 PM",
+        "Wednesday: 9:00 AM – 9:00 PM",
+        "Thursday: 9:00 AM – 9:00 PM",
+        "Friday: 9:00 AM – 9:00 PM",
+        "Saturday: 9:00 AM – 9:00 PM",
+        "Sunday: 9:00 AM – 9:00 PM"
+      ],
+      "googlePhone": "+66 92 867 5851",
+      "googleWebsiteUri": "https://www.capybaracoffeethailand.com/",
+      "googleEnrichedAt": 1778740312261
     },
     {
       "name": "Floral Café (at Napasorn)",
@@ -1691,7 +2663,21 @@
         "Old Town",
         "Desserts"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.753000,100.498500"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.753000,100.498500",
+      "googlePlaceId": "ChIJr0_8WhuZ4jARkLSG8nhL7n8",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 7:00 PM",
+        "Tuesday: 9:00 AM – 7:00 PM",
+        "Wednesday: 9:00 AM – 7:00 PM",
+        "Thursday: 9:00 AM – 7:00 PM",
+        "Friday: 9:00 AM – 7:00 PM",
+        "Saturday: 9:00 AM – 7:00 PM",
+        "Sunday: 9:00 AM – 7:00 PM"
+      ],
+      "googlePhone": "+66 99 468 4899",
+      "googleWebsiteUri": "https://www.facebook.com/floralcafe.napasorn/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740313516
     },
     {
       "name": "B Story Garden Cafe & Restaurant",
@@ -1713,7 +2699,21 @@
         "Hidden Gem",
         "TikTok Viral"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.751908,100.531845"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.751908,100.531845",
+      "googlePlaceId": "ChIJh_hqMxBjHTERO7_u9vxrFG8",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 83 751 1137",
+      "googleWebsiteUri": "https://www.facebook.com/B-Story-Garden-Cafe-Restaurants-1571314783004541",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740314824
     },
     {
       "name": "Wattana Panich (45-year beef stew)",
@@ -1736,7 +2736,21 @@
         "Beef Noodle",
         "Cult Favorite"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.725900,100.585400"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.725900,100.585400",
+      "googlePlaceId": "ChIJ-eIsmEme4jARJj2YJYuFOAA",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 7:00 PM",
+        "Tuesday: 9:00 AM – 7:00 PM",
+        "Wednesday: 9:00 AM – 7:00 PM",
+        "Thursday: 9:00 AM – 7:00 PM",
+        "Friday: 9:00 AM – 7:00 PM",
+        "Saturday: 9:00 AM – 7:00 PM",
+        "Sunday: 9:00 AM – 7:00 PM"
+      ],
+      "googlePhone": "+66 2 391 7264",
+      "googleWebsiteUri": "https://www.facebook.com/WattanapanitSeriMarketThenine?mibextid=LQQJ4d",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740316111
     },
     {
       "name": "Mae Pong Sri",
@@ -1758,7 +2772,20 @@
         "Bib Gourmand",
         "Local Favorite"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.934301,100.892744"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.934301,100.892744",
+      "googlePlaceId": "ChIJ-xltz-WVAjERFW3XHc_ovWY",
+      "googleOpeningHours": [
+        "Monday: 7:00 AM – 7:00 PM",
+        "Tuesday: 7:00 AM – 7:00 PM",
+        "Wednesday: 7:00 AM – 7:00 PM",
+        "Thursday: 7:00 AM – 7:00 PM",
+        "Friday: 7:00 AM – 7:00 PM",
+        "Saturday: 7:00 AM – 7:00 PM",
+        "Sunday: 7:00 AM – 7:00 PM"
+      ],
+      "googlePhone": "+66 80 059 8915",
+      "googleWebsiteUri": "https://www.facebook.com/MaePongSriPattaya",
+      "googleEnrichedAt": 1778740317312
     },
     {
       "name": "Rimpa Lapin",
@@ -1782,7 +2809,12 @@
         "Romantic",
         "Sunset"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.805205,100.913545"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.805205,100.913545",
+      "googlePlaceId": "ChIJIS2RgUqSAjERVXHYiEJpAdE",
+      "googlePhone": "+66 84 451 5686",
+      "googleWebsiteUri": "https://web.facebook.com/rimpalapinpattaya",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740318510
     },
     {
       "name": "Pupen Seafood",
@@ -1803,7 +2835,21 @@
         "Seafood",
         "Local"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.861424,100.895537"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.861424,100.895537",
+      "googlePlaceId": "ChIJ6d7RdwSUAjERrnAUJW-I23Q",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 94 424 6966",
+      "googleWebsiteUri": "https://www.facebook.com/pupen24",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740319707
     },
     {
       "name": "Prajanban",
@@ -1824,7 +2870,20 @@
         "Spicy",
         "Local"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.933030,100.896593"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.933030,100.896593",
+      "googlePlaceId": "ChIJrSfv2BGWAjERzPBi6s66IF0",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googlePhone": "+66 81 736 3122",
+      "googlePriceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "googleEnrichedAt": 1778740320916
     },
     {
       "name": "Ruen Thai",
@@ -1847,7 +2906,21 @@
         "Traditional",
         "Live Performance"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.934301,100.892744"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.934301,100.892744",
+      "googlePlaceId": "ChIJK2_xDg6WAjER-uK5Tfa9Yac",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 93 928 9162",
+      "googleWebsiteUri": "http://www.ruenthairestaurant.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740322198
     },
     {
       "name": "Nara Thai",
@@ -1868,7 +2941,20 @@
         "Family-Friendly",
         "Mall"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.953644,100.937517"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.953644,100.937517",
+      "googlePlaceId": "ChIJrfWv0MO9AjERL-tbrxNwYuo",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 10:00 PM",
+        "Tuesday: 11:00 AM – 10:00 PM",
+        "Wednesday: 11:00 AM – 10:00 PM",
+        "Thursday: 11:00 AM – 10:00 PM",
+        "Friday: 11:00 AM – 10:00 PM",
+        "Saturday: 11:00 AM – 11:00 PM",
+        "Sunday: 11:00 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 33 252 409",
+      "googleWebsiteUri": "http://www.naracuisine.com/",
+      "googleEnrichedAt": 1778740323545
     },
     {
       "name": "Glass House Pattaya",
@@ -1890,7 +2976,21 @@
         "Family-Friendly",
         "Sunset"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.803459,100.938470"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.803459,100.938470",
+      "googlePlaceId": "ChIJfSYXW_eTAjER1Sg1U6YoZmI",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 12:00 AM",
+        "Tuesday: 11:00 AM – 12:00 AM",
+        "Wednesday: 11:00 AM – 12:00 AM",
+        "Thursday: 11:00 AM – 12:00 AM",
+        "Friday: 11:00 AM – 12:00 AM",
+        "Saturday: 11:00 AM – 12:00 AM",
+        "Sunday: 11:00 AM – 12:00 AM"
+      ],
+      "googlePhone": "+66 81 266 6110",
+      "googleWebsiteUri": "http://www.glasshouse-pattaya.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740324856
     },
     {
       "name": "The Globe's Heritage by Chef Alex",
@@ -1914,7 +3014,11 @@
         "Tasting menu",
         "Date night"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.936200,100.885400"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.936200,100.885400",
+      "googlePlaceId": "ChIJtyCM-P-VAjERq93S3ZMfZ8I",
+      "googlePhone": "+66 66 027 7789",
+      "googleWebsiteUri": "https://theglobeasia.com/",
+      "googleEnrichedAt": 1778740326125
     },
     {
       "name": "Cafe des Amis",
@@ -1937,7 +3041,21 @@
         "Romantic",
         "Date night"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.913292,100.873327"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.913292,100.873327",
+      "googlePlaceId": "ChIJRepey2iWAjERhAgojFynwNs",
+      "googleOpeningHours": [
+        "Monday: 5:00 – 11:00 PM",
+        "Tuesday: 5:00 – 11:00 PM",
+        "Wednesday: 5:00 – 11:00 PM",
+        "Thursday: 5:00 – 11:00 PM",
+        "Friday: 5:00 – 11:30 PM",
+        "Saturday: 5:00 – 11:30 PM",
+        "Sunday: 5:00 – 10:30 PM"
+      ],
+      "googlePhone": "+66 84 026 4989",
+      "googleWebsiteUri": "http://www.cafe-des-amis.com/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740327402
     },
     {
       "name": "Mantra Restaurant & Bar",
@@ -1960,7 +3078,20 @@
         "Multi-cuisine",
         "Hotel"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.914590,100.915521"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.914590,100.915521",
+      "googlePlaceId": "ChIJVxHEpEaVAjERqAmVQ-kwnis",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 11:30 PM",
+        "Tuesday: 11:00 AM – 11:30 PM",
+        "Wednesday: 11:00 AM – 11:30 PM",
+        "Thursday: 11:00 AM – 11:30 PM",
+        "Friday: 11:00 AM – 11:30 PM",
+        "Saturday: 11:00 AM – 11:30 PM",
+        "Sunday: 11:00 AM – 11:30 PM"
+      ],
+      "googlePhone": "+66 94 490 3111",
+      "googleWebsiteUri": "https://www.thaimantrapattaya.com/",
+      "googleEnrichedAt": 1778740328701
     },
     {
       "name": "Ronin Japanese Restaurant",
@@ -1983,7 +3114,21 @@
         "Authentic",
         "Date night"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.937708,100.913021"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.937708,100.913021",
+      "googlePlaceId": "ChIJqRZFjeK9AjERnPvzpKwsVjc",
+      "googleOpeningHours": [
+        "Monday: 12:00 – 10:00 PM",
+        "Tuesday: 12:00 – 10:00 PM",
+        "Wednesday: 12:00 – 10:00 PM",
+        "Thursday: 12:00 – 10:00 PM",
+        "Friday: 11:00 AM – 10:00 PM",
+        "Saturday: 11:00 AM – 10:00 PM",
+        "Sunday: 11:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 99 338 8777",
+      "googleWebsiteUri": "https://www.facebook.com/roninpattaya",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740329926
     },
     {
       "name": "Tsunami Sushi Buffet",
@@ -2004,7 +3149,21 @@
         "Buffet",
         "Family-Friendly"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.948740,100.903519"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.948740,100.903519",
+      "googlePlaceId": "ChIJV6NsmiOUAjERIi--VhvTLhg",
+      "googleOpeningHours": [
+        "Monday: 11:30 AM – 10:00 PM",
+        "Tuesday: 11:30 AM – 10:00 PM",
+        "Wednesday: 11:30 AM – 10:00 PM",
+        "Thursday: 11:30 AM – 10:00 PM",
+        "Friday: 11:30 AM – 10:00 PM",
+        "Saturday: 11:30 AM – 10:00 PM",
+        "Sunday: 11:30 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 92 870 0077",
+      "googleWebsiteUri": "https://www.tsunamisushibuffet.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740331228
     },
     {
       "name": "Grillicious Japanese BBQ",
@@ -2025,7 +3184,20 @@
         "Yakiniku",
         "BBQ"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.937708,100.913021"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.937708,100.913021",
+      "googlePlaceId": "ChIJ40fCvmWXAjERgEWk_-rfOsY",
+      "googleOpeningHours": [
+        "Monday: 4:00 – 11:00 PM",
+        "Tuesday: 4:00 – 11:00 PM",
+        "Wednesday: 4:00 – 11:00 PM",
+        "Thursday: 4:00 – 11:00 PM",
+        "Friday: 4:00 – 11:00 PM",
+        "Saturday: 12:00 – 3:00 PM, 5:00 – 11:00 PM",
+        "Sunday: 12:00 – 3:00 PM, 5:00 – 11:00 PM"
+      ],
+      "googlePhone": "+66 83 224 4665",
+      "googleWebsiteUri": "https://www.facebook.com/Grillicious.Japanese.BBQ/?refid=52&_rdr/?utm_source=google&utm_medium=gbp&utm_campaign=local-search",
+      "googleEnrichedAt": 1778740332429
     },
     {
       "name": "Ramen Champion",
@@ -2046,7 +3218,21 @@
         "Late Night",
         "Open-air"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.930100,100.878400"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.930100,100.878400",
+      "googlePlaceId": "ChIJx2uOwroZ2jER1rvJHxVl_rk",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 10:00 PM",
+        "Tuesday: 11:00 AM – 10:00 PM",
+        "Wednesday: 11:00 AM – 10:00 PM",
+        "Thursday: 11:00 AM – 10:00 PM",
+        "Friday: 11:00 AM – 10:00 PM",
+        "Saturday: 11:00 AM – 10:00 PM",
+        "Sunday: 11:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+65 6235 1472",
+      "googleWebsiteUri": "https://ramenchampion.com.sg/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740333739
     },
     {
       "name": "Hachiban Ramen",
@@ -2067,7 +3253,20 @@
         "Reliable",
         "Family-Friendly"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.923340,100.878742"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.923340,100.878742",
+      "googlePlaceId": "ChIJ-ab_oxKWAjERWgb5m4d5s0I",
+      "googleOpeningHours": [
+        "Monday: 10:30 AM – 8:00 PM",
+        "Tuesday: 10:30 AM – 8:00 PM",
+        "Wednesday: 10:30 AM – 8:00 PM",
+        "Thursday: 10:30 AM – 8:00 PM",
+        "Friday: 10:30 AM – 8:00 PM",
+        "Saturday: 10:30 AM – 8:00 PM",
+        "Sunday: 10:30 AM – 8:00 PM"
+      ],
+      "googlePhone": "+66 38 429 930",
+      "googleWebsiteUri": "https://www.hachiban.co.th/th/home/",
+      "googleEnrichedAt": 1778740335011
     },
     {
       "name": "Ozawa Ramen",
@@ -2088,7 +3287,20 @@
         "Authentic",
         "Spicy"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.937597,100.883480"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.937597,100.883480",
+      "googlePlaceId": "ChIJdbr30MGXAjERD62LgTVWQbY",
+      "googleOpeningHours": [
+        "Monday: 12:00 – 9:30 PM",
+        "Tuesday: 12:00 – 9:30 PM",
+        "Wednesday: 12:00 – 9:30 PM",
+        "Thursday: 12:00 – 9:00 PM",
+        "Friday: 12:00 – 9:30 PM",
+        "Saturday: 12:00 – 9:30 PM",
+        "Sunday: 12:00 – 9:30 PM"
+      ],
+      "googleWebsiteUri": "https://ozawaramen.com/",
+      "googlePriceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "googleEnrichedAt": 1778740336279
     },
     {
       "name": "La Dolce Vita Garden",
@@ -2109,7 +3321,9 @@
         "Authentic Italian",
         "Family-Friendly"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.923593,100.910040"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.923593,100.910040",
+      "googlePlaceId": "ChIJiTI4UsqZHTERUDKACqnwVeI",
+      "googleEnrichedAt": 1778740337497
     },
     {
       "name": "Grottino Osteria Pizzeria",
@@ -2130,7 +3344,21 @@
         "Italian",
         "Wood-fired"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.941600,100.889700"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.941600,100.889700",
+      "googlePlaceId": "ChIJmcSWk_29AjERwMNOkORqdc8",
+      "googleOpeningHours": [
+        "Monday: 3:00 PM – 12:00 AM",
+        "Tuesday: 3:00 PM – 12:00 AM",
+        "Wednesday: 3:00 PM – 12:00 AM",
+        "Thursday: 3:00 PM – 12:00 AM",
+        "Friday: 3:00 PM – 12:00 AM",
+        "Saturday: 3:00 PM – 12:00 AM",
+        "Sunday: 3:00 PM – 12:00 AM"
+      ],
+      "googlePhone": "+66 38 421 681",
+      "googleWebsiteUri": "https://web.facebook.com/profile.php?id=61563877713930&sk=photos",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740338698
     },
     {
       "name": "Pizza Big",
@@ -2151,7 +3379,21 @@
         "Casual",
         "Hidden Gem"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.950867,100.893739"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.950867,100.893739",
+      "googlePlaceId": "ChIJB0ci9Ae-AjER_AxKZs9yvZI",
+      "googleOpeningHours": [
+        "Monday: 1:00 – 10:00 PM",
+        "Tuesday: 1:00 – 10:00 PM",
+        "Wednesday: 1:00 – 10:00 PM",
+        "Thursday: 1:00 – 10:00 PM",
+        "Friday: 1:00 – 10:00 PM",
+        "Saturday: 1:00 – 10:00 PM",
+        "Sunday: 1:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 61 338 7292",
+      "googleWebsiteUri": "http://www.pizzabigpattaya.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740339946
     },
     {
       "name": "Slice Pizza",
@@ -2172,7 +3414,21 @@
         "Late Night",
         "By the slice"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.942464,100.885860"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.942464,100.885860",
+      "googlePlaceId": "ChIJy4EdnwGWAjERB-izMuDzWH4",
+      "googleOpeningHours": [
+        "Monday: 4:00 PM – 3:00 AM",
+        "Tuesday: 4:00 PM – 3:00 AM",
+        "Wednesday: 4:00 PM – 3:00 AM",
+        "Thursday: 4:00 PM – 3:00 AM",
+        "Friday: 4:00 PM – 3:00 AM",
+        "Saturday: 4:00 PM – 3:00 AM",
+        "Sunday: 4:00 PM – 3:00 AM"
+      ],
+      "googlePhone": "+66 61 298 7866",
+      "googleWebsiteUri": "https://m.facebook.com/slicepizza.th/?ref=bookmarks",
+      "googlePriceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "googleEnrichedAt": 1778740341208
     },
     {
       "name": "Prime Burger",
@@ -2193,7 +3449,21 @@
         "Smash Burger",
         "Top-Rated"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.930588,100.886056"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.930588,100.886056",
+      "googlePlaceId": "ChIJIX4llI6XAjERj02ADVgS7fo",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 2:00 AM",
+        "Tuesday: 11:00 AM – 2:00 AM",
+        "Wednesday: 11:00 AM – 2:00 AM",
+        "Thursday: 11:00 AM – 2:00 AM",
+        "Friday: 11:00 AM – 2:00 AM",
+        "Saturday: 11:00 AM – 2:00 AM",
+        "Sunday: 11:00 AM – 2:00 AM"
+      ],
+      "googlePhone": "+66 89 970 8006",
+      "googleWebsiteUri": "https://www.primeburger.co.th/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740342503
     },
     {
       "name": "Charlie Burger",
@@ -2214,7 +3484,19 @@
         "Smash Burger",
         "Cult Favorite"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.939147,100.893658"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.939147,100.893658",
+      "googlePlaceId": "ChIJn5DZMqq_AjER22p8AVUc-Fk",
+      "googleOpeningHours": [
+        "Monday: 4:00 – 9:00 PM",
+        "Tuesday: 4:00 – 9:00 PM",
+        "Wednesday: 4:00 – 9:00 PM",
+        "Thursday: 4:00 – 9:00 PM",
+        "Friday: 4:00 – 9:00 PM",
+        "Saturday: 4:00 – 9:00 PM",
+        "Sunday: Closed"
+      ],
+      "googlePhone": "+66 62 336 6686",
+      "googleEnrichedAt": 1778740343824
     },
     {
       "name": "Robin Hood Tavern",
@@ -2236,7 +3518,21 @@
         "Pub",
         "English Breakfast"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.900683,100.869159"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.900683,100.869159",
+      "googlePlaceId": "ChIJ5_MzQg6WAjERkMyHjaDJ2gc",
+      "googleOpeningHours": [
+        "Monday: 7:00 AM – 11:00 PM",
+        "Tuesday: 7:00 AM – 11:00 PM",
+        "Wednesday: 7:00 AM – 11:00 PM",
+        "Thursday: 7:00 AM – 11:00 PM",
+        "Friday: 7:00 AM – 11:00 PM",
+        "Saturday: 7:00 AM – 11:00 PM",
+        "Sunday: 7:00 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 38 410 511",
+      "googleWebsiteUri": "https://www.robinhoodtavern.com/?utm_source=google&utm_medium=gmb&utm_campaign=local-search",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740345043
     },
     {
       "name": "Horizon Rooftop Restaurant & Bar",
@@ -2259,7 +3555,21 @@
         "Sunset",
         "Luxury"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.935116,100.882414"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.935116,100.882414",
+      "googlePlaceId": "ChIJpdiW7WeXAjERZ1ef_Pz-Qck",
+      "googleOpeningHours": [
+        "Monday: 4:00 PM – 1:00 AM",
+        "Tuesday: 4:00 PM – 1:00 AM",
+        "Wednesday: 4:00 PM – 1:00 AM",
+        "Thursday: 4:00 PM – 1:00 AM",
+        "Friday: 4:00 PM – 1:00 AM",
+        "Saturday: 4:00 PM – 1:00 AM",
+        "Sunday: 4:00 PM – 1:00 AM"
+      ],
+      "googlePhone": "+66 38 253 000",
+      "googleWebsiteUri": "https://www.hilton.com/en/hotels/bkkhphi-hilton-pattaya/dining/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740346389
     },
     {
       "name": "Hermes Skybar",
@@ -2281,7 +3591,19 @@
         "Cigars",
         "Exclusive"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.910500,100.878600"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.910500,100.878600",
+      "googlePlaceId": "ChIJTS9J0LKVAjER6DpeuG28EgQ",
+      "googleOpeningHours": [
+        "Monday: 4:00 – 10:00 PM",
+        "Tuesday: 4:00 – 10:00 PM",
+        "Wednesday: 4:00 – 10:00 PM",
+        "Thursday: 4:00 – 10:00 PM",
+        "Friday: 4:00 – 10:00 PM",
+        "Saturday: 4:00 – 10:00 PM",
+        "Sunday: 4:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 81 156 6577",
+      "googleEnrichedAt": 1778740347621
     },
     {
       "name": "Surf & Turf Beach Club",
@@ -2304,7 +3626,21 @@
         "Family-Friendly",
         "Chic"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.824768,100.910713"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.824768,100.910713",
+      "googlePlaceId": "ChIJB4_c0ea9AjERFiV8AKdHpMQ",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 11:00 PM",
+        "Tuesday: 9:00 AM – 11:00 PM",
+        "Wednesday: 9:00 AM – 11:00 PM",
+        "Thursday: 9:00 AM – 11:00 PM",
+        "Friday: 9:00 AM – 11:00 PM",
+        "Saturday: 9:00 AM – 11:00 PM",
+        "Sunday: 9:00 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 91 758 3895",
+      "googleWebsiteUri": "http://surfandturfpattaya.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740348957
     },
     {
       "name": "Great&Grand Sweet Destination",
@@ -2326,7 +3662,21 @@
         "Photogenic",
         "Dessert"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.946100,100.906900"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.946100,100.906900",
+      "googlePlaceId": "ChIJZ3vJ2ru_AjERWwaX0z76JOQ",
+      "googleOpeningHours": [
+        "Monday: 8:30 AM – 6:00 PM",
+        "Tuesday: 8:30 AM – 6:00 PM",
+        "Wednesday: 8:30 AM – 6:00 PM",
+        "Thursday: 8:30 AM – 6:00 PM",
+        "Friday: 8:30 AM – 6:00 PM",
+        "Saturday: 8:30 AM – 6:00 PM",
+        "Sunday: 8:30 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 97 469 9919",
+      "googleWebsiteUri": "http://www.facebook.com/greatandgrandsweetdestination",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740350186
     },
     {
       "name": "Woodlands Suites Lobby Café",
@@ -2347,7 +3697,11 @@
         "Quiet",
         "Hotel"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.957200,100.886700"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.957200,100.886700",
+      "googlePlaceId": "ChIJ0ZBzXf69AjERvn4K1J2ascQ",
+      "googlePhone": "+66 38 052 299",
+      "googleWebsiteUri": "https://woodlandssuites.com/",
+      "googleEnrichedAt": 1778740351592
     },
     {
       "name": "Ramayana Water Park Restaurant",
@@ -2367,7 +3721,20 @@
         "Family-Friendly",
         "Water Park"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.750536,100.962101"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.750536,100.962101",
+      "googlePlaceId": "ChIJObZTI12NAjERxn6eZgNi6SE",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 6:00 PM",
+        "Tuesday: 11:00 AM – 6:00 PM",
+        "Wednesday: Closed",
+        "Thursday: 11:00 AM – 6:00 PM",
+        "Friday: 11:00 AM – 6:00 PM",
+        "Saturday: 11:00 AM – 6:00 PM",
+        "Sunday: 11:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 33 005 929",
+      "googleWebsiteUri": "https://www.ramayanawaterpark.com/",
+      "googleEnrichedAt": 1778740352881
     },
     {
       "name": "Mae Sri Ruen",
@@ -2388,7 +3755,21 @@
         "Local",
         "Noodle Soup"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.934301,100.892744"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.934301,100.892744",
+      "googlePlaceId": "ChIJwblhO_2VAjERGIjUTmW9dDw",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 9:00 PM",
+        "Tuesday: 9:00 AM – 9:00 PM",
+        "Wednesday: 9:00 AM – 9:00 PM",
+        "Thursday: 9:00 AM – 9:00 PM",
+        "Friday: 9:00 AM – 9:00 PM",
+        "Saturday: 9:00 AM – 9:00 PM",
+        "Sunday: 9:30 AM – 9:00 PM"
+      ],
+      "googlePhone": "+66 38 421 111",
+      "googleWebsiteUri": "http://www.msrpattaya.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740354176
     },
     {
       "name": "Nong Bua Rim Khlong (Lim Lah)",
@@ -2410,7 +3791,20 @@
         "Seafood",
         "Local"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.942413,100.895913"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.942413,100.895913",
+      "googlePlaceId": "ChIJa_aFzXKf4jARvZFqO3bSkRs",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 4:00 PM",
+        "Tuesday: 8:00 AM – 4:00 PM",
+        "Wednesday: 8:00 AM – 4:00 PM",
+        "Thursday: 8:00 AM – 4:00 PM",
+        "Friday: 8:00 AM – 4:00 PM",
+        "Saturday: 8:00 AM – 4:00 PM",
+        "Sunday: Closed"
+      ],
+      "googlePhone": "+66 86 044 9478",
+      "googleWebsiteUri": "https://www.facebook.com/nongrimkhlong/",
+      "googleEnrichedAt": 1778740355487
     },
     {
       "name": "Mum Aroi (Na Kluea)",
@@ -2433,7 +3827,20 @@
         "Live Music",
         "Local Favorite"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.978625,100.911223"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.978625,100.911223",
+      "googlePlaceId": "ChIJb3Crwme-AjERaZ3k8IDOdcU",
+      "googleOpeningHours": [
+        "Monday: 10:30 AM – 11:00 PM",
+        "Tuesday: 10:30 AM – 11:00 PM",
+        "Wednesday: 10:30 AM – 11:00 PM",
+        "Thursday: 10:30 AM – 11:00 PM",
+        "Friday: 10:30 AM – 11:00 PM",
+        "Saturday: 10:30 AM – 11:00 PM",
+        "Sunday: 10:30 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 38 223 252",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740356725
     },
     {
       "name": "L'Aroma Pattaya",
@@ -2456,7 +3863,20 @@
         "Romantic",
         "Jomtien"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.928469,100.884670"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.928469,100.884670",
+      "googlePlaceId": "ChIJBY6pA-eVAjERYqzojgsNGWc",
+      "googleOpeningHours": [
+        "Monday: 7:00 AM – 11:00 PM",
+        "Tuesday: 7:00 AM – 11:00 PM",
+        "Wednesday: 7:00 AM – 11:00 PM",
+        "Thursday: 7:00 AM – 11:00 PM",
+        "Friday: 7:00 AM – 11:00 PM",
+        "Saturday: 7:00 AM – 11:00 PM",
+        "Sunday: 7:00 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 94 595 5423",
+      "googleWebsiteUri": "https://www.facebook.com/LaromaWineShop.Pattaya/",
+      "googleEnrichedAt": 1778740358051
     },
     {
       "name": "Indian By Nature",
@@ -2479,7 +3899,21 @@
         "Biryani",
         "Pattaya Top"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.932200,100.886700"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.932200,100.886700",
+      "googlePlaceId": "ChIJHdzmymCWAjERrlZUBJkiR6Y",
+      "googleOpeningHours": [
+        "Monday: 5:30 – 10:30 PM",
+        "Tuesday: 5:30 – 10:30 PM",
+        "Wednesday: 5:30 – 10:30 PM",
+        "Thursday: 5:30 – 10:30 PM",
+        "Friday: 5:30 – 10:30 PM",
+        "Saturday: 5:30 – 10:30 PM",
+        "Sunday: 5:30 – 10:30 PM"
+      ],
+      "googlePhone": "+66 94 943 0004",
+      "googleWebsiteUri": "http://www.indian-by-nature.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740359310
     },
     {
       "name": "Royal Broil Room & Wine Cellar",
@@ -2503,7 +3937,20 @@
         "Wine Cellar",
         "Romantic"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.919700,100.862700"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.919700,100.862700",
+      "googlePlaceId": "ChIJ_1IN1t2XAjER7blqODVoAuA",
+      "googleOpeningHours": [
+        "Monday: 6:00 – 10:30 PM",
+        "Tuesday: Closed",
+        "Wednesday: Closed",
+        "Thursday: 6:00 – 10:30 PM",
+        "Friday: 6:00 – 10:30 PM",
+        "Saturday: 6:00 – 10:30 PM",
+        "Sunday: 6:00 – 10:30 PM"
+      ],
+      "googlePhone": "+66 38 250 421",
+      "googleWebsiteUri": "https://www.royalcliff.com/restaurant/royal-grill-room-and-wine-cellar/",
+      "googleEnrichedAt": 1778740360558
     },
     {
       "name": "Edge (Hilton Pattaya)",
@@ -2526,7 +3973,12 @@
         "Sea View",
         "Family"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.934999,100.882975"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.934999,100.882975",
+      "googlePlaceId": "ChIJ-ZUsmgWWAjERcu0CLxxX4nY",
+      "googlePhone": "+66 38 253 077",
+      "googleWebsiteUri": "https://www.hilton.com/en/hotels/bkkhphi-hilton-pattaya/dining/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740361842
     },
     {
       "name": "The Glasshouse (Silver Beach)",
@@ -2548,7 +4000,20 @@
         "Sunset",
         "Silver Beach"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.967891,100.883906"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.967891,100.883906",
+      "googlePlaceId": "ChIJq4LH7-O9AjERJNcUsfE-x7Y",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 12:00 AM",
+        "Tuesday: 11:00 AM – 12:00 AM",
+        "Wednesday: 11:00 AM – 12:00 AM",
+        "Thursday: 11:00 AM – 12:00 AM",
+        "Friday: 11:00 AM – 12:00 AM",
+        "Saturday: 11:00 AM – 12:00 AM",
+        "Sunday: 11:00 AM – 12:00 AM"
+      ],
+      "googlePhone": "+66 98 930 9800",
+      "googleWebsiteUri": "http://www.glasshouse-pattaya.com/",
+      "googleEnrichedAt": 1778740363166
     },
     {
       "name": "Jasmin's Café",
@@ -2571,7 +4036,21 @@
         "Casual",
         "Value"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.937294,100.885038"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.937294,100.885038",
+      "googlePlaceId": "ChIJPzOrhAaWAjER2JyPvRtoU24",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 81 429 8409",
+      "googleWebsiteUri": "https://sites.google.com/view/jasminscafe/accueil",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740364384
     },
     {
       "name": "Sketch Restaurant",
@@ -2594,7 +4073,21 @@
         "Chef-driven",
         "Pratumnak"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.903458,100.869136"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.903458,100.869136",
+      "googlePlaceId": "ChIJa4btjyoFdkgRJAOdAdsAdbA",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 12:00 AM",
+        "Tuesday: 8:00 AM – 12:00 AM",
+        "Wednesday: 8:00 AM – 2:00 AM",
+        "Thursday: 8:00 AM – 2:00 AM",
+        "Friday: 8:00 AM – 2:00 AM",
+        "Saturday: 8:00 AM – 2:00 AM",
+        "Sunday: 8:00 AM – 12:00 AM"
+      ],
+      "googlePhone": "+44 20 7659 4500",
+      "googleWebsiteUri": "https://sketch.london/",
+      "googlePriceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "googleEnrichedAt": 1778740365675
     },
     {
       "name": "Mae Sai (Floating Market Pattaya)",
@@ -2609,14 +4102,27 @@
       "cuisine": "Thai Street Food",
       "vibe": "Floating market boats",
       "bestTime": "Lunch",
-      "googleRating": 4.0,
+      "googleRating": 4,
       "reviewCount": 3500,
       "tags": [
         "Floating Market",
         "Street Food",
         "Family"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.867880,100.904810"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.867880,100.904810",
+      "googlePlaceId": "ChIJj7QUV5CVAjER2FSGCgOLIWM",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 7:00 PM",
+        "Tuesday: 9:00 AM – 7:00 PM",
+        "Wednesday: 9:00 AM – 7:00 PM",
+        "Thursday: 9:00 AM – 7:00 PM",
+        "Friday: 9:00 AM – 7:00 PM",
+        "Saturday: 9:00 AM – 7:00 PM",
+        "Sunday: 9:00 AM – 7:00 PM"
+      ],
+      "googlePhone": "+66 88 444 7777",
+      "googleWebsiteUri": "https://www.pattayafloatingmarket.com/",
+      "googleEnrichedAt": 1778740366894
     },
     {
       "name": "Cabbages & Condoms",
@@ -2638,7 +4144,21 @@
         "Family Planning Cause",
         "Garden"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.915142,100.857245"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.915142,100.857245",
+      "googlePlaceId": "ChIJcTdeZ0SWAjERnxc-4HWxBH8",
+      "googleOpeningHours": [
+        "Monday: 7:00 AM – 11:00 PM",
+        "Tuesday: 7:00 AM – 11:00 PM",
+        "Wednesday: 7:00 AM – 11:00 PM",
+        "Thursday: 7:00 AM – 11:00 PM",
+        "Friday: 7:00 AM – 11:00 PM",
+        "Saturday: 7:00 AM – 11:00 PM",
+        "Sunday: 7:00 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 38 250 556",
+      "googleWebsiteUri": "https://cabbagesandcondoms.com/restaurant",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740368173
     },
     {
       "name": "Bruno's",
@@ -2660,7 +4180,11 @@
         "Steak",
         "Wine"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.906693,100.869213"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.906693,100.869213",
+      "googlePlaceId": "ChIJ0ZBzXf69AjERWDoH3Uo0ct0",
+      "googlePhone": "+66 33 045 789",
+      "googlePriceLevel": "PRICE_LEVEL_VERY_EXPENSIVE",
+      "googleEnrichedAt": 1778740369421
     },
     {
       "name": "Punjab Grill",
@@ -2682,7 +4206,20 @@
         "Punjab Grill",
         "Central Festival"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.928439,100.876046"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.928439,100.876046",
+      "googlePlaceId": "ChIJe0qopS6VAjER29ZMs3os-DY",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googlePhone": "+66 99 139 4865",
+      "googleWebsiteUri": "https://www.panjabgrill.com/",
+      "googleEnrichedAt": 1778740370651
     },
     {
       "name": "PIC Kitchen",
@@ -2704,7 +4241,11 @@
         "Family",
         "Garden"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.932042,100.898803"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.932042,100.898803",
+      "googlePlaceId": "ChIJe89xRwCWAjERtC11n7U6bSY",
+      "googlePhone": "+66 38 428 374",
+      "googleWebsiteUri": "http://www.pic-kitchen.com/",
+      "googleEnrichedAt": 1778740371974
     },
     {
       "name": "Casa Pascal",
@@ -2727,7 +4268,21 @@
         "European",
         "Romantic"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.928686,100.879823"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.928686,100.879823",
+      "googlePlaceId": "ChIJVZg-Dw6WAjERv3fVzSXqlD4",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 2:00 PM, 6:00 – 11:00 PM",
+        "Tuesday: 8:00 AM – 2:00 PM, 6:00 – 11:00 PM",
+        "Wednesday: 8:00 AM – 2:00 PM, 6:00 – 11:00 PM",
+        "Thursday: 8:00 AM – 2:00 PM, 6:00 – 11:00 PM",
+        "Friday: 8:00 AM – 2:00 PM, 6:00 – 11:00 PM",
+        "Saturday: 8:00 AM – 2:00 PM, 6:00 – 11:00 PM",
+        "Sunday: 8:00 AM – 2:00 PM, 6:00 – 11:00 PM"
+      ],
+      "googlePhone": "+66 61 643 9969",
+      "googleWebsiteUri": "https://www.restaurant-in-pattaya.com/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740373178
     },
     {
       "name": "Moom Aroi (The Original)",
@@ -2749,7 +4304,20 @@
         "Na Kluea",
         "Local"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.962800,100.883900"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.962800,100.883900",
+      "googlePlaceId": "ChIJb3Crwme-AjERaZ3k8IDOdcU",
+      "googleOpeningHours": [
+        "Monday: 10:30 AM – 11:00 PM",
+        "Tuesday: 10:30 AM – 11:00 PM",
+        "Wednesday: 10:30 AM – 11:00 PM",
+        "Thursday: 10:30 AM – 11:00 PM",
+        "Friday: 10:30 AM – 11:00 PM",
+        "Saturday: 10:30 AM – 11:00 PM",
+        "Sunday: 10:30 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 38 223 252",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740374537
     },
     {
       "name": "Rim Talay Seafood",
@@ -2771,7 +4339,20 @@
         "Family",
         "Na Jomtien"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.957767,100.884134"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.957767,100.884134",
+      "googlePlaceId": "ChIJiceklzZLHTERmk8zFxc6MMc",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 9:30 PM",
+        "Tuesday: 10:00 AM – 9:30 PM",
+        "Wednesday: 10:00 AM – 9:30 PM",
+        "Thursday: 10:00 AM – 9:30 PM",
+        "Friday: 10:00 AM – 9:30 PM",
+        "Saturday: 10:00 AM – 9:30 PM",
+        "Sunday: 10:00 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 38 397 735",
+      "googleWebsiteUri": "https://www.facebook.com/Rimtalay.Seafood",
+      "googleEnrichedAt": 1778740375874
     },
     {
       "name": "Leng Kee (24-hour Chinese)",
@@ -2786,14 +4367,28 @@
       "cuisine": "Thai-Chinese",
       "vibe": "24-hour, no-frills",
       "bestTime": "Late night / Anytime",
-      "googleRating": 4.0,
+      "googleRating": 4,
       "reviewCount": 2300,
       "tags": [
         "24 Hour",
         "Chinese",
         "Budget"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.930100,100.884500"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.930100,100.884500",
+      "googlePlaceId": "ChIJo1qGpQeWAjERMlq9BF86-bc",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googlePhone": "+66 83 000 8388",
+      "googleWebsiteUri": "http://www.lkpattaya.com/lengkee",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740377171
     },
     {
       "name": "Phu-Talay",
@@ -2816,7 +4411,21 @@
       ],
       "lat": 12.056583,
       "lng": 102.292886,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.056583,102.292886"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.056583,102.292886",
+      "googlePlaceId": "ChIJCf4quZsRBDER9LQYIfFZAvU",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 10:00 PM",
+        "Tuesday: 11:00 AM – 10:00 PM",
+        "Wednesday: 11:00 AM – 10:00 PM",
+        "Thursday: 11:00 AM – 10:00 PM",
+        "Friday: 11:00 AM – 10:00 PM",
+        "Saturday: 11:00 AM – 10:00 PM",
+        "Sunday: 11:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 39 551 300",
+      "googleWebsiteUri": "https://www.facebook.com/pages/category/Seafood-Restaurant/Phu-Talay-Seafood-Koh-Chang-133557166717747/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740378391
     },
     {
       "name": "Saaitara Restaurant",
@@ -2837,7 +4446,18 @@
       ],
       "lat": 12.087341,
       "lng": 102.278781,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.087341,102.278781"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.087341,102.278781",
+      "googlePlaceId": "ChIJ3RYiZJ8RBDERgW9QNxMXfmk",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 9:00 PM",
+        "Tuesday: 10:00 AM – 9:00 PM",
+        "Wednesday: 10:00 AM – 9:00 PM",
+        "Thursday: 10:00 AM – 9:00 PM",
+        "Friday: 10:00 AM – 9:00 PM",
+        "Saturday: 10:00 AM – 9:00 PM",
+        "Sunday: 10:00 AM – 9:00 PM"
+      ],
+      "googleEnrichedAt": 1778740379612
     },
     {
       "name": "Chantara Restaurant",
@@ -2858,7 +4478,9 @@
       ],
       "lat": 12.087341,
       "lng": 102.278781,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.087341,102.278781"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.087341,102.278781",
+      "googlePlaceId": "ChIJbcTHp9MRBDER64tChJ8vmU8",
+      "googleEnrichedAt": 1778740380851
     },
     {
       "name": "Nong Bua Seafood",
@@ -2880,7 +4502,20 @@
       ],
       "lat": 12.064487,
       "lng": 102.286172,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.064487,102.286172"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.064487,102.286172",
+      "googlePlaceId": "ChIJ8ZuZHY8RBDERfDagVZD5Gdc",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 9:30 PM",
+        "Tuesday: 10:00 AM – 9:30 PM",
+        "Wednesday: 10:00 AM – 9:30 PM",
+        "Thursday: 10:00 AM – 9:30 PM",
+        "Friday: 10:00 AM – 9:30 PM",
+        "Saturday: 10:00 AM – 9:30 PM",
+        "Sunday: 10:00 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 62 326 0306",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740382070
     },
     {
       "name": "Jae Eaw Seafood",
@@ -2900,7 +4535,21 @@
       ],
       "lat": 12.041671,
       "lng": 102.298238,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.041671,102.298238"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.041671,102.298238",
+      "googlePlaceId": "ChIJZwTudZ4RBDERSSShWxspV5k",
+      "googleOpeningHours": [
+        "Monday: 10:30 AM – 10:00 PM",
+        "Tuesday: 10:30 AM – 10:00 PM",
+        "Wednesday: 10:30 AM – 10:00 PM",
+        "Thursday: 10:30 AM – 10:00 PM",
+        "Friday: 11:30 AM – 10:00 PM",
+        "Saturday: 10:30 AM – 10:00 PM",
+        "Sunday: 10:30 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 95 209 1809",
+      "googleWebsiteUri": "https://www.wongnai.com/restaurants/14916tp-%E0%B9%80%E0%B8%88%E0%B9%8A%E0%B8%AD%E0%B8%B4%E0%B9%8B%E0%B8%A7-%E0%B8%8B%E0%B8%B5%E0%B8%9F%E0%B8%B9%E0%B9%89%E0%B8%94",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740383303
     },
     {
       "name": "Kati Culinary",
@@ -2927,7 +4576,21 @@
       ],
       "lat": 12.045754,
       "lng": 102.298743,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.045754,102.298743"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.045754,102.298743",
+      "googlePlaceId": "ChIJAf_r8qARBDERnE3b2slEEtw",
+      "googleOpeningHours": [
+        "Monday: 12:00 – 10:00 PM",
+        "Tuesday: 12:00 – 10:00 PM",
+        "Wednesday: 12:00 – 10:00 PM",
+        "Thursday: 12:00 – 10:00 PM",
+        "Friday: 12:00 – 10:00 PM",
+        "Saturday: 12:00 – 10:00 PM",
+        "Sunday: 12:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 81 903 0408",
+      "googleWebsiteUri": "https://katiculinary.shop/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740384526
     },
     {
       "name": "Manpu Seafood",
@@ -2949,7 +4612,10 @@
       ],
       "lat": 12.034676,
       "lng": 102.293461,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.034676,102.293461"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.034676,102.293461",
+      "googlePlaceId": "ChIJmUCTnagTBDERB3o95oo856s",
+      "googlePhone": "+66 98 809 4045",
+      "googleEnrichedAt": 1778740385731
     },
     {
       "name": "Dinosaur Gai Yang",
@@ -2988,7 +4654,19 @@
       ],
       "lat": 12.027926,
       "lng": 102.290578,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.027926,102.290578"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.027926,102.290578",
+      "googlePlaceId": "ChIJibTXZZIRBDERQ7wZ_fcL3vg",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 85 180 2471",
+      "googleEnrichedAt": 1778740386969
     },
     {
       "name": "Sun and Soul (Cookies Resort)",
@@ -3028,7 +4706,20 @@
       ],
       "lat": 12.0442,
       "lng": 102.293951,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.044200,102.293951"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.044200,102.293951",
+      "googlePlaceId": "ChIJyUdPq2gSBDEROUL2Eb9G2UU",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 11:00 PM",
+        "Tuesday: 9:00 AM – 11:00 PM",
+        "Wednesday: 9:00 AM – 11:00 PM",
+        "Thursday: 9:00 AM – 11:00 PM",
+        "Friday: 9:00 AM – 11:00 PM",
+        "Saturday: 9:00 AM – 11:00 PM",
+        "Sunday: 9:00 AM – 11:00 PM"
+      ],
+      "googlePhone": "+66 96 565 3916",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740388224
     },
     {
       "name": "The Kitchen",
@@ -3049,7 +4740,19 @@
       ],
       "lat": 12.046045,
       "lng": 102.298888,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.046045,102.298888"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.046045,102.298888",
+      "googlePlaceId": "ChIJsy7uF6sRBDERgl_1RV3MZtI",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 10:30 PM",
+        "Tuesday: 9:00 AM – 10:30 PM",
+        "Wednesday: 9:00 AM – 10:30 PM",
+        "Thursday: 9:00 AM – 10:30 PM",
+        "Friday: 9:00 AM – 10:30 PM",
+        "Saturday: 9:00 AM – 10:30 PM",
+        "Sunday: 9:00 AM – 10:30 PM"
+      ],
+      "googlePhone": "+66 93 159 1830",
+      "googleEnrichedAt": 1778740389576
     },
     {
       "name": "Siam Beach Resort Restaurant",
@@ -3070,7 +4773,18 @@
       ],
       "lat": 12.008777,
       "lng": 102.292896,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.008777,102.292896"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.008777,102.292896",
+      "googlePlaceId": "ChIJYffhAgCRBjERzRoVsb1ierg",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 9:00 PM",
+        "Tuesday: 11:00 AM – 9:00 PM",
+        "Wednesday: 11:00 AM – 9:00 PM",
+        "Thursday: 11:00 AM – 9:00 PM",
+        "Friday: 11:00 AM – 9:00 PM",
+        "Saturday: 11:00 AM – 9:00 PM",
+        "Sunday: 11:00 AM – 9:00 PM"
+      ],
+      "googleEnrichedAt": 1778740391086
     },
     {
       "name": "Mordi e Fuggi",
@@ -3098,7 +4812,20 @@
       ],
       "lat": 12.032165,
       "lng": 102.293104,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.032165,102.293104"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.032165,102.293104",
+      "googlePlaceId": "ChIJ4yNEIawRBDERrP5b8fO1D58",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 10:30 PM",
+        "Tuesday: 9:00 AM – 10:30 PM",
+        "Wednesday: 9:00 AM – 10:30 PM",
+        "Thursday: 2:00 – 10:30 PM",
+        "Friday: 9:00 AM – 10:30 PM",
+        "Saturday: 9:00 AM – 10:30 PM",
+        "Sunday: 9:00 AM – 10:30 PM"
+      ],
+      "googlePhone": "+66 64 610 0472",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740392415
     },
     {
       "name": "Lisca Beach",
@@ -3119,7 +4846,12 @@
       ],
       "lat": 12.006954,
       "lng": 102.293326,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.006954,102.293326"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.006954,102.293326",
+      "googlePlaceId": "ChIJc-Pnfn4QBDERnZAw-kn39uE",
+      "googlePhone": "+66 94 968 9264",
+      "googleWebsiteUri": "http://facebook.com/liscabeachsunset",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740393649
     },
     {
       "name": "Pizza King Express",
@@ -3140,7 +4872,20 @@
       ],
       "lat": 12.075186,
       "lng": 102.281143,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.075186,102.281143"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.075186,102.281143",
+      "googlePlaceId": "ChIJwxUXdooRBDER3y4vaL0I_YA",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: Closed",
+        "Wednesday: 5:00 – 10:00 PM",
+        "Thursday: 5:00 – 10:00 PM",
+        "Friday: 5:00 – 10:00 PM",
+        "Saturday: 5:00 – 10:00 PM",
+        "Sunday: 5:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 92 670 9294",
+      "googleWebsiteUri": "https://www.facebook.com/Pizza-King-Express-co-Ltd-1667742273455272/",
+      "googleEnrichedAt": 1778740394947
     },
     {
       "name": "Burger Station",
@@ -3161,7 +4906,20 @@
       ],
       "lat": 12.037108,
       "lng": 102.293457,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.037108,102.293457"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.037108,102.293457",
+      "googlePlaceId": "ChIJ38bgaa8RBDEROuBXiwE7f7g",
+      "googleOpeningHours": [
+        "Monday: 12:30 – 10:30 PM",
+        "Tuesday: 12:30 – 10:30 PM",
+        "Wednesday: 12:30 – 10:30 PM",
+        "Thursday: 12:30 – 10:30 PM",
+        "Friday: 12:30 – 10:30 PM",
+        "Saturday: 12:30 – 10:30 PM",
+        "Sunday: 12:30 – 10:30 PM"
+      ],
+      "googlePhone": "+66 89 014 3985",
+      "googlePriceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "googleEnrichedAt": 1778740396191
     },
     {
       "name": "The Journey",
@@ -3182,7 +4940,20 @@
       ],
       "lat": 13.663292,
       "lng": 100.659841,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.663292,100.659841"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.663292,100.659841",
+      "googlePlaceId": "ChIJl6rgVCNfHTERxz2Bzz9m2qc",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googlePhone": "+66 2 102 6552",
+      "googleWebsiteUri": "http://www.thejourneyhotel.com/",
+      "googleEnrichedAt": 1778740397628
     },
     {
       "name": "Sushi Kha",
@@ -3204,7 +4975,19 @@
       ],
       "lat": 12.079144,
       "lng": 102.277574,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.079144,102.277574"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.079144,102.277574",
+      "googlePlaceId": "ChIJeWdUoesTBDERr1AJiCOMNtQ",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 11:00 AM – 8:00 PM",
+        "Wednesday: 11:00 AM – 8:00 PM",
+        "Thursday: 11:00 AM – 8:00 PM",
+        "Friday: 11:00 AM – 8:00 PM",
+        "Saturday: 11:00 AM – 8:00 PM",
+        "Sunday: 11:00 AM – 8:00 PM"
+      ],
+      "googlePhone": "+66 61 423 9151",
+      "googleEnrichedAt": 1778740398862
     },
     {
       "name": "Onaka Sushi Bar",
@@ -3225,7 +5008,19 @@
       ],
       "lat": 12.142094,
       "lng": 102.269375,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.142094,102.269375"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.142094,102.269375",
+      "googlePlaceId": "ChIJaVAaK-_zVDARCjnoZ8MrFgc",
+      "googleOpeningHours": [
+        "Monday: 2:00 – 10:00 PM",
+        "Tuesday: 2:00 – 10:00 PM",
+        "Wednesday: 2:00 – 10:00 PM",
+        "Thursday: Closed",
+        "Friday: 2:00 – 10:00 PM",
+        "Saturday: 2:00 – 10:00 PM",
+        "Sunday: 2:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 65 660 6777",
+      "googleEnrichedAt": 1778740400085
     },
     {
       "name": "Nature Rocks",
@@ -3247,7 +5042,20 @@
       ],
       "lat": 12.006421,
       "lng": 102.294159,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.006421,102.294159"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.006421,102.294159",
+      "googlePlaceId": "ChIJu7fN2l0QBDER_Kp_L36h6wk",
+      "googleOpeningHours": [
+        "Monday: 7:30 AM – 10:00 PM",
+        "Tuesday: 7:30 AM – 10:00 PM",
+        "Wednesday: 7:30 AM – 10:00 PM",
+        "Thursday: 7:30 AM – 10:00 PM",
+        "Friday: 7:30 AM – 10:00 PM",
+        "Saturday: 7:30 AM – 10:00 PM",
+        "Sunday: 7:30 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 81 803 8933",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740401330
     },
     {
       "name": "Lonely Beach Bar",
@@ -3267,7 +5075,19 @@
       ],
       "lat": 12.006954,
       "lng": 102.293326,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.006954,102.293326"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.006954,102.293326",
+      "googlePlaceId": "ChIJq5-u7AkRBDERQtHlf4CSWho",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 8:00 PM",
+        "Tuesday: 11:00 AM – 8:00 PM",
+        "Wednesday: 11:00 AM – 8:00 PM",
+        "Thursday: 11:00 AM – 8:00 PM",
+        "Friday: 11:00 AM – 9:00 PM",
+        "Saturday: 11:00 AM – 9:00 PM",
+        "Sunday: 11:00 AM – 8:00 PM"
+      ],
+      "googlePhone": "+66 92 809 2764",
+      "googleEnrichedAt": 1778740402598
     },
     {
       "name": "Oasis Koh Chang",
@@ -3287,7 +5107,21 @@
       ],
       "lat": 12.064522,
       "lng": 102.286136,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.064522,102.286136"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.064522,102.286136",
+      "googlePlaceId": "ChIJn5vx3WEQBDER5227J4QIuAQ",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 10:00 PM",
+        "Tuesday: 8:00 AM – 10:00 PM",
+        "Wednesday: 8:00 AM – 10:00 PM",
+        "Thursday: 8:00 AM – 10:00 PM",
+        "Friday: 8:00 AM – 10:00 PM",
+        "Saturday: 8:00 AM – 10:00 PM",
+        "Sunday: 8:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 81 721 2547",
+      "googleWebsiteUri": "https://www.oasis-kohchang.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740403863
     },
     {
       "name": "El Greco",
@@ -3315,7 +5149,21 @@
       ],
       "lat": 12.029009,
       "lng": 102.292775,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.029009,102.292775"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.029009,102.292775",
+      "googlePlaceId": "ChIJfxhEFnAaBDERD7yX5JyExSc",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 2:00 – 11:00 PM",
+        "Wednesday: 2:00 – 11:00 PM",
+        "Thursday: 2:00 – 11:00 PM",
+        "Friday: 2:00 – 11:00 PM",
+        "Saturday: 2:00 – 11:00 PM",
+        "Sunday: 2:00 – 11:00 PM"
+      ],
+      "googlePhone": "+66 64 548 5864",
+      "googleWebsiteUri": "https://elgrecothailand.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740405087
     },
     {
       "name": "Chill Out Cafe",
@@ -3336,7 +5184,18 @@
       ],
       "lat": 11.814725,
       "lng": 102.461411,
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.814725,102.461411"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.814725,102.461411",
+      "googlePlaceId": "ChIJlbF3kGYRBDERXro41PlUW_M",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 9:00 PM",
+        "Tuesday: 9:00 AM – 9:00 PM",
+        "Wednesday: 9:00 AM – 9:00 PM",
+        "Thursday: 9:00 AM – 9:00 PM",
+        "Friday: 9:00 AM – 9:00 PM",
+        "Saturday: 9:00 AM – 9:00 PM",
+        "Sunday: 9:00 AM – 9:00 PM"
+      ],
+      "googleEnrichedAt": 1778740406367
     },
     {
       "name": "Nirvana Cafe",
@@ -3357,7 +5216,20 @@
       ],
       "lat": 12.016269,
       "lng": 102.291394,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.016269,102.291394"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.016269,102.291394",
+      "googlePlaceId": "ChIJMddDMfhnUjoRmUGE6Bb-hUE",
+      "googleOpeningHours": [
+        "Monday: 12:00 – 11:00 PM",
+        "Tuesday: 12:00 – 11:00 PM",
+        "Wednesday: 12:00 – 11:00 PM",
+        "Thursday: 12:00 – 11:00 PM",
+        "Friday: 12:00 – 11:00 PM",
+        "Saturday: 12:00 – 11:00 PM",
+        "Sunday: 12:00 – 11:00 PM"
+      ],
+      "googlePhone": "+91 89252 86072",
+      "googleWebsiteUri": "https://cafenirvanaa.com/",
+      "googleEnrichedAt": 1778740407663
     },
     {
       "name": "Iyara Seafood",
@@ -3378,7 +5250,20 @@
       ],
       "lat": 12.104767,
       "lng": 102.273379,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.104767,102.273379"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.104767,102.273379",
+      "googlePlaceId": "ChIJaTkHn4gRBDERh92mpmilDaY",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 81 694 6957",
+      "googleWebsiteUri": "http://www.iyaragroup.com/",
+      "googleEnrichedAt": 1778740408884
     },
     {
       "name": "Smoke and Bones",
@@ -3418,7 +5303,21 @@
         "Seafood",
         "Local"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.063234,102.288479"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.063234,102.288479",
+      "googlePlaceId": "ChIJn4JyG3AaBDERCp0GG8Gbcxs",
+      "googleOpeningHours": [
+        "Monday: 9:30 AM – 10:00 PM",
+        "Tuesday: 9:30 AM – 10:00 PM",
+        "Wednesday: 9:30 AM – 10:00 PM",
+        "Thursday: 9:30 AM – 10:00 PM",
+        "Friday: 9:30 AM – 10:00 PM",
+        "Saturday: 9:30 AM – 10:00 PM",
+        "Sunday: 9:30 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 81 917 9084",
+      "googleWebsiteUri": "https://www.facebook.com/chowlayseafoods/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740410135
     },
     {
       "name": "Nongyim Seafood",
@@ -3440,7 +5339,9 @@
         "Seafood",
         "Family"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.058146,102.290824"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.058146,102.290824",
+      "googleNotFound": true,
+      "googleEnrichedAt": 1778740410812
     },
     {
       "name": "Cliff Cottage",
@@ -3462,7 +5363,20 @@
         "Sunset",
         "Lonely Beach"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.967452,102.310413"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.967452,102.310413",
+      "googlePlaceId": "ChIJj-L__88TBDERAPgIcafxkQg",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 9:00 PM",
+        "Tuesday: 8:00 AM – 9:00 PM",
+        "Wednesday: 8:00 AM – 9:00 PM",
+        "Thursday: 8:00 AM – 9:00 PM",
+        "Friday: 8:00 AM – 9:00 PM",
+        "Saturday: 8:00 AM – 9:00 PM",
+        "Sunday: 8:00 AM – 9:00 PM"
+      ],
+      "googlePhone": "+66 80 823 5495",
+      "googleWebsiteUri": "http://www.cliff-cottage.com/",
+      "googleEnrichedAt": 1778740412121
     },
     {
       "name": "Friend Seafood",
@@ -3484,7 +5398,20 @@
         "Seafood",
         "Family"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.058146,102.290824"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.058146,102.290824",
+      "googlePlaceId": "ChIJsWJIvq4RBDERFqfclaDDtMA",
+      "googleOpeningHours": [
+        "Monday: 5:00 – 11:00 PM",
+        "Tuesday: 5:00 – 11:00 PM",
+        "Wednesday: 5:00 – 11:00 PM",
+        "Thursday: 5:00 – 11:00 PM",
+        "Friday: 5:00 – 11:00 PM",
+        "Saturday: 5:00 – 11:00 PM",
+        "Sunday: Closed"
+      ],
+      "googlePhone": "+66 84 863 1221",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740413465
     },
     {
       "name": "Baan Kai Bae Seafood",
@@ -3506,7 +5433,18 @@
         "Seafood",
         "Family"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.034676,102.293461"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.034676,102.293461",
+      "googlePlaceId": "ChIJ_9NsVdkRBDER8wqpnsapF80",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googleEnrichedAt": 1778740414796
     },
     {
       "name": "Koh Chang Grand Lagoon Restaurant",
@@ -3528,7 +5466,20 @@
         "Romantic",
         "White Sand Beach"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.070100,102.292900"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.070100,102.292900",
+      "googlePlaceId": "ChIJz6GWR84TBDER9H9kPic2r3g",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 10:00 PM",
+        "Tuesday: 9:00 AM – 10:00 PM",
+        "Wednesday: 9:00 AM – 10:00 PM",
+        "Thursday: 9:00 AM – 10:00 PM",
+        "Friday: 9:00 AM – 10:00 PM",
+        "Saturday: 9:00 AM – 10:00 PM",
+        "Sunday: 9:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 94 882 8962",
+      "googleWebsiteUri": "http://www.grandviewgroupresort.com/koh-chang/en/index.php",
+      "googleEnrichedAt": 1778740416220
     },
     {
       "name": "Sangtawan",
@@ -3550,7 +5501,10 @@
         "Beach",
         "Lonely Beach"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.108694,102.270165"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.108694,102.270165",
+      "googlePlaceId": "ChIJOYpUtGUSBDER5UkJcFy8Ono",
+      "googlePhone": "+66 61 523 1468",
+      "googleEnrichedAt": 1778740417454
     },
     {
       "name": "El Barrio",
@@ -3572,7 +5526,21 @@
         "Cocktails",
         "Hidden Gem"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.029009,102.292775"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.029009,102.292775",
+      "googlePlaceId": "ChIJ2R5u7qwRBDER8NxEGP7QfPE",
+      "googleOpeningHours": [
+        "Monday: 12:30 – 10:00 PM",
+        "Tuesday: 12:30 – 10:00 PM",
+        "Wednesday: 12:30 – 10:00 PM",
+        "Thursday: 12:30 – 10:00 PM",
+        "Friday: 12:30 – 10:00 PM",
+        "Saturday: 12:30 – 10:00 PM",
+        "Sunday: 12:30 – 10:00 PM"
+      ],
+      "googlePhone": "+66 65 421 2646",
+      "googleWebsiteUri": "http://www.elbarriokohchang.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740418675
     },
     {
       "name": "Pizzeria Spaghetteria Toscana",
@@ -3594,7 +5562,20 @@
         "Pizza",
         "Stone Oven"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.068900,102.293900"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.068900,102.293900",
+      "googlePlaceId": "ChIJTcG6lhURBDERKvWey1kOQU4",
+      "googleOpeningHours": [
+        "Monday: 1:00 – 11:00 PM",
+        "Tuesday: 1:00 – 11:00 PM",
+        "Wednesday: 1:00 – 11:00 PM",
+        "Thursday: 1:00 – 11:00 PM",
+        "Friday: 1:00 – 11:00 PM",
+        "Saturday: 1:00 – 11:00 PM",
+        "Sunday: 1:00 – 11:00 PM"
+      ],
+      "googlePhone": "+66 92 423 3809",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740419898
     },
     {
       "name": "Toh Pho Restaurant",
@@ -3616,7 +5597,20 @@
         "Thai Classics",
         "Family"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.039800,102.300900"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.039800,102.300900",
+      "googlePlaceId": "ChIJi2JbQKARBDER2IppCVffMFE",
+      "googleOpeningHours": [
+        "Monday: 12:30 – 9:00 PM",
+        "Tuesday: 12:30 – 9:00 PM",
+        "Wednesday: 12:30 – 9:00 PM",
+        "Thursday: 12:30 – 9:00 PM",
+        "Friday: 12:30 – 9:00 PM",
+        "Saturday: Closed",
+        "Sunday: 12:30 – 9:00 PM"
+      ],
+      "googlePhone": "+66 90 856 6439",
+      "googlePriceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "googleEnrichedAt": 1778740421242
     },
     {
       "name": "Magic Garden Bar & Restaurant",
@@ -3638,7 +5632,21 @@
         "Garden Bar",
         "Lonely Beach"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.999533,102.298243"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.999533,102.298243",
+      "googlePlaceId": "ChIJC5DymmEQBDERU58_GtyGmno",
+      "googleOpeningHours": [
+        "Monday: 4:00 – 11:00 PM",
+        "Tuesday: 4:00 – 11:00 PM",
+        "Wednesday: 4:00 – 11:00 PM",
+        "Thursday: 4:00 – 11:00 PM",
+        "Friday: 4:00 – 11:00 PM",
+        "Saturday: 4:00 – 11:00 PM",
+        "Sunday: 4:00 – 11:00 PM"
+      ],
+      "googlePhone": "+66 84 891 7637",
+      "googleWebsiteUri": "http://magicgardenresorts.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740422567
     },
     {
       "name": "Salakkok Bay Restaurant",
@@ -3660,7 +5668,20 @@
         "East Coast",
         "Authentic"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.071779,102.281497"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.071779,102.281497",
+      "googlePlaceId": "ChIJoyCqjP8WBDERRI-_xCgT97k",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 7:00 PM",
+        "Tuesday: 9:00 AM – 7:00 PM",
+        "Wednesday: 9:00 AM – 7:00 PM",
+        "Thursday: 9:00 AM – 7:00 PM",
+        "Friday: 9:00 AM – 7:00 PM",
+        "Saturday: 9:00 AM – 7:00 PM",
+        "Sunday: 9:00 AM – 7:00 PM"
+      ],
+      "googlePhone": "+66 87 614 0959",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740423895
     },
     {
       "name": "Dee Cafe & Bakery",
@@ -3682,7 +5703,19 @@
         "Bakery",
         "Breakfast"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.040500,102.300000"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.040500,102.300000",
+      "googlePlaceId": "ChIJXTfQBgDZwxUR4oXyTrazrDc",
+      "googleOpeningHours": [
+        "Monday: 5:30 PM – 5:30 AM",
+        "Tuesday: 5:30 PM – 5:30 AM",
+        "Wednesday: 5:30 PM – 5:30 AM",
+        "Thursday: 5:30 PM – 5:30 AM",
+        "Friday: 5:30 PM – 5:30 AM",
+        "Saturday: 5:30 PM – 5:30 AM",
+        "Sunday: 5:30 PM – 5:30 AM"
+      ],
+      "googlePhone": "+966 58 364 8632",
+      "googleEnrichedAt": 1778740425129
     },
     {
       "name": "Baan Rim Nam (Tha Mai Rud)",
@@ -3704,7 +5737,10 @@
         "Pier",
         "Authentic"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.055720,102.292986"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.055720,102.292986",
+      "googlePlaceId": "ChIJ5YjbWrMRBDERCUiDkd3SSoQ",
+      "googleWebsiteUri": "https://iamkohchang.com/accommodation/klong-prao/kohchang-guest-house.html",
+      "googleEnrichedAt": 1778740426390
     },
     {
       "name": "The Sunflower (Klong Prao)",
@@ -3726,7 +5762,18 @@
         "Health",
         "Smoothie Bowls"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.059841,102.288906"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.059841,102.288906",
+      "googlePlaceId": "ChIJgx5usEcTBDERjfBsFhZgkek",
+      "googleOpeningHours": [
+        "Monday: 9:30 AM – 11:00 PM",
+        "Tuesday: 9:30 AM – 11:00 PM",
+        "Wednesday: 9:30 AM – 11:00 PM",
+        "Thursday: 9:30 AM – 11:00 PM",
+        "Friday: 9:30 AM – 11:00 PM",
+        "Saturday: 9:30 AM – 11:00 PM",
+        "Sunday: 9:30 AM – 11:00 PM"
+      ],
+      "googleEnrichedAt": 1778740427678
     }
   ]
 }

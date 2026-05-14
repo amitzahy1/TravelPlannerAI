@@ -7,6 +7,7 @@ import { getEnglishName } from '../utils/displayName';
 import { findSource, resolveSourceUrl } from '../utils/sourceCatalog';
 import { detectCountryCode } from '../utils/countryCodes';
 import { toast } from '../stores/useToastStore';
+import { isPlacesDisabled } from '../services/placesService';
 
 
 interface GlobalPlaceModalProps {
@@ -170,8 +171,7 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                         if (patch.googleNotFound) {
                                 toast.info('לא נמצא ב-Google Maps — סומן ב-X');
                         } else {
-                                toast.success(`המקום עודכן מ-Google${patch.googleRating ? ' · ★ ' + patch.googleRating : ''}`);
-                                if (patch.googlePhotoUrl) setImageUrl(patch.googlePhotoUrl);
+                                toast.success('המקום עודכן מ-Google');
                         }
                 } catch (err: any) {
                         const { PlacesQuotaExceededError, PlacesKeyError } = await import('../services/placesService');
@@ -204,7 +204,7 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                         <X className="w-6 h-6" />
                                 </button>
 
-                                {handleGoogleRefresh && (
+                                {handleGoogleRefresh && !isPlacesDisabled() && (
                                         <button
                                                 onClick={handleGoogleRefresh}
                                                 disabled={refreshingGoogle}

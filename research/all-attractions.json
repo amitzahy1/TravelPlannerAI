@@ -21,7 +21,19 @@
       ],
       "lat": 13.749351,
       "lng": 100.491864,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.749351,100.491864"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.749351,100.491864",
+      "googlePlaceId": "ChIJPzZsMU6Z4jARQUzvk913bCo",
+      "googleOpeningHours": [
+        "Monday: 8:30 AM – 3:30 PM",
+        "Tuesday: 8:30 AM – 3:30 PM",
+        "Wednesday: 8:30 AM – 3:30 PM",
+        "Thursday: 8:30 AM – 3:30 PM",
+        "Friday: 8:30 AM – 3:30 PM",
+        "Saturday: 8:30 AM – 3:30 PM",
+        "Sunday: 8:30 AM – 3:30 PM"
+      ],
+      "googleWebsiteUri": "https://www.royalgrandpalace.th/th/home",
+      "googleEnrichedAt": 1778698085940
     },
     {
       "name": "Wat Pho (Temple of the Reclining Buddha)",
@@ -44,7 +56,20 @@
       ],
       "lat": 13.746504,
       "lng": 100.491692,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.746504,100.491692"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.746504,100.491692",
+      "googlePlaceId": "ChIJmaPD7i6Z4jARf0QKa2FrGhc",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 7:30 PM",
+        "Tuesday: 8:00 AM – 7:30 PM",
+        "Wednesday: 8:00 AM – 7:30 PM",
+        "Thursday: 8:00 AM – 7:30 PM",
+        "Friday: 8:00 AM – 7:30 PM",
+        "Saturday: 8:00 AM – 7:30 PM",
+        "Sunday: 8:00 AM – 7:30 PM"
+      ],
+      "googlePhone": "+66 83 057 7100",
+      "googleWebsiteUri": "http://www.watpho.com/en",
+      "googleEnrichedAt": 1778698087251
     },
     {
       "name": "Wat Arun (Temple of Dawn)",
@@ -67,7 +92,20 @@
       ],
       "lat": 13.744169,
       "lng": 100.488893,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.744169,100.488893"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.744169,100.488893",
+      "googlePlaceId": "ChIJaSv_6gaZ4jARnbiUVn6Z_YY",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 6:00 PM",
+        "Tuesday: 8:00 AM – 6:00 PM",
+        "Wednesday: 8:00 AM – 6:00 PM",
+        "Thursday: 8:00 AM – 6:00 PM",
+        "Friday: 8:00 AM – 6:00 PM",
+        "Saturday: 8:00 AM – 6:00 PM",
+        "Sunday: 8:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 2 891 2185",
+      "googleWebsiteUri": "https://www.facebook.com/watarunofficial",
+      "googleEnrichedAt": 1778698088539
     },
     {
       "name": "Wat Phra Kaew (Temple of the Emerald Buddha)",
@@ -88,7 +126,19 @@
       ],
       "lat": 13.751004,
       "lng": 100.490133,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.751004,100.490133"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.751004,100.490133",
+      "googlePlaceId": "ChIJ5Wl37g6Z4jARiP4itarBPDQ",
+      "googleOpeningHours": [
+        "Monday: 8:30 AM – 3:30 PM",
+        "Tuesday: 8:30 AM – 3:30 PM",
+        "Wednesday: 8:30 AM – 3:30 PM",
+        "Thursday: 8:30 AM – 3:30 PM",
+        "Friday: 8:30 AM – 3:30 PM",
+        "Saturday: 8:30 AM – 3:30 PM",
+        "Sunday: 8:30 AM – 3:30 PM"
+      ],
+      "googleWebsiteUri": "https://www.royalgrandpalace.th/th/home",
+      "googleEnrichedAt": 1778740093621
     },
     {
       "name": "Wat Traimit (Temple of the Golden Buddha)",
@@ -129,7 +179,20 @@
       ],
       "lat": 13.800265,
       "lng": 100.551123,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.800265,100.551123"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.800265,100.551123",
+      "googlePlaceId": "ChIJ3fiD6BSc4jARS324hNeR8ZE",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 5:00 AM – 10:00 PM",
+        "Wednesday: 5:00 AM – 10:00 PM",
+        "Thursday: 5:00 AM – 10:00 PM",
+        "Friday: 5:00 AM – 12:00 AM",
+        "Saturday: 5:00 AM – 12:00 AM",
+        "Sunday: 5:00 AM – 12:00 AM"
+      ],
+      "googlePhone": "+66 2 272 4270",
+      "googleWebsiteUri": "https://www.facebook.com/p/%E0%B8%95%E0%B8%A5%E0%B8%B2%E0%B8%94%E0%B8%99%E0%B8%B1%E0%B8%94%E0%B8%88%E0%B8%95%E0%B8%B8%E0%B8%88%E0%B8%B1%E0%B8%81%E0%B8%A3-%E0%B8%AA%E0%B8%87%E0%B8%95%E0%B8%81%E0%B8%97%E0%B8%A1-Chatuchak-Weekend-Market-Jatujak-market-jjmarket-100075700702634/",
+      "googleEnrichedAt": 1778740095128
     },
     {
       "name": "Chao Phraya River Cruise",
@@ -150,7 +213,21 @@
       ],
       "lat": 13.75034,
       "lng": 100.487524,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.750340,100.487524"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.750340,100.487524",
+      "googlePlaceId": "ChIJDW6sQpOY4jARb3IP4RHvang",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 8:00 PM",
+        "Tuesday: 9:00 AM – 8:00 PM",
+        "Wednesday: 9:00 AM – 8:00 PM",
+        "Thursday: 9:00 AM – 8:00 PM",
+        "Friday: 9:00 AM – 8:00 PM",
+        "Saturday: 9:00 AM – 8:00 PM",
+        "Sunday: 9:00 AM – 8:00 PM"
+      ],
+      "googlePhone": "+66 2 860 3700",
+      "googleWebsiteUri": "https://www.chaophrayaprincess.com/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740096587
     },
     {
       "name": "Erawan Museum",
@@ -172,7 +249,20 @@
       ],
       "lat": 13.628503,
       "lng": 100.589541,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.628503,100.589541"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.628503,100.589541",
+      "googlePlaceId": "ChIJL-1RuzKh4jARd-9ZboreTeA",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 5:00 PM",
+        "Tuesday: 9:00 AM – 5:00 PM",
+        "Wednesday: 9:00 AM – 5:00 PM",
+        "Thursday: 9:00 AM – 5:00 PM",
+        "Friday: 9:00 AM – 5:00 PM",
+        "Saturday: 9:00 AM – 5:00 PM",
+        "Sunday: 9:00 AM – 5:00 PM"
+      ],
+      "googlePhone": "+66 88 695 9307",
+      "googleWebsiteUri": "https://www.klook.com/en-GB/activity/368-ancient-city-erawan-museum-ticket-bangkok/?aid=30843&aff_adid=743734&aff_label1=V%C3%A9%20B%E1%BA%A3o%20T%C3%A0ng%20Erawan%20%20th%C3%A1i%20lan&aff_label2=&aff_label3=&aff_pid=&aff_sid=&utm_medium=affiliate-alwayson&utm_source=non-network&utm_campaign=30843&utm_term=&utm_content=&aff_klick_id=44377434499-30843-743734-82f47cf",
+      "googleEnrichedAt": 1778740097864
     },
     {
       "name": "Lumpini Park",
@@ -194,7 +284,19 @@
       ],
       "lat": 13.731504,
       "lng": 100.537546,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.731504,100.537546"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.731504,100.537546",
+      "googlePlaceId": "ChIJG7BL7Saf4jARNmn5AQiyAaw",
+      "googleOpeningHours": [
+        "Monday: 4:30 AM – 10:00 PM",
+        "Tuesday: 4:30 AM – 10:00 PM",
+        "Wednesday: 4:30 AM – 10:00 PM",
+        "Thursday: 4:30 AM – 10:00 PM",
+        "Friday: 4:30 AM – 10:00 PM",
+        "Saturday: 4:30 AM – 10:00 PM",
+        "Sunday: 4:30 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 252 7006",
+      "googleEnrichedAt": 1778740099125
     },
     {
       "name": "Asiatique The Riverfront",
@@ -216,7 +318,20 @@
       ],
       "lat": 13.704217,
       "lng": 100.502826,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.704217,100.502826"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.704217,100.502826",
+      "googlePlaceId": "ChIJtepc75aY4jARVvgRfYrM38s",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 12:00 AM",
+        "Tuesday: 11:00 AM – 12:00 AM",
+        "Wednesday: 11:00 AM – 12:00 AM",
+        "Thursday: 11:00 AM – 12:00 AM",
+        "Friday: 11:00 AM – 12:00 AM",
+        "Saturday: 11:00 AM – 12:00 AM",
+        "Sunday: 11:00 AM – 12:00 AM"
+      ],
+      "googlePhone": "+66 92 246 0812",
+      "googleWebsiteUri": "https://www.asiatiquethailand.com/",
+      "googleEnrichedAt": 1778740100434
     },
     {
       "name": "Khao San Road",
@@ -238,7 +353,9 @@
       ],
       "lat": 13.758884,
       "lng": 100.497317,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.758884,100.497317"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.758884,100.497317",
+      "googlePlaceId": "ChIJDR23yhKZ4jARdqd5AHsct0A",
+      "googleEnrichedAt": 1778740101634
     },
     {
       "name": "Soi Cowboy",
@@ -251,7 +368,7 @@
       "duration": "Evening",
       "price": "Free",
       "best_time_to_visit": "Late evening",
-      "rating": 4.0,
+      "rating": 4,
       "reviewCount": 12000,
       "tags": [
         "Nightlife",
@@ -259,7 +376,9 @@
       ],
       "lat": 13.737003,
       "lng": 100.562137,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.737003,100.562137"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.737003,100.562137",
+      "googlePlaceId": "ChIJfSD7POOe4jARCrgtHobogBM",
+      "googleEnrichedAt": 1778740102808
     },
     {
       "name": "Damnoen Saduak Floating Market",
@@ -281,7 +400,19 @@
       ],
       "lat": 13.519762,
       "lng": 99.959352,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.519762,99.959352"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.519762,99.959352",
+      "googlePlaceId": "ChIJUR_9ybjX4jAR2-EHiTbQTlg",
+      "googleOpeningHours": [
+        "Monday: 7:00 AM – 1:00 PM",
+        "Tuesday: 7:00 AM – 1:00 PM",
+        "Wednesday: 7:00 AM – 1:00 PM",
+        "Thursday: 7:00 AM – 1:00 PM",
+        "Friday: 7:00 AM – 1:00 PM",
+        "Saturday: 7:00 AM – 1:00 PM",
+        "Sunday: 7:00 AM – 1:00 PM"
+      ],
+      "googlePhone": "+66 85 222 7470",
+      "googleEnrichedAt": 1778740104057
     },
     {
       "name": "Bangkok National Museum",
@@ -303,7 +434,20 @@
       ],
       "lat": 13.758177,
       "lng": 100.491482,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.758177,100.491482"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.758177,100.491482",
+      "googlePlaceId": "ChIJbXZLwgyZ4jARO_0Exd6l_lU",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: Closed",
+        "Wednesday: 8:30 AM – 4:00 PM",
+        "Thursday: 8:30 AM – 4:00 PM",
+        "Friday: 8:30 AM – 4:00 PM",
+        "Saturday: 8:30 AM – 4:00 PM",
+        "Sunday: 8:30 AM – 4:00 PM"
+      ],
+      "googlePhone": "+66 2 224 1370",
+      "googleWebsiteUri": "http://www.virtualmuseum.finearts.go.th/bangkoknationalmuseums/index.php/th/",
+      "googleEnrichedAt": 1778740105455
     },
     {
       "name": "Jim Thompson House",
@@ -326,7 +470,20 @@
       ],
       "lat": 13.749227,
       "lng": 100.528281,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.749227,100.528281"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.749227,100.528281",
+      "googlePlaceId": "ChIJWVT7hDKZ4jARGJOhe21RhOk",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 5:00 PM",
+        "Tuesday: 10:00 AM – 5:00 PM",
+        "Wednesday: 10:00 AM – 5:00 PM",
+        "Thursday: 10:00 AM – 5:00 PM",
+        "Friday: 10:00 AM – 5:00 PM",
+        "Saturday: 10:00 AM – 5:00 PM",
+        "Sunday: 10:00 AM – 5:00 PM"
+      ],
+      "googlePhone": "+66 2 216 7368",
+      "googleWebsiteUri": "https://jimthompsonhouse.org/",
+      "googleEnrichedAt": 1778740106702
     },
     {
       "name": "Wat Saket (Golden Mount)",
@@ -349,7 +506,19 @@
       ],
       "lat": 13.75268,
       "lng": 100.507391,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.752680,100.507391"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.752680,100.507391",
+      "googlePlaceId": "ChIJP-MtN12Z4jARlEBmga-oF4w",
+      "googleOpeningHours": [
+        "Monday: 7:00 AM – 7:00 PM",
+        "Tuesday: 7:00 AM – 7:00 PM",
+        "Wednesday: 7:00 AM – 7:00 PM",
+        "Thursday: 7:00 AM – 7:00 PM",
+        "Friday: 7:00 AM – 7:00 PM",
+        "Saturday: 7:00 AM – 7:00 PM",
+        "Sunday: 7:00 AM – 7:00 PM"
+      ],
+      "googleWebsiteUri": "https://thai.tourismthailand.org/Attraction/%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%AA%E0%B8%A3%E0%B8%B0%E0%B9%80%E0%B8%81%E0%B8%A8-%E0%B8%A3%E0%B8%B2%E0%B8%8A%E0%B8%A7%E0%B8%A3%E0%B8%A1%E0%B8%AB%E0%B8%B2%E0%B8%A7%E0%B8%B4%E0%B8%AB%E0%B8%B2%E0%B8%A3-%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%A0%E0%B8%B9%E0%B9%80%E0%B8%82%E0%B8%B2%E0%B8%97%E0%B8%AD%E0%B8%87",
+      "googleEnrichedAt": 1778740108003
     },
     {
       "name": "MBK Center",
@@ -371,7 +540,20 @@
       ],
       "lat": 13.744715,
       "lng": 100.529916,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.744715,100.529916"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.744715,100.529916",
+      "googlePlaceId": "ChIJ7TZ3I5Of4jAR3lZ2lx-zXkA",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 853 9000",
+      "googleWebsiteUri": "https://www.mbk-center.co.th/",
+      "googleEnrichedAt": 1778740109226
     },
     {
       "name": "Siam Paragon",
@@ -393,7 +575,21 @@
       ],
       "lat": 13.746778,
       "lng": 100.534954,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.746778,100.534954"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.746778,100.534954",
+      "googlePlaceId": "ChIJIeWu482e4jARYymvLJqTQ58",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 690 1000",
+      "googleWebsiteUri": "https://www.siamparagon.co.th/",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740110516
     },
     {
       "name": "Sea Life Bangkok Ocean World",
@@ -416,7 +612,20 @@
       ],
       "lat": 13.746975,
       "lng": 100.535199,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.746975,100.535199"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.746975,100.535199",
+      "googlePlaceId": "ChIJH4I85c2e4jARUMYLeiqfBd0",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 8:00 PM",
+        "Tuesday: 10:00 AM – 8:00 PM",
+        "Wednesday: 10:00 AM – 8:00 PM",
+        "Thursday: 10:00 AM – 8:00 PM",
+        "Friday: 10:00 AM – 8:00 PM",
+        "Saturday: 10:00 AM – 8:00 PM",
+        "Sunday: 10:00 AM – 8:00 PM"
+      ],
+      "googlePhone": "+66 2 842 2000",
+      "googleWebsiteUri": "https://expresstickets.shop/sea-life-bangkok-ocean-world",
+      "googleEnrichedAt": 1778740111785
     },
     {
       "name": "Safari World",
@@ -439,7 +648,20 @@
       ],
       "lat": 13.865017,
       "lng": 100.70306,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.865017,100.703060"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.865017,100.703060",
+      "googlePlaceId": "ChIJc50ygA1jHTERbHsyFbmUFV0",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 9:00 AM – 5:00 PM",
+        "Wednesday: 9:00 AM – 5:00 PM",
+        "Thursday: 9:00 AM – 5:00 PM",
+        "Friday: 9:00 AM – 5:00 PM",
+        "Saturday: 9:00 AM – 5:30 PM",
+        "Sunday: 9:00 AM – 5:30 PM"
+      ],
+      "googlePhone": "+66 2 518 1000",
+      "googleWebsiteUri": "https://www.safariworld.online/",
+      "googleEnrichedAt": 1778740113029
     },
     {
       "name": "Dream World",
@@ -462,7 +684,20 @@
       ],
       "lat": 13.990948,
       "lng": 100.675179,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.990948,100.675179"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.990948,100.675179",
+      "googlePlaceId": "ChIJD_Ph9PF-HTERKo_7Kxa8k0g",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 5:00 PM",
+        "Tuesday: 10:00 AM – 5:00 PM",
+        "Wednesday: 10:00 AM – 5:00 PM",
+        "Thursday: 10:00 AM – 5:00 PM",
+        "Friday: 10:00 AM – 5:00 PM",
+        "Saturday: 10:00 AM – 6:00 PM",
+        "Sunday: 10:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 2 577 8666",
+      "googleWebsiteUri": "https://www.dreamworld.co.th/",
+      "googleEnrichedAt": 1778740114290
     },
     {
       "name": "Talad Rot Fai (Train Night Market)",
@@ -504,7 +739,20 @@
       ],
       "lat": 13.761002,
       "lng": 100.508756,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.761002,100.508756"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.761002,100.508756",
+      "googlePlaceId": "ChIJEyraT0CZ4jAREz5xKJKTLDM",
+      "googleOpeningHours": [
+        "Monday: 6:00 – 10:00 PM",
+        "Tuesday: 6:00 – 10:00 PM",
+        "Wednesday: 5:00 – 10:00 PM",
+        "Thursday: 5:00 – 10:00 PM",
+        "Friday: 6:00 – 10:00 PM",
+        "Saturday: 6:00 – 10:00 PM",
+        "Sunday: 5:00 – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 281 4205",
+      "googleWebsiteUri": "https://www.rajadamnern.com/",
+      "googleEnrichedAt": 1778740115536
     },
     {
       "name": "Lumpinee Boxing Stadium",
@@ -526,7 +774,20 @@
       ],
       "lat": 13.867088,
       "lng": 100.608782,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.867088,100.608782"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.867088,100.608782",
+      "googlePlaceId": "ChIJwXS6niOf4jARlvv0kSxrmY4",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: Closed",
+        "Wednesday: Closed",
+        "Thursday: Closed",
+        "Friday: 7:30 – 11:30 PM",
+        "Saturday: 8:00 AM – 12:00 PM, 5:30 – 8:00 PM",
+        "Sunday: Closed"
+      ],
+      "googlePhone": "+66 80 045 9541",
+      "googleWebsiteUri": "https://ftmuaythaitickets.com/product-category/bangkok/lumpinee-stadium-bangkok/",
+      "googleEnrichedAt": 1778740116771
     },
     {
       "name": "Wat Mahathat",
@@ -547,7 +808,19 @@
       ],
       "lat": 13.874362,
       "lng": 100.597205,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.874362,100.597205"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.874362,100.597205",
+      "googlePlaceId": "ChIJ-UkaTEl04jAR2QgEGFAM1dU",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 6:30 PM",
+        "Tuesday: 8:00 AM – 6:30 PM",
+        "Wednesday: 8:00 AM – 6:30 PM",
+        "Thursday: 8:00 AM – 6:30 PM",
+        "Friday: 8:00 AM – 6:30 PM",
+        "Saturday: 8:00 AM – 6:30 PM",
+        "Sunday: 8:00 AM – 6:30 PM"
+      ],
+      "googlePhone": "+66 35 242 286",
+      "googleEnrichedAt": 1778740118097
     },
     {
       "name": "Talad Noi (Old Town)",
@@ -569,7 +842,9 @@
       ],
       "lat": 13.732094,
       "lng": 100.513825,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.732094,100.513825"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.732094,100.513825",
+      "googlePlaceId": "ChIJS7pg-tiY4jARZz6TpYihORk",
+      "googleEnrichedAt": 1778740119366
     },
     {
       "name": "Bang Krachao (Bangkok's Green Lung)",
@@ -612,7 +887,19 @@
         "Monocle",
         "Must-See"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.712229,100.579583"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.712229,100.579583",
+      "googlePlaceId": "ChIJuQxlKwCf4jARhBH0bCE0vDs",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 7:00 PM",
+        "Tuesday: Closed",
+        "Wednesday: Closed",
+        "Thursday: 10:00 AM – 7:00 PM",
+        "Friday: 10:00 AM – 7:00 PM",
+        "Saturday: 10:00 AM – 7:00 PM",
+        "Sunday: 10:00 AM – 7:00 PM"
+      ],
+      "googleWebsiteUri": "https://dibbangkok.org/",
+      "googleEnrichedAt": 1778740120586
     },
     {
       "name": "One Bangkok",
@@ -636,7 +923,20 @@
         "Mitsukoshi Depachika",
         "Lumpini"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.727099,100.546766"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.727099,100.546766",
+      "googlePlaceId": "ChIJo-KudiSf4jARuHpmM504kW4",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 483 5555",
+      "googleWebsiteUri": "http://onebangkok.com/en/",
+      "googleEnrichedAt": 1778740121846
     },
     {
       "name": "Space & Time Cube+",
@@ -661,7 +961,20 @@
         "TikTok Viral",
         "Family"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.712372,100.435013"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.712372,100.435013",
+      "googlePlaceId": "ChIJwf47m8CZ4jARLTs_Bk0eaBs",
+      "googleOpeningHours": [
+        "Monday: 10:30 AM – 9:30 PM",
+        "Tuesday: 10:30 AM – 9:30 PM",
+        "Wednesday: 10:30 AM – 9:30 PM",
+        "Thursday: 10:30 AM – 9:30 PM",
+        "Friday: 10:30 AM – 9:30 PM",
+        "Saturday: 10:00 AM – 9:30 PM",
+        "Sunday: 10:00 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 93 139 8934",
+      "googleWebsiteUri": "https://www.zipeventapp.com/e/Space-Time-Cube?fbclid=PAQ0xDSwL8TeVleHRuA2FlbQIxMQABp6wL-hvnG2E0PJIkQBbzz0TVwAPqFftKogEVgS07PdKjcKYHMpfruIv3Af0v_aem_ol9lW_mpBd-REIdES0SXgw",
+      "googleEnrichedAt": 1778740123079
     },
     {
       "name": "Jurassic World: The Experience – Bangkok",
@@ -686,7 +999,19 @@
         "Family",
         "World's Largest"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.704220,100.502046"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.704220,100.502046",
+      "googlePlaceId": "ChIJqdO6PACZ4jARPsmRMJG9iWM",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 10:00 PM",
+        "Tuesday: 11:00 AM – 10:00 PM",
+        "Wednesday: 11:00 AM – 10:00 PM",
+        "Thursday: 11:00 AM – 10:00 PM",
+        "Friday: 11:00 AM – 10:00 PM",
+        "Saturday: 11:00 AM – 10:00 PM",
+        "Sunday: 11:00 AM – 10:00 PM"
+      ],
+      "googleWebsiteUri": "https://jurassicworldexperience.com/th/en/",
+      "googleEnrichedAt": 1778740124335
     },
     {
       "name": "Bangkok Reflection (One City Center)",
@@ -711,7 +1036,20 @@
         "Instagrammable",
         "360° View"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.763975,100.539253"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.763975,100.539253",
+      "googlePlaceId": "ChIJkxdwWiyf4jARdUV1zHHjqlo",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 2:00 AM",
+        "Tuesday: 11:00 AM – 2:00 AM",
+        "Wednesday: 11:00 AM – 2:00 AM",
+        "Thursday: 11:00 AM – 2:00 AM",
+        "Friday: 11:00 AM – 2:00 AM",
+        "Saturday: 11:00 AM – 2:00 AM",
+        "Sunday: 11:00 AM – 2:00 AM"
+      ],
+      "googlePhone": "+66 92 888 6332",
+      "googleWebsiteUri": "https://akaraskyhanuman.com/",
+      "googleEnrichedAt": 1778740125575
     },
     {
       "name": "Dusit Central Park",
@@ -736,7 +1074,20 @@
         "Free",
         "Silom"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.728320,100.537814"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.728320,100.537814",
+      "googlePlaceId": "ChIJe0H3CRSf4jAR_zOGf06ufiw",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 407 0111",
+      "googleWebsiteUri": "https://dusitcentralpark.com/",
+      "googleEnrichedAt": 1778740126801
     },
     {
       "name": "Mahanakhon SkyWalk",
@@ -761,7 +1112,19 @@
         "Glass Floor",
         "Sunset"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.723150,100.528081"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.723150,100.528081",
+      "googlePlaceId": "ChIJhUnURACZ4jARwb3dT5UiytA",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 12:00 AM",
+        "Tuesday: 10:00 AM – 12:00 AM",
+        "Wednesday: 10:00 AM – 12:00 AM",
+        "Thursday: 10:00 AM – 12:00 AM",
+        "Friday: 10:00 AM – 12:00 AM",
+        "Saturday: 10:00 AM – 12:00 AM",
+        "Sunday: 10:00 AM – 12:00 AM"
+      ],
+      "googleWebsiteUri": "https://kingpowermahanakhon.co.th/",
+      "googleEnrichedAt": 1778740128041
     },
     {
       "name": "Song Wat Neighborhood",
@@ -786,7 +1149,18 @@
         "Heritage",
         "Walk"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.735769,100.510899"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.735769,100.510899",
+      "googlePlaceId": "ChIJFy2NQgCZ4jARohQQnlHuJ8M",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googleEnrichedAt": 1778740129312
     },
     {
       "name": "Wat Pariwat (David Beckham Temple)",
@@ -811,7 +1185,18 @@
         "Pop Culture",
         "Free"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.696400,100.531100"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.696400,100.531100",
+      "googlePlaceId": "ChIJzfgR4Pah4jARMfzU2HDqr80",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 6:00 PM",
+        "Tuesday: 8:00 AM – 6:00 PM",
+        "Wednesday: 8:00 AM – 6:00 PM",
+        "Thursday: 8:00 AM – 6:00 PM",
+        "Friday: 8:00 AM – 6:00 PM",
+        "Saturday: 8:00 AM – 6:00 PM",
+        "Sunday: 8:00 AM – 6:00 PM"
+      ],
+      "googleEnrichedAt": 1778740130557
     },
     {
       "name": "Siriraj Medical Museum (Forensic Museum)",
@@ -836,7 +1221,20 @@
         "Forensic",
         "Not for the Squeamish"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.758714,100.485500"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.758714,100.485500",
+      "googlePlaceId": "ChIJq6qqqoaZ4jARanST2cxGKOk",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 5:00 PM",
+        "Tuesday: Closed",
+        "Wednesday: 10:00 AM – 5:00 PM",
+        "Thursday: 10:00 AM – 5:00 PM",
+        "Friday: 10:00 AM – 5:00 PM",
+        "Saturday: 10:00 AM – 5:00 PM",
+        "Sunday: 10:00 AM – 5:00 PM"
+      ],
+      "googlePhone": "+66 2 414 1476",
+      "googleWebsiteUri": "http://www.sirirajmuseum.com/",
+      "googleEnrichedAt": 1778740131816
     },
     {
       "name": "Wat Saman Rattanaram (Pink Ganesha)",
@@ -861,7 +1259,20 @@
         "Instagrammable",
         "Day Trip"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.700000,101.067000"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.700000,101.067000",
+      "googlePlaceId": "ChIJscSqy5gXHTERYtT8AoCwH9c",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googlePhone": "+66 81 983 0400",
+      "googleWebsiteUri": "https://www.facebook.com/wat.saman/",
+      "googleEnrichedAt": 1778740133068
     },
     {
       "name": "Snake Farm (Queen Saovabha Memorial Institute)",
@@ -886,7 +1297,20 @@
         "Snake Demos",
         "Educational"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.732825,100.532844"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.732825,100.532844",
+      "googlePlaceId": "ChIJweRxVyqf4jARVKDgpRxLRkI",
+      "googleOpeningHours": [
+        "Monday: 9:30 AM – 3:30 PM",
+        "Tuesday: 9:30 AM – 3:30 PM",
+        "Wednesday: 9:30 AM – 3:30 PM",
+        "Thursday: 9:30 AM – 3:30 PM",
+        "Friday: 9:30 AM – 3:30 PM",
+        "Saturday: 9:30 AM – 1:00 PM",
+        "Sunday: 9:30 AM – 1:00 PM"
+      ],
+      "googlePhone": "+66 2 252 0161",
+      "googleWebsiteUri": "https://saovabha.redcross.or.th/service_saovabha/Snake-Farm-Services",
+      "googleEnrichedAt": 1778740134285
     },
     {
       "name": "Ratchanaddaram Temple (Loha Prasat)",
@@ -911,7 +1335,20 @@
         "Free",
         "Hidden Gem"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.754400,100.503600"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.754400,100.503600",
+      "googlePlaceId": "ChIJYTbBTBSZ4jARYTUWfRRhB8I",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 5:00 PM",
+        "Tuesday: 8:00 AM – 5:00 PM",
+        "Wednesday: 8:00 AM – 5:00 PM",
+        "Thursday: 8:00 AM – 5:00 PM",
+        "Friday: 8:00 AM – 5:00 PM",
+        "Saturday: 8:00 AM – 5:00 PM",
+        "Sunday: 8:00 AM – 5:00 PM"
+      ],
+      "googlePhone": "+66 2 224 8807",
+      "googleWebsiteUri": "https://www.facebook.com/watratchanadda/",
+      "googleEnrichedAt": 1778740135541
     },
     {
       "name": "KidZania Bangkok",
@@ -936,7 +1373,10 @@
         "Edutainment",
         "Siam Paragon"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.746771,100.535169"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.746771,100.535169",
+      "googlePlaceId": "ChIJo66Bds6e4jARDv_a-Rri3vE",
+      "googleWebsiteUri": "https://bit.ly/bangkok_thailand",
+      "googleEnrichedAt": 1778740136752
     },
     {
       "name": "Iconsiam",
@@ -961,7 +1401,20 @@
         "Shopping",
         "Family"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.726823,100.510294"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.726823,100.510294",
+      "googlePlaceId": "ChIJFRjwgc2Z4jAR9JIadoa9YBY",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 10:00 PM",
+        "Tuesday: 10:00 AM – 10:00 PM",
+        "Wednesday: 10:00 AM – 10:00 PM",
+        "Thursday: 10:00 AM – 10:00 PM",
+        "Friday: 10:00 AM – 10:00 PM",
+        "Saturday: 10:00 AM – 10:00 PM",
+        "Sunday: 10:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 2 495 7000",
+      "googleWebsiteUri": "https://www.iconsiam.com/",
+      "googleEnrichedAt": 1778740138004
     },
     {
       "name": "Sanctuary of Truth",
@@ -984,7 +1437,10 @@
       ],
       "lat": 12.972777,
       "lng": 100.88915,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.972777,100.889150"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.972777,100.889150",
+      "googlePlaceId": "ChIJtTzmaAC9AjERzH_GXG_uJjM",
+      "googleWebsiteUri": "https://sanctuaryoftruthmuseum.com/",
+      "googleEnrichedAt": 1778740139329
     },
     {
       "name": "Nong Nooch Tropical Garden",
@@ -1007,7 +1463,20 @@
       ],
       "lat": 12.764685,
       "lng": 100.936119,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.764685,100.936119"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.764685,100.936119",
+      "googlePlaceId": "ChIJvzMZsGySAjERUYRvklulr98",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 6:00 PM",
+        "Tuesday: 8:00 AM – 6:00 PM",
+        "Wednesday: 8:00 AM – 6:00 PM",
+        "Thursday: 8:00 AM – 6:00 PM",
+        "Friday: 8:00 AM – 6:00 PM",
+        "Saturday: 8:00 AM – 6:00 PM",
+        "Sunday: 8:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 81 919 2153",
+      "googleWebsiteUri": "https://www.nongnoochpattaya.com/th/",
+      "googleEnrichedAt": 1778740140565
     },
     {
       "name": "Ramayana Water Park",
@@ -1030,7 +1499,20 @@
       ],
       "lat": 12.750536,
       "lng": 100.962101,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.750536,100.962101"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.750536,100.962101",
+      "googlePlaceId": "ChIJObZTI12NAjERxn6eZgNi6SE",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 6:00 PM",
+        "Tuesday: 11:00 AM – 6:00 PM",
+        "Wednesday: Closed",
+        "Thursday: 11:00 AM – 6:00 PM",
+        "Friday: 11:00 AM – 6:00 PM",
+        "Saturday: 11:00 AM – 6:00 PM",
+        "Sunday: 11:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 33 005 929",
+      "googleWebsiteUri": "https://www.ramayanawaterpark.com/",
+      "googleEnrichedAt": 1778740141861
     },
     {
       "name": "Columbia Pictures Aquaverse",
@@ -1052,7 +1534,20 @@
       ],
       "lat": 12.785298,
       "lng": 100.914323,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.785298,100.914323"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.785298,100.914323",
+      "googlePlaceId": "ChIJ7fy1J0CSAjERjvrGViThr_g",
+      "googleOpeningHours": [
+        "Monday: 10:00 AM – 6:00 PM",
+        "Tuesday: 10:00 AM – 6:00 PM",
+        "Wednesday: Closed",
+        "Thursday: 10:00 AM – 6:00 PM",
+        "Friday: 10:00 AM – 6:00 PM",
+        "Saturday: 10:00 AM – 6:00 PM",
+        "Sunday: 10:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 33 004 999",
+      "googleWebsiteUri": "https://columbiapicturesaquaverse.com/?utm_source=google&utm_medium=organic&utm_campaign=google_business_profile",
+      "googleEnrichedAt": 1778740143083
     },
     {
       "name": "Pattaya Sheep Farm",
@@ -1074,7 +1569,20 @@
       ],
       "lat": 12.927605,
       "lng": 100.951273,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.927605,100.951273"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.927605,100.951273",
+      "googlePlaceId": "ChIJh1FQyYi_AjERn1CS-_OuMJc",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 6:00 PM",
+        "Tuesday: 9:00 AM – 6:00 PM",
+        "Wednesday: 9:00 AM – 6:00 PM",
+        "Thursday: 9:00 AM – 6:00 PM",
+        "Friday: 8:30 AM – 6:00 PM",
+        "Saturday: 9:00 AM – 6:00 PM",
+        "Sunday: 9:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 97 459 9919",
+      "googleWebsiteUri": "http://www.facebook.com/Familyparkpattaya",
+      "googleEnrichedAt": 1778740144334
     },
     {
       "name": "Tiger Park Pattaya",
@@ -1096,7 +1604,20 @@
       ],
       "lat": 12.94442,
       "lng": 100.909714,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.944420,100.909714"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.944420,100.909714",
+      "googlePlaceId": "ChIJ0cP9RBeUAjERNe0EwupDJus",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 6:00 PM",
+        "Tuesday: 9:00 AM – 6:00 PM",
+        "Wednesday: 9:00 AM – 6:00 PM",
+        "Thursday: 9:00 AM – 6:00 PM",
+        "Friday: 9:00 AM – 6:00 PM",
+        "Saturday: 9:00 AM – 6:00 PM",
+        "Sunday: 9:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 38 255 221",
+      "googleWebsiteUri": "http://www.tigerpark.com/home-pattaya",
+      "googleEnrichedAt": 1778740145653
     },
     {
       "name": "Underwater World Pattaya",
@@ -1119,7 +1640,20 @@
       ],
       "lat": 12.896682,
       "lng": 100.896131,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.896682,100.896131"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.896682,100.896131",
+      "googlePlaceId": "ChIJ0d3MhSyUAjER4dgrD9Nj_gQ",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 6:00 PM",
+        "Tuesday: 9:00 AM – 6:00 PM",
+        "Wednesday: 9:00 AM – 6:00 PM",
+        "Thursday: 9:00 AM – 6:00 PM",
+        "Friday: 9:00 AM – 6:00 PM",
+        "Saturday: 9:00 AM – 6:00 PM",
+        "Sunday: 9:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 81 575 1006",
+      "googleWebsiteUri": "https://underwaterworldpattaya.com/",
+      "googleEnrichedAt": 1778740146887
     },
     {
       "name": "Cartoon Network Amazone Waterpark",
@@ -1161,7 +1695,20 @@
       ],
       "lat": 12.94905,
       "lng": 100.887562,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.949050,100.887562"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.949050,100.887562",
+      "googlePlaceId": "ChIJgXsixGyWAjER8ymCIoiQb7M",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 10:30 PM",
+        "Tuesday: 9:00 AM – 10:30 PM",
+        "Wednesday: 9:00 AM – 10:30 PM",
+        "Thursday: 9:00 AM – 10:30 PM",
+        "Friday: 9:00 AM – 10:30 PM",
+        "Saturday: 9:00 AM – 10:30 PM",
+        "Sunday: 9:00 AM – 10:30 PM"
+      ],
+      "googlePhone": "+66 38 421 700",
+      "googleWebsiteUri": "https://www.tiffany-show.co.th/",
+      "googleEnrichedAt": 1778740148150
     },
     {
       "name": "Alcazar Cabaret",
@@ -1183,7 +1730,20 @@
       ],
       "lat": 12.942989,
       "lng": 100.889005,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.942989,100.889005"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.942989,100.889005",
+      "googlePlaceId": "ChIJxYf1agCWAjERSpuP5_nSV84",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 9:30 PM",
+        "Tuesday: 9:00 AM – 9:30 PM",
+        "Wednesday: 9:00 AM – 9:30 PM",
+        "Thursday: 9:00 AM – 9:30 PM",
+        "Friday: 9:00 AM – 9:30 PM",
+        "Saturday: 9:00 AM – 9:30 PM",
+        "Sunday: 9:00 AM – 9:30 PM"
+      ],
+      "googlePhone": "+66 38 410 224",
+      "googleWebsiteUri": "https://see-ticket.com/alcazar-cabaret/",
+      "googleEnrichedAt": 1778740149364
     },
     {
       "name": "Walking Street Pattaya",
@@ -1196,7 +1756,7 @@
       "duration": "Evening",
       "price": "Free",
       "best_time_to_visit": "Evening (after 21:00)",
-      "rating": 4.0,
+      "rating": 4,
       "reviewCount": 47000,
       "tags": [
         "Iconic",
@@ -1204,7 +1764,9 @@
       ],
       "lat": 12.91294,
       "lng": 100.875843,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.912940,100.875843"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.912940,100.875843",
+      "googlePlaceId": "ChIJNfm2ehSWAjER9YgMLV21zzs",
+      "googleEnrichedAt": 1778740150614
     },
     {
       "name": "Khao Phra Tamnak Hill (Big Buddha Hill)",
@@ -1245,7 +1807,20 @@
       ],
       "lat": 12.788906,
       "lng": 100.957948,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.788906,100.957948"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.788906,100.957948",
+      "googlePlaceId": "ChIJEctn9oeUAjERKGIk6RBtnps",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 5:00 PM",
+        "Tuesday: 8:00 AM – 5:00 PM",
+        "Wednesday: 8:00 AM – 5:00 PM",
+        "Thursday: 8:00 AM – 5:00 PM",
+        "Friday: 8:00 AM – 5:00 PM",
+        "Saturday: 8:00 AM – 5:00 PM",
+        "Sunday: 8:00 AM – 5:00 PM"
+      ],
+      "googlePhone": "+66 81 586 0188",
+      "googleWebsiteUri": "http://www.watyanasangvararam.com/",
+      "googleEnrichedAt": 1778740151849
     },
     {
       "name": "Koh Larn (Coral Island)",
@@ -1267,7 +1842,9 @@
       ],
       "lat": 12.918683,
       "lng": 100.783743,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.918683,100.783743"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.918683,100.783743",
+      "googlePlaceId": "ChIJN9ny3FaZAjERXwttGIQgYCs",
+      "googleEnrichedAt": 1778740153112
     },
     {
       "name": "Pattaya Beach",
@@ -1288,7 +1865,9 @@
       ],
       "lat": 12.897694,
       "lng": 100.872514,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.897694,100.872514"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.897694,100.872514",
+      "googlePlaceId": "ChIJWa852g-WAjERWOjkU9j3pSo",
+      "googleEnrichedAt": 1778740154321
     },
     {
       "name": "Jomtien Beach",
@@ -1309,7 +1888,9 @@
       ],
       "lat": 12.897694,
       "lng": 100.872514,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.897694,100.872514"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.897694,100.872514",
+      "googlePlaceId": "ChIJF_5WA5GWAjERj5XBc_Ge0Ok",
+      "googleEnrichedAt": 1778740155514
     },
     {
       "name": "Pattaya Floating Market",
@@ -1323,7 +1904,7 @@
       "price": "200 THB",
       "costNumeric": 200,
       "best_time_to_visit": "Morning",
-      "rating": 4.0,
+      "rating": 4,
       "reviewCount": 19000,
       "tags": [
         "Floating Market",
@@ -1331,7 +1912,20 @@
       ],
       "lat": 12.86788,
       "lng": 100.90481,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.867880,100.904810"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.867880,100.904810",
+      "googlePlaceId": "ChIJj7QUV5CVAjER2FSGCgOLIWM",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 7:00 PM",
+        "Tuesday: 9:00 AM – 7:00 PM",
+        "Wednesday: 9:00 AM – 7:00 PM",
+        "Thursday: 9:00 AM – 7:00 PM",
+        "Friday: 9:00 AM – 7:00 PM",
+        "Saturday: 9:00 AM – 7:00 PM",
+        "Sunday: 9:00 AM – 7:00 PM"
+      ],
+      "googlePhone": "+66 88 444 7777",
+      "googleWebsiteUri": "https://www.pattayafloatingmarket.com/",
+      "googleEnrichedAt": 1778740156798
     },
     {
       "name": "Mini Siam",
@@ -1345,7 +1939,7 @@
       "price": "300 THB",
       "costNumeric": 300,
       "best_time_to_visit": "Morning",
-      "rating": 4.0,
+      "rating": 4,
       "reviewCount": 8200,
       "tags": [
         "Family-Friendly",
@@ -1353,7 +1947,20 @@
       ],
       "lat": 12.953912,
       "lng": 100.910213,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.953912,100.910213"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.953912,100.910213",
+      "googlePlaceId": "ChIJGyhn0uCe4jARKsHCvBXG7Dw",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 7:00 PM",
+        "Tuesday: 9:00 AM – 7:00 PM",
+        "Wednesday: 9:00 AM – 7:00 PM",
+        "Thursday: 9:00 AM – 7:00 PM",
+        "Friday: 9:00 AM – 7:00 PM",
+        "Saturday: 9:00 AM – 7:00 PM",
+        "Sunday: 9:00 AM – 7:00 PM"
+      ],
+      "googlePhone": "+66 81 735 6340",
+      "googleWebsiteUri": "https://www.klook.com/activity/1110-mini-siam-pattaya/",
+      "googleEnrichedAt": 1778740158017
     },
     {
       "name": "Pattaya 3D Art in Paradise",
@@ -1376,7 +1983,20 @@
       ],
       "lat": 12.948332,
       "lng": 100.889793,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.948332,100.889793"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.948332,100.889793",
+      "googlePlaceId": "ChIJxazjLf69AjERn7AXG1WKt3Y",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 9:00 PM",
+        "Tuesday: 9:00 AM – 9:00 PM",
+        "Wednesday: 9:00 AM – 9:00 PM",
+        "Thursday: 9:00 AM – 9:00 PM",
+        "Friday: 9:00 AM – 9:00 PM",
+        "Saturday: 9:00 AM – 9:00 PM",
+        "Sunday: 9:00 AM – 9:00 PM"
+      ],
+      "googlePhone": "+66 85 999 3374",
+      "googleWebsiteUri": "https://www.facebook.com/Mymintzgallary",
+      "googleEnrichedAt": 1778740159266
     },
     {
       "name": "Pattaya Viewpoint",
@@ -1398,7 +2018,9 @@
       ],
       "lat": 12.94442,
       "lng": 100.909714,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.944420,100.909714"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.944420,100.909714",
+      "googlePlaceId": "ChIJgZNkHiSUAjERWqA7NfRUMms",
+      "googleEnrichedAt": 1778740160504
     },
     {
       "name": "Khao Chi Chan (Buddha Mountain)",
@@ -1420,7 +2042,18 @@
       ],
       "lat": 12.766151,
       "lng": 100.95681,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.766151,100.956810"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.766151,100.956810",
+      "googlePlaceId": "ChIJb2zIqpiSAjER4qldor6Rty8",
+      "googleOpeningHours": [
+        "Monday: 6:00 AM – 6:00 PM",
+        "Tuesday: 6:00 AM – 6:00 PM",
+        "Wednesday: 6:00 AM – 6:00 PM",
+        "Thursday: 6:00 AM – 6:00 PM",
+        "Friday: 6:00 AM – 6:00 PM",
+        "Saturday: 6:00 AM – 6:00 PM",
+        "Sunday: 6:00 AM – 6:00 PM"
+      ],
+      "googleEnrichedAt": 1778740161734
     },
     {
       "name": "Frost Magical Ice of Siam",
@@ -1443,7 +2076,19 @@
       ],
       "lat": 12.970813,
       "lng": 100.974922,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.970813,100.974922"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.970813,100.974922",
+      "googlePlaceId": "ChIJxbQHBhbBAjERKsXpBFtushQ",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 7:00 PM",
+        "Tuesday: 9:00 AM – 7:00 PM",
+        "Wednesday: 9:00 AM – 7:00 PM",
+        "Thursday: 9:00 AM – 7:00 PM",
+        "Friday: 9:00 AM – 7:00 PM",
+        "Saturday: 9:00 AM – 7:00 PM",
+        "Sunday: 9:00 AM – 7:00 PM"
+      ],
+      "googleWebsiteUri": "https://advance-ticket.com/frost-magical-ice-of-siam",
+      "googleEnrichedAt": 1778740162960
     },
     {
       "name": "Wong Amat Beach",
@@ -1464,7 +2109,9 @@
       ],
       "lat": 12.962596,
       "lng": 100.884486,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.962596,100.884486"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.962596,100.884486",
+      "googlePlaceId": "ChIJP-VqdOS9AjERda5_HV-8WM4",
+      "googleEnrichedAt": 1778740164182
     },
     {
       "name": "Khao Kheow Open Zoo",
@@ -1487,7 +2134,18 @@
       ],
       "lat": 13.213463,
       "lng": 101.061166,
-      "googleMapsUrl": "https://www.google.com/maps/?q=13.213463,101.061166"
+      "googleMapsUrl": "https://www.google.com/maps/?q=13.213463,101.061166",
+      "googlePlaceId": "ChIJUwDnm-PLAjERvkB2eGTKRqY",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 5:00 PM",
+        "Tuesday: 8:00 AM – 5:00 PM",
+        "Wednesday: 8:00 AM – 5:00 PM",
+        "Thursday: 8:00 AM – 5:00 PM",
+        "Friday: 8:00 AM – 5:00 PM",
+        "Saturday: 8:00 AM – 5:00 PM",
+        "Sunday: 8:00 AM – 5:00 PM"
+      ],
+      "googleEnrichedAt": 1778740165414
     },
     {
       "name": "Pattaya Park Tower",
@@ -1501,7 +2159,7 @@
       "price": "300–500 THB",
       "costNumeric": 400,
       "best_time_to_visit": "Sunset",
-      "rating": 4.0,
+      "rating": 4,
       "reviewCount": 8400,
       "tags": [
         "Adventure",
@@ -1509,7 +2167,19 @@
       ],
       "lat": 12.906274,
       "lng": 100.863164,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.906274,100.863164"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.906274,100.863164",
+      "googlePlaceId": "ChIJ_ZsXHdKXAjERWdbzHOK5JV4",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 3:00 PM, 4:30 – 10:00 PM",
+        "Tuesday: 11:00 AM – 3:00 PM, 4:30 – 10:00 PM",
+        "Wednesday: 11:00 AM – 3:00 PM, 4:30 – 10:00 PM",
+        "Thursday: 11:00 AM – 3:00 PM, 4:30 – 10:00 PM",
+        "Friday: 11:00 AM – 3:00 PM, 4:30 – 10:00 PM",
+        "Saturday: 11:00 AM – 3:00 PM, 4:30 – 10:00 PM",
+        "Sunday: 11:00 AM – 3:00 PM, 4:30 – 10:00 PM"
+      ],
+      "googlePhone": "+66 38 251 201",
+      "googleEnrichedAt": 1778740166656
     },
     {
       "name": "Silver Lake Vineyard",
@@ -1531,7 +2201,21 @@
       ],
       "lat": 12.76039,
       "lng": 100.963825,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.760390,100.963825"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.760390,100.963825",
+      "googlePlaceId": "ChIJWaHdN6eSAjERKAXq0tZ41jk",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 9:00 PM",
+        "Tuesday: 11:00 AM – 9:00 PM",
+        "Wednesday: 11:00 AM – 9:00 PM",
+        "Thursday: 11:00 AM – 9:00 PM",
+        "Friday: 11:00 AM – 9:00 PM",
+        "Saturday: 11:00 AM – 9:00 PM",
+        "Sunday: 11:00 AM – 9:00 PM"
+      ],
+      "googlePhone": "+66 81 828 8711",
+      "googleWebsiteUri": "https://www.silverlakewinethailand.com/",
+      "googlePriceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "googleEnrichedAt": 1778740167892
     },
     {
       "name": "The Bottle Art Museum",
@@ -1555,7 +2239,9 @@
         "Quirky",
         "Bottle Art"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.955288,100.907208"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.955288,100.907208",
+      "googleNotFound": true,
+      "googleEnrichedAt": 1778740168564
     },
     {
       "name": "Nong Nooch Dinosaur Valley",
@@ -1579,7 +2265,20 @@
         "Nong Nooch",
         "180+ models"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.763900,100.933300"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.763900,100.933300",
+      "googlePlaceId": "ChIJc4_Yrn-SAjERkbmo7wgrKLw",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 6:00 PM",
+        "Tuesday: 8:00 AM – 6:00 PM",
+        "Wednesday: 8:00 AM – 6:00 PM",
+        "Thursday: 8:00 AM – 6:00 PM",
+        "Friday: 8:00 AM – 6:00 PM",
+        "Saturday: 8:00 AM – 6:00 PM",
+        "Sunday: 8:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 38 238 061",
+      "googleWebsiteUri": "https://www.nongnoochpattaya.com/en/dinosaur",
+      "googleEnrichedAt": 1778740169792
     },
     {
       "name": "Hat Nang Ram (Dancing Girl Beach)",
@@ -1604,7 +2303,9 @@
         "Sattahip",
         "Hat Nang Ram"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.675400,100.912300"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.675400,100.912300",
+      "googlePlaceId": "ChIJ_dPyuU6KAjERYEH4lK41gY4",
+      "googleEnrichedAt": 1778740171040
     },
     {
       "name": "Pattaya Viewpoint (Pratumnak Hill)",
@@ -1629,7 +2330,9 @@
         "Free",
         "Pratumnak"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.912546,100.863440"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.912546,100.863440",
+      "googlePlaceId": "ChIJgZNkHiSUAjERWqA7NfRUMms",
+      "googleEnrichedAt": 1778740172280
     },
     {
       "name": "Harbor Land Pattaya (Asia's largest indoor playground)",
@@ -1654,7 +2357,20 @@
         "Indoor",
         "Kids"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.932100,100.889800"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.932100,100.889800",
+      "googlePlaceId": "ChIJk8FPOfuVAjER2tk1yx0Kd9s",
+      "googleOpeningHours": [
+        "Monday: 10:30 AM – 7:30 PM",
+        "Tuesday: 10:30 AM – 7:30 PM",
+        "Wednesday: 10:30 AM – 7:30 PM",
+        "Thursday: 10:30 AM – 7:30 PM",
+        "Friday: 10:30 AM – 7:30 PM",
+        "Saturday: 10:30 AM – 7:30 PM",
+        "Sunday: 10:30 AM – 7:30 PM"
+      ],
+      "googlePhone": "+66 65 848 1000",
+      "googleWebsiteUri": "https://harborlandgroup.com/",
+      "googleEnrichedAt": 1778740173633
     },
     {
       "name": "Ripley's Believe It or Not Pattaya",
@@ -1679,7 +2395,20 @@
         "Haunted House",
         "Laser Maze"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.928761,100.878571"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.928761,100.878571",
+      "googlePlaceId": "ChIJo8xRjhGWAjER3fOX3z1XmRU",
+      "googleOpeningHours": [
+        "Monday: 11:00 AM – 10:00 PM",
+        "Tuesday: 11:00 AM – 10:00 PM",
+        "Wednesday: 11:00 AM – 10:00 PM",
+        "Thursday: 11:00 AM – 10:00 PM",
+        "Friday: 11:00 AM – 10:00 PM",
+        "Saturday: 11:00 AM – 10:00 PM",
+        "Sunday: 11:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 38 710 294",
+      "googleWebsiteUri": "https://ripleysthailand.com/",
+      "googleEnrichedAt": 1778740174917
     },
     {
       "name": "Elephant Jungle Sanctuary Pattaya",
@@ -1704,7 +2433,20 @@
         "Family",
         "No Riding"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.932671,101.057648"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.932671,101.057648",
+      "googlePlaceId": "ChIJh_1xCUyVAjER3JSj8y4LELI",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 5:00 PM",
+        "Tuesday: 8:00 AM – 5:00 PM",
+        "Wednesday: 8:00 AM – 5:00 PM",
+        "Thursday: 8:00 AM – 5:00 PM",
+        "Friday: 8:00 AM – 5:00 PM",
+        "Saturday: 8:00 AM – 5:00 PM",
+        "Sunday: 8:00 AM – 5:00 PM"
+      ],
+      "googlePhone": "+66 62 295 6566",
+      "googleWebsiteUri": "https://elephantjunglesanctuary.com/",
+      "googleEnrichedAt": 1778740176213
     },
     {
       "name": "Pattaya Submarine Tour",
@@ -1728,7 +2470,20 @@
         "Family",
         "Unique"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.929835,100.880787"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.929835,100.880787",
+      "googlePlaceId": "ChIJ0d3MhSyUAjER4dgrD9Nj_gQ",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 6:00 PM",
+        "Tuesday: 9:00 AM – 6:00 PM",
+        "Wednesday: 9:00 AM – 6:00 PM",
+        "Thursday: 9:00 AM – 6:00 PM",
+        "Friday: 9:00 AM – 6:00 PM",
+        "Saturday: 9:00 AM – 6:00 PM",
+        "Sunday: 9:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 81 575 1006",
+      "googleWebsiteUri": "https://underwaterworldpattaya.com/",
+      "googleEnrichedAt": 1778740177529
     },
     {
       "name": "Million Years Stone Park & Crocodile Farm",
@@ -1752,7 +2507,20 @@
         "Crocodile Show",
         "Stone Park"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.963300,100.974500"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.963300,100.974500",
+      "googlePlaceId": "ChIJhw7QJMy_AjERnXkuiEXk_64",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 5:00 PM",
+        "Tuesday: 8:00 AM – 5:00 PM",
+        "Wednesday: 8:00 AM – 5:00 PM",
+        "Thursday: 8:00 AM – 5:00 PM",
+        "Friday: 8:00 AM – 5:00 PM",
+        "Saturday: 8:00 AM – 5:00 PM",
+        "Sunday: 8:00 AM – 5:00 PM"
+      ],
+      "googlePhone": "+66 38 249 347",
+      "googleWebsiteUri": "http://www.thaistonepark.org/",
+      "googleEnrichedAt": 1778740178753
     },
     {
       "name": "Wong Amat Mangrove Boat Tour",
@@ -1776,7 +2544,9 @@
         "Mangrove",
         "Quiet"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.971000,100.887000"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.971000,100.887000",
+      "googlePlaceId": "ChIJP-VqdOS9AjERda5_HV-8WM4",
+      "googleEnrichedAt": 1778740179998
     },
     {
       "name": "Pattaya Sky Coaster (Pattaya Park)",
@@ -1800,7 +2570,18 @@
         "Sky Coaster",
         "Sunset View"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.864456,100.916698"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.864456,100.916698",
+      "googlePlaceId": "ChIJsTRYKhCXAjERK9e7OmMqIA4",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 5:30 PM",
+        "Tuesday: 9:00 AM – 5:30 PM",
+        "Wednesday: 9:00 AM – 5:30 PM",
+        "Thursday: 9:00 AM – 5:30 PM",
+        "Friday: 9:00 AM – 5:30 PM",
+        "Saturday: 9:00 AM – 5:30 PM",
+        "Sunday: 9:00 AM – 5:30 PM"
+      ],
+      "googleEnrichedAt": 1778740181277
     },
     {
       "name": "Klong Plu Waterfall",
@@ -1823,7 +2604,19 @@
       ],
       "lat": 12.056538,
       "lng": 102.298088,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.056538,102.298088"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.056538,102.298088",
+      "googlePlaceId": "ChIJuzWDMHsRBDERhyITN2TwRu4",
+      "googleOpeningHours": [
+        "Monday: 8:30 AM – 4:30 PM",
+        "Tuesday: 8:30 AM – 4:30 PM",
+        "Wednesday: 8:30 AM – 4:30 PM",
+        "Thursday: 8:30 AM – 4:30 PM",
+        "Friday: 8:30 AM – 4:30 PM",
+        "Saturday: 8:30 AM – 4:30 PM",
+        "Sunday: 8:30 AM – 4:30 PM"
+      ],
+      "googleWebsiteUri": "https://iamkohchang.com/activities/klong-plu-waterfall-nature-trail.html",
+      "googleEnrichedAt": 1778740182505
     },
     {
       "name": "Ban Kwan Chang Elephant Camp",
@@ -1846,7 +2639,20 @@
       ],
       "lat": 12.114564,
       "lng": 102.299626,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.114564,102.299626"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.114564,102.299626",
+      "googlePlaceId": "ChIJi9DL9voSBDERQgWBjMVzB5g",
+      "googleOpeningHours": [
+        "Monday: 6:00 AM – 8:00 PM",
+        "Tuesday: 6:00 AM – 8:00 PM",
+        "Wednesday: 6:00 AM – 8:00 PM",
+        "Thursday: 6:00 AM – 8:00 PM",
+        "Friday: 6:00 AM – 8:00 PM",
+        "Saturday: 6:00 AM – 8:00 PM",
+        "Sunday: 6:00 AM – 8:00 PM"
+      ],
+      "googlePhone": "+66 61 565 8155",
+      "googleWebsiteUri": "https://www.facebook.com/KlongSonKohChangElephantCampThailand/",
+      "googleEnrichedAt": 1778740183769
     },
     {
       "name": "Koh Rang National Marine Park",
@@ -1888,7 +2694,9 @@
       ],
       "lat": 12.10524,
       "lng": 102.272826,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.105240,102.272826"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.105240,102.272826",
+      "googlePlaceId": "ChIJtfOvWmQSBDER1c_ucqd47cc",
+      "googleEnrichedAt": 1778740185046
     },
     {
       "name": "Kai Bae Beach",
@@ -1909,7 +2717,19 @@
       ],
       "lat": 12.025292,
       "lng": 102.291383,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.025292,102.291383"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.025292,102.291383",
+      "googlePlaceId": "ChIJw6xvxDIRBDER9hsGQEPt8nI",
+      "googleOpeningHours": [
+        "Monday: 5:00 AM – 6:00 PM",
+        "Tuesday: 5:00 AM – 6:00 PM",
+        "Wednesday: 5:00 AM – 6:00 PM",
+        "Thursday: 5:00 AM – 6:00 PM",
+        "Friday: 5:00 AM – 6:00 PM",
+        "Saturday: 5:00 AM – 6:00 PM",
+        "Sunday: 5:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 63 669 5416",
+      "googleEnrichedAt": 1778740186262
     },
     {
       "name": "Lonely Beach",
@@ -1931,7 +2751,9 @@
       ],
       "lat": 12.006954,
       "lng": 102.293326,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.006954,102.293326"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.006954,102.293326",
+      "googlePlaceId": "ChIJTam2sl0QBDERC40PVXUri9o",
+      "googleEnrichedAt": 1778740187449
     },
     {
       "name": "Bang Bao Pier",
@@ -1953,7 +2775,18 @@
       ],
       "lat": 11.969665,
       "lng": 102.314146,
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.969665,102.314146"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.969665,102.314146",
+      "googlePlaceId": "ChIJaU-XdXAaBDER-T037O8-Tlw",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googleEnrichedAt": 1778740188712
     },
     {
       "name": "Salakphet Fishing Village",
@@ -1992,7 +2825,9 @@
       ],
       "lat": 12.048524,
       "lng": 102.298673,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.048524,102.298673"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.048524,102.298673",
+      "googlePlaceId": "ChIJxTnTqD0XBDERaJ09vtrQAfU",
+      "googleEnrichedAt": 1778740189981
     },
     {
       "name": "Khao Kun Phra (Mountain View)",
@@ -2093,7 +2928,18 @@
       ],
       "lat": 11.816,
       "lng": 102.492633,
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.816000,102.492633"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.816000,102.492633",
+      "googlePlaceId": "ChIJoZpiNMghBDERPq0Qz83kVek",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googleEnrichedAt": 1778740191260
     },
     {
       "name": "Klong Son Walking Street",
@@ -2114,7 +2960,19 @@
       ],
       "lat": 12.035966,
       "lng": 102.293702,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.035966,102.293702"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.035966,102.293702",
+      "googlePlaceId": "ChIJaxx9PK8RBDER0Xu2or_5n54",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740192618
     },
     {
       "name": "Kai Bae Viewpoint",
@@ -2136,7 +2994,18 @@
       ],
       "lat": 12.027506,
       "lng": 102.292061,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.027506,102.292061"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.027506,102.292061",
+      "googlePlaceId": "ChIJx1K0eVEQBDERWxjOLVcESis",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googleEnrichedAt": 1778740193820
     },
     {
       "name": "Mu Ko Chang National Park HQ",
@@ -2149,7 +3018,7 @@
       "duration": "1 hour",
       "price": "Free",
       "best_time_to_visit": "Morning",
-      "rating": 4.0,
+      "rating": 4,
       "reviewCount": 380,
       "tags": [
         "National Park",
@@ -2157,7 +3026,20 @@
       ],
       "lat": 11.967739,
       "lng": 102.477628,
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.967739,102.477628"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.967739,102.477628",
+      "googlePlaceId": "ChIJf9d2GnIRBDERoq03lJjSEQk",
+      "googleOpeningHours": [
+        "Monday: 8:30 AM – 4:30 PM",
+        "Tuesday: 8:30 AM – 4:30 PM",
+        "Wednesday: 8:30 AM – 4:30 PM",
+        "Thursday: 8:30 AM – 4:30 PM",
+        "Friday: 8:30 AM – 4:30 PM",
+        "Saturday: 8:30 AM – 4:30 PM",
+        "Sunday: 8:30 AM – 4:30 PM"
+      ],
+      "googlePhone": "+66 39 510 928",
+      "googleWebsiteUri": "https://mukochangnationalpark.com/",
+      "googleEnrichedAt": 1778740195069
     },
     {
       "name": "Bailan Beach",
@@ -2178,7 +3060,11 @@
       ],
       "lat": 11.993633,
       "lng": 102.29834,
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.993633,102.298340"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.993633,102.298340",
+      "googlePlaceId": "ChIJB16QtmUSBDERnYWRWWL96hU",
+      "googlePhone": "+66 39 619 505",
+      "googleWebsiteUri": "https://www.facebook.com/kohchangbailanbeachresort",
+      "googleEnrichedAt": 1778740196302
     },
     {
       "name": "Klong Kloi Beach",
@@ -2200,7 +3086,12 @@
       ],
       "lat": 11.974267,
       "lng": 102.327587,
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.974267,102.327587"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.974267,102.327587",
+      "googlePlaceId": "ChIJLd-LWXMaBDERQZDVml2gETA",
+      "googlePhone": "+66 84 240 0186",
+      "googleWebsiteUri": "https://iamkohchang.com/guide/klong-kloi-bangbao-beach.html",
+      "googlePriceLevel": "PRICE_LEVEL_MODERATE",
+      "googleEnrichedAt": 1778740197790
     },
     {
       "name": "Than Mayom Waterfall",
@@ -2222,7 +3113,18 @@
       ],
       "lat": 12.076301,
       "lng": 102.367338,
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.076301,102.367338"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.076301,102.367338",
+      "googlePlaceId": "ChIJI03S9hgUBDERoZyY6jrwKZk",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 4:30 PM",
+        "Tuesday: 9:00 AM – 4:30 PM",
+        "Wednesday: 9:00 AM – 4:30 PM",
+        "Thursday: 9:00 AM – 4:30 PM",
+        "Friday: 9:00 AM – 4:30 PM",
+        "Saturday: 9:00 AM – 4:30 PM",
+        "Sunday: 9:00 AM – 4:30 PM"
+      ],
+      "googleEnrichedAt": 1778740199128
     },
     {
       "name": "Koh Chang Mangrove Forest Walk",
@@ -2244,7 +3146,18 @@
       ],
       "lat": 11.998327,
       "lng": 102.371506,
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.998327,102.371506"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.998327,102.371506",
+      "googlePlaceId": "ChIJQRuuCRMXBDERoL6w_Q034z4",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googleEnrichedAt": 1778740200398
     },
     {
       "name": "Salakkok Fishing Village",
@@ -2288,7 +3201,9 @@
         "Largest in Thailand",
         "Adventure"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.050000,102.240000"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.050000,102.240000",
+      "googlePlaceId": "ChIJy37JFFYbBDERm1S_27V4qEQ",
+      "googleEnrichedAt": 1778740201616
     },
     {
       "name": "Koh Rang Pinnacle (Hin Gue Daeng)",
@@ -2313,7 +3228,11 @@
         "Koh Rang",
         "Marine Park"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.823300,102.361100"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.823300,102.361100",
+      "googlePlaceId": "ChIJkWB5szexBzERJDvhQmMjiik",
+      "googlePhone": "+855 69 899 090",
+      "googleWebsiteUri": "https://kohapikjunresort.com/",
+      "googleEnrichedAt": 1778740202919
     },
     {
       "name": "Mae Klang Waterfall",
@@ -2337,7 +3256,10 @@
         "Hidden",
         "Quiet"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.076301,102.367338"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.076301,102.367338",
+      "googlePlaceId": "ChIJdXuaK9Kx2zARv5Prr0b-Ie8",
+      "googleWebsiteUri": "https://ticket-advance.com/wachirathan-waterfall",
+      "googleEnrichedAt": 1778740204115
     },
     {
       "name": "Mountain Viewpoint (North Koh Chang)",
@@ -2361,7 +3283,18 @@
         "Free",
         "Sunset"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.092500,102.292000"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.092500,102.292000",
+      "googlePlaceId": "ChIJx1K0eVEQBDERWxjOLVcESis",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googleEnrichedAt": 1778740205476
     },
     {
       "name": "Long Beach (Had Sai Yao)",
@@ -2385,7 +3318,9 @@
         "East Coast",
         "Quiet"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.960103,102.432467"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.960103,102.432467",
+      "googlePlaceId": "ChIJM5u2Wg4YBDERx_zQ0JrHWPU",
+      "googleEnrichedAt": 1778740206806
     },
     {
       "name": "Salak Phet Mangrove Forest Walk",
@@ -2409,7 +3344,18 @@
         "East Coast",
         "Hidden"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.998327,102.371506"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.998327,102.371506",
+      "googlePlaceId": "ChIJQRuuCRMXBDERoL6w_Q034z4",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googleEnrichedAt": 1778740208163
     },
     {
       "name": "Klong Prao River SUP / Kayak",
@@ -2434,7 +3380,18 @@
         "River",
         "Family"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.067408,102.285309"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.067408,102.285309",
+      "googlePlaceId": "ChIJpylfCgARBDERaMkYT8K82eQ",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 6:00 PM",
+        "Tuesday: 8:00 AM – 6:00 PM",
+        "Wednesday: 8:00 AM – 6:00 PM",
+        "Thursday: 8:00 AM – 6:00 PM",
+        "Friday: 8:00 AM – 6:00 PM",
+        "Saturday: 8:00 AM – 6:00 PM",
+        "Sunday: 8:00 AM – 6:00 PM"
+      ],
+      "googleEnrichedAt": 1778740209410
     },
     {
       "name": "Koh Chang Thai Cooking Class",
@@ -2458,7 +3415,20 @@
         "Family",
         "Market Tour"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.051000,102.311000"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.051000,102.311000",
+      "googlePlaceId": "ChIJ4RuBYaARBDERMPtPAT29fok",
+      "googleOpeningHours": [
+        "Monday: 9:00 AM – 10:00 PM",
+        "Tuesday: 9:00 AM – 10:00 PM",
+        "Wednesday: 9:00 AM – 10:00 PM",
+        "Thursday: 9:00 AM – 10:00 PM",
+        "Friday: 9:00 AM – 10:00 PM",
+        "Saturday: 9:00 AM – 10:00 PM",
+        "Sunday: 9:00 AM – 10:00 PM"
+      ],
+      "googlePhone": "+66 87 301 7996",
+      "googleWebsiteUri": "https://napalai-cook-thai.my.canva.site/",
+      "googleEnrichedAt": 1778740210719
     },
     {
       "name": "Koh Yuak Snorkeling Spot",
@@ -2482,7 +3452,20 @@
         "Day Trip",
         "Koh Yuak"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.908525,102.399023"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.908525,102.399023",
+      "googlePlaceId": "ChIJL5uqIXAaBDERuKr2ZwdGbyk",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 6:00 PM",
+        "Tuesday: 8:00 AM – 6:00 PM",
+        "Wednesday: 8:00 AM – 6:00 PM",
+        "Thursday: 8:00 AM – 6:00 PM",
+        "Friday: 8:00 AM – 6:00 PM",
+        "Saturday: 8:00 AM – 6:00 PM",
+        "Sunday: 8:00 AM – 6:00 PM"
+      ],
+      "googlePhone": "+66 86 129 2305",
+      "googleWebsiteUri": "https://bbdivers.com/",
+      "googleEnrichedAt": 1778740211960
     },
     {
       "name": "Trat Old Town Day Trip",
@@ -2506,7 +3489,20 @@
         "Mainland",
         "Authentic"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.243400,102.515100"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.243400,102.515100",
+      "googlePlaceId": "ChIJv49-ieJDBDER8SGJiX77sew",
+      "googleOpeningHours": [
+        "Monday: Closed",
+        "Tuesday: 9:00 AM – 4:00 PM",
+        "Wednesday: 9:00 AM – 4:00 PM",
+        "Thursday: 9:00 AM – 4:00 PM",
+        "Friday: 9:00 AM – 4:00 PM",
+        "Saturday: 9:30 AM – 4:30 PM",
+        "Sunday: 9:30 AM – 4:30 PM"
+      ],
+      "googlePhone": "+66 39 512 291",
+      "googleWebsiteUri": "https://www.museumthailand.com/en/museum/The-town-of-Trat-museum",
+      "googleEnrichedAt": 1778740213252
     },
     {
       "name": "Khao Salak Phet Mountain Hike",
@@ -2530,7 +3526,10 @@
         "Jungle",
         "Viewpoint"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.022950,102.340105"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.022950,102.340105",
+      "googlePlaceId": "ChIJjWlUjasRBDER31qc7YuUYVc",
+      "googlePhone": "+66 85 036 8226",
+      "googleEnrichedAt": 1778740214465
     },
     {
       "name": "Mu Ko Chang National Park Viewpoint (NP HQ Trail)",
@@ -2554,7 +3553,20 @@
         "Viewpoint",
         "Hiking"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=12.082500,102.330000"
+      "googleMapsUrl": "https://www.google.com/maps/?q=12.082500,102.330000",
+      "googlePlaceId": "ChIJf9d2GnIRBDERoq03lJjSEQk",
+      "googleOpeningHours": [
+        "Monday: 8:30 AM – 4:30 PM",
+        "Tuesday: 8:30 AM – 4:30 PM",
+        "Wednesday: 8:30 AM – 4:30 PM",
+        "Thursday: 8:30 AM – 4:30 PM",
+        "Friday: 8:30 AM – 4:30 PM",
+        "Saturday: 8:30 AM – 4:30 PM",
+        "Sunday: 8:30 AM – 4:30 PM"
+      ],
+      "googlePhone": "+66 39 510 928",
+      "googleWebsiteUri": "https://mukochangnationalpark.com/",
+      "googleEnrichedAt": 1778740215698
     },
     {
       "name": "Bang Bao Sunset Cruise",
@@ -2579,7 +3591,18 @@
         "Bang Bao",
         "Romantic"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.967239,102.309181"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.967239,102.309181",
+      "googlePlaceId": "ChIJaU-XdXAaBDER-T037O8-Tlw",
+      "googleOpeningHours": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "googleEnrichedAt": 1778740216981
     },
     {
       "name": "Koh Wai Sunrise Spot",
@@ -2603,7 +3626,10 @@
         "Sunrise",
         "Quiet"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.895481,102.408796"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.895481,102.408796",
+      "googlePlaceId": "ChIJo_LtfdwYBDERESXfkO1Bi3A",
+      "googlePhone": "+66 61 424 1556",
+      "googleEnrichedAt": 1778740218268
     },
     {
       "name": "Salakphet Boat Cooperative (Lunch + Boat Tour)",
@@ -2628,7 +3654,20 @@
         "Authentic",
         "Salakphet"
       ],
-      "googleMapsUrl": "https://www.google.com/maps/?q=11.990500,102.385500"
+      "googleMapsUrl": "https://www.google.com/maps/?q=11.990500,102.385500",
+      "googlePlaceId": "ChIJlRcQ9P8WBDERlv4u0aB_QRs",
+      "googleOpeningHours": [
+        "Monday: 8:00 AM – 4:00 PM",
+        "Tuesday: 8:00 AM – 4:00 PM",
+        "Wednesday: 8:00 AM – 4:00 PM",
+        "Thursday: 8:00 AM – 4:00 PM",
+        "Friday: 8:00 AM – 4:00 PM",
+        "Saturday: 8:00 AM – 4:00 PM",
+        "Sunday: 8:00 AM – 4:00 PM"
+      ],
+      "googlePhone": "+66 87 748 9497",
+      "googleWebsiteUri": "https://www.facebook.com/SalakKhokKayakStation/",
+      "googleEnrichedAt": 1778740219534
     }
   ]
 }

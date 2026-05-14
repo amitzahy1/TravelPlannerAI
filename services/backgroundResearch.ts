@@ -19,6 +19,9 @@ import { looksLikeAddress } from '../utils/nameValidation';
 import { verifyPlacesBatch, applyVerificationResult } from '../utils/placeVerification';
 import { toast } from '../stores/useToastStore';
 import { findCuisineProfile, buildAuthenticFoodSpec } from './localCuisineCatalog';
+import { findResearchMatch, applyResearchEnrichment, researchStats } from './researchLookup';
+
+console.log(`[bgResearch] research JSON loaded · attractions=${researchStats.attractions} restaurants=${researchStats.restaurants}`);
 
 // Per-trip lock — prevents firing a second background research run for a
 // trip that's already being researched (e.g. when the user hits the reset
@@ -299,13 +302,21 @@ Still return the same 10-category JSON shape, but aim for 15-25 total restaurant
                                 // Burger King observed). Strip them here so they never reach the UI.
                                 restaurants: stripClosedPlaces(stripChainRestaurants(c.restaurants || []) as any[])
                                         .filter((r: any) => !(looksLikeAddress(r.name) && looksLikeAddress(r.nameEnglish || '')))
-                                        .map((r: any, j: number) => ({
-                                        ...r,
-                                        region: r.region || city,
-                                        id: `ai-rec-${city}-${idx}-${Math.random().toString(36).slice(2, 7)}-${j}`,
-                                        categoryTitle: c.title,
-                                })),
+                                        .map((r: any, j: number) => {
+                                                const base = {
+                                                        ...r,
+                                                        region: r.region || city,
+                                                        id: `ai-rec-${city}-${idx}-${Math.random().toString(36).slice(2, 7)}-${j}`,
+                                                        categoryTitle: c.title,
+                                                };
+                                                const match = findResearchMatch(r.name, 'restaurant')
+                                                        ?? findResearchMatch((r as any).nameEnglish, 'restaurant');
+                                                return match ? applyResearchEnrichment(base, match) : base;
+                                        }),
                         }));
+
+                        const enrichedFromJsonCount = processed.reduce((s: number, c: any) => s + c.restaurants.filter((r: any) => r.fromResearchJSON).length, 0);
+                        if (enrichedFromJsonCount > 0) console.log(`[bgResearch] ${city} food · matched ${enrichedFromJsonCount} from research JSON`);
 
                         // Verify + geocode this city's restaurants BEFORE the merge.
                         // Photon-based, free; mutates each item in place with lat/lng,
@@ -480,13 +491,21 @@ const researchAttractionsForTrip = async (
                                 region: city,
                                 attractions: stripClosedPlaces(c.attractions || [])
                                         .filter((a: any) => !(looksLikeAddress(a.name) && looksLikeAddress(a.nameEnglish || '')))
-                                        .map((a: any, j: number) => ({
-                                        ...a,
-                                        region: a.region || city,
-                                        id: `ai-attr-${city}-${idx}-${Math.random().toString(36).slice(2, 7)}-${j}`,
-                                        categoryTitle: c.title,
-                                })),
+                                        .map((a: any, j: number) => {
+                                                const base = {
+                                                        ...a,
+                                                        region: a.region || city,
+                                                        id: `ai-attr-${city}-${idx}-${Math.random().toString(36).slice(2, 7)}-${j}`,
+                                                        categoryTitle: c.title,
+                                                };
+                                                const match = findResearchMatch(a.name, 'attraction')
+                                                        ?? findResearchMatch((a as any).nameEnglish, 'attraction');
+                                                return match ? applyResearchEnrichment(base, match) : base;
+                                        }),
                         }));
+
+                        const enrichedFromJsonCount = processed.reduce((s: number, c: any) => s + c.attractions.filter((a: any) => a.fromResearchJSON).length, 0);
+                        if (enrichedFromJsonCount > 0) console.log(`[bgResearch] ${city} attractions · matched ${enrichedFromJsonCount} from research JSON`);
 
                         // Same verification step as the restaurants path.
                         const flatAttractions = processed.flatMap((c: any) => c.attractions || []);

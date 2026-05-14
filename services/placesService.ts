@@ -1,23 +1,19 @@
 /**
  * Google Places API (New) client — for enriching saved restaurants and attractions
- * with live photos, opening hours, current rating, phone number, website URL.
+ * with opening hours, phone number, website URL, price level.
  *
  * COST DISCIPLINE — read before changing anything in this file.
  *
- *   Pricing (per 1,000 requests):
- *     - Text Search (New, Essentials):       $32
- *     - Place Details (with FieldMask used here, Enterprise+Pro):  ~$25
- *     - Place Photos (per photo load):       $7
+ *   Tier pricing model (post-2025):
+ *     - Essentials (id, displayName, location):           10,000/month free
+ *     - Pro (hours, phone, website, priceLevel, search):  5,000/month free
+ *     - Enterprise (photos, rating, reviews):             1,000/month free
  *
- *   Per place fully enriched once = Text Search + Place Details + Photo load
- *     = $0.032 + $0.025 + $0.007 ≈ $0.064 worst case (~$0.025 typical).
+ *   Google bills every call at the HIGHEST tier requested in its field mask.
+ *   We deliberately ask for Pro-tier fields only — never Enterprise.
  *
- *   30 places × $0.064 = ~$1.92 one-time per trip. Then Firestore cache
- *   serves for 30 days at $0. Manual refresh is the only re-cost.
- *
- *   Google Cloud free credit on Maps Platform = $200/month → effectively $0
- *   for personal-scale usage. Hard daily quotas in Cloud Console cap worst
- *   case regardless.
+ *   Per place enriched = 1 Text Search (Pro) + 1 Place Details (Pro) = 2 Pro calls.
+ *   ~260 places × 2 = ~520 Pro calls = well inside 5,000/month free.
  *
  * FIELD MASK — never widen this without re-checking cost tiers:
  *   - id, displayName              → Essentials (free)
@@ -26,12 +22,14 @@
  *     internationalPhoneNumber,
  *     websiteUri,
  *     googleMapsUri,
- *     priceLevel                   → Pro ($20/1k)
- *   - photos,
- *     rating,
- *     userRatingCount              → Enterprise ($25/1k)
+ *     priceLevel                   → Pro (5k/month free)
  *
- *   NEVER request `reviews` — it's the most expensive field and we don't use it.
+ *   NEVER add: photos, rating, userRatingCount, reviews — all Enterprise tier.
+ *   Photos are also $7/1k extra. We rely on AI/curated imagery instead.
+ *
+ * KILL SWITCH:
+ *   - Set VITE_PLACES_DISABLED=true in .env.local to short-circuit every call.
+ *   - Every function throws PlacesDisabledError before any fetch.
  *
  * SECURITY:
  *   - Key is in VITE_GOOGLE_MAPS_API_KEY (client-side env).
@@ -43,26 +41,42 @@
 const API_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 const PLACES_HOST = 'https://places.googleapis.com';
 
+// Hard kill switch — set VITE_PLACES_DISABLED=true in .env.local to short-circuit
+// every Places call before any fetch. Belt-and-suspenders with the Cloud Console
+// per-day quota cap. Cheaper to flip than to revert code.
+const PLACES_DISABLED = (import.meta as any).env?.VITE_PLACES_DISABLED === 'true';
+
 // One-time boot log so the user can quickly check from the browser console
 // whether the build picked up the key. Truncates the value for safety.
 if (typeof window !== 'undefined') {
-  const present = !!API_KEY;
-  const preview = API_KEY ? `${API_KEY.slice(0, 6)}…${API_KEY.slice(-4)}` : '(missing)';
-  console.log(`[GooglePlaces] API key on boot: present=${present} preview=${preview}`);
+  if (PLACES_DISABLED) {
+    console.log('[GooglePlaces] DISABLED via VITE_PLACES_DISABLED — no API calls will be made');
+  } else {
+    const present = !!API_KEY;
+    const preview = API_KEY ? `${API_KEY.slice(0, 6)}…${API_KEY.slice(-4)}` : '(missing)';
+    console.log(`[GooglePlaces] API key on boot: present=${present} preview=${preview}`);
+  }
+}
+
+export const isPlacesDisabled = () => PLACES_DISABLED;
+
+export class PlacesDisabledError extends Error {
+  constructor() {
+    super('Google Places API disabled via VITE_PLACES_DISABLED');
+    this.name = 'PlacesDisabledError';
+  }
 }
 
 const DETAILS_FIELD_MASK = [
   'id',
   'displayName',
-  'photos',
   'regularOpeningHours',
   'currentOpeningHours',
-  'rating',
-  'userRatingCount',
   'internationalPhoneNumber',
   'websiteUri',
   'googleMapsUri',
   'priceLevel',
+  // DROPPED — Enterprise tier (only 1k/month free, ~3x cost): photos, rating, userRatingCount.
 ].join(',');
 
 const SEARCH_FIELD_MASK = ['places.id', 'places.displayName', 'places.location'].join(',');
@@ -84,8 +98,6 @@ export class PlacesKeyError extends Error {
 export interface PlaceDetails {
   placeId: string;
   displayName?: string;
-  rating?: number;
-  reviewCount?: number;
   phone?: string;
   websiteUri?: string;
   googleMapsUri?: string;
@@ -97,8 +109,6 @@ export interface PlaceDetails {
     | 'PRICE_LEVEL_VERY_EXPENSIVE';
   openingHours?: string[]; // weekdayDescriptions, e.g. ["Monday: 9:00 AM – 10:00 PM", ...]
   openNow?: boolean;
-  /** Resolved fully-qualified photo URL (cached, safe to render directly). */
-  photoUrl?: string;
 }
 
 const headers = (extraMask?: string): HeadersInit => {
@@ -139,6 +149,7 @@ export async function findPlaceId(
   lng: number,
   radiusMeters = 500
 ): Promise<string | null> {
+  if (PLACES_DISABLED) throw new PlacesDisabledError();
   if (!name) return null;
   const body = {
     textQuery: name,
@@ -163,13 +174,12 @@ export async function findPlaceId(
 }
 
 /**
- * Fetch full Place Details by placeId using the strict FieldMask above.
- * Also resolves the first photo (if any) into a renderable CDN URL.
- *
- * Costs: 1 Place Details call (~$0.025) + 1 photo load if photos exist (~$0.007).
- * Don't call this on every page view — cache the result in Firestore.
+ * Fetch Place Details by placeId using the Pro-tier FieldMask above.
+ * Pure Pro-tier call (~5k/month free). No photos, no rating, no reviews.
+ * Cache the result — don't call on every page view.
  */
 export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
+  if (PLACES_DISABLED) throw new PlacesDisabledError();
   if (!placeId) throw new Error('placeId is required');
   console.log(`[GooglePlaces] getPlaceDetails →`, placeId);
   const res = await fetch(`${PLACES_HOST}/v1/places/${encodeURIComponent(placeId)}`, {
@@ -180,35 +190,20 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
   console.log(`[GooglePlaces] getPlaceDetails ←`, {
     placeId,
     displayName: data?.displayName?.text,
-    rating: data?.rating,
-    reviewCount: data?.userRatingCount,
-    hasPhotos: !!(data?.photos?.length),
     hasHours: !!(data?.regularOpeningHours?.weekdayDescriptions?.length),
+    hasPhone: !!data?.internationalPhoneNumber,
+    hasWebsite: !!data?.websiteUri,
   });
-
-  // Resolve first photo into a 800px CDN URL. We pass the API key in the
-  // query string because the photo media endpoint follows a 302 to a Google
-  // CDN that doesn't accept custom headers. The CDN URL is safe to store
-  // and serve directly without re-billing — but the redirect URL has a
-  // signed expiry so don't cache forever (we refetch via 30-day stale check).
-  let photoUrl: string | undefined;
-  const photoName: string | undefined = data?.photos?.[0]?.name;
-  if (photoName && API_KEY) {
-    photoUrl = `${PLACES_HOST}/v1/${photoName}/media?key=${encodeURIComponent(API_KEY)}&maxWidthPx=800`;
-  }
 
   return {
     placeId: data.id,
     displayName: data.displayName?.text,
-    rating: typeof data.rating === 'number' ? data.rating : undefined,
-    reviewCount: typeof data.userRatingCount === 'number' ? data.userRatingCount : undefined,
     phone: data.internationalPhoneNumber,
     websiteUri: data.websiteUri,
     googleMapsUri: data.googleMapsUri,
     priceLevel: data.priceLevel,
     openingHours: data.regularOpeningHours?.weekdayDescriptions,
     openNow: data.currentOpeningHours?.openNow,
-    photoUrl,
   };
 }
 
@@ -244,19 +239,13 @@ export interface EnrichableInput {
 export interface EnrichmentPatch {
   googlePlaceId?: string;
   googleEnrichedAt: number;
-  googlePhotoUrl?: string;
   googleOpeningHours?: string[];
   googleOpenNow?: boolean;
   googlePhone?: string;
   googleWebsiteUri?: string;
   googleMapsUriCanonical?: string;
   googlePriceLevel?: PlaceDetails['priceLevel'];
-  // Overwrite the recommendation-based rating with Google's live one
-  // (caller decides whether to apply via the merge helper).
-  googleRating?: number;
-  googleReviewCount?: number;
-  /** True when Text Search returned no match — surfaces an X badge on the card.
-   *  Caller should clear googlePlaceId / googlePhotoUrl etc. (they'll be undefined). */
+  /** True when Text Search returned no match — surfaces an X badge on the card. */
   googleNotFound?: boolean;
 }
 
@@ -288,6 +277,7 @@ export async function bulkEnrichPlaces(
   onProgress?: (state: { current: number; total: number; updated: number; skippedCached: number }) => void,
   options: { delayMs?: number; force?: boolean } = {}
 ): Promise<BulkEnrichOutcome> {
+  if (PLACES_DISABLED) throw new PlacesDisabledError();
   const delayMs = options.delayMs ?? 600;
   const outcome: BulkEnrichOutcome = {
     updated: 0,
@@ -344,6 +334,7 @@ export async function enrichSavedPlace(
   place: EnrichableInput,
   options: { force?: boolean } = {}
 ): Promise<EnrichmentPatch | null> {
+  if (PLACES_DISABLED) throw new PlacesDisabledError();
   // Cache hit — skip API entirely. Also covers the not-found case: once we've
   // tried and failed, we won't re-hit Google for 30 days.
   const cachedAndFresh = !options.force && !isEnrichmentStale(place.googleEnrichedAt);
@@ -372,15 +363,12 @@ export async function enrichSavedPlace(
   return {
     googlePlaceId: details.placeId,
     googleEnrichedAt: Date.now(),
-    googlePhotoUrl: details.photoUrl,
     googleOpeningHours: details.openingHours,
     googleOpenNow: details.openNow,
     googlePhone: details.phone,
     googleWebsiteUri: details.websiteUri,
     googleMapsUriCanonical: details.googleMapsUri,
     googlePriceLevel: details.priceLevel,
-    googleRating: details.rating,
-    googleReviewCount: details.reviewCount,
     googleNotFound: false, // clear stale flag if a previously-not-found place is now indexed
   };
 }
