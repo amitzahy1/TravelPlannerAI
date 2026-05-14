@@ -124,7 +124,10 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     const [isSaving, setIsSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'import' | 'external_ai' | 'deep_research' | 'owner' | 'health' | 'logs'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'logistics' | 'ai' | 'import' | 'external_ai' | 'owner' | 'health' | 'logs'>('overview');
+    // Depth toggle inside 'external_ai' tab — replaces the standalone
+    // 'deep_research' tab. Both flows now live under "מקומות מ-AI".
+    const [aiDepth, setAiDepth] = useState<'quick' | 'deep'>('quick');
     const { user } = useAuth();
     const [premiumFood, setPremiumFood] = useState<number | null>(null);
     const [premiumAttractions, setPremiumAttractions] = useState<number | null>(null);
@@ -726,6 +729,10 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             const updated = mergeExternalAiIntoTrip(activeTrip, parsed);
             handleAiUpdate(updated);
             toast.success(`נוספו ${parsed.total} ${extAiKind === 'attractions' ? 'אטרקציות' : 'מסעדות'} לטיול`);
+            // Surface parser warnings — e.g. cleaned markdown URLs, sparse
+            // result, fabricated-looking sources. One toast per warning so
+            // the user can dismiss each individually.
+            parsed.warnings.forEach(w => toast.warning(w));
             setExtAiJson('');
         } catch (err: any) {
             const msg = err?.message || 'שגיאה לא ידועה';
@@ -932,9 +939,8 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                             {[
                                 { id: 'overview' as const, label: 'פרטים כלליים', icon: Layout },
                                 { id: 'logistics' as const, label: 'טיסות ומלונות', icon: Plane },
-                                ...(isOwner ? [{ id: 'import' as const, label: 'ייבוא קבצים', icon: UploadCloud }] : []),
-                                ...(isOwner ? [{ id: 'external_ai' as const, label: 'מקומות מ-AI', icon: ExternalLink }] : []),
-                                ...(isOwner ? [{ id: 'deep_research' as const, label: 'מחקר מעמיק', icon: Search }] : []),
+                                ...(isOwner ? [{ id: 'import' as const, label: 'ייבוא חכם', icon: UploadCloud }] : []),
+                                ...(isOwner ? [{ id: 'external_ai' as const, label: 'מקומות מ-AI', icon: Sparkles }] : []),
                                 ...(isOwner ? [{ id: 'owner' as const, label: 'ניהול מתקדם', icon: ShieldCheck }] : []),
                             ].map(tab => {
                                 const Icon = tab.icon;
@@ -1117,128 +1123,209 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
                         {activeTab === 'import' && isOwner && (
                             <div className="space-y-4 animate-fade-in">
+                                {/* Files — PDF / image of booking confirmations */}
                                 <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                                     <div className="flex items-center gap-3 mb-3">
                                         <div className="bg-purple-100 p-2 rounded-lg">
-                                            <Sparkles className="w-4 h-4 text-purple-600" />
+                                            <UploadCloud className="w-4 h-4 text-purple-600" />
                                         </div>
                                         <div>
-                                            <h3 className="text-base font-black text-slate-800">ייבוא קבצים</h3>
-                                            <p className="text-xs text-slate-500">גרור PDF/תמונה (כרטיסי טיסה, אישורי מלון) וה-AI יחלץ את הנתונים</p>
+                                            <h3 className="text-base font-black text-slate-800">ייבוא מקובץ</h3>
+                                            <p className="text-xs text-slate-500">גרור PDF / תמונה (כרטיס טיסה, אישור מלון) וה-AI יחלץ את הנתונים אוטומטית לטיול</p>
                                         </div>
                                     </div>
                                     <MagicDropZone activeTrip={activeTrip} onUpdate={handleAiUpdate} compact={true} />
+                                </div>
+
+                                {/* Free-text — paste an entire trip plan, AI parses + merges */}
+                                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="bg-blue-100 p-2 rounded-lg">
+                                            <Terminal className="w-4 h-4 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-black text-slate-800">ייבוא מטקסט חופשי</h3>
+                                            <p className="text-xs text-slate-500">הדבק תוכנית טיול בעברית או באנגלית — ה-AI יזהה מלונות, טיסות והעברות וישלב לטיול</p>
+                                        </div>
+                                    </div>
+                                    <textarea
+                                        className="w-full h-32 p-3 bg-slate-50 rounded-lg border border-slate-200 focus:border-blue-400 outline-none resize-none text-xs"
+                                        placeholder="הדבק כאן את כל פרטי הטיול: מלונות עם תאריכי צ'ק-אין/אאוט, טיסות עם מספר וזמנים, העברות בין ערים..."
+                                        value={freeText}
+                                        onChange={e => setFreeText(e.target.value)}
+                                    />
+                                    <button
+                                        onClick={handleFreeTextImport}
+                                        disabled={!freeText.trim() || isFreeTextProcessing}
+                                        className="mt-3 w-full py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {isFreeTextProcessing ? <><Loader2 className="w-4 h-4 animate-spin" /> ניתוח...</> : <><Sparkles className="w-4 h-4" /> נתח וייבא</>}
+                                    </button>
+                                    {freeTextResult && (
+                                        <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-3">
+                                            <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs">
+                                                <CheckCircle className="w-4 h-4" /> ה-AI זיהה: {freeTextResult.summary}
+                                            </div>
+                                            {freeTextResult.hotels.length > 0 && (
+                                                <div className="space-y-1.5">
+                                                    <div className="text-[11px] font-bold text-slate-600">מלונות ({freeTextResult.hotels.length})</div>
+                                                    {freeTextResult.hotels.map((h, i) => (
+                                                        <div key={i} className="bg-white rounded-md p-1.5 border border-emerald-100 text-[11px]">
+                                                            <div className="font-bold">{h.name}</div>
+                                                            <div className="text-slate-500">{h.checkInDate} → {h.checkOutDate}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div className="flex gap-2">
+                                                <button onClick={handleFreeTextApply} className="flex-1 py-1.5 bg-emerald-600 text-white rounded-md font-bold text-xs">הוסף לטיול</button>
+                                                <button onClick={() => setFreeTextResult(null)} className="px-3 py-1.5 bg-white text-slate-500 rounded-md font-bold border text-xs">ביטול</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'external_ai' && isOwner && (
                             <div className="space-y-4 animate-fade-in">
-                                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="bg-emerald-100 p-2 rounded-lg">
-                                            <ExternalLink className="w-4 h-4 text-emerald-600" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-base font-black text-slate-800">מקומות מ-AI חיצוני</h3>
-                                            <p className="text-xs text-slate-500">העתק פרומפט, הדבק ב-Gemini / ChatGPT / Claude, החזר את ה-JSON</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Kind selector */}
-                                    <div className="flex gap-2 mb-4">
+                                {/* Depth toggle — Quick (free AI) vs Deep (paid Deep Research) */}
+                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                    <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">סוג מחקר</div>
+                                    <div className="flex gap-2">
                                         <button
-                                            onClick={() => setExtAiKind('attractions')}
-                                            className={`flex-1 py-2 rounded-lg font-bold text-xs border transition ${extAiKind === 'attractions' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'}`}
+                                            onClick={() => setAiDepth('quick')}
+                                            className={`flex-1 py-2.5 rounded-lg font-bold text-sm border transition text-right px-3 ${aiDepth === 'quick' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300'}`}
                                         >
-                                            🎯 אטרקציות
-                                        </button>
-                                        <button
-                                            onClick={() => setExtAiKind('restaurants')}
-                                            className={`flex-1 py-2 rounded-lg font-bold text-xs border transition ${extAiKind === 'restaurants' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'}`}
-                                        >
-                                            🍽️ מסעדות
-                                        </button>
-                                    </div>
-
-                                    {/* Step 1 */}
-                                    <div className="space-y-2 mb-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
-                                                <span className="bg-emerald-100 text-emerald-700 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">1</span>
-                                                העתק והדבק ב-AI
+                                            <div className="flex items-center gap-2">
+                                                <Sparkles className="w-4 h-4" />
+                                                <div>
+                                                    <div>מהיר</div>
+                                                    <div className={`text-[10px] font-normal ${aiDepth === 'quick' ? 'opacity-90' : 'text-slate-500'}`}>פרומפט קצר ל-AI חינמי, מחזיר ~30 מקומות</div>
+                                                </div>
                                             </div>
+                                        </button>
+                                        <button
+                                            onClick={() => setAiDepth('deep')}
+                                            className={`flex-1 py-2.5 rounded-lg font-bold text-sm border transition text-right px-3 ${aiDepth === 'deep' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'}`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Search className="w-4 h-4" />
+                                                <div>
+                                                    <div>מעמיק</div>
+                                                    <div className={`text-[10px] font-normal ${aiDepth === 'deep' ? 'opacity-90' : 'text-slate-500'}`}>פרומפט ארוך ל-Deep Research / Advanced, ~100 לעיר</div>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {aiDepth === 'quick' && (
+                                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="bg-emerald-100 p-2 rounded-lg">
+                                                <Sparkles className="w-4 h-4 text-emerald-600" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-base font-black text-slate-800">מקומות מ-AI — מהיר</h3>
+                                                <p className="text-xs text-slate-500">העתק פרומפט, הדבק ב-Gemini / ChatGPT / Claude, החזר את ה-JSON</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Kind selector */}
+                                        <div className="flex gap-2 mb-4">
                                             <button
-                                                onClick={handleExtAiCopy}
-                                                className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded-md text-[11px] font-bold hover:bg-emerald-700"
+                                                onClick={() => setExtAiKind('attractions')}
+                                                className={`flex-1 py-2 rounded-lg font-bold text-xs border transition ${extAiKind === 'attractions' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'}`}
                                             >
-                                                <Copy className="w-3 h-3" /> העתק
+                                                🎯 אטרקציות
+                                            </button>
+                                            <button
+                                                onClick={() => setExtAiKind('restaurants')}
+                                                className={`flex-1 py-2 rounded-lg font-bold text-xs border transition ${extAiKind === 'restaurants' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'}`}
+                                            >
+                                                🍽️ מסעדות
                                             </button>
                                         </div>
-                                        <textarea
-                                            readOnly
-                                            value={extAiPrompt}
-                                            className="w-full h-28 p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[11px] font-mono text-slate-700 outline-none resize-none"
-                                            onClick={e => (e.target as HTMLTextAreaElement).select()}
-                                        />
-                                        <div className="flex flex-wrap gap-1.5 text-[11px]">
-                                            <a href="https://gemini.google.com/app" target="_blank" rel="noreferrer" className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-bold border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1">
-                                                Gemini <ExternalLink className="w-2.5 h-2.5" />
-                                            </a>
-                                            <a href="https://chat.openai.com/" target="_blank" rel="noreferrer" className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md font-bold border border-emerald-200 hover:bg-emerald-100 inline-flex items-center gap-1">
-                                                ChatGPT <ExternalLink className="w-2.5 h-2.5" />
-                                            </a>
-                                            <a href="https://claude.ai/new" target="_blank" rel="noreferrer" className="px-2 py-1 bg-orange-50 text-orange-700 rounded-md font-bold border border-orange-200 hover:bg-orange-100 inline-flex items-center gap-1">
-                                                Claude <ExternalLink className="w-2.5 h-2.5" />
-                                            </a>
-                                        </div>
-                                    </div>
 
-                                    {/* Step 2 */}
-                                    <div className="space-y-2 mb-4">
-                                        <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
-                                            <span className="bg-emerald-100 text-emerald-700 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
-                                            הדבק את ה-JSON שחזר
-                                        </div>
-                                        <textarea
-                                            value={extAiJson}
-                                            onChange={e => { setExtAiJson(e.target.value); setExtAiError(null); }}
-                                            placeholder='{"kind":"attractions","categories":[...]}'
-                                            className="w-full h-28 p-2.5 bg-slate-50 rounded-lg border border-slate-200 focus:border-emerald-400 outline-none resize-none text-[11px] font-mono"
-                                        />
-                                        {extAiError && (
-                                            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-[11px] p-2 rounded-lg">
-                                                ⚠️ {extAiError}
+                                        {/* Step 1 */}
+                                        <div className="space-y-2 mb-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                                                    <span className="bg-emerald-100 text-emerald-700 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">1</span>
+                                                    העתק והדבק ב-AI
+                                                </div>
+                                                <button
+                                                    onClick={handleExtAiCopy}
+                                                    className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded-md text-[11px] font-bold hover:bg-emerald-700"
+                                                >
+                                                    <Copy className="w-3 h-3" /> העתק
+                                                </button>
                                             </div>
-                                        )}
+                                            <textarea
+                                                readOnly
+                                                value={extAiPrompt}
+                                                className="w-full h-28 p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[11px] font-mono text-slate-700 outline-none resize-none"
+                                                onClick={e => (e.target as HTMLTextAreaElement).select()}
+                                            />
+                                            <div className="flex flex-wrap gap-1.5 text-[11px]">
+                                                <a href="https://gemini.google.com/app" target="_blank" rel="noreferrer" className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-bold border border-blue-200 hover:bg-blue-100 inline-flex items-center gap-1">
+                                                    Gemini <ExternalLink className="w-2.5 h-2.5" />
+                                                </a>
+                                                <a href="https://chat.openai.com/" target="_blank" rel="noreferrer" className="px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md font-bold border border-emerald-200 hover:bg-emerald-100 inline-flex items-center gap-1">
+                                                    ChatGPT <ExternalLink className="w-2.5 h-2.5" />
+                                                </a>
+                                                <a href="https://claude.ai/new" target="_blank" rel="noreferrer" className="px-2 py-1 bg-orange-50 text-orange-700 rounded-md font-bold border border-orange-200 hover:bg-orange-100 inline-flex items-center gap-1">
+                                                    Claude <ExternalLink className="w-2.5 h-2.5" />
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        {/* Step 2 */}
+                                        <div className="space-y-2 mb-4">
+                                            <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                                                <span className="bg-emerald-100 text-emerald-700 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
+                                                הדבק את ה-JSON שחזר
+                                            </div>
+                                            <textarea
+                                                value={extAiJson}
+                                                onChange={e => { setExtAiJson(e.target.value); setExtAiError(null); }}
+                                                placeholder='{"kind":"attractions","categories":[...]}'
+                                                className="w-full h-28 p-2.5 bg-slate-50 rounded-lg border border-slate-200 focus:border-emerald-400 outline-none resize-none text-[11px] font-mono"
+                                            />
+                                            {extAiError && (
+                                                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-[11px] p-2 rounded-lg">
+                                                    ⚠️ {extAiError}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Step 3 */}
+                                        <button
+                                            onClick={handleExtAiApply}
+                                            disabled={!extAiJson.trim()}
+                                            className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle className="w-4 h-4" />
+                                            <span className="bg-white/20 w-4 h-4 rounded-full flex items-center justify-center text-[10px]">3</span>
+                                            הוסף לטיול
+                                        </button>
                                     </div>
+                                )}
 
-                                    {/* Step 3 */}
-                                    <button
-                                        onClick={handleExtAiApply}
-                                        disabled={!extAiJson.trim()}
-                                        className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                                    >
-                                        <CheckCircle className="w-4 h-4" />
-                                        <span className="bg-white/20 w-4 h-4 rounded-full flex items-center justify-center text-[10px]">3</span>
-                                        הוסף לטיול
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'deep_research' && isOwner && (
-                            <div className="space-y-6 animate-fade-in">
-                                <DeepResearchPanel
-                                    trip={activeTrip}
-                                    onUpdateTrip={(updatedTrip) => {
-                                        // Persist IMMEDIATELY to Firestore — the import flow shouldn't
-                                        // require the user to also press the modal's Save button.
-                                        const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t);
-                                        setTrips(newTrips);
-                                        onSave(newTrips);
-                                    }}
-                                />
+                                {aiDepth === 'deep' && (
+                                    <DeepResearchPanel
+                                        trip={activeTrip}
+                                        onUpdateTrip={(updatedTrip) => {
+                                            // Persist IMMEDIATELY to Firestore — the import flow
+                                            // shouldn't require the user to also press the modal's
+                                            // Save button.
+                                            const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t);
+                                            setTrips(newTrips);
+                                            onSave(newTrips);
+                                        }}
+                                    />
+                                )}
                             </div>
                         )}
 
@@ -1291,48 +1378,6 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                     </div>
                                 </div>
 
-                                {/* Magic Import */}
-                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                    <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-7">
-                                        <div className="flex items-center gap-4">
-                                            <div className="bg-white/20 p-3 rounded-lg">
-                                                <Terminal className="w-6 h-6 text-white" />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-xl font-black text-white">יבוא מטקסט חופשי</h3>
-                                                <p className="text-slate-300 text-sm mt-1">הדבק תוכנית טיול וה-AI יארגן הכל</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="p-7 space-y-4">
-                                        <textarea className="w-full h-48 p-4 bg-slate-50 rounded-lg border border-slate-200 focus:border-indigo-400 outline-none resize-none text-sm" placeholder="הדבק כאן..." value={freeText} onChange={e => setFreeText(e.target.value)} />
-                                        <button onClick={handleFreeTextImport} disabled={!freeText.trim() || isFreeTextProcessing} className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                                            {isFreeTextProcessing ? <><Loader2 className="w-4 h-4 animate-spin" /> ניתוח...</> : <><Sparkles className="w-4 h-4" /> נתח וייבא</>}
-                                        </button>
-                                        {freeTextResult && (
-                                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
-                                                <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
-                                                    <CheckCircle className="w-5 h-5" /> ה-AI זיהה: {freeTextResult.summary}
-                                                </div>
-                                                {freeTextResult.hotels.length > 0 && (
-                                                    <div className="space-y-2">
-                                                        <div className="text-xs font-bold text-slate-600">מלונות ({freeTextResult.hotels.length})</div>
-                                                        {freeTextResult.hotels.map((h, i) => (
-                                                            <div key={i} className="bg-white rounded-lg p-2 border border-emerald-100 text-xs">
-                                                                <div className="font-bold">{h.name}</div>
-                                                                <div className="text-slate-500">{h.checkInDate} → {h.checkOutDate}</div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                <div className="flex gap-2">
-                                                    <button onClick={handleFreeTextApply} className="flex-1 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm">הוסף</button>
-                                                    <button onClick={() => setFreeTextResult(null)} className="px-4 py-2 bg-white text-slate-500 rounded-lg font-bold border">ביטול</button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
                                 {/* Activity log + soft-delete recovery */}
                                 <ActivityPanel
                                     trip={activeTrip}

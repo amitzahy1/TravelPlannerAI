@@ -22,6 +22,17 @@ const RESTAURANT_CATEGORIES = [
   'בתי קפה ובוקר', 'בארים וקוקטיילים', 'משפחתי', 'ים ופירות ים', 'צמחוני וטבעוני',
 ];
 
+/**
+ * Split a destination string like "בנגקוק - פטאיה - קו צ'אנג" into individual
+ * cities. Handles common separators (dash, comma, slash, " - ", " ו ", " & ").
+ */
+function splitDestinationCities(destination: string): string[] {
+  return destination
+    .split(/\s*[-–—,/&]\s*|\s+ו\s+|\s+and\s+/i)
+    .map(s => s.trim())
+    .filter(s => s.length >= 2 && s.length <= 40);
+}
+
 export function buildExternalAiPrompt(
   destination: string,
   kind: Kind,
@@ -31,33 +42,90 @@ export function buildExternalAiPrompt(
   const categories = isAttr ? ATTRACTION_CATEGORIES : RESTAURANT_CATEGORIES;
   const entityWord = isAttr ? 'attractions' : 'restaurants';
   const entityWordHebrew = isAttr ? 'אטרקציות' : 'מסעדות';
+
+  const cities = splitDestinationCities(destination);
+  const isMultiCity = cities.length > 1;
+  const targetMin = isMultiCity ? Math.max(18, cities.length * 6) : 18;
+  const targetMax = isMultiCity ? Math.max(30, cities.length * 10) : 30;
+
+  const cityCoverageBlock = isMultiCity
+    ? `
+═══ MULTI-CITY COVERAGE — CRITICAL ═══
+The destination is ${cities.length} cities: ${cities.map(c => `"${c}"`).join(', ')}.
+For EACH of these cities, return AT LEAST 5–8 picks across categories. A
+result that has 12 picks in one city and 2 in another is a FAILURE. Use
+the "location" field to anchor each entry to the correct city.
+═══════════════════════════════════════════════════════════════════════════════
+`
+    : '';
+
   const excludeBlock = existingNames.length
-    ? `\nEXCLUDE these places already in the trip — do NOT return any of them:\n${existingNames.slice(0, 80).map(n => `- ${n}`).join('\n')}\n`
+    ? `
+═══ EXCLUSION LIST — ${existingNames.length} PLACES ALREADY IN THE TRIP ═══
+DO NOT return any of these — the user already has them:
+${existingNames.slice(0, 120).map(n => `- ${n}`).join('\n')}
+
+This list is intentionally long. It means you must DIG DEEPER — find
+lesser-known venues, neighborhood favorites, weekend-only stalls, niche
+museums, off-the-beaten-path spots. DO NOT respond with "the obvious picks
+are excluded so I returned few" — that is a failure. Search the local
+language press, Reddit threads, food creators' YouTube/Instagram, recent
+articles (last 18 months), and trip-report blogs to surface fresh picks.
+═══════════════════════════════════════════════════════════════════════════════
+`
     : '';
 
   return `You are a travel research assistant. Find the best, currently-operating ${entityWord} in "${destination}" using web search.
 
-QUOTA: return 12–20 ${entityWord} total, spread across the categories below. Aim for at least 1–2 picks per category that actually fits the destination. Empty categories are fine if the destination genuinely has none.
-
+═══ QUOTA — HARD MINIMUM ═══
+Return ${targetMin}–${targetMax} ${entityWord} total. Aim for 3–5 picks per
+category that fits the destination. Returning fewer than ${targetMin} is a
+quality failure unless the destination genuinely has no more candidates.
+Empty categories are OK only when the destination has none for them
+(e.g. "חופים ומים" for an inland city).
+═══════════════════════════════════════════════════════════════════════════════
+${cityCoverageBlock}
 CATEGORIES (use EXACTLY these Hebrew titles in the "title" field):
 ${categories.map((c, i) => `${i + 1}. "${c}"`).join('\n')}
 
-QUALITY BAR — pull picks from authoritative sources, not random blogs:
+═══ QUALITY BAR — pull picks from authoritative sources, not random blogs ═══
 ${isAttr
-  ? '- Lonely Planet, Time Out, Atlas Obscura, UNESCO, TripAdvisor Travelers\' Choice, the country\'s official tourism authority, Klook/Viator/GetYourGuide top-rated experiences.'
-  : '- Asia\'s 50 Best / World\'s 50 Best Restaurants, Michelin Guide (Stars + Bib Gourmand), Time Out, The Infatuation, Eater, local platforms (Wongnai/Tabelog/TheFork/Yelp), named food creators (Mark Wiens etc.). NO global chains (McDonald\'s, Starbucks, etc.).'}
+  ? '- Lonely Planet, Time Out, Atlas Obscura, UNESCO, TripAdvisor Travelers\' Choice, the country\'s official tourism authority (e.g. TAT for Thailand), Klook/Viator/GetYourGuide top-rated experiences, Nat Geo "Best of the World", Conde Nast Hot List.'
+  : '- Asia\'s 50 Best / World\'s 50 Best Restaurants, Michelin Guide (Stars + Bib Gourmand), Time Out, The Infatuation, Eater, local platforms (Wongnai/Tabelog/TheFork/Yelp/OpenRice), named food creators (Mark Wiens etc.). NO global chains (McDonald\'s, Starbucks, KFC, Pizza Hut, etc.).'}
 
-NAME INTEGRITY: "name" / "nameEnglish" must be the venue display name — never a street address, never "Moo X", never coordinates. Omit any place you can't find a real venue name for.
+═══ SEARCH IN THE LOCAL LANGUAGE TOO ═══
+The best local picks DO NOT appear in English-only search. For Thailand,
+search in Thai. For Japan, in Japanese. For Korea, in Korean. The top
+${isAttr ? 'TripAdvisor / Klook' : 'Wongnai / Tabelog'} listings are
+usually in the local language — find them and translate the venue name.
 
-"recommendationSource" must be the specific list/voice (e.g. "Asia's 50 Best 2025 #13", "Lonely Planet 2025", "Atlas Obscura — Hidden Gems", "Time Out Bangkok 2025"). Generic "Top-Rated" / "Local Favorite" is a quality failure.
+NAME INTEGRITY: "name" / "nameEnglish" must be the venue display name —
+never a street address, never "Moo X", never coordinates. Omit any place
+you can't find a real venue name for.
 
-"googleMapsUrl" — paste the real Google Maps URL you find via search. Omit if you can't find one. NEVER fabricate.
+"recommendationSource" must be the specific list/voice (e.g.
+"Asia's 50 Best 2025 #13", "Lonely Planet 2025", "Atlas Obscura — Hidden Gems",
+"Time Out Bangkok 2025"). Generic "Top-Rated" / "Local Favorite" is a
+quality failure. NEVER invent a list name — if the place is genuinely
+recommended but you can't find a specific list, write "Recommended on
+TripAdvisor" or "Featured by [outlet name]" honestly.
+
+"googleMapsUrl" — paste the real Google Maps URL you find via search. Omit
+if you can't find one. NEVER fabricate.
+
+⚠️ URL FORMAT — CRITICAL: URLs must be RAW JSON strings. NEVER wrap them
+in Markdown link syntax. WRONG: \`"[https://maps.google.com/x](https://maps.google.com/x)"\`.
+RIGHT: \`"https://maps.google.com/x"\`. The output is parsed as strict JSON.
 
 "lat" / "lng" — approximate decimal coordinates from Google Maps. Omit if unsure.
 
-DESCRIPTIONS IN HEBREW (1–2 short sentences each, traveler-facing).
+DESCRIPTIONS IN HEBREW (1–2 short sentences each, traveler-facing). Be
+specific — say WHY this place is worth visiting (the unusual exhibit, the
+sunset angle, the signature dish) — not generic "great place to visit".
 ${excludeBlock}
-OUTPUT JSON ONLY — no prose, no markdown fences, no explanations. EXACTLY this shape:
+═══ OUTPUT — JSON ONLY ═══
+No prose, no markdown fences, no explanations, no leading/trailing text.
+EXACTLY this shape:
 
 {
   "kind": "${kind}",
@@ -68,12 +136,12 @@ OUTPUT JSON ONLY — no prose, no markdown fences, no explanations. EXACTLY this
         {
           "name": "<Hebrew or local-language venue name>",
           "nameEnglish": "<Latin-script venue name>",
-          "description": "<Hebrew, 1–2 sentences>",
-          "location": "<full address>",
+          "description": "<Hebrew, 1–2 sentences, specific not generic>",
+          "location": "<full address INCLUDING the city name>",
           "lat": <number>,
           "lng": <number>,
-          "googleMapsUrl": "<URL>",
-          "recommendationSource": "<specific source>",
+          "googleMapsUrl": "<raw URL string — NO [text](url) markdown>",
+          "recommendationSource": "<specific source, never invented>",
           "rating": <number 1–5, from Google Maps>,
           "reviewCount": <integer, from Google Maps>${isAttr
             ? `,
@@ -107,6 +175,45 @@ function stripCodeFences(raw: string): string {
 const normalize = (s: string) =>
   s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '').trim();
 
+/**
+ * Clean a URL field — Gemini often wraps URLs in Markdown link syntax
+ * `[https://x](https://x)` even when told not to. Strip the wrapper and
+ * keep just the URL. If the value is already plain, return as-is.
+ * Returns undefined for falsy / clearly invalid inputs.
+ */
+function cleanUrl(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  let s = raw.trim();
+  if (!s) return undefined;
+  // [url](url) → url   (also handles [text](url) by preferring the parenthesized URL)
+  const mdMatch = s.match(/^\[(.*?)\]\((.+?)\)$/);
+  if (mdMatch) s = mdMatch[2].trim();
+  // Strip leading/trailing brackets, quotes, whitespace
+  s = s.replace(/^[\s<\["']+|[\s>\]"']+$/g, '');
+  // Must start with http(s):
+  if (!/^https?:\/\//i.test(s)) return undefined;
+  return s;
+}
+
+/**
+ * Catch sources that look fabricated. Returns a non-null reason string when
+ * the source is suspicious, null when it looks legitimate.
+ */
+function flagSuspectSource(source: string): string | null {
+  if (!source) return null;
+  const s = source.toLowerCase();
+  // Generic / lazy
+  if (/^(top[- ]rated|local favorite|popular|highly recommended|recommended)$/i.test(source.trim())) {
+    return 'מקור גנרי';
+  }
+  // Made-up "Asia's Top X — Y" patterns where Y is an unrelated source
+  if (/asia['']s top [a-z ]+ — tripadvisor/i.test(s)) return 'רשימה לא קיימת — TripAdvisor אין כותרת כזו';
+  if (/world['']s top [a-z ]+ — (tripadvisor|google)/i.test(s)) return 'רשימה לא קיימת';
+  // UNESCO Tentative List — real but easy to invent; flag for review
+  if (/unesco tentative/i.test(s)) return 'UNESCO Tentative — אמת ידנית';
+  return null;
+}
+
 const newId = (prefix: string) =>
   `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -114,6 +221,7 @@ export interface ParsedExternalAiPayload {
   kind: Kind;
   categories: Array<RestaurantCategory | AttractionCategory>;
   total: number;
+  warnings: string[];
 }
 
 export function parseExternalAiResponse(raw: string, expectedKind: Kind): ParsedExternalAiPayload {
@@ -138,35 +246,55 @@ export function parseExternalAiResponse(raw: string, expectedKind: Kind): Parsed
   const isAttr = expectedKind === 'attractions';
   const itemKey = isAttr ? 'attractions' : 'restaurants';
 
+  const warnings: string[] = [];
+  const suspectSources = new Set<string>();
+  let mdUrlCount = 0;
+
   const cats = data.categories.map((c: any): RestaurantCategory | AttractionCategory => {
     const title = String(c?.title ?? '').trim() || 'כללי';
     const rawItems = Array.isArray(c?.[itemKey]) ? c[itemKey] : [];
     const items = rawItems
       .filter((it: any) => it && typeof it.name === 'string' && it.name.trim())
-      .map((it: any): Restaurant | Attraction => ({
-        id: newId(isAttr ? 'attr' : 'rest'),
-        name: String(it.name).trim(),
-        nameEnglish: it.nameEnglish ? String(it.nameEnglish).trim() : undefined,
-        description: it.description ? String(it.description) : '',
-        location: it.location ? String(it.location) : '',
-        lat: typeof it.lat === 'number' ? it.lat : undefined,
-        lng: typeof it.lng === 'number' ? it.lng : undefined,
-        googleMapsUrl: it.googleMapsUrl ? String(it.googleMapsUrl) : undefined,
-        recommendationSource: it.recommendationSource ? String(it.recommendationSource) : undefined,
-        categoryTitle: title,
-        rating: typeof it.rating === 'number' ? it.rating : undefined,
-        reviewCount: typeof it.reviewCount === 'number' ? it.reviewCount : undefined,
-        ...(isAttr
-          ? {
-              price: it.price ? String(it.price) : undefined,
-              type: it.type ? String(it.type) : undefined,
-            }
-          : {
-              cuisine: it.cuisine ? String(it.cuisine) : undefined,
-              cuisineTags: Array.isArray(it.cuisineTags) ? it.cuisineTags.map(String) : undefined,
-              isHotelRestaurant: !!it.isHotelRestaurant,
-            }),
-      })) as any[];
+      .map((it: any): Restaurant | Attraction => {
+        // Clean URL — Gemini wraps in [url](url) markdown despite the prompt.
+        const rawUrl = it.googleMapsUrl;
+        const cleanedUrl = cleanUrl(rawUrl);
+        if (typeof rawUrl === 'string' && rawUrl !== cleanedUrl && /\]\(/.test(rawUrl)) {
+          mdUrlCount++;
+        }
+
+        // Source-quality watchdog
+        const source = it.recommendationSource ? String(it.recommendationSource).trim() : '';
+        if (source) {
+          const reason = flagSuspectSource(source);
+          if (reason) suspectSources.add(`${it.name} — "${source}" (${reason})`);
+        }
+
+        return {
+          id: newId(isAttr ? 'attr' : 'rest'),
+          name: String(it.name).trim(),
+          nameEnglish: it.nameEnglish ? String(it.nameEnglish).trim() : undefined,
+          description: it.description ? String(it.description) : '',
+          location: it.location ? String(it.location) : '',
+          lat: typeof it.lat === 'number' ? it.lat : undefined,
+          lng: typeof it.lng === 'number' ? it.lng : undefined,
+          googleMapsUrl: cleanedUrl,
+          recommendationSource: source || undefined,
+          categoryTitle: title,
+          rating: typeof it.rating === 'number' ? it.rating : undefined,
+          reviewCount: typeof it.reviewCount === 'number' ? it.reviewCount : undefined,
+          ...(isAttr
+            ? {
+                price: it.price ? String(it.price) : undefined,
+                type: it.type ? String(it.type) : undefined,
+              }
+            : {
+                cuisine: it.cuisine ? String(it.cuisine) : undefined,
+                cuisineTags: Array.isArray(it.cuisineTags) ? it.cuisineTags.map(String) : undefined,
+                isHotelRestaurant: !!it.isHotelRestaurant,
+              }),
+        };
+      }) as any[];
 
     return {
       id: newId('cat'),
@@ -182,7 +310,19 @@ export function parseExternalAiResponse(raw: string, expectedKind: Kind): Parsed
 
   if (total === 0) throw new Error('לא נמצאו פריטים תקפים ב-JSON.');
 
-  return { kind: expectedKind, categories: cats, total };
+  // Surface quality warnings — the caller (UI) decides whether to show them.
+  if (mdUrlCount > 0) {
+    warnings.push(`${mdUrlCount} כתובות URL היו עטופות ב-markdown — נוקו אוטומטית.`);
+  }
+  if (total < 15) {
+    warnings.push(`התוצאה דלה — ${total} פריטים בלבד. שקול להריץ שוב או לבקש מ-AI להעמיק.`);
+  }
+  if (suspectSources.size > 0) {
+    const sample = Array.from(suspectSources).slice(0, 3).join('; ');
+    warnings.push(`מקורות חשודים (יתכן והומצאו): ${sample}${suspectSources.size > 3 ? '…' : ''}`);
+  }
+
+  return { kind: expectedKind, categories: cats, total, warnings };
 }
 
 /**
