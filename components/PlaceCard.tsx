@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Star, MapIcon, Trophy, Plus, Navigation, AlertTriangle, X } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
-import { resolveRealPlaceImage } from '../services/placeImageService';
 import { getEnglishName } from '../utils/displayName';
+import { useLazyPlaceImage } from '../hooks/useLazyPlaceImage';
 
 export interface PlaceCardProps {
         type: 'restaurant' | 'attraction';
@@ -81,17 +81,18 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                 setRealPhotoTried(!!photoUrl);
         }, [photoUrl, initialUrl]);
 
-        // Try to upgrade the stock-photo fallback to a real photo from Wikipedia.
-        // Skip entirely if Google Places already gave us a photo.
+        // Lazy upgrade to a Wikipedia photo — only fires when the card scrolls
+        // into view, so a list of 80 cards doesn't burst 480 requests at mount.
+        const { ref: lazyRef, resolvedUrl } = useLazyPlaceImage({
+                name: searchName,
+                city: location,
+                type,
+                skip: !!photoUrl,
+                onResolved: () => setRealPhotoTried(true),
+        });
         useEffect(() => {
-                if (photoUrl) return;
-                let cancelled = false;
-                resolveRealPlaceImage(searchName, location, type).then(real => {
-                        if (!cancelled && real) setImgSrc(real);
-                        if (!cancelled) setRealPhotoTried(true);
-                });
-                return () => { cancelled = true; };
-        }, [photoUrl, searchName, location, type]);
+                if (resolvedUrl) setImgSrc(resolvedUrl);
+        }, [resolvedUrl]);
 
         const handleError = () => {
                 // Self-Healing Fallback — if the Wikipedia image 404s, go back to
@@ -109,6 +110,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
 
         return (
                 <div
+                        ref={lazyRef}
                         onClick={onClick}
                         className={`group relative w-full h-36 sm:h-44 md:h-48 rounded-xl md:rounded-2xl overflow-hidden shadow-sm bg-slate-100 transition-all duration-300 ${onClick ? 'cursor-pointer hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' : ''}`}
                 >

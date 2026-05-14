@@ -3,8 +3,8 @@ import { Trip, Restaurant, RestaurantIconType, RestaurantCategory } from '../typ
 import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel, Heart } from 'lucide-react';
 // cleaned imports
 import { getFoodImage } from '../services/imageMapper';
-import { resolveRealPlaceImage } from '../services/placeImageService';
 import { getEnglishName } from '../utils/displayName';
+import { useLazyPlaceImage } from '../hooks/useLazyPlaceImage';
 import { SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
@@ -2640,33 +2640,27 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
     const [resolvedSrc, setResolvedSrc] = useState<string>(data.googlePhotoUrl || data.imageUrl || mappedUrl);
 
     useEffect(() => {
-        if (data.googlePhotoUrl) {
-            setResolvedSrc(data.googlePhotoUrl);
-            return;
-        }
-        if (data.imageUrl) {
-            setResolvedSrc(data.imageUrl);
-            return;
-        }
-        // No saved real photo yet — try Wikipedia. Result is cached for 30
-        // days in localStorage and concurrency-throttled to 3 in-flight
-        // requests, so mounting a long list won't hammer Wikipedia.
-        let cancelled = false;
-        const searchName = getEnglishName({
-            name: data.name,
-            nameEnglish: (data as any).nameEnglish,
-            location: data.location,
-        });
-        resolveRealPlaceImage(searchName, data.location || '', 'restaurant').then(real => {
-            if (cancelled || !real) return;
-            setResolvedSrc(real);
-            // Persist on the saved item so future renders (any device) skip
-            // the lookup entirely. Fires once per item — the early return
-            // above prevents re-firing after data.imageUrl is set.
-            onUpdate({ imageUrl: real });
-        });
-        return () => { cancelled = true; };
-    }, [data.imageUrl, data.name, data.location]);
+        if (data.googlePhotoUrl) { setResolvedSrc(data.googlePhotoUrl); return; }
+        if (data.imageUrl) { setResolvedSrc(data.imageUrl); }
+    }, [data.googlePhotoUrl, data.imageUrl]);
+
+    // Lazy Wikipedia upgrade — fires only when this row scrolls into view,
+    // so a long restaurant list doesn't burst hundreds of requests at mount.
+    const searchName = getEnglishName({
+        name: data.name,
+        nameEnglish: (data as any).nameEnglish,
+        location: data.location,
+    });
+    const { ref: lazyRef, resolvedUrl } = useLazyPlaceImage({
+        name: searchName,
+        city: data.location || '',
+        type: 'restaurant',
+        skip: !!data.googlePhotoUrl || !!data.imageUrl,
+        onResolved: url => onUpdate({ imageUrl: url }),
+    });
+    useEffect(() => {
+        if (resolvedUrl) setResolvedSrc(resolvedUrl);
+    }, [resolvedUrl]);
 
     const imageSrc = resolvedSrc;
 
@@ -2680,6 +2674,7 @@ const RestaurantRow: React.FC<{ data: ExtendedRestaurant, onSaveNote: (n: string
 
     return (
         <div
+            ref={lazyRef}
             onClick={onSelect}
             className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 hover:shadow-md transition-shadow relative group cursor-pointer"
         >

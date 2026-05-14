@@ -4,8 +4,8 @@ import { MapPin, Ticket, Star, Landmark, Sparkles, Filter as FilterIcon, StickyN
 // cleaned imports
 import { getTripCities, locationMatchesCity, displayCityName, cityKey, extractRobustCity } from '../utils/geoData';
 import { getAttractionImage } from '../services/imageMapper';
-import { resolveRealPlaceImage } from '../services/placeImageService';
 import { getEnglishName } from '../utils/displayName';
+import { useLazyPlaceImage } from '../hooks/useLazyPlaceImage';
 import { SYSTEM_PROMPT, generateWithFallback } from '../services/aiService';
 import { CalendarDatePicker } from './CalendarDatePicker';
 import { UnifiedMapView } from './UnifiedMapView';
@@ -2296,27 +2296,26 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
     const [resolvedSrc, setResolvedSrc] = useState<string>(data.googlePhotoUrl || data.imageUrl || mappedUrl);
 
     useEffect(() => {
-        if (data.googlePhotoUrl) {
-            setResolvedSrc(data.googlePhotoUrl);
-            return;
-        }
-        if (data.imageUrl) {
-            setResolvedSrc(data.imageUrl);
-            return;
-        }
-        let cancelled = false;
-        const searchName = getEnglishName({
-            name: data.name,
-            nameEnglish: (data as any).nameEnglish,
-            location: data.location,
-        });
-        resolveRealPlaceImage(searchName, data.location || '', 'attraction').then(real => {
-            if (cancelled || !real) return;
-            setResolvedSrc(real);
-            onUpdate({ imageUrl: real });
-        });
-        return () => { cancelled = true; };
-    }, [data.imageUrl, data.name, data.location]);
+        if (data.googlePhotoUrl) { setResolvedSrc(data.googlePhotoUrl); return; }
+        if (data.imageUrl) { setResolvedSrc(data.imageUrl); }
+    }, [data.googlePhotoUrl, data.imageUrl]);
+
+    // Lazy Wikipedia upgrade — only fires when the row is in the viewport.
+    const searchName = getEnglishName({
+        name: data.name,
+        nameEnglish: (data as any).nameEnglish,
+        location: data.location,
+    });
+    const { ref: lazyRef, resolvedUrl } = useLazyPlaceImage({
+        name: searchName,
+        city: data.location || '',
+        type: 'attraction',
+        skip: !!data.googlePhotoUrl || !!data.imageUrl,
+        onResolved: url => onUpdate({ imageUrl: url }),
+    });
+    useEffect(() => {
+        if (resolvedUrl) setResolvedSrc(resolvedUrl);
+    }, [resolvedUrl]);
 
     const imageSrc = resolvedSrc;
 
@@ -2330,6 +2329,7 @@ const AttractionRow: React.FC<{ data: Attraction, onSaveNote: (n: string) => voi
 
     return (
         <div
+            ref={lazyRef}
             onClick={onSelect}
             className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 hover:shadow-md transition-shadow relative group cursor-pointer"
         >
