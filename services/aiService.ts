@@ -549,9 +549,21 @@ export const parseDeepResearchText = async (rawText: string): Promise<DeepResear
   //   B) Quick schema (from buildExternalAiPrompt):
   //      { kind: 'attractions'|'restaurants', categories: [{ title, attractions|restaurants: [...] }] }
   // Shape B is flattened into A — each item gets `categoryTitle` from its parent.
-  const cleanedRaw = rawText.replace(/^```json\s*|\s*```$/g, '').trim();
+  //
+  // Aggressive prose-stripping: Gemini often prepends "Here is the JSON:"
+  // or wraps in ```json …``` fences even when told not to. We strip fences,
+  // then carve out the first balanced { … } block by brace counting before
+  // attempting JSON.parse — same recovery the slow-path uses.
+  const stripped = rawText.replace(/```json|```/g, '').trim();
+  let candidateJson: string | null = null;
+  const firstBrace = stripped.indexOf('{');
+  const lastBrace = stripped.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    candidateJson = stripped.slice(firstBrace, lastBrace + 1);
+  }
   try {
-    const direct = JSON.parse(cleanedRaw);
+    if (!candidateJson) throw new Error('no-brace');
+    const direct = JSON.parse(candidateJson);
 
     // Shape A
     if (direct && (Array.isArray(direct.restaurants) || Array.isArray(direct.attractions))) {
@@ -588,8 +600,12 @@ export const parseDeepResearchText = async (rawText: string): Promise<DeepResear
         newAttractionCategories: itemKey === 'attractions' ? titles : [],
       };
     }
-  } catch {
-    // Not valid JSON — fall through to LLM parsing for narrative / table inputs
+  } catch (err) {
+    // Not valid JSON — fall through to LLM parsing for narrative / table inputs.
+    // Log so the user can see in the console why the fast-path didn't trigger
+    // (e.g. malformed paste, truncated JSON, unexpected shape).
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[DeepResearch] Fast-path skipped — falling through to LLM. Reason:', msg);
   }
 
   const prompt = `${DEEP_RESEARCH_PARSE_PROMPT}\n${rawText}\n========== END ==========\nReturn ONLY the JSON object now.`;
