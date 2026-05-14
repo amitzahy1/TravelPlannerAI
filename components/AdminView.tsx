@@ -746,11 +746,17 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         }
     };
 
-    // Escape literal control chars (\n, \r, \t, etc.) that appear *inside*
-    // string literals. LLM-generated JSON frequently has multi-line string
-    // values that violate the JSON spec — JSON.parse rejects them with
-    // "Bad control character in string literal". This walk respects backslash
-    // escapes and "..." boundaries.
+    // Repair JSON that LLMs frequently emit:
+    //   1. Literal control chars (\n, \r, \t, < 0x20) inside string values
+    //   2. Unescaped double quotes inside string values (e.g. Hebrew acronym
+    //      `להט"ב` — the quote is part of the word, not a string terminator)
+    //
+    // For (2) we use a look-ahead heuristic: when we hit a `"` while inString,
+    // skip whitespace and look at the next char. If it's structural (`,`, `}`,
+    // `]`, `:`, end-of-input) it's a real terminator; otherwise it's a literal
+    // quote that needs escaping. Not bulletproof but recovers ~all real-world
+    // LLM JSON corruption — and if the heuristic misfires, the parse fails
+    // and the user gets a clear error (no worse than today).
     const sanitizeJsonControlChars = (s: string): string => {
         let out = '';
         let inString = false;
@@ -759,7 +765,24 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             const c = s[i];
             if (escape) { out += c; escape = false; continue; }
             if (c === '\\') { out += c; escape = true; continue; }
-            if (c === '"') { inString = !inString; out += c; continue; }
+            if (c === '"') {
+                if (!inString) {
+                    inString = true;
+                    out += c;
+                } else {
+                    // Look ahead past whitespace to decide: terminator or literal?
+                    let j = i + 1;
+                    while (j < s.length && (s[j] === ' ' || s[j] === '\t' || s[j] === '\n' || s[j] === '\r')) j++;
+                    const next = s[j];
+                    if (next === undefined || next === ',' || next === '}' || next === ']' || next === ':') {
+                        inString = false;
+                        out += c;
+                    } else {
+                        out += '\\"';
+                    }
+                }
+                continue;
+            }
             if (inString) {
                 if (c === '\n') { out += '\\n'; continue; }
                 if (c === '\r') { out += '\\r'; continue; }
@@ -811,7 +834,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             }
         }
         if (sanitized) {
-            toast.warning('זוהו תווי שורה לא חוקיים בתוך מחרוזות — תוקנו אוטומטית.');
+            toast.warning('זוהו תווים לא חוקיים בתוך מחרוזות (שורות חדשות / מרכאות בלתי-מסומנות) — תוקנו אוטומטית.');
         }
 
         // Shape B — Quick schema. Flatten and route through externalAiImport.
