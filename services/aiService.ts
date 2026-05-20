@@ -16,38 +16,49 @@ const getAuthHeader = async (): Promise<Record<string, string>> => {
 // ============================================================================
 
 const GOOGLE_MODELS = {
-  // Tier 1: Used for SMART/ANALYZE intent (trip extraction, PDF parsing, structured JSON).
-  // Ordered fastest+cheapest first. gemini-3.1-flash-lite is GA as of May 2026
-  // and Google bills it as "frontier-class performance at a fraction of the cost"
-  // — strictly better than 2.5-flash-lite for the same price point, so it sits at
-  // the top of the chain. Pro stays as the absolute last resort for heavy PDFs.
+  // Tier 1: SMART intent (structured parsing, hotel/flight matching, general JSON).
+  // gemini-3.5-flash shipped 2026-05-19 at Google I/O — Google's blog reports it
+  // outperforms Gemini 3.1 Pro on coding / agentic / multimodal benchmarks while
+  // staying in the Flash latency class, so it takes over as primary. 3-flash-preview
+  // is dropped (superseded; preview tiers also get rate-limited first).
   SMART_CANDIDATES: [
-    "gemini-3.1-flash-lite",
-    "gemini-2.5-flash-lite",
-    "gemini-2.5-flash",
-    "gemini-3-flash-preview",
-    "gemini-2.5-pro",
+    "gemini-3.5-flash",        // PRIMARY — GA May 2026, frontier quality at Flash speed
+    "gemini-3.1-flash-lite",   // FALLBACK 1 — proven cheap GA option
+    "gemini-2.5-flash",        // FALLBACK 2 — proven baseline
+    "gemini-2.5-flash-lite",   // FALLBACK 3 — legacy cheap
+    "gemini-2.5-pro",          // FALLBACK 4 — escalate for heavy structured output
   ],
-  // Tier 2: SEARCH intent (restaurant/attraction market research).
-  // Flash-first — Pro 3.1 Preview removed: TTFT (21–35s) exceeds the
-  // Cloudflare Worker 30s lifecycle, causing every Pro 3.1 call to time
-  // out before returning. 2.5-flash with googleSearch grounding produces
-  // excellent results in ~3–8s. Pro stays in chain as escalation only.
+  // Tier 2: SEARCH intent (restaurant/attraction market research, grounded).
+  // 3.5-flash takes the primary slot — same grounding support as 2.5-flash with
+  // better extraction. Pro 3.1 Preview stays out (TTFT 21–35s exceeded the 25s
+  // Worker race timeout). Pro 2.5 kept as escalation only.
   RESEARCH_CANDIDATES: [
-    "gemini-2.5-flash",                                   // PRIMARY — fast + grounded (~3–8s)
-    "gemini-3-flash-preview",                             // FALLBACK 1 — Gemini 3 Flash
+    "gemini-3.5-flash",                                   // PRIMARY — GA May 2026, grounded + fast
+    "gemini-2.5-flash",                                   // FALLBACK 1 — proven grounded (~3–8s)
     "gemini-3.1-flash-lite",                              // FALLBACK 2 — cheapest GA option
     "gemini-2.5-pro",                                     // FALLBACK 3 — escalate when Flash output is thin
     "gemini-2.5-flash-lite",                              // FALLBACK 4 — legacy cheap option
     "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 5 — non-Google last resort
   ],
-  // Tier 3: Used for FAST intent (chat, quick suggestions)
+  // Tier 3: FAST intent (chat, quick suggestions). Latency > capability here,
+  // so we stay on Flash-Lite — 3.5-flash would just be slower and pricier for
+  // a chat-line response that doesn't need the extra reasoning.
   FAST_CANDIDATES: [
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
     "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // last resort if all Gemini quota gone
-  ]
+  ],
+  // Tier 4: ANALYZE intent — deep document/PDF extraction. Pro-first because
+  // Flash-Lite kept dropping cities from multi-page PDFs (user-reported 2026-05-20).
+  // Pro 2.5 can hit 15–20s TTFT on big PDFs but stays under the 25s Worker race
+  // cap most of the time; 3.5-flash sits behind it as a strong fallback.
+  DOC_CANDIDATES: [
+    "gemini-2.5-pro",          // PRIMARY for PDFs — depth > speed
+    "gemini-3.5-flash",        // FALLBACK 1 — frontier-quality Flash if Pro times out
+    "gemini-3.1-flash-lite",   // FALLBACK 2 — cheap last-resort Flash
+    "gemini-2.5-flash",        // FALLBACK 3 — proven baseline
+  ],
 };
 
 // File upload safety limits
@@ -251,13 +262,16 @@ export const generateWithFallback = async (
   preferTier: 'paid' | 'free' = 'free'
 ): Promise<any> => {
   // Build model chain WITHOUT mutating the originals.
-  // - SEARCH: market research (food / attractions) — depth matters, pro first.
-  // - SMART / ANALYZE: structured parsing — flash-lite first, pro as fallback.
-  // - FAST: chat / quick lookups — flash-lite only, stay cheap.
+  // - SEARCH:  market research (food / attractions) — 3.5-flash with grounding first.
+  // - ANALYZE: deep doc/PDF extraction — Pro 2.5 first, then Flash chain as fallback.
+  // - SMART:   structured parsing — 3.5-flash first, Pro as last resort.
+  // - FAST:    chat / quick lookups — flash-lite only, stay cheap.
   let chain: string[];
   if (intent === 'SEARCH') {
     chain = [...GOOGLE_MODELS.RESEARCH_CANDIDATES];
-  } else if (intent === 'SMART' || intent === 'ANALYZE') {
+  } else if (intent === 'ANALYZE') {
+    chain = [...GOOGLE_MODELS.DOC_CANDIDATES, ...GOOGLE_MODELS.SMART_CANDIDATES];
+  } else if (intent === 'SMART') {
     chain = [...GOOGLE_MODELS.SMART_CANDIDATES, ...GOOGLE_MODELS.FAST_CANDIDATES];
   } else {
     chain = [...GOOGLE_MODELS.FAST_CANDIDATES];
@@ -1354,12 +1368,14 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
     }
   }
 
-  // 3. Send to the SMART model chain (see SMART_CANDIDATES at the top of this file).
+  // 3. Send to the ANALYZE model chain — Pro 2.5 first, then Flash fallbacks
+  //    (see DOC_CANDIDATES at the top of this file). PDFs/images need depth;
+  //    Flash-Lite was dropping cities from multi-page documents.
   const response = await generateWithFallback(
     null,
     [{ role: 'user', parts: contentParts }],
     {},
-    'SMART'
+    'ANALYZE'
   );
 
   // 4. Parse and normalize with schema validation
@@ -1439,12 +1455,17 @@ export const getAttractions = async (destination: string, interests?: string): P
 export const parseTripWizardInputs = async (text: string, files: File[] = []): Promise<any> => {
   if (files.length > 0) return analyzeTripFiles(files);
 
+  // Text-only path stays on SMART (Flash 3.5 primary) — no need for Pro 2.5
+  // since there's no PDF to extract from. analyzeTripFiles() above handles the
+  // file path and routes through ANALYZE for Pro-first.
+  // Pass TRIP_OUTPUT_SCHEMA explicitly: the old ANALYZE intent auto-applied it,
+  // SMART does not — keep the same schema-constrained output.
   const prompt = `${SYSTEM_PROMPT_ANALYZE_TRIP}\n\nTEXT INPUT:\n${text}`;
   const response = await generateWithFallback(
     null,
     [{ role: 'user', parts: [{ text: prompt }] }],
-    { responseMimeType: 'application/json' },
-    'ANALYZE'
+    { responseMimeType: 'application/json', responseSchema: TRIP_OUTPUT_SCHEMA },
+    'SMART'
   );
   return JSON.parse(response.text);
 };
