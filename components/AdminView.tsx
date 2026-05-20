@@ -28,6 +28,7 @@ import { MagicalWizard } from './onboarding/MagicalWizard';
 import { UnifiedMapView } from './UnifiedMapView';
 import { DataHealthPanel } from './admin/DataHealthPanel';
 import { ActivityPanel } from './admin/ActivityPanel';
+import { ModelHealthPanel } from './admin/ModelHealthPanel';
 import { DeepResearchPanel } from './DeepResearchPanel';
 
 
@@ -1650,6 +1651,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
                                 {/* Data health & logs */}
                                 <DataHealthPanel trip={activeTrip} onUpdateTrip={(t) => handleUpdateTrip(t)} />
+
+                                {/* Model connectivity probe — identifies which Gemini models
+                                    work for the current Cloudflare Worker keys, with a
+                                    concrete remediation per failure. Cached 10 min; the
+                                    same cache is consulted by generateWithFallback to
+                                    auto-drop dead models from the chain. */}
+                                <ModelHealthPanel />
+
                                 <SystemLogs />
                             </div>
                         )}

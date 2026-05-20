@@ -47,6 +47,61 @@ const verifyFirebaseToken = async (token: string, projectId: string): Promise<{ 
 const isOpenRouterModel = (modelId: string) => modelId.startsWith("openrouter:");
 const isProModel = (modelId: string) => /(?:^|[-/])(?:gemini-)?\d+(?:\.\d+)?-pro\b/i.test(modelId) || modelId.toLowerCase().includes('pro');
 
+/**
+ * Classify a Gemini SDK error into the kind of action the user needs to take.
+ * Used by /api/probe to populate the `remediation` field per model, and by
+ * /api/generate's error path so production failures carry the same hint.
+ *
+ * Keep these patterns in sync with services/aiService.ts:classifyAiError so
+ * the user sees a consistent message whether the failure comes from a probe
+ * or a live request.
+ */
+type ErrorKind = 'QUOTA' | 'PERMISSION' | 'INVALID_MODEL' | 'AUTH' | 'TIMEOUT' | 'UNKNOWN';
+
+const classifyGeminiError = (errMsg: string, modelId: string, keyTail: string): { kind: ErrorKind; remediation: string } => {
+        const m = (errMsg || '').slice(0, 800);
+        if (/PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay|limit:\s*0/i.test(m)) {
+                return {
+                        kind: 'QUOTA',
+                        remediation: `Daily quota exhausted on key …${keyTail}. Enable billing OR raise quota for the project owning this key. https://aistudio.google.com/app/apikey`,
+                };
+        }
+        if (/\b429\b|rate.?limit|too many requests|quota/i.test(m)) {
+                return {
+                        kind: 'QUOTA',
+                        remediation: `Per-minute rate limit on key …${keyTail}. Usually transient. If persistent, enable billing OR request an RPM increase on the project. https://aistudio.google.com/app/apikey`,
+                };
+        }
+        if (/PERMISSION_DENIED|\b403\b|API has not been used|API_DISABLED/i.test(m)) {
+                return {
+                        kind: 'PERMISSION',
+                        remediation: `Generative Language API not enabled on the project owning key …${keyTail}. Enable at https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com`,
+                };
+        }
+        if (/API_KEY_INVALID|key not valid|invalid api key|\b401\b/i.test(m)) {
+                return {
+                        kind: 'AUTH',
+                        remediation: `Key …${keyTail} is invalid or revoked. Regenerate at https://aistudio.google.com/app/apikey and update the Cloudflare Worker secret.`,
+                };
+        }
+        if (/NOT_FOUND.*model|model.*not.*found|INVALID_ARGUMENT.*model|\b404\b/i.test(m)) {
+                return {
+                        kind: 'INVALID_MODEL',
+                        remediation: `Model ${modelId} not available for key …${keyTail}. Either Google hasn't rolled it out to this project yet, or the model id is wrong. Remove from chain or wait.`,
+                };
+        }
+        if (/GeminiTimeout|deadline exceeded|\b504\b/i.test(m)) {
+                return {
+                        kind: 'TIMEOUT',
+                        remediation: `Model ${modelId} exceeded the 25s Worker race timeout on a probe. Probably too slow for grounded/long prompts but may still work for short tasks.`,
+                };
+        }
+        return {
+                kind: 'UNKNOWN',
+                remediation: `Unhandled error on key …${keyTail}. See https://ai.google.dev/gemini-api/docs/troubleshooting`,
+        };
+};
+
 const partToText = (part: any): string => {
         if (!part) return "";
         if (typeof part === "string") return part;
@@ -295,6 +350,126 @@ export default {
 
                                 return new Response(JSON.stringify({ text, model: modelId, grounded: isSearch, key: keyKind, keyTail: `…${keyTail}` }), {
                                         headers: { ...corsHeaders, "Content-Type": "application/json" }
+                                });
+                        }
+
+                        // Pre-flight model probe — fires a tiny "ping" against each requested
+                        // model so the admin UI can see which Gemini models are actually
+                        // reachable for this account's keys. On-demand only (no auto-trigger).
+                        if (url.pathname === "/api/probe" && request.method === "POST") {
+                                // Auth: same allow-list as /api/generate.
+                                const authHeader = request.headers.get('Authorization') || '';
+                                const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+                                if (!idToken) {
+                                        return new Response(JSON.stringify({ error: 'Missing Authorization bearer token' }), {
+                                                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                                        });
+                                }
+                                if (!env.FIREBASE_PROJECT_ID) {
+                                        return new Response(JSON.stringify({ error: 'Server misconfigured: FIREBASE_PROJECT_ID missing' }), {
+                                                status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                                        });
+                                }
+                                let caller: { email: string; uid: string };
+                                try {
+                                        caller = await verifyFirebaseToken(idToken, env.FIREBASE_PROJECT_ID);
+                                } catch {
+                                        return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                                                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                                        });
+                                }
+                                if (!ALLOWED_EMAILS.has(caller.email)) {
+                                        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+                                                status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                                        });
+                                }
+
+                                const body = await request.json() as { models?: string[] };
+                                const models = Array.isArray(body.models) ? body.models : [];
+                                if (models.length === 0 || models.length > 20) {
+                                        return new Response(JSON.stringify({ error: 'Provide 1–20 model ids in `models`.' }), {
+                                                status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                                        });
+                                }
+
+                                // Probe sequentially to avoid spiking RPM (which would create
+                                // false-positive QUOTA errors on a brand-new model).
+                                const results: any[] = [];
+                                for (const modelId of models) {
+                                        const start = Date.now();
+                                        // OpenRouter models: not probed (different provider, no shared quota).
+                                        if (isOpenRouterModel(modelId)) {
+                                                results.push({
+                                                        model: modelId,
+                                                        ok: !!env.OPENROUTER_API_KEY,
+                                                        latencyMs: 0,
+                                                        key: 'OPENROUTER',
+                                                        keyTail: env.OPENROUTER_API_KEY ? `…${env.OPENROUTER_API_KEY.slice(-4)}` : 'missing',
+                                                        errorKind: env.OPENROUTER_API_KEY ? undefined : 'AUTH',
+                                                        remediation: env.OPENROUTER_API_KEY ? undefined : 'OPENROUTER_API_KEY secret missing — set it in Cloudflare Worker.',
+                                                });
+                                                continue;
+                                        }
+                                        // Gemini: pick the same key/auth that /api/generate would.
+                                        const wantsPremium = isProModel(modelId);
+                                        const usePremiumKey = wantsPremium && !!env.GEMINI_PREMIUM_KEY;
+                                        const apiKey = usePremiumKey
+                                                ? env.GEMINI_PREMIUM_KEY!
+                                                : (env.GEMINI_API_KEY || env.GEMINI_PREMIUM_KEY);
+                                        if (!apiKey) {
+                                                results.push({
+                                                        model: modelId,
+                                                        ok: false,
+                                                        latencyMs: 0,
+                                                        key: 'NONE',
+                                                        keyTail: 'missing',
+                                                        errorKind: 'AUTH' as ErrorKind,
+                                                        remediation: 'Neither GEMINI_API_KEY nor GEMINI_PREMIUM_KEY is set in the Cloudflare Worker.',
+                                                });
+                                                continue;
+                                        }
+                                        const probeKeyTail = apiKey.length >= 4 ? apiKey.slice(-4) : '????';
+                                        const probeKeyKind = usePremiumKey ? 'PREMIUM' : (env.GEMINI_API_KEY ? 'FREE' : 'PREMIUM_FALLBACK');
+
+                                        try {
+                                                const genAI = new GoogleGenerativeAI(apiKey);
+                                                const model = genAI.getGenerativeModel({
+                                                        model: modelId,
+                                                        generationConfig: { maxOutputTokens: 1, temperature: 0 },
+                                                });
+                                                await Promise.race([
+                                                        model.generateContent({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }] }),
+                                                        new Promise<never>((_, reject) =>
+                                                                setTimeout(() => reject(new Error('GeminiTimeout: 5s probe')), 5_000),
+                                                        ),
+                                                ]);
+                                                results.push({
+                                                        model: modelId,
+                                                        ok: true,
+                                                        latencyMs: Date.now() - start,
+                                                        key: probeKeyKind,
+                                                        keyTail: `…${probeKeyTail}`,
+                                                });
+                                                console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=${probeKeyKind} tail=…${probeKeyTail})`);
+                                        } catch (e: any) {
+                                                const msg = e?.message || String(e);
+                                                const classification = classifyGeminiError(msg, modelId, probeKeyTail);
+                                                results.push({
+                                                        model: modelId,
+                                                        ok: false,
+                                                        latencyMs: Date.now() - start,
+                                                        key: probeKeyKind,
+                                                        keyTail: `…${probeKeyTail}`,
+                                                        errorKind: classification.kind,
+                                                        errorDetail: msg.slice(0, 240),
+                                                        remediation: classification.remediation,
+                                                });
+                                                console.warn(`[Probe] ${modelId} FAIL (${classification.kind} key=${probeKeyKind} tail=…${probeKeyTail}): ${msg.slice(0, 160)}`);
+                                        }
+                                }
+
+                                return new Response(JSON.stringify({ results, probedAt: Date.now() }), {
+                                        headers: { ...corsHeaders, "Content-Type": "application/json" },
                                 });
                         }
 

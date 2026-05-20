@@ -2,6 +2,7 @@ import { StagedTripData, StagedCategories } from "../types";
 import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 import { auth } from "./firebaseConfig";
 import { parseJsonLenient, sanitizeJsonControlChars } from "./jsonSanitizer";
+import { applyProbeToChain } from "./aiHealth";
 
 // Worker enforces a per-email allow-list and rejects unauthenticated calls.
 // We attach the current user's Firebase ID token on every request.
@@ -16,7 +17,7 @@ const getAuthHeader = async (): Promise<Record<string, string>> => {
 // 🏗️ CONFIGURATION — Model Chains & Constants
 // ============================================================================
 
-const GOOGLE_MODELS = {
+export const GOOGLE_MODELS = {
   // Tier 1: SMART intent (structured parsing, hotel/flight matching, general JSON).
   // gemini-3.5-flash shipped 2026-05-19 at Google I/O — Google's blog reports it
   // outperforms Gemini 3.1 Pro on coding / agentic / multimodal benchmarks while
@@ -358,6 +359,19 @@ export const generateWithFallback = async (
 
   // Deduplicate (in case same model appears in both tiers)
   chain = [...new Set(chain)];
+
+  // Apply the cached probe result (services/aiHealth.ts). When the admin has
+  // run a recent probe via ModelHealthPanel, models known to be DEAD for the
+  // current keys (INVALID_MODEL / PERMISSION / AUTH) are dropped, and models
+  // that QUOTA-failed are demoted to the end of the chain. When there is no
+  // cached probe, the chain is returned unchanged (no behavior change for
+  // first-time users / fresh sessions).
+  const beforeFilter = chain;
+  chain = applyProbeToChain(chain);
+  if (chain.length === 0) {
+    console.warn('⚠️ [AI] Probe cache nuked the entire chain — falling back to unfiltered chain. Re-probe via admin panel.');
+    chain = beforeFilter;
+  }
 
   let lastError: Error | null = null;
   let hadDayQuotaError = false;
