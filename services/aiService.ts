@@ -1,6 +1,7 @@
 import { StagedTripData, StagedCategories } from "../types";
 import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 import { auth } from "./firebaseConfig";
+import { parseJsonLenient, sanitizeJsonControlChars } from "./jsonSanitizer";
 
 // Worker enforces a per-email allow-list and rejects unauthenticated calls.
 // We attach the current user's Firebase ID token on every request.
@@ -151,6 +152,11 @@ export const cleanJSON = (text: string): string => {
     .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":') // Unquoted keys (simple cases)
     .replace(/:\s*'([^']*)'/g, ': "$1"');      // Single-quoted values
 
+  // Phase 4: Escape unescaped control chars and literal quotes inside string
+  // values (the most common LLM corruption — see services/jsonSanitizer.ts).
+  // Cheap to always apply: a valid JSON string is a fixed-point of the sanitizer.
+  cleaned = sanitizeJsonControlChars(cleaned);
+
   return cleaned;
 };
 
@@ -234,6 +240,79 @@ const parseRetryDelayMs = (message: string, fallbackMs = 5000): number => {
   if (plainMatch) return Math.ceil(Number(plainMatch[1]) * 1000);
 
   return fallbackMs;
+};
+
+/**
+ * Map a Worker / Gemini error to a single-line remediation action the user
+ * can take. Used by both the console error path and the final "all models
+ * failed" toast so the user never has to guess what to do.
+ *
+ * Returns `null` for transient errors that auto-recover (the chain will
+ * retry; no user action needed).
+ */
+export const classifyAiError = (
+  status: number,
+  message: string,
+  diag?: { key?: string; keyTail?: string },
+): { kind: 'QUOTA' | 'PERMISSION' | 'INVALID_MODEL' | 'AUTH' | 'TIMEOUT' | 'UNKNOWN'; action: string } | null => {
+  const m = (message || '').slice(0, 800);
+  const tail = diag?.keyTail || '????';
+  const key = diag?.key || 'UNKNOWN';
+
+  // Daily quota: definitive cap, retrying won't help.
+  if (/PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay|limit:\s*0/i.test(m)) {
+    return {
+      kind: 'QUOTA',
+      action: `Daily quota exhausted on the ${key} key ending in ${tail}. ` +
+        `Enable billing OR increase quota for the project owning this key. ` +
+        `Find the key at https://aistudio.google.com/app/apikey ; manage quotas at https://console.cloud.google.com/iam-admin/quotas`,
+    };
+  }
+  // Per-minute / generic 429 — usually transient.
+  if (status === 429 || /\b429\b|rate.?limit|too many requests/i.test(m)) {
+    return {
+      kind: 'QUOTA',
+      action: `Per-minute rate limit on the ${key} key ending in ${tail}. ` +
+        `Will retry automatically; if it persists, the project needs billing enabled or an RPM quota increase. ` +
+        `Find the key at https://aistudio.google.com/app/apikey`,
+    };
+  }
+  if (status === 403 || /PERMISSION_DENIED|API has not been used|API_DISABLED/i.test(m)) {
+    return {
+      kind: 'PERMISSION',
+      action: `Generative Language API not enabled on the project owning key ${tail}. ` +
+        `Enable at https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com`,
+    };
+  }
+  if (status === 401 || /API_KEY_INVALID|key not valid|invalid api key/i.test(m)) {
+    return {
+      kind: 'AUTH',
+      action: `API key ${tail} is invalid or revoked. ` +
+        `Regenerate at https://aistudio.google.com/app/apikey and update the Cloudflare Worker secret (GEMINI_API_KEY / GEMINI_PREMIUM_KEY).`,
+    };
+  }
+  if (status === 404 || /NOT_FOUND.*model|model.*not.*found|INVALID_ARGUMENT.*model/i.test(m)) {
+    return {
+      kind: 'INVALID_MODEL',
+      action: `This model is not available for key ${tail}. ` +
+        `Either Google hasn't rolled it out to this project yet, or the model id is wrong. ` +
+        `Remove it from the fallback chain or wait for rollout.`,
+    };
+  }
+  if (status === 504 || /GeminiTimeout|deadline exceeded/i.test(m)) {
+    return {
+      kind: 'TIMEOUT',
+      action: `Model exceeded the 25s Worker race timeout. ` +
+        `For very large prompts this is expected on Pro models — the chain will fall back to a smaller model automatically.`,
+    };
+  }
+  // 503 / 5xx — transient backend issues. No user action.
+  if (status >= 500 && status < 600) return null;
+  // Catch-all for unknown failures.
+  return {
+    kind: 'UNKNOWN',
+    action: `Unhandled error from key ${tail}. See https://ai.google.dev/gemini-api/docs/troubleshooting`,
+  };
 };
 
 const isTransientWorkerError = (status: number, message: string): boolean => {
@@ -349,23 +428,38 @@ export const generateWithFallback = async (
       // Rate-limit / temporary provider outage — wait and retry same model once.
       if (response.status === 429 || !response.ok) {
         let errDetail = '';
+        let errDiagnostic: any = null;
         if (!response.ok) {
           try {
             const errBody = await response.json();
             errDetail = errBody.error || errBody.message || '';
+            // Worker now returns { error, model, tier, key, keyTail, intent }
+            // on every failure (see workers/src/index.ts). Surface the key
+            // fingerprint so the user can identify which Google Cloud project
+            // is hitting the quota.
+            if (errBody.key || errBody.keyTail || errBody.tier) {
+              errDiagnostic = { key: errBody.key, keyTail: errBody.keyTail, tier: errBody.tier, intent: errBody.intent };
+            }
           } catch { /* ignore parse error */ }
         }
+        const diagSuffix = errDiagnostic
+          ? ` [key=${errDiagnostic.key} tail=${errDiagnostic.keyTail} tier=${errDiagnostic.tier}]`
+          : '';
 
         if (!isTransientWorkerError(response.status, errDetail)) {
-          console.error(`❌ [AI] Worker ${response.status} on ${modelId}:`, errDetail || response.statusText);
-          throw new Error(`Worker Error: ${response.status}${errDetail ? ` — ${errDetail}` : ''}`);
+          console.error(`❌ [AI] Worker ${response.status} on ${modelId}${diagSuffix}:`, errDetail || response.statusText);
+          const classification = classifyAiError(response.status, errDetail, errDiagnostic || undefined);
+          if (classification) {
+            console.error(`🔑 [AI] ${classification.kind} — ${classification.action}`);
+          }
+          throw new Error(`Worker Error: ${response.status}${errDetail ? ` — ${errDetail}` : ''}${diagSuffix}`);
         }
 
         const retryAfterHeader = Number(response.headers.get('retry-after'));
         const retryAfterMs = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
           ? retryAfterHeader * 1000
           : parseRetryDelayMs(errDetail);
-        console.warn(`⏳ [AI] Temporary failure on ${modelId}, waiting ${Math.ceil(retryAfterMs / 1000)}s...`);
+        console.warn(`⏳ [AI] Temporary failure on ${modelId}${diagSuffix}, waiting ${Math.ceil(retryAfterMs / 1000)}s...`);
         await delay(retryAfterMs);
 
         // Retry once on same model — include full config to match original request.
@@ -384,15 +478,31 @@ export const generateWithFallback = async (
         });
         if (!retryResponse.ok) {
           let errDetail = '';
-          try { const e = await retryResponse.json(); errDetail = e.error || ''; } catch { /* ignore */ }
-          throw new Error(`Retry failed: ${retryResponse.status}${errDetail ? ` — ${errDetail}` : ''}`);
+          let retryDiag: any = null;
+          try {
+            const e = await retryResponse.json();
+            errDetail = e.error || '';
+            if (e.key || e.keyTail || e.tier) {
+              retryDiag = { key: e.key, keyTail: e.keyTail, tier: e.tier };
+            }
+          } catch { /* ignore */ }
+          const retryDiagSuffix = retryDiag
+            ? ` [key=${retryDiag.key} tail=${retryDiag.keyTail} tier=${retryDiag.tier}]`
+            : '';
+          throw new Error(`Retry failed: ${retryResponse.status}${errDetail ? ` — ${errDetail}` : ''}${retryDiagSuffix}`);
         }
         const retryData = await retryResponse.json();
         const rawRetryText = retryData.text;
         // SEARCH responses are grounded free-form text — extract JSON via cleanJSON.
-        const retryText = isSearch ? cleanJSON(rawRetryText) : rawRetryText;
-        JSON.parse(retryText);
-        console.log(`✅ [AI] Success with ${modelId} (after retry)`);
+        // Lenient parse: recover from unescaped control chars / quotes before
+        // discarding the model output as invalid.
+        const retryCleaned = isSearch ? cleanJSON(rawRetryText) : rawRetryText;
+        const retryLenient = parseJsonLenient(retryCleaned);
+        const retryText = retryLenient.sanitized ? sanitizeJsonControlChars(retryCleaned) : retryCleaned;
+        if (retryLenient.sanitized) {
+          console.warn(`⚠️ [AI] ${modelId} returned JSON with control-char corruption — sanitized.`);
+        }
+        console.log(`✅ [AI] Success with ${modelId} (after retry)${retryLenient.sanitized ? ' (sanitized)' : ''}`);
         return { text: retryText, model: modelId };
       }
 
@@ -400,11 +510,18 @@ export const generateWithFallback = async (
       // For non-SEARCH intents the Worker enforces a JSON schema, so we can
       // parse straight through. SEARCH responses come back as grounded
       // free-form text — strip prose / fences before parsing.
+      // Lenient parse: recover from unescaped control chars / quotes inside
+      // string values (common LLM corruption pattern) before treating the
+      // model as failed.
       const rawText = data.text;
-      const text = isSearch ? cleanJSON(rawText) : rawText;
-      JSON.parse(text); // Verify JSON validity
+      const cleanedText = isSearch ? cleanJSON(rawText) : rawText;
+      const lenient = parseJsonLenient(cleanedText);
+      const text = lenient.sanitized ? sanitizeJsonControlChars(cleanedText) : cleanedText;
+      if (lenient.sanitized) {
+        console.warn(`⚠️ [AI] ${modelId} returned JSON with control-char corruption — sanitized.`);
+      }
 
-      console.log(`✅ [AI] Success with ${modelId}${isSearch ? ' (grounded)' : ''}`);
+      console.log(`✅ [AI] Success with ${modelId}${isSearch ? ' (grounded)' : ''}${lenient.sanitized ? ' (sanitized)' : ''}`);
       return { text, model: modelId };
 
     } catch (error: any) {
@@ -422,6 +539,16 @@ export const generateWithFallback = async (
 
   console.error("❌ [AI] All models failed.");
   const lastMsg = lastError?.message || '';
+  // Pull the diagnostic suffix the last failing model left in the error message
+  // (format: "[key=PREMIUM tail=…YdF8 tier=paid]") and run the classifier so the
+  // user gets ONE concrete action to take.
+  const diagMatch = lastMsg.match(/\[key=(\S+)\s+tail=(\S+)\s+tier=(\S+)\]/);
+  if (diagMatch) {
+    const finalClassification = classifyAiError(0, lastMsg, { key: diagMatch[1], keyTail: diagMatch[2] });
+    if (finalClassification) {
+      console.error(`🚨 [AI] ACTION REQUIRED — ${finalClassification.kind}: ${finalClassification.action}`);
+    }
+  }
   // FreeTier billing failure — distinct from a daily-quota cap. The
   // project's API key is on a Google Cloud project without billing
   // enabled, so every model lands at limit:0. Surface a clearer message
@@ -577,11 +704,22 @@ export const parseDeepResearchText = async (rawText: string): Promise<DeepResear
   }
   try {
     if (!candidateJson) throw new Error('no-brace');
-    const direct = JSON.parse(candidateJson);
+    // Lenient parse: strict first, then auto-sanitize control chars / unescaped
+    // quotes inside string values. Fixes the common LLM corruption pattern
+    // (literal \n inside string values) without falling through to a paid AI
+    // call. parseJsonLenient throws only when BOTH passes fail.
+    const lenient = parseJsonLenient<any>(candidateJson);
+    const direct = lenient.value;
+    if (lenient.sanitized) {
+      console.warn(
+        '[DeepResearch] JSON had unescaped control chars / quotes — recovered via sanitizer. ' +
+        `Strict error was: ${lenient.strictError?.message?.slice(0, 120) || 'unknown'}`,
+      );
+    }
 
     // Shape A
     if (direct && (Array.isArray(direct.restaurants) || Array.isArray(direct.attractions))) {
-      console.log('[DeepResearch] Fast-path: native Deep JSON, skipping Flash-Lite');
+      console.log(`[DeepResearch] Fast-path: native Deep JSON, skipping Flash-Lite${lenient.sanitized ? ' (sanitized)' : ''}`);
       return {
         restaurants: Array.isArray(direct.restaurants) ? direct.restaurants : [],
         attractions: Array.isArray(direct.attractions) ? direct.attractions : [],
@@ -593,7 +731,7 @@ export const parseDeepResearchText = async (rawText: string): Promise<DeepResear
     // Shape B — Quick-prompt categories schema. Flatten and tag each item
     // with categoryTitle from its parent.
     if (direct && (direct.kind === 'attractions' || direct.kind === 'restaurants') && Array.isArray(direct.categories)) {
-      console.log('[DeepResearch] Fast-path: Quick-schema JSON, flattening categories');
+      console.log(`[DeepResearch] Fast-path: Quick-schema JSON, flattening categories${lenient.sanitized ? ' (sanitized)' : ''}`);
       const itemKey: 'attractions' | 'restaurants' = direct.kind;
       const flattened: any[] = [];
       const titles: string[] = [];

@@ -8,6 +8,7 @@
  */
 
 import type { Trip, Restaurant, Attraction, RestaurantCategory, AttractionCategory } from '../types';
+import { parseJsonLenient } from './jsonSanitizer';
 
 export type Kind = 'attractions' | 'restaurants';
 
@@ -243,14 +244,20 @@ export interface ParsedExternalAiPayload {
 export function parseExternalAiResponse(raw: string, expectedKind: Kind): ParsedExternalAiPayload {
   const stripped = stripCodeFences(raw);
   let data: any;
+  // Lenient parse: strict first, then auto-sanitize control chars / unescaped
+  // quotes (the two common LLM corruption patterns) before giving up. Avoids
+  // forcing the user to re-paste when the LLM emitted a literal \n inside a
+  // string value.
   try {
-    data = JSON.parse(stripped);
+    data = parseJsonLenient<any>(stripped).value;
   } catch {
-    // Try to recover: find first {...} block
+    // Try to recover: find first {...} block, retry lenient.
     const m = stripped.match(/\{[\s\S]*\}/);
     if (!m) throw new Error('לא הצלחתי לזהות JSON תקין בתשובה. ודא שהדבקת רק את ה-JSON.');
-    try { data = JSON.parse(m[0]); }
-    catch { throw new Error('ה-JSON שהודבק לא תקין. בדוק שאין פסיקים חסרים או מירכאות שבורות.'); }
+    try { data = parseJsonLenient<any>(m[0]).value; }
+    catch (err: any) {
+      throw new Error(`ה-JSON שהודבק לא תקין. ${err?.message?.slice(0, 100) || 'בדוק שאין פסיקים חסרים או מירכאות שבורות.'}`);
+    }
   }
 
   if (!data || typeof data !== 'object') throw new Error('התשובה לא במבנה צפוי.');

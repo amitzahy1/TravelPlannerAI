@@ -7,6 +7,7 @@ import { isTripOwner } from '../utils/tripPermissions';
 import { getUserPremiumState, resetPremiumRunUsed } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { generateWithFallback } from '../services/aiService';
+import { parseJsonLenient } from '../services/jsonSanitizer';
 import { parseFreeTextTrip } from '../services/freeTextImportService';
 import { toast } from '../stores/useToastStore';
 import { getTripCities } from '../utils/geoData'; // Imported from new DB
@@ -755,60 +756,13 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         }
     };
 
-    // Repair JSON that LLMs frequently emit:
-    //   1. Literal control chars (\n, \r, \t, < 0x20) inside string values
-    //   2. Unescaped double quotes inside string values (e.g. Hebrew acronym
-    //      `להט"ב` — the quote is part of the word, not a string terminator)
-    //
-    // For (2) we use a look-ahead heuristic: when we hit a `"` while inString,
-    // skip whitespace and look at the next char. If it's structural (`,`, `}`,
-    // `]`, `:`, end-of-input) it's a real terminator; otherwise it's a literal
-    // quote that needs escaping. Not bulletproof but recovers ~all real-world
-    // LLM JSON corruption — and if the heuristic misfires, the parse fails
-    // and the user gets a clear error (no worse than today).
-    const sanitizeJsonControlChars = (s: string): string => {
-        let out = '';
-        let inString = false;
-        let escape = false;
-        for (let i = 0; i < s.length; i++) {
-            const c = s[i];
-            if (escape) { out += c; escape = false; continue; }
-            if (c === '\\') { out += c; escape = true; continue; }
-            if (c === '"') {
-                if (!inString) {
-                    inString = true;
-                    out += c;
-                } else {
-                    // Look ahead past whitespace to decide: terminator or literal?
-                    let j = i + 1;
-                    while (j < s.length && (s[j] === ' ' || s[j] === '\t' || s[j] === '\n' || s[j] === '\r')) j++;
-                    const next = s[j];
-                    if (next === undefined || next === ',' || next === '}' || next === ']' || next === ':') {
-                        inString = false;
-                        out += c;
-                    } else {
-                        out += '\\"';
-                    }
-                }
-                continue;
-            }
-            if (inString) {
-                if (c === '\n') { out += '\\n'; continue; }
-                if (c === '\r') { out += '\\r'; continue; }
-                if (c === '\t') { out += '\\t'; continue; }
-                const code = c.charCodeAt(0);
-                if (code < 0x20) { out += '\\u' + code.toString(16).padStart(4, '0'); continue; }
-            }
-            out += c;
-        }
-        return out;
-    };
-
     // JSON-only paste path — strict, never calls AI. Accepts both the Quick
     // shape ({kind, categories}) and the Deep native shape ({restaurants, attractions}).
     // Brace-carves to recover from wrapping prose / ```json fences. On any
     // failure we surface the error inline instead of falling back to an
-    // LLM round-trip (that's what the Deep tab does).
+    // LLM round-trip (that's what the Deep tab does). The actual control-char
+    // / unescaped-quote sanitizer lives in services/jsonSanitizer.ts so the
+    // Deep Research path can share it.
     const handleJsonOnlyApply = () => {
         if (!activeTrip || !jsonOnlyText.trim()) return;
         setJsonOnlyError(null);
@@ -827,20 +781,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         let parsed: any;
         let sanitized = false;
         try {
-            parsed = JSON.parse(candidate);
-        } catch (firstErr: any) {
-            // Common failure: LLM emitted literal newlines inside string values
-            // ("Bad control character in string literal"). Retry with control
-            // chars escaped — recovers most AI-generated JSON.
-            try {
-                parsed = JSON.parse(sanitizeJsonControlChars(candidate));
-                sanitized = true;
-            } catch (secondErr: any) {
-                const msg = `JSON לא תקין: ${secondErr?.message?.slice(0, 100) || firstErr?.message?.slice(0, 100) || 'parse error'}`;
-                setJsonOnlyError(msg);
-                toast.error(msg);
-                return;
-            }
+            const lenient = parseJsonLenient<any>(candidate);
+            parsed = lenient.value;
+            sanitized = lenient.sanitized;
+        } catch (err: any) {
+            const msg = `JSON לא תקין: ${err?.message?.slice(0, 140) || 'parse error'}`;
+            setJsonOnlyError(msg);
+            toast.error(msg);
+            return;
         }
         if (sanitized) {
             toast.warning('זוהו תווים לא חוקיים בתוך מחרוזות (שורות חדשות / מרכאות בלתי-מסומנות) — תוקנו אוטומטית.');

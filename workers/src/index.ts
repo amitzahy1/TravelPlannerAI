@@ -215,7 +215,18 @@ export default {
                                 if (!apiKey) {
                                         throw new Error("Missing GEMINI_API_KEY");
                                 }
-                                console.log(`[Worker] ${caller.email} ${modelId} tier=${tier ?? 'free'} ${usePremiumKey ? '(PREMIUM key — Pro/paid)' : '(free key)'}`);
+                                // Diagnostic fingerprint so the user can identify WHICH Google Cloud
+                                // project to fix when a 429 hits. The full key is never logged. The
+                                // last 4 chars are stable across the key's lifetime — the user can
+                                // match them to a row in https://aistudio.google.com/app/apikey.
+                                const keyTail = apiKey.length >= 4 ? apiKey.slice(-4) : '????';
+                                const keyKind = usePremiumKey
+                                        ? 'PREMIUM'
+                                        : (env.GEMINI_API_KEY ? 'FREE' : 'PREMIUM_FALLBACK');
+                                console.log(
+                                        `[Worker] caller=${caller.email} model=${modelId} tier=${tier ?? 'free'} ` +
+                                        `key=${keyKind} keyTail=…${keyTail} intent=${intent ?? '(none)'}`,
+                                );
 
                                 // SEARCH intent → ground via Google Search + low temperature.
                                 // Tools and structured-JSON output are mutually exclusive in the
@@ -247,19 +258,42 @@ export default {
                                                 ),
                                         ]);
                                 } catch (e: any) {
+                                        // Attach the diagnostic fingerprint to EVERY upstream failure so
+                                        // the frontend (and the user reading the console) can identify
+                                        // which Google Cloud project is hitting the 429 / 504 / etc.
+                                        const diagnostic = {
+                                                model: modelId,
+                                                tier: tier ?? 'free',
+                                                key: keyKind,
+                                                keyTail: `…${keyTail}`,
+                                                intent: intent ?? null,
+                                        };
                                         if (/GeminiTimeout/.test(e?.message || '')) {
-                                                console.warn(`[Worker] ${modelId} timed out after 25s`);
-                                                return new Response(JSON.stringify({ error: e.message, model: modelId }), {
+                                                console.warn(`[Worker] ${modelId} timed out after 25s (key=${keyKind} tail=…${keyTail})`);
+                                                return new Response(JSON.stringify({ error: e.message, ...diagnostic }), {
                                                         status: 504,
                                                         headers: { ...corsHeaders, "Content-Type": "application/json" }
                                                 });
                                         }
-                                        throw e;
+                                        // Quota / 429 / billing errors from the Gemini SDK land here.
+                                        // Surface them with full diagnostic info so the user can pin down
+                                        // which API key (PREMIUM vs FREE) is misconfigured.
+                                        const msg = e?.message || String(e);
+                                        const status = /\b429\b/.test(msg)
+                                                ? 429
+                                                : /\b403\b/.test(msg) ? 403
+                                                : /\b401\b/.test(msg) ? 401
+                                                : 500;
+                                        console.error(`[Worker] ${modelId} failed (key=${keyKind} tail=…${keyTail}): ${msg.slice(0, 200)}`);
+                                        return new Response(JSON.stringify({ error: msg, ...diagnostic }), {
+                                                status,
+                                                headers: { ...corsHeaders, "Content-Type": "application/json" }
+                                        });
                                 }
                                 const response = await result.response;
                                 const text = response.text();
 
-                                return new Response(JSON.stringify({ text, model: modelId, grounded: isSearch }), {
+                                return new Response(JSON.stringify({ text, model: modelId, grounded: isSearch, key: keyKind, keyTail: `…${keyTail}` }), {
                                         headers: { ...corsHeaders, "Content-Type": "application/json" }
                                 });
                         }

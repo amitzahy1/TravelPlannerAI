@@ -1,5 +1,6 @@
 import type { HotelBooking, FlightSegment, Transport, TransportMode } from '../types';
 import { generateWithFallback, analyzeTripFiles } from './aiService';
+import { parseJsonLenient } from './jsonSanitizer';
 
 export interface FreeTextParseHints {
   destination?: string;
@@ -148,11 +149,13 @@ ${text}`;
 };
 
 const extractJson = (raw: string): any => {
+  // Lenient parse handles unescaped control chars / quotes inside string values
+  // (common LLM corruption). See services/jsonSanitizer.ts.
   try {
-    return JSON.parse(raw);
+    return parseJsonLenient<any>(raw).value;
   } catch {
     const match = raw?.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
+    if (match) return parseJsonLenient<any>(match[0]).value;
     throw new Error('Could not parse AI response');
   }
 };
