@@ -459,6 +459,19 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
         if (orderedKeys.length === 0) return [];
 
+        // Defensive: country-typed chips lose to city-typed chips. The chip
+        // generator already rejects names in PROVINCE_OR_COUNTRY, but if a
+        // destination string ever slips a country through (e.g. a new
+        // destination we forgot to add to the list), the tally below would
+        // assign EVERY item to the country chip because of the early-exit on
+        // first match. Sorting countries to the end of orderedKeys means
+        // real city chips get a chance to claim each item first.
+        orderedKeys.sort((a, b) => {
+            const aCountry = isProvinceOrCountryName(cityByKey.get(a)!.display) ? 1 : 0;
+            const bCountry = isProvinceOrCountryName(cityByKey.get(b)!.display) ? 1 : 0;
+            return aCountry - bCountry;
+        });
+
         const tally = (region?: string, location?: string) => {
             for (const k of orderedKeys) {
                 const display = cityByKey.get(k)!.display;

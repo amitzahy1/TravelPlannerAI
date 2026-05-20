@@ -724,7 +724,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     // ────────────────────────────────────────────────────────────────────
     const extAiPrompt = useMemo(() => {
         if (!activeTrip) return '';
-        const dest = activeTrip.destinationEnglish || activeTrip.destination || '';
+        // Prefer the actual trip cities (from hotels) over the country-only
+        // trip.destination — same fix as services/deepResearchPrompts.ts. A
+        // trip with destination "Albania" and hotels in Tirana + Vlorë should
+        // tell the AI "find picks in Tirana, Vlorë" so items come back with
+        // city-level location strings that match the city chips.
+        const tripCityList = getTripCities(activeTrip, { lang: 'en', excludeFlightOnly: true });
+        const fallback = activeTrip.destinationEnglish || activeTrip.destination || '';
+        const dest = tripCityList.length > 0 ? tripCityList.join(', ') : fallback;
         return buildExternalAiPrompt(dest, extAiKind, existingPlaceNames(activeTrip, extAiKind));
     }, [activeTrip, extAiKind]);
 

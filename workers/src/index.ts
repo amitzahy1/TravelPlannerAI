@@ -60,6 +60,14 @@ type ErrorKind = 'QUOTA' | 'PERMISSION' | 'INVALID_MODEL' | 'AUTH' | 'TIMEOUT' |
 
 const classifyGeminiError = (errMsg: string, modelId: string, keyTail: string): { kind: ErrorKind; remediation: string } => {
         const m = (errMsg || '').slice(0, 800);
+        // Monthly spending cap — user-set budget limit, NOT a quota. Distinct
+        // because raising RPM/RPD won't help; user must adjust the cap.
+        if (/spending cap|spend cap|exceeded.*spend|monthly.*spending|project spend|ai\.studio\/spend/i.test(m)) {
+                return {
+                        kind: 'QUOTA',
+                        remediation: `Project monthly SPEND CAP exhausted on key …${keyTail}. Go to https://ai.studio/spend and raise or remove the monthly cap on the project owning this key.`,
+                };
+        }
         if (/PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay|limit:\s*0/i.test(m)) {
                 return {
                         kind: 'QUOTA',

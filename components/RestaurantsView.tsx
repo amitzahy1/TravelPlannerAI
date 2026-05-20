@@ -578,6 +578,16 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
         if (orderedKeys.length === 0) return [];
 
+        // Defensive: country-typed chips lose to city-typed chips on tally
+        // (see AttractionsView for the same fix). Without this, a destination
+        // that slips a country name through PROVINCE_OR_COUNTRY would absorb
+        // every item via the early-exit below.
+        orderedKeys.sort((a, b) => {
+            const aCountry = isProvinceOrCountryName(cityByKey.get(a)!.display) ? 1 : 0;
+            const bCountry = isProvinceOrCountryName(cityByKey.get(b)!.display) ? 1 : 0;
+            return aCountry - bCountry;
+        });
+
         const tally = (region?: string, location?: string) => {
             for (const k of orderedKeys) {
                 const display = cityByKey.get(k)!.display;

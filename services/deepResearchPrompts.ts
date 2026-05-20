@@ -162,9 +162,19 @@ const buildSharedContext = (trip: Trip, opts?: DeepResearchPromptOptions): Share
     .map(([city, list]) => `- ${city}\n${list.length ? list.map(formatHotel).join('\n') : '   (no hotel booked yet — research the city itself)'}`)
     .join('\n');
 
+  // "destination" in the prompt = the comma-joined list the AI uses for "Cities to cover".
+  // Prefer the actual cityList (derived from hotel cities) over trip.destination,
+  // because trip.destination is often just the country (e.g. "אלבניה"). When the
+  // country-only string lands in "Cities to cover", the AI scatters picks across
+  // the whole country instead of focusing on the cities the user is actually in.
+  // Trip.destination is kept as a fallback for trips that haven't booked hotels yet.
   const destination = cityFilter
     ? cityFilter
-    : (trip.destination || cityList.join(', ') || 'unknown');
+    : (cityList.length > 0
+        ? (cityList.length === 1 && trip.destination && trip.destination !== cityList[0]
+            ? `${cityList[0]} (in ${trip.destination})`
+            : cityList.join(', '))
+        : (trip.destination || 'unknown'));
 
   return {
     dateLine,

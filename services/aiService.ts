@@ -260,6 +260,16 @@ export const classifyAiError = (
   const tail = diag?.keyTail || '????';
   const key = diag?.key || 'UNKNOWN';
 
+  // Monthly spending cap — Google-Cloud-side budget limit the user set themselves.
+  // Distinct from quota: raising RPM/RPD does nothing; user must adjust the cap.
+  if (/spending cap|spend cap|exceeded.*spend|monthly.*spending|project spend|ai\.studio\/spend/i.test(m)) {
+    return {
+      kind: 'QUOTA',
+      action: `Project monthly SPEND CAP exhausted on the ${key} key ending in ${tail}. ` +
+        `Go to https://ai.studio/spend and either raise the monthly cap or remove it. ` +
+        `Identify the project at https://aistudio.google.com/app/apikey (match the key tail ${tail}).`,
+    };
+  }
   // Daily quota: definitive cap, retrying won't help.
   if (/PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay|limit:\s*0/i.test(m)) {
     return {

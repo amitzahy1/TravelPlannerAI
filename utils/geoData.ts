@@ -393,8 +393,21 @@ const CITY_HEBREW_NAMES: Record<string, string> = {
         'ljubljana': 'לובליאנה',
         'bled': 'בלד',
         'tirana': 'טירנה',
+        'tirane': 'טירנה',           // Albanian indefinite form (Tiranë → e after diacritic strip)
         'saranda': 'סרנדה',
+        'sarande': 'סרנדה',          // Albanian indefinite form (Sarandë)
         'ksamil': 'קסמיל',
+        'vlora': 'וולורה',           // Tourist-stop on Albanian Riviera
+        'vlore': 'וולורה',           // Albanian indefinite (Vlorë → e after diacritic strip)
+        'durres': 'דורס',            // Albanian Adriatic port (Durrës)
+        'shkodra': 'שקודרה',         // Northern Albania (Shkodër)
+        'shkoder': 'שקודרה',
+        'berat': 'בראט',             // UNESCO city
+        'gjirokastra': 'גירוקסטר',   // UNESCO city (Gjirokastër)
+        'gjirokaster': 'גירוקסטר',
+        'kruja': 'קרויה',            // Albanian historic city (Krujë)
+        'kruje': 'קרויה',
+        'pogradec': 'פוגרדץ',
         'belgrade': 'בלגרד',
         'kotor': 'קוטור',
         'budva': 'בודבה',
@@ -847,15 +860,27 @@ const COUNTRY_KEY_TO_CITIES: Record<string, string[]> = (() => {
  * 'thailand'. Now we expand country filters to any of the country's known
  * major cities.
  */
+// stripDiacritics defined later in this file (used by normalizeForSearch). We
+// reuse the same implementation here to handle Albanian ë / French é / Spanish ñ
+// / Vietnamese tones so locations like "Vlorë, Albania" match a city key of
+// "vlora" or "vlore". Without this, every accented-script location silently
+// falls through to the country chip.
+const stripDiacriticsForMatch = (s: string): string =>
+        s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+
 export const locationMatchesCity = (location: string, cityDisplayName: string): boolean => {
         if (!location || !cityDisplayName) return false;
         const targetKey = cityKey(cityDisplayName);
         if (!targetKey) return false;
 
         const locLower = location.toLowerCase().trim();
+        const locStripped = stripDiacriticsForMatch(locLower);
+        const targetStripped = stripDiacriticsForMatch(targetKey);
 
-        // Direct substring match of the canonical key
+        // Direct substring match — try both raw and diacritic-stripped forms so
+        // "Vlorë" matches a city key of "vlora" / "vlore" (Albanian ë ↔ a/e).
         if (locLower.includes(targetKey)) return true;
+        if (locStripped.includes(targetStripped)) return true;
 
         // Hebrew form of a known city
         const hebrewForm = CITY_HEBREW_NAMES[targetKey];
@@ -866,9 +891,13 @@ export const locationMatchesCity = (location: string, cityDisplayName: string): 
         // lookup table iterates last (e.g. "ko chang" for קו צ'אנג even
         // when the actual location string says "Koh Chang"). Without
         // this loop, the substring check above misses the 'h' variant.
+        // Also tries diacritic-stripped form of each alias so "vlorë" in
+        // the location matches when the alias is "vlora".
         if (hebrewForm) {
                 for (const [en, he] of Object.entries(CITY_HEBREW_NAMES)) {
-                        if (he === hebrewForm && locLower.includes(en)) return true;
+                        if (he !== hebrewForm) continue;
+                        if (locLower.includes(en)) return true;
+                        if (locStripped.includes(stripDiacriticsForMatch(en))) return true;
                 }
         }
 
@@ -876,8 +905,7 @@ export const locationMatchesCity = (location: string, cityDisplayName: string): 
         // 'thailand' → matches 'Bangkok', 'Pattaya', 'Chiang Mai', etc.
         const countryCities = COUNTRY_KEY_TO_CITIES[targetKey];
         if (countryCities) {
-                if (countryCities.some(c => locLower.includes(c))) return true;
-                // Also try the Hebrew forms of each city in the country
+                if (countryCities.some(c => locLower.includes(c) || locStripped.includes(stripDiacriticsForMatch(c)))) return true;
                 for (const cityLower of countryCities) {
                         const he = CITY_HEBREW_NAMES[cityLower];
                         if (he && location.includes(he)) return true;

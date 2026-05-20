@@ -19,11 +19,41 @@ import { cityKey } from './geoData';
 const COUNTRY_SUFFIXES = [
     ', thailand', ', israel', ', italy', ', japan', ', vietnam', ', france', ', spain',
     ', greece', ', usa', ', united states', ', uk', ', united kingdom',
+    ', albania', ', portugal', ', germany', ', austria', ', netherlands', ', belgium',
+    ', poland', ', czech republic', ', croatia', ', serbia', ', romania', ', bulgaria',
+    ', hungary', ', slovakia', ', turkey', ', morocco', ', egypt', ', jordan', ', uae',
+    ', china', ', taiwan', ', south korea', ', korea', ', india', ', sri lanka',
+    ', indonesia', ', malaysia', ', singapore', ', philippines', ', cambodia', ', laos',
+    ', australia', ', new zealand', ', mexico', ', brazil', ', argentina', ', chile',
+    ', canada', ', cyprus',
 ];
 
 const PROVINCE_OR_COUNTRY = new Set([
+    // English country names — any of these as a "city" candidate is dropped
+    // from the chip strip, since chips are city-level by design. Keep this
+    // list growing whenever a new destination is added — a missing entry
+    // makes the country name a chip that swallows every item's location.
     'thailand', 'israel', 'italy', 'japan', 'vietnam', 'france', 'spain',
     'greece', 'usa', 'united states', 'uk', 'united kingdom',
+    'albania', 'portugal', 'germany', 'austria', 'netherlands', 'belgium',
+    'poland', 'czech republic', 'croatia', 'serbia', 'romania', 'bulgaria',
+    'hungary', 'slovakia', 'turkey', 'morocco', 'egypt', 'jordan', 'uae',
+    'china', 'taiwan', 'south korea', 'korea', 'india', 'sri lanka',
+    'indonesia', 'malaysia', 'singapore', 'philippines', 'cambodia', 'laos',
+    'australia', 'new zealand', 'mexico', 'brazil', 'argentina', 'chile',
+    'canada', 'cyprus', 'switzerland', 'denmark', 'sweden', 'norway', 'finland',
+    'ireland', 'iceland', 'estonia', 'latvia', 'lithuania',
+    // Hebrew country names — the destination field is Hebrew, so we need to
+    // catch it before it becomes a chip.
+    'אלבניה', 'תאילנד', 'יפן', 'ויאטנם', 'איטליה', 'צרפת', 'ספרד', 'יוון',
+    'פורטוגל', 'גרמניה', 'אוסטריה', 'הולנד', 'בלגיה', 'פולין', 'צ׳כיה', 'צ\'כיה',
+    'קרואטיה', 'סרביה', 'רומניה', 'בולגריה', 'הונגריה', 'סלובקיה', 'טורקיה',
+    'מרוקו', 'מצרים', 'ירדן', 'איחוד האמירויות', 'סין', 'טייוואן', 'קוריאה',
+    'דרום קוריאה', 'הודו', 'סרי לנקה', 'אינדונזיה', 'מלזיה', 'סינגפור',
+    'פיליפינים', 'קמבודיה', 'לאוס', 'אוסטרליה', 'ניו זילנד', 'מקסיקו',
+    'ברזיל', 'ארגנטינה', 'צ׳ילה', 'צ\'ילה', 'קנדה', 'קפריסין', 'שווייץ',
+    'דנמרק', 'שוודיה', 'נורווגיה', 'פינלנד', 'אירלנד', 'איסלנד',
+    // Thai provinces that historically polluted chips
     'chon buri', 'chonburi', 'rayong province', 'phuket province',
     'kathu', 'mueang phuket', 'thalang',
 ]);
