@@ -258,12 +258,15 @@ export default {
                                         });
                                 }
 
-                                // Smart key routing: Pro models always use the premium (paid) key —
-                                // free tier has limit:0 on Pro. Flash models use the free key unless
-                                // the caller explicitly requested tier='paid'. Falls back to whichever
-                                // key is set when only one exists.
-                                const wantsPremium = isProModel(modelId) || tier === 'paid';
-                                const usePremiumKey = wantsPremium && !!env.GEMINI_PREMIUM_KEY;
+                                // Smart key routing: when GEMINI_PREMIUM_KEY is set we prefer it
+                                // for EVERYTHING (Flash + Pro), because that's the billing-enabled
+                                // key — sending traffic to the free key just to hit its 429 cap is
+                                // a waste of the chain's fallback budget. Caller can still force
+                                // the free key with tier='free-only' (used by /api/probe to keep
+                                // probes off the metered key). Falls back to whichever key is set
+                                // when only one exists.
+                                const forceFree = tier === 'free-only';
+                                const usePremiumKey = !forceFree && !!env.GEMINI_PREMIUM_KEY;
                                 const apiKey = usePremiumKey
                                         ? env.GEMINI_PREMIUM_KEY!
                                         : (env.GEMINI_API_KEY || env.GEMINI_PREMIUM_KEY);
@@ -410,9 +413,9 @@ export default {
                                                 });
                                                 continue;
                                         }
-                                        // Gemini: pick the same key/auth that /api/generate would.
-                                        const wantsPremium = isProModel(modelId);
-                                        const usePremiumKey = wantsPremium && !!env.GEMINI_PREMIUM_KEY;
+                                        // Gemini: pick the same key/auth that /api/generate would —
+                                        // PREMIUM by default when both keys exist (billing key wins).
+                                        const usePremiumKey = !!env.GEMINI_PREMIUM_KEY;
                                         const apiKey = usePremiumKey
                                                 ? env.GEMINI_PREMIUM_KEY!
                                                 : (env.GEMINI_API_KEY || env.GEMINI_PREMIUM_KEY);
