@@ -3,6 +3,12 @@ import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 import { auth } from "./firebaseConfig";
 import { parseJsonLenient, sanitizeJsonControlChars } from "./jsonSanitizer";
 import { applyProbeToChain, markModelFailed } from "./aiHealth";
+import { toast } from "../stores/useToastStore";
+
+// Fire the "ungrounded SEARCH" warning only ONCE per browser session — the
+// underlying cause (Gemini spend-cap exhausted) is persistent for ~hours, so
+// repeating the toast on every restaurant/attraction click is just noise.
+let warnedUngroundedThisSession = false;
 
 // Worker enforces a per-email allow-list and rejects unauthenticated calls.
 // We attach the current user's Firebase ID token on every request.
@@ -619,8 +625,9 @@ export const generateWithFallback = async (
         if (retryLenient.sanitized) {
           console.warn(`⚠️ [AI] ${modelId} returned JSON with control-char corruption — sanitized.`);
         }
+        const retryGrounded = isSearch && !modelId.startsWith('groq:') && !modelId.startsWith('openrouter:');
         console.log(`✅ [AI] Success with ${modelId} (after retry)${retryLenient.sanitized ? ' (sanitized)' : ''}`);
-        return { text: retryText, model: modelId };
+        return { text: retryText, model: modelId, grounded: retryGrounded };
       }
 
       const data = await response.json();
@@ -640,10 +647,23 @@ export const generateWithFallback = async (
 
       // Only Gemini-with-googleSearch is actually grounded. Groq/OpenRouter
       // SEARCH calls go ungrounded (model generates from training data) — don't
-      // mislabel them.
+      // mislabel them. The `grounded` flag flows up to callers so SEARCH-intent
+      // UIs (RestaurantsView / AttractionsView) can warn the user when results
+      // are AI-invented rather than retrieved from real-world sources.
       const isActuallyGrounded = isSearch && !modelId.startsWith('groq:') && !modelId.startsWith('openrouter:');
       console.log(`✅ [AI] Success with ${modelId}${isActuallyGrounded ? ' (grounded)' : ''}${lenient.sanitized ? ' (sanitized)' : ''}`);
-      return { text, model: modelId };
+      if (isSearch && !isActuallyGrounded) {
+        console.warn(`⚠️ [AI] ${modelId} returned SEARCH results WITHOUT internet grounding. Items may be hallucinated.`);
+        if (!warnedUngroundedThisSession) {
+          warnedUngroundedThisSession = true;
+          toast.warning(
+            'תוצאות ה-AI נוצרו ללא חיפוש אמיתי באינטרנט (Gemini חסום בגלל תקרת תקציב). ' +
+            'ייתכן ששמות מסעדות/אטרקציות מומצאים. אמת לפני שמירה, או הסר את התקרה ב-https://ai.studio/spend',
+            12000,
+          );
+        }
+      }
+      return { text, model: modelId, grounded: isActuallyGrounded };
 
     } catch (error: any) {
       const errMsg = error.message || String(error);

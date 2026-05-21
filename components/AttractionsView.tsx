@@ -61,9 +61,14 @@ const sortAttractions = (list: Attraction[]) => {
     });
 };
 
-const attractionMatchesCity = (attraction: Pick<Attraction, 'location' | 'region' | 'description'>, city: string): boolean => {
+// Match an attraction against a city chip. Checks several fields because
+// non-grounded LLMs (Groq, OpenRouter free) often embed the city in the
+// NAME ("Vlora Castle") rather than populating `location` properly.
+const attractionMatchesCity = (attraction: Pick<Attraction, 'location' | 'region' | 'description' | 'name' | 'nameEnglish'>, city: string): boolean => {
     return locationMatchesCity(attraction.location || '', city)
         || locationMatchesCity(attraction.region || '', city)
+        || locationMatchesCity(attraction.name || '', city)
+        || locationMatchesCity(attraction.nameEnglish || '', city)
         || locationMatchesCity(attraction.description || '', city);
 };
 
@@ -478,10 +483,18 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             return aCountry - bCountry;
         });
 
-        const tally = (region?: string, location?: string) => {
+        // Tally checks the same fields as attractionMatchesCity — see that
+        // function's comment for why we look at name + description too.
+        const tally = (region?: string, location?: string, name?: string, nameEnglish?: string, description?: string) => {
             for (const k of orderedKeys) {
                 const display = cityByKey.get(k)!.display;
-                if (locationMatchesCity(region || '', display) || locationMatchesCity(location || '', display)) {
+                if (
+                    locationMatchesCity(region || '', display)
+                    || locationMatchesCity(location || '', display)
+                    || locationMatchesCity(name || '', display)
+                    || locationMatchesCity(nameEnglish || '', display)
+                    || locationMatchesCity(description || '', display)
+                ) {
                     cityByKey.get(k)!.count += 1;
                     return;
                 }
@@ -493,8 +506,10 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         // when the AI run returned zero attractions there).
         const isCountable = (a: { verificationStatus?: string }) =>
             a.verificationStatus !== 'not_found' && a.verificationStatus !== 'ambiguous';
-        const walk = (cats?: { region?: string; attractions: { region?: string; location?: string; verificationStatus?: string }[] }[]) => {
-            (cats || []).forEach(cat => cat.attractions.forEach(a => { if (isCountable(a)) tally(a.region || cat.region, a.location); }));
+        const walk = (cats?: { region?: string; attractions: { region?: string; location?: string; name?: string; nameEnglish?: string; description?: string; verificationStatus?: string }[] }[]) => {
+            (cats || []).forEach(cat => cat.attractions.forEach(a => {
+                if (isCountable(a)) tally(a.region || cat.region, a.location, a.name, a.nameEnglish, a.description);
+            }));
         };
         walk(trip.attractions);
         walk(trip.aiAttractions);

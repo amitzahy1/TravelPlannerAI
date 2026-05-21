@@ -177,9 +177,17 @@ const sortMyRestaurants = (list: Restaurant[]) => {
     });
 };
 
-const restaurantMatchesCity = (restaurant: Pick<Restaurant, 'location' | 'region'>, city: string): boolean => {
+// Match a restaurant against a city chip. We check several fields because
+// non-grounded LLMs (Groq, OpenRouter free) often return items with the city
+// embedded in the NAME ("Vlora Bar Cafe") but empty `location` / `region`.
+// Without checking name + nameEnglish + description, those items get attributed
+// to no city and the chip counts read 0 even when the city tab is full.
+const restaurantMatchesCity = (restaurant: Pick<Restaurant, 'location' | 'region' | 'name' | 'nameEnglish' | 'description'>, city: string): boolean => {
     return locationMatchesCity(restaurant.location || '', city)
-        || locationMatchesCity(restaurant.region || '', city);
+        || locationMatchesCity(restaurant.region || '', city)
+        || locationMatchesCity(restaurant.name || '', city)
+        || locationMatchesCity(restaurant.nameEnglish || '', city)
+        || locationMatchesCity(restaurant.description || '', city);
 };
 
 const RestaurantCard: React.FC<{
@@ -596,10 +604,21 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             return aCountry - bCountry;
         });
 
-        const tally = (region?: string, location?: string) => {
+        // Tally checks several fields per item — the same set as restaurantMatchesCity —
+        // so non-grounded LLM output (Groq / OpenRouter free) where the city
+        // lives in the NAME ("Vlora Bar Cafe") rather than `location` still
+        // gets attributed to the right chip. Otherwise chip counts read 0
+        // even when the city tab has plenty of items.
+        const tally = (region?: string, location?: string, name?: string, nameEnglish?: string, description?: string) => {
             for (const k of orderedKeys) {
                 const display = cityByKey.get(k)!.display;
-                if (locationMatchesCity(region || '', display) || locationMatchesCity(location || '', display)) {
+                if (
+                    locationMatchesCity(region || '', display)
+                    || locationMatchesCity(location || '', display)
+                    || locationMatchesCity(name || '', display)
+                    || locationMatchesCity(nameEnglish || '', display)
+                    || locationMatchesCity(description || '', display)
+                ) {
                     cityByKey.get(k)!.count += 1;
                     return;
                 }
@@ -609,8 +628,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         // AttractionsView for the same logic.
         const isCountable = (r: { verificationStatus?: string }) =>
             r.verificationStatus !== 'not_found' && r.verificationStatus !== 'ambiguous';
-        const walk = (cats?: { region?: string; restaurants: { region?: string; location?: string; verificationStatus?: string }[] }[]) => {
-            (cats || []).forEach(cat => cat.restaurants.forEach(r => { if (isCountable(r)) tally(r.region || cat.region, r.location); }));
+        const walk = (cats?: { region?: string; restaurants: { region?: string; location?: string; name?: string; nameEnglish?: string; description?: string; verificationStatus?: string }[] }[]) => {
+            (cats || []).forEach(cat => cat.restaurants.forEach(r => {
+                if (isCountable(r)) tally(r.region || cat.region, r.location, r.name, r.nameEnglish, r.description);
+            }));
         };
         walk(trip.restaurants);
         walk(trip.aiRestaurants);
