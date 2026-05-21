@@ -553,7 +553,15 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         sortedHotels.forEach(({ h }) => {
             const extracted = extractRobustCity(h.address || '', h.name || '', trip);
             const fallbackCity = h.city && !isMultiCityString(h.city) ? h.city : '';
-            const raw = extracted || fallbackCity;
+            // If extractRobustCity returned a country (which happens when the
+            // hotel's address is "City, Country" and resolveLocationName
+            // matched the country token rather than the city — e.g.
+            // "Vlorë, Albania" resolving to "Albania"), discard it and try
+            // h.city instead. Without this, half the trip's hotels' chips
+            // silently disappear from the city strip even though getTripCities
+            // (which reads h.city directly) shows them in the bottom UI.
+            const extractedSafe = extracted && !isProvinceOrCountryName(extracted) ? extracted : '';
+            const raw = extractedSafe || fallbackCity;
             if (!raw || isProvinceOrCountryName(raw) || isMultiCityString(raw)) return;
             const k = normalizeCityForChip(raw);
             if (!k || cityByKey.has(k)) return;

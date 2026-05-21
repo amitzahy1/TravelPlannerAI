@@ -436,7 +436,13 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         sortedHotels.forEach(({ h }) => {
             const extracted = extractRobustCity(h.address || '', h.name || '', trip);
             const fallbackCity = h.city && !isMultiCityString(h.city) ? h.city : '';
-            const raw = extracted || fallbackCity;
+            // If extractRobustCity returned a country (e.g. "Vlorë, Albania"
+            // resolves to "Albania" before "Vlorë" because Albania is in
+            // WORLD_DESTINATIONS), discard it and try h.city instead. Without
+            // this, the chip strip silently drops cities that getTripCities
+            // (the bottom UI) still shows. See RestaurantsView for matching fix.
+            const extractedSafe = extracted && !isProvinceOrCountryName(extracted) ? extracted : '';
+            const raw = extractedSafe || fallbackCity;
             if (!raw || isProvinceOrCountryName(raw) || isMultiCityString(raw)) return;
             const k = normalizeCityForChip(raw);
             if (!k || cityByKey.has(k)) return;
