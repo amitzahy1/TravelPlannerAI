@@ -638,7 +638,11 @@ export const generateWithFallback = async (
         console.warn(`⚠️ [AI] ${modelId} returned JSON with control-char corruption — sanitized.`);
       }
 
-      console.log(`✅ [AI] Success with ${modelId}${isSearch ? ' (grounded)' : ''}${lenient.sanitized ? ' (sanitized)' : ''}`);
+      // Only Gemini-with-googleSearch is actually grounded. Groq/OpenRouter
+      // SEARCH calls go ungrounded (model generates from training data) — don't
+      // mislabel them.
+      const isActuallyGrounded = isSearch && !modelId.startsWith('groq:') && !modelId.startsWith('openrouter:');
+      console.log(`✅ [AI] Success with ${modelId}${isActuallyGrounded ? ' (grounded)' : ''}${lenient.sanitized ? ' (sanitized)' : ''}`);
       return { text, model: modelId };
 
     } catch (error: any) {

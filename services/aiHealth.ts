@@ -82,6 +82,7 @@ export const probeModels = async (models: string[]): Promise<ProbeBundle> => {
 
 export const clearProbeCache = (): void => {
   try { sessionStorage.removeItem(CACHE_KEY); } catch { /* ignore */ }
+  loggedDemotions.clear();
 };
 
 /**
@@ -116,6 +117,11 @@ export const markModelFailed = (model: string, errorKind: ProbeErrorKind, detail
   }
 };
 
+// Track which models we've already logged about this session so the demote /
+// drop log only fires once per (model, kind) pair instead of on every request.
+// Reset on page reload — sessionStorage scope.
+const loggedDemotions = new Set<string>();
+
 /**
  * Apply the cached probe result to a static fallback chain. Rules:
  *
@@ -146,17 +152,31 @@ export const applyProbeToChain = (chain: string[]): string[] => {
     if (!r) { survivors.push(m); continue; }
     if (r.ok) { survivors.push(m); continue; }
     if (r.errorKind === 'INVALID_MODEL' || r.errorKind === 'PERMISSION' || r.errorKind === 'AUTH') {
-      // Drop entirely. Log once so the user can see it in the console.
-      console.warn(`🛑 [aiHealth] Dropping ${m} from fallback chain (${r.errorKind} on key ${r.keyTail}).`);
+      // Drop entirely. Log once per session so the console doesn't spam on
+      // every request — the cache persists, so the demotion fact doesn't
+      // change between requests within the same session.
+      const logKey = `drop:${m}:${r.errorKind}`;
+      if (!loggedDemotions.has(logKey)) {
+        loggedDemotions.add(logKey);
+        console.warn(`🛑 [aiHealth] Dropping ${m} from fallback chain (${r.errorKind} on key ${r.keyTail}).`);
+      }
       continue;
     }
     if (r.errorKind === 'QUOTA') {
-      console.warn(`⬇️ [aiHealth] Demoting ${m} to end of chain (QUOTA on key ${r.keyTail}).`);
+      const logKey = `demote:${m}:QUOTA`;
+      if (!loggedDemotions.has(logKey)) {
+        loggedDemotions.add(logKey);
+        console.warn(`⬇️ [aiHealth] Demoting ${m} to end of chain (QUOTA on key ${r.keyTail}).`);
+      }
       demoted.push(m);
       continue;
     }
-    // TIMEOUT / UNKNOWN: keep in place but warn.
-    console.warn(`⚠️ [aiHealth] Keeping ${m} despite probe failure (${r.errorKind} — likely transient).`);
+    // TIMEOUT / UNKNOWN: keep in place but warn once per session.
+    const logKey = `keep:${m}:${r.errorKind || 'UNKNOWN'}`;
+    if (!loggedDemotions.has(logKey)) {
+      loggedDemotions.add(logKey);
+      console.warn(`⚠️ [aiHealth] Keeping ${m} despite probe failure (${r.errorKind} — likely transient).`);
+    }
     survivors.push(m);
   }
   return [...survivors, ...demoted];
