@@ -85,6 +85,38 @@ export const clearProbeCache = (): void => {
 };
 
 /**
+ * Mark a specific model as failed in the probe cache without running a full
+ * probe. Used by generateWithFallback when it observes a hard failure
+ * (spend-cap, daily quota, permission denied) — that result is good enough
+ * to demote the model for the next ~10 minutes, saving the chain from burning
+ * retries on the same dead model on every subsequent request.
+ *
+ * If no probe bundle exists yet, creates a minimal one with only this entry.
+ * Existing entries for this model are overwritten.
+ */
+export const markModelFailed = (model: string, errorKind: ProbeErrorKind, detail?: string, keyTail = '????'): void => {
+  try {
+    const existing = readProbeCache() || { results: [], probedAt: Date.now() };
+    const filtered = existing.results.filter(r => r.model !== model);
+    filtered.push({
+      model,
+      ok: false,
+      latencyMs: 0,
+      key: 'AUTO',
+      keyTail,
+      errorKind,
+      errorDetail: detail?.slice(0, 240),
+      remediation: undefined,
+    });
+    const bundle: ProbeBundle = { results: filtered, probedAt: existing.probedAt };
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(bundle));
+    console.warn(`📌 [aiHealth] Marked ${model} as ${errorKind} in probe cache — will be demoted on next request.`);
+  } catch {
+    /* sessionStorage quota or unavailable — ignore */
+  }
+};
+
+/**
  * Apply the cached probe result to a static fallback chain. Rules:
  *
  *   - `errorKind: 'INVALID_MODEL'` or `'PERMISSION'` → DROP from chain.

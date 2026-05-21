@@ -17,6 +17,7 @@ interface Env {
         GEMINI_API_KEY?: string;
         GEMINI_PREMIUM_KEY?: string;   // Billing-enabled key — used for Pro models or when tier='paid'
         OPENROUTER_API_KEY?: string;
+        GROQ_API_KEY?: string;         // Free-tier non-Google fallback — Llama 3.3 70B at no cost
         FIREBASE_SERVICE_ACCOUNT: string;
         FIREBASE_PROJECT_ID: string;
         AUTH_SECRET: string;
@@ -174,6 +175,56 @@ const callOpenRouter = async (
         return { text, model: data?.model || modelId };
 };
 
+const isGroqModel = (modelId: string) => modelId.startsWith("groq:");
+
+/**
+ * Free-tier non-Google fallback. Groq hosts Llama 3.3 70B and friends with no
+ * card required, ~30 RPM and ~14,400 RPD on the free tier — enough for a
+ * single-user app even with Gemini fully out. Uses OpenAI-compatible chat
+ * completions, so the wire format mirrors callOpenRouter() above. When the
+ * generation config asks for JSON output, we set `response_format: json_object`
+ * — Groq's structured-output mode is strict like Gemini's responseSchema.
+ */
+const callGroq = async (
+        requestContent: any,
+        modelId: string,
+        generationConfig: any,
+        env: Env
+): Promise<{ text: string; model: string }> => {
+        if (!env.GROQ_API_KEY) {
+                throw new Error("Missing GROQ_API_KEY");
+        }
+        const actualModelId = modelId.replace(/^groq:/, "");
+        const wantJson = (generationConfig?.responseMimeType || "").includes("json");
+        const body: any = {
+                model: actualModelId,
+                messages: contentsToOpenRouterMessages(requestContent),
+                temperature: generationConfig?.temperature ?? 0.2,
+        };
+        if (wantJson) body.response_format = { type: "json_object" };
+
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${env.GROQ_API_KEY}`,
+                },
+                body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+                let detail = "";
+                try {
+                        const errorBody = await response.json() as any;
+                        detail = errorBody?.error?.message || errorBody?.message || JSON.stringify(errorBody);
+                } catch { /* ignore */ }
+                throw new Error(`Groq Error: ${response.status}${detail ? ` — ${detail}` : ""}`);
+        }
+        const data = await response.json() as any;
+        const text = data?.choices?.[0]?.message?.content || "";
+        if (!text) throw new Error("Groq returned an empty response");
+        return { text, model: data?.model || modelId };
+};
+
 // --- MAIN HANDLER ---
 export default {
         async email(message: ForwardableEmailMessage, env: Env, ctx: ExecutionContext) {
@@ -255,15 +306,54 @@ export default {
                                         : (generationConfig || { responseMimeType: "application/json" });
 
                                 if (isOpenRouterModel(modelId)) {
-                                        const openRouter = await callOpenRouter(requestContent, modelId, finalGenConfig, env);
-                                        return new Response(JSON.stringify({
-                                                text: openRouter.text,
-                                                model: openRouter.model,
-                                                grounded: false,
-                                                provider: "openrouter",
-                                        }), {
-                                                headers: { ...corsHeaders, "Content-Type": "application/json" }
-                                        });
+                                        try {
+                                                const openRouter = await callOpenRouter(requestContent, modelId, finalGenConfig, env);
+                                                return new Response(JSON.stringify({
+                                                        text: openRouter.text,
+                                                        model: openRouter.model,
+                                                        grounded: false,
+                                                        provider: "openrouter",
+                                                }), {
+                                                        headers: { ...corsHeaders, "Content-Type": "application/json" }
+                                                });
+                                        } catch (e: any) {
+                                                // Surface OpenRouter failures as a proper non-200 (with key fingerprint
+                                                // shape the frontend understands) so the chain falls through cleanly
+                                                // instead of bubbling up as an opaque 500.
+                                                const msg = e?.message || String(e);
+                                                console.error(`[Worker] OpenRouter ${modelId} failed: ${msg.slice(0, 200)}`);
+                                                return new Response(JSON.stringify({
+                                                        error: msg,
+                                                        model: modelId,
+                                                        key: 'OPENROUTER',
+                                                        keyTail: env.OPENROUTER_API_KEY ? `…${env.OPENROUTER_API_KEY.slice(-4)}` : '????',
+                                                        tier: tier ?? 'free',
+                                                }), { status: /429|rate.?limit/i.test(msg) ? 429 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+                                        }
+                                }
+
+                                if (isGroqModel(modelId)) {
+                                        try {
+                                                const groq = await callGroq(requestContent, modelId, finalGenConfig, env);
+                                                return new Response(JSON.stringify({
+                                                        text: groq.text,
+                                                        model: groq.model,
+                                                        grounded: false,
+                                                        provider: "groq",
+                                                        key: 'GROQ',
+                                                        keyTail: env.GROQ_API_KEY ? `…${env.GROQ_API_KEY.slice(-4)}` : '????',
+                                                }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+                                        } catch (e: any) {
+                                                const msg = e?.message || String(e);
+                                                console.error(`[Worker] Groq ${modelId} failed: ${msg.slice(0, 200)}`);
+                                                return new Response(JSON.stringify({
+                                                        error: msg,
+                                                        model: modelId,
+                                                        key: 'GROQ',
+                                                        keyTail: env.GROQ_API_KEY ? `…${env.GROQ_API_KEY.slice(-4)}` : 'missing',
+                                                        tier: tier ?? 'free',
+                                                }), { status: /429|rate.?limit/i.test(msg) ? 429 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+                                        }
                                 }
 
                                 // Smart key routing: when GEMINI_PREMIUM_KEY is set we prefer it
@@ -419,6 +509,40 @@ export default {
                                                         errorKind: env.OPENROUTER_API_KEY ? undefined : 'AUTH',
                                                         remediation: env.OPENROUTER_API_KEY ? undefined : 'OPENROUTER_API_KEY secret missing — set it in Cloudflare Worker.',
                                                 });
+                                                continue;
+                                        }
+                                        // Groq: real ping with `ping` and 1-token output, just like Gemini probe.
+                                        if (isGroqModel(modelId)) {
+                                                if (!env.GROQ_API_KEY) {
+                                                        results.push({
+                                                                model: modelId,
+                                                                ok: false,
+                                                                latencyMs: 0,
+                                                                key: 'GROQ',
+                                                                keyTail: 'missing',
+                                                                errorKind: 'AUTH' as ErrorKind,
+                                                                remediation: 'GROQ_API_KEY secret missing — sign up at console.groq.com (free, no card) and set the secret in Cloudflare Worker.',
+                                                        });
+                                                        continue;
+                                                }
+                                                const groqTail = env.GROQ_API_KEY.slice(-4);
+                                                try {
+                                                        await callGroq([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0 }, env);
+                                                        results.push({ model: modelId, ok: true, latencyMs: Date.now() - start, key: 'GROQ', keyTail: `…${groqTail}` });
+                                                        console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=GROQ tail=…${groqTail})`);
+                                                } catch (e: any) {
+                                                        const msg = e?.message || String(e);
+                                                        results.push({
+                                                                model: modelId,
+                                                                ok: false,
+                                                                latencyMs: Date.now() - start,
+                                                                key: 'GROQ',
+                                                                keyTail: `…${groqTail}`,
+                                                                errorKind: /429|rate.?limit/i.test(msg) ? 'QUOTA' as ErrorKind : /401|invalid/i.test(msg) ? 'AUTH' as ErrorKind : 'UNKNOWN' as ErrorKind,
+                                                                errorDetail: msg.slice(0, 240),
+                                                                remediation: `Groq key …${groqTail}: ${msg.slice(0, 120)}. Check the key at https://console.groq.com/keys.`,
+                                                        });
+                                                }
                                                 continue;
                                         }
                                         // Gemini: pick the same key/auth that /api/generate would —

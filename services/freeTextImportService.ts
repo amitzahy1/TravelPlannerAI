@@ -11,6 +11,8 @@ export interface FreeTextParseHints {
    *  TripDetailsPanel. Biases the model to find hotels/flights in these
    *  cities when the text is ambiguous (e.g. "Albania" without a city). */
   cities?: string[];
+  /** Trip type — replaces or augments the per-person `travelers` count. */
+  groupType?: 'family' | 'couple' | 'friends' | 'solo' | 'business' | 'group';
 }
 
 export interface FreeTextParseResult {
@@ -28,7 +30,7 @@ export interface FreeTextParseResult {
 }
 
 const buildPrompt = (text: string, hints?: FreeTextParseHints) => {
-  const hasAnyHint = hints && (hints.destination || hints.startDate || hints.endDate || hints.travelers || (hints.cities && hints.cities.length > 0));
+  const hasAnyHint = hints && (hints.destination || hints.startDate || hints.endDate || hints.travelers || hints.groupType || (hints.cities && hints.cities.length > 0));
   const hintBlock = hasAnyHint
     ? `
 Trip context (provided by the user in the wizard):
@@ -36,7 +38,8 @@ Trip context (provided by the user in the wizard):
 - specific cities to expect: ${hints!.cities && hints!.cities.length > 0 ? hints!.cities.join(', ') : 'not specified'}
 - expected start date: ${hints!.startDate || 'unknown'}
 - expected end date: ${hints!.endDate || 'unknown'}
-- travelers: ${hints!.travelers ?? 'unknown'}
+- travelers (total): ${hints!.travelers ?? 'unknown'}
+- trip type: ${hints!.groupType || 'unspecified'}
 If the text is ambiguous about year, city, or guest counts, prefer these values. Never discard structured data from the text in favor of hints — hints only fill gaps.
 `
     : '';

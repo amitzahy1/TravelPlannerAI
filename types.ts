@@ -464,7 +464,10 @@ export interface Trip {
   /** Focal point for the cover image, in percent (0-100). Lets the user pick
    *  which part of a wide photo shows in the hero on narrow screens. */
   coverFocal?: { x: number; y: number };
-  groupType?: 'family' | 'couple' | 'friends' | 'solo' | 'business';
+  // Group type — replaces or augments per-person travelers. `group` was
+  // added 2026-05-21 for the case where the user wants to say "this is a
+  // group trip" without entering exact counts.
+  groupType?: 'family' | 'couple' | 'friends' | 'solo' | 'business' | 'group';
   travelers?: TravelersComposition; // Detailed composition
   flights: Ticket; // Legacy name, maybe rename to 'transport'?
   trains?: TrainRide[];

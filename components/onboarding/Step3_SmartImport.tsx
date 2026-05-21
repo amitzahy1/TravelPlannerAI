@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, FileText, ArrowRight, Loader2, Printer, MousePointerClick, Download, FileDown, Plane, Hotel, Home, Globe, Mail } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
-import { analyzeTripFiles } from '../../services/aiService';
-import { TripDetailsPanel } from './TripDetailsPanel';
+import { AlertCircle } from 'lucide-react';
+import { analyzeTripFiles, describeAiErrorForUser } from '../../services/aiService';
+import { TripDetailsPanel, type GroupType } from './TripDetailsPanel';
 import type { TravelersComposition } from '../../types';
 
 interface Step3SmartProps {
@@ -12,8 +13,10 @@ interface Step3SmartProps {
         country?: string;
         cities: string[];
         travelers: TravelersComposition;
+        groupType?: GroupType;
         onCitiesChange: (next: string[]) => void;
         onTravelersChange: (next: TravelersComposition) => void;
+        onGroupTypeChange: (next: GroupType | undefined) => void;
 }
 
 const platforms = [
@@ -76,14 +79,19 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({
         country,
         cities,
         travelers,
+        groupType,
         onCitiesChange,
         onTravelersChange,
+        onGroupTypeChange,
 }) => {
         const [isDragging, setIsDragging] = useState(false);
         const [files, setFiles] = useState<File[]>([]);
         const [analysisState, setAnalysisState] = useState<'idle' | 'analyzing'>('idle');
         const [analysisMessage, setAnalysisMessage] = useState("קורא את המסמך...");
         const [activePlatform, setActivePlatform] = useState(platforms[0].id);
+        // Surface the last AI failure as an actionable banner — quota / spend-cap
+        // errors get a direct link to the page in Google Cloud that fixes them.
+        const [analysisError, setAnalysisError] = useState<ReturnType<typeof describeAiErrorForUser> | null>(null);
 
         const analysisMessages = [
                 "קורא את המסמך...",
@@ -115,6 +123,7 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({
         const handleFiles = async (newFiles: File[]) => {
                 setFiles(newFiles);
                 setAnalysisState('analyzing');
+                setAnalysisError(null);
                 try {
                         // Thread the optional wizard hints into the AI extractor.
                         // Empty arrays / zeroed travelers are filtered out inside.
@@ -122,11 +131,12 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({
                                 destination: country,
                                 cities: cities.length > 0 ? cities : undefined,
                                 travelers: (travelers.adults + travelers.children + travelers.babies) > 0 ? travelers : undefined,
+                                groupType,
                         });
                         onComplete({ files: newFiles, analysisResult: result });
                 } catch (error) {
                         console.error("Analysis Failed", error);
-                        setAnalysisMessage("שגיאה בניתוח הקבצים. נסו שוב.");
+                        setAnalysisError(describeAiErrorForUser(error));
                         setAnalysisState('idle');
                 }
         };
@@ -153,6 +163,30 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({
                                 >
                                         {analysisState === 'idle' ? (
                                                 <>
+                                                        {/* Actionable AI-error banner — only shown when a previous
+                                                            attempt failed. Quota / spend-cap errors get a deep link
+                                                            to the page in Google Cloud that fixes them. */}
+                                                        {analysisError && (
+                                                                <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 mb-4">
+                                                                        <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                                                                        <div className="flex-1 text-sm">
+                                                                                <div className="font-bold mb-1">{analysisError.headline}</div>
+                                                                                {analysisError.action && (
+                                                                                        <div className="text-red-700 leading-relaxed">{analysisError.action}</div>
+                                                                                )}
+                                                                                {analysisError.url && (
+                                                                                        <a
+                                                                                                href={analysisError.url}
+                                                                                                target="_blank"
+                                                                                                rel="noopener noreferrer"
+                                                                                                className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-800 font-bold text-xs transition-colors"
+                                                                                        >
+                                                                                                פתח את הדף לתיקון ↗
+                                                                                        </a>
+                                                                                )}
+                                                                        </div>
+                                                                </div>
+                                                        )}
                                                         {/* Drop Zone */}
                                                         <GlassCard
                                                                 className={`relative h-56 border-2 border-dashed flex flex-col items-center justify-center transition-all duration-300 group ${isDragging ? 'border-brand-action bg-brand-action/5 scale-[1.02]' : 'border-slate-300 hover:border-brand-action/50 hover:bg-white/80'}`}
@@ -190,8 +224,10 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({
                                                                 country={country}
                                                                 cities={cities}
                                                                 travelers={travelers}
+                                                                groupType={groupType}
                                                                 onCitiesChange={onCitiesChange}
                                                                 onTravelersChange={onTravelersChange}
+                                                                onGroupTypeChange={onGroupTypeChange}
                                                         />
 
                                                         {/* Separator */}

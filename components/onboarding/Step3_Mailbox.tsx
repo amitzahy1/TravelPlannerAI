@@ -8,7 +8,7 @@ import { Trip, type TravelersComposition } from '../../types';
 import { isMailboxTrip, claimMailboxTrip, mergeTripIntoTarget } from '../../utils/mailbox';
 import { saveTrip, deleteTrip } from '../../services/firestoreService';
 import { Mail } from 'lucide-react';
-import { TripDetailsPanel } from './TripDetailsPanel';
+import { TripDetailsPanel, type GroupType } from './TripDetailsPanel';
 
 interface Step3MailboxProps {
         onComplete: (data: { mailboxClaimedTripId?: string }) => void;
@@ -16,8 +16,10 @@ interface Step3MailboxProps {
         country?: string;
         cities: string[];
         travelers: TravelersComposition;
+        groupType?: GroupType;
         onCitiesChange: (next: string[]) => void;
         onTravelersChange: (next: TravelersComposition) => void;
+        onGroupTypeChange: (next: GroupType | undefined) => void;
 }
 
 /**
@@ -31,8 +33,10 @@ export const Step3_Mailbox: React.FC<Step3MailboxProps> = ({
         country,
         cities,
         travelers,
+        groupType,
         onCitiesChange,
         onTravelersChange,
+        onGroupTypeChange,
 }) => {
         const { user } = useAuth();
         const [trips, setTrips] = useState<Trip[]>([]);
@@ -95,8 +99,10 @@ export const Step3_Mailbox: React.FC<Step3MailboxProps> = ({
                                         country={country}
                                         cities={cities}
                                         travelers={travelers}
+                                        groupType={groupType}
                                         onCitiesChange={onCitiesChange}
                                         onTravelersChange={onTravelersChange}
+                                        onGroupTypeChange={onGroupTypeChange}
                                 />
                         </div>
 

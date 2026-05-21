@@ -9,7 +9,8 @@ import { Step3_TextImport } from './Step3_TextImport';
 import { Step3_Mailbox } from './Step3_Mailbox';
 import { SuccessAnimation } from './SuccessAnimation';
 import type { ImportMethod } from './Step2_ChoosePath';
-import type { TravelersComposition } from '../../types';
+import type { TravelersComposition, Trip } from '../../types';
+import type { GroupType } from './TripDetailsPanel';
 
 const EMPTY_TRAVELERS: TravelersComposition = { adults: 0, children: 0, babies: 0 };
 
@@ -27,6 +28,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
         // analyzeTripFiles) and persisted on the final Trip via App.tsx.
         const [cities, setCities] = useState<string[]>([]);
         const [travelers, setTravelers] = useState<TravelersComposition>(EMPTY_TRAVELERS);
+        const [groupType, setGroupType] = useState<GroupType | undefined>(undefined);
 
         // Hide the floating bottom dock while the wizard is open. Without this,
         // the dock floats above the wizard's sticky "המשך" footer on mobile and
@@ -81,7 +83,7 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                 // Always include cities + travelers in the completion payload, even
                 // when empty — App.tsx reads them off the wizard result and writes
                 // them to the Trip. Empty arrays / zeroed travelers are harmless.
-                const completeData = { ...tripData, ...finalData, cities, travelers };
+                const completeData = { ...tripData, ...finalData, cities, travelers, groupType };
                 setTripData(completeData);
 
                 // Mailbox-claim path: the user is opening an EXISTING trip from
@@ -261,8 +263,10 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                                 }}
                                                                                 cities={cities}
                                                                                 travelers={travelers}
+                                                                                groupType={groupType}
                                                                                 onCitiesChange={setCities}
                                                                                 onTravelersChange={setTravelers}
+                                                                                onGroupTypeChange={setGroupType}
                                                                         />
                                                                 ) : tripData.method === 'mail' ? (
                                                                         <Step3_Mailbox
@@ -271,8 +275,10 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                                 country={tripData.destination}
                                                                                 cities={cities}
                                                                                 travelers={travelers}
+                                                                                groupType={groupType}
                                                                                 onCitiesChange={setCities}
                                                                                 onTravelersChange={setTravelers}
+                                                                                onGroupTypeChange={setGroupType}
                                                                         />
                                                                 ) : (
                                                                         <Step3_SmartImport
@@ -281,8 +287,10 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                                 country={tripData.destination}
                                                                                 cities={cities}
                                                                                 travelers={travelers}
+                                                                                groupType={groupType}
                                                                                 onCitiesChange={setCities}
                                                                                 onTravelersChange={setTravelers}
+                                                                                onGroupTypeChange={setGroupType}
                                                                         />
                                                                 )}
                                                         </motion.div>

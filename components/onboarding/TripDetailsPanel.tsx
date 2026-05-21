@@ -17,18 +17,31 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MapPin, Plus, X, Users, ChevronDown, Search } from 'lucide-react';
+import { MapPin, Plus, X, Users, ChevronDown, Search, User, Heart, Baby, UsersRound, Briefcase } from 'lucide-react';
 import { searchDestinations, type DestinationMatch } from '../../utils/geoData';
-import type { TravelersComposition } from '../../types';
+import type { TravelersComposition, Trip } from '../../types';
+
+export type GroupType = NonNullable<Trip['groupType']>;
 
 interface Props {
     /** Country / destination string from Step 1, used to bias city search results. */
     country?: string;
     cities: string[];
     travelers: TravelersComposition;
+    groupType?: GroupType;
     onCitiesChange: (next: string[]) => void;
     onTravelersChange: (next: TravelersComposition) => void;
+    onGroupTypeChange: (next: GroupType | undefined) => void;
 }
+
+const GROUP_TYPE_OPTIONS: { id: GroupType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'solo', label: 'יחיד', icon: User },
+    { id: 'couple', label: 'זוג', icon: Heart },
+    { id: 'family', label: 'משפחה', icon: Baby },
+    { id: 'friends', label: 'חברים', icon: Users },
+    { id: 'group', label: 'קבוצה', icon: UsersRound },
+    { id: 'business', label: 'עסקים', icon: Briefcase },
+];
 
 const formatChip = (m: DestinationMatch): string =>
     m.kind === 'city' ? `${m.hebrew} · ${m.countryHebrew}` : m.hebrew;
@@ -73,7 +86,15 @@ const Stepper: React.FC<{
     );
 };
 
-export const TripDetailsPanel: React.FC<Props> = ({ country, cities, travelers, onCitiesChange, onTravelersChange }) => {
+export const TripDetailsPanel: React.FC<Props> = ({
+    country,
+    cities,
+    travelers,
+    groupType,
+    onCitiesChange,
+    onTravelersChange,
+    onGroupTypeChange,
+}) => {
     const [open, setOpen] = useState(false);
     const [cityQuery, setCityQuery] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
@@ -81,7 +102,7 @@ export const TripDetailsPanel: React.FC<Props> = ({ country, cities, travelers, 
     const inputRef = useRef<HTMLInputElement>(null);
 
     const totalTravelers = travelers.adults + travelers.children + travelers.babies;
-    const hasAnyData = cities.length > 0 || totalTravelers > 0;
+    const hasAnyData = cities.length > 0 || totalTravelers > 0 || !!groupType;
 
     // Bias search results: if a country was picked in Step 1 (e.g. "אלבניה"),
     // include it in the search query so country-scoped cities float up first.
@@ -139,7 +160,11 @@ export const TripDetailsPanel: React.FC<Props> = ({ country, cities, travelers, 
                         <div className="font-bold text-brand-navy text-sm">פרטים נוספים לדיוק הזיהוי</div>
                         <div className="text-xs text-slate-500">
                             {hasAnyData
-                                ? `${cities.length > 0 ? `${cities.length} ערים` : ''}${cities.length > 0 && totalTravelers > 0 ? ' · ' : ''}${totalTravelers > 0 ? `${totalTravelers} מטיילים` : ''}`
+                                ? [
+                                        cities.length > 0 ? `${cities.length} ערים` : null,
+                                        groupType ? GROUP_TYPE_OPTIONS.find(o => o.id === groupType)?.label : null,
+                                        totalTravelers > 0 ? `${totalTravelers} מטיילים` : null,
+                                ].filter(Boolean).join(' · ')
                                 : 'אופציונלי — עוזר ל-AI לזהות יותר טוב ערים, חדרים והסעות'}
                         </div>
                     </div>
@@ -246,10 +271,40 @@ export const TripDetailsPanel: React.FC<Props> = ({ country, cities, travelers, 
 
                             {/* Travelers section */}
                             <div className="border-t border-slate-100 pt-3">
-                                <div className="flex items-center gap-1.5 mb-1">
+                                <div className="flex items-center gap-1.5 mb-2">
                                     <Users className="w-3.5 h-3.5 text-indigo-500" />
                                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">מי מטיילים?</span>
                                 </div>
+
+                                {/* Group type chips — quick presets. Picking one is enough; the
+                                    steppers below stay visible as optional refinement. Picking
+                                    a different chip swaps; clicking the same chip clears it. */}
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {GROUP_TYPE_OPTIONS.map(opt => {
+                                        const Icon = opt.icon;
+                                        const isSelected = groupType === opt.id;
+                                        return (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => onGroupTypeChange(isSelected ? undefined : opt.id)}
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                                                    isSelected
+                                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50'
+                                                }`}
+                                                aria-pressed={isSelected}
+                                            >
+                                                <Icon className="w-3.5 h-3.5" />
+                                                {opt.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
+                                    בחרו סוג קבוצה במקום לספור אנשים — או הוסיפו כמויות מדויקות למטה אם הן ידועות.
+                                </p>
+
                                 <Stepper
                                     label="מבוגרים"
                                     sub="גילאי 12+"

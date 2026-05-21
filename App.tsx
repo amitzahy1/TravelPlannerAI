@@ -411,6 +411,7 @@ const AppContent: React.FC = () => {
       dates,
       coverImage: getDestinationCover(dest),
       ...(hasTravelers ? { travelers: wizardTravelers } : {}),
+      ...(wizardData.groupType ? { groupType: wizardData.groupType } : {}),
       flights: {
         // Don't auto-fill from user.displayName — that's usually just the
         // first name ("Amit"), but airline check-in needs a LAST name.

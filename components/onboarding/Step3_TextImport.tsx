@@ -30,8 +30,9 @@ import {
         mergeFreeTextResults,
         FreeTextParseResult,
 } from '../../services/freeTextImportService';
+import { describeAiErrorForUser } from '../../services/aiService';
 import type { HotelBooking, FlightSegment, TravelersComposition } from '../../types';
-import { TripDetailsPanel } from './TripDetailsPanel';
+import { TripDetailsPanel, type GroupType } from './TripDetailsPanel';
 
 interface Step3TextImportProps {
         onComplete: (data: { freeTextResult: FreeTextParseResult; startDate?: string; endDate?: string; freeText: string }) => void;
@@ -47,8 +48,10 @@ interface Step3TextImportProps {
         /** Lifted state from the wizard so chips persist across step navigation. */
         cities: string[];
         travelers: TravelersComposition;
+        groupType?: GroupType;
         onCitiesChange: (next: string[]) => void;
         onTravelersChange: (next: TravelersComposition) => void;
+        onGroupTypeChange: (next: GroupType | undefined) => void;
 }
 
 type Stage = 'idle' | 'analyzing' | 'error' | 'preview';
@@ -419,8 +422,10 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({
         initialData,
         cities,
         travelers,
+        groupType,
         onCitiesChange,
         onTravelersChange,
+        onGroupTypeChange,
 }) => {
         const [stage, setStage] = useState<Stage>(
                 initialData?.freeTextResult ? 'preview' : 'idle'
@@ -496,6 +501,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({
                                 endDate: initialData?.endDate,
                                 travelers: totalTravelers > 0 ? totalTravelers : initialData?.travelers,
                                 cities: cities.length > 0 ? cities : undefined,
+                                groupType,
                         });
                         setResult(parsed);
                         setStage('preview');
@@ -606,6 +612,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({
                                 endDate: initialData?.endDate,
                                 travelers: totalTravelersAppend > 0 ? totalTravelersAppend : initialData?.travelers,
                                 cities: cities.length > 0 ? cities : undefined,
+                                groupType,
                         });
                         const merged = mergeFreeTextResults(result, more);
                         setResult(merged);
@@ -666,8 +673,10 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({
                                                                 country={initialData?.destination}
                                                                 cities={cities}
                                                                 travelers={travelers}
+                                                                groupType={groupType}
                                                                 onCitiesChange={onCitiesChange}
                                                                 onTravelersChange={onTravelersChange}
+                                                                onGroupTypeChange={onGroupTypeChange}
                                                         />
 
                                                         {/* Gemini × Gmail shortcut — full panel on desktop, single
@@ -829,22 +838,38 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({
                                                                 </div>
                                                         </div>
 
-                                                        {/* Inline error */}
-                                                        {stage === 'error' && (
-                                                                <motion.div
-                                                                        initial={{ opacity: 0, y: -5 }}
-                                                                        animate={{ opacity: 1, y: 0 }}
-                                                                        className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl p-4"
-                                                                >
-                                                                        <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                                                                        <div className="flex-1 text-sm">
-                                                                                <div className="font-bold mb-1">לא הצלחנו לעבד את הטקסט</div>
-                                                                                <div className="text-red-700">
-                                                                                        נסו שוב או ערכו את הטקסט. {errorMessage && <span className="opacity-80">({errorMessage})</span>}
+                                                        {/* Inline error — actionable. When the error is a spend-cap
+                                                            / quota / billing issue, show the specific action + a deep
+                                                            link to the page in Google Cloud that fixes it, instead of
+                                                            the generic "try again" message. */}
+                                                        {stage === 'error' && (() => {
+                                                                const diag = describeAiErrorForUser(errorMessage ? new Error(errorMessage) : 'unknown');
+                                                                return (
+                                                                        <motion.div
+                                                                                initial={{ opacity: 0, y: -5 }}
+                                                                                animate={{ opacity: 1, y: 0 }}
+                                                                                className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl p-4"
+                                                                        >
+                                                                                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                                                                                <div className="flex-1 text-sm">
+                                                                                        <div className="font-bold mb-1">{diag.headline}</div>
+                                                                                        {diag.action && (
+                                                                                                <div className="text-red-700 leading-relaxed">{diag.action}</div>
+                                                                                        )}
+                                                                                        {diag.url && (
+                                                                                                <a
+                                                                                                        href={diag.url}
+                                                                                                        target="_blank"
+                                                                                                        rel="noopener noreferrer"
+                                                                                                        className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-800 font-bold text-xs transition-colors"
+                                                                                                >
+                                                                                                        פתח את הדף לתיקון ↗
+                                                                                                </a>
+                                                                                        )}
                                                                                 </div>
-                                                                        </div>
-                                                                </motion.div>
-                                                        )}
+                                                                        </motion.div>
+                                                                );
+                                                        })()}
 
                                                         {/* Action buttons — sticky */}
                                                         <div className="sticky bottom-0 -mx-4 md:-mx-8 px-4 md:px-8 py-3 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-between gap-3 z-20 shadow-[0_-8px_24px_rgba(0,0,0,0.04)]">

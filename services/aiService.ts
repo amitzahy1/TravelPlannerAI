@@ -2,7 +2,7 @@ import { StagedTripData, StagedCategories } from "../types";
 import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 import { auth } from "./firebaseConfig";
 import { parseJsonLenient, sanitizeJsonControlChars } from "./jsonSanitizer";
-import { applyProbeToChain } from "./aiHealth";
+import { applyProbeToChain, markModelFailed } from "./aiHealth";
 
 // Worker enforces a per-email allow-list and rejects unauthenticated calls.
 // We attach the current user's Firebase ID token on every request.
@@ -17,49 +17,70 @@ const getAuthHeader = async (): Promise<Record<string, string>> => {
 // 🏗️ CONFIGURATION — Model Chains & Constants
 // ============================================================================
 
+// Multi-provider model chains. Named GOOGLE_MODELS for backwards compat with
+// existing imports, but as of 2026-05-21 it spans Gemini + Groq + OpenRouter:
+//   - Gemini: PREMIUM key (billing-enabled) by default in the Worker. When the
+//     project hits its monthly spend cap, every Gemini model returns 429.
+//   - Groq: free, no card, no spend cap. Llama 3.3 70B handles JSON extraction
+//     comparably to Gemini Flash for trip parsing. Requires GROQ_API_KEY in
+//     the Worker (get one at https://console.groq.com/keys).
+//   - OpenRouter free tier: shared across multiple models so even when one
+//     model is rate-limited another usually has headroom.
+//
+// Order intent: when Gemini is healthy, it wins. When Gemini spend-caps,
+// services/aiHealth.ts auto-demotes it (cached 10 min) so Groq takes over
+// without per-request retry-burn.
 export const GOOGLE_MODELS = {
   // Tier 1: SMART intent (structured parsing, hotel/flight matching, general JSON).
-  // gemini-3.5-flash shipped 2026-05-19 at Google I/O — Google's blog reports it
-  // outperforms Gemini 3.1 Pro on coding / agentic / multimodal benchmarks while
-  // staying in the Flash latency class, so it takes over as primary. 3-flash-preview
-  // is dropped (superseded; preview tiers also get rate-limited first).
   SMART_CANDIDATES: [
-    "gemini-3.5-flash",        // PRIMARY — GA May 2026, frontier quality at Flash speed
-    "gemini-3.1-flash-lite",   // FALLBACK 1 — proven cheap GA option
-    "gemini-2.5-flash",        // FALLBACK 2 — proven baseline
-    "gemini-2.5-flash-lite",   // FALLBACK 3 — legacy cheap
-    "gemini-2.5-pro",          // FALLBACK 4 — escalate for heavy structured output
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+    "groq:llama-3.3-70b-versatile",                              // NEW free fallback — Llama 3.3 70B
+    "groq:llama-3.1-8b-instant",                                 // NEW free fallback — tiny+fast
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",         // OpenRouter free
+    "openrouter:meta-llama/llama-3.1-405b-instruct:free",        // OpenRouter free — big model
+    "openrouter:google/gemma-2-9b-it:free",                      // OpenRouter free
+    "openrouter:mistralai/mistral-7b-instruct:free",             // OpenRouter free
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-pro",
   ],
   // Tier 2: SEARCH intent (restaurant/attraction market research, grounded).
-  // 3.5-flash takes the primary slot — same grounding support as 2.5-flash with
-  // better extraction. Pro 3.1 Preview stays out (TTFT 21–35s exceeded the 25s
-  // Worker race timeout). Pro 2.5 kept as escalation only.
+  // Grounding only works on Gemini, so Groq/OpenRouter are last-resort
+  // ungrounded fallbacks here — they still produce reasonable lists.
   RESEARCH_CANDIDATES: [
-    "gemini-3.5-flash",                                   // PRIMARY — GA May 2026, grounded + fast
-    "gemini-2.5-flash",                                   // FALLBACK 1 — proven grounded (~3–8s)
-    "gemini-3.1-flash-lite",                              // FALLBACK 2 — cheapest GA option
-    "gemini-2.5-pro",                                     // FALLBACK 3 — escalate when Flash output is thin
-    "gemini-2.5-flash-lite",                              // FALLBACK 4 — legacy cheap option
-    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // FALLBACK 5 — non-Google last resort
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash-lite",
+    "groq:llama-3.3-70b-versatile",                              // NEW — ungrounded but strong
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter:meta-llama/llama-3.1-405b-instruct:free",        // NEW
   ],
-  // Tier 3: FAST intent (chat, quick suggestions). Latency > capability here,
-  // so we stay on Flash-Lite — 3.5-flash would just be slower and pricier for
-  // a chat-line response that doesn't need the extra reasoning.
+  // Tier 3: FAST intent (chat, quick suggestions). Latency > capability.
+  // groq:llama-3.1-8b-instant added — same latency class as Flash-Lite but
+  // doesn't share Gemini's spend cap.
   FAST_CANDIDATES: [
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
-    "openrouter:meta-llama/llama-3.3-70b-instruct:free",  // last resort if all Gemini quota gone
+    "groq:llama-3.1-8b-instant",                                 // NEW free fallback
+    "groq:llama-3.3-70b-versatile",                              // NEW free fallback
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",
   ],
-  // Tier 4: ANALYZE intent — deep document/PDF extraction. Pro-first because
-  // Flash-Lite kept dropping cities from multi-page PDFs (user-reported 2026-05-20).
-  // Pro 2.5 can hit 15–20s TTFT on big PDFs but stays under the 25s Worker race
-  // cap most of the time; 3.5-flash sits behind it as a strong fallback.
+  // Tier 4: ANALYZE intent — deep document/PDF extraction. Multimodal vision
+  // capability is Gemini-only (Groq/OpenRouter free don't accept PDF), so the
+  // text-only Llama fallbacks won't help for actual PDFs — but they DO help
+  // when the wizard sends extracted text rather than the raw file (text path
+  // already does this) and when "PDF was already converted to text upstream".
   DOC_CANDIDATES: [
-    "gemini-2.5-pro",          // PRIMARY for PDFs — depth > speed
-    "gemini-3.5-flash",        // FALLBACK 1 — frontier-quality Flash if Pro times out
-    "gemini-3.1-flash-lite",   // FALLBACK 2 — cheap last-resort Flash
-    "gemini-2.5-flash",        // FALLBACK 3 — proven baseline
+    "gemini-2.5-pro",
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+    "groq:llama-3.3-70b-versatile",                              // text-only fallback
+    "openrouter:meta-llama/llama-3.1-405b-instruct:free",        // text-only fallback
   ],
 };
 
@@ -326,6 +347,75 @@ export const classifyAiError = (
   };
 };
 
+/**
+ * Map a thrown AI error (from generateWithFallback or any downstream caller)
+ * to a Hebrew headline + concrete action the user can take, with a deep-link
+ * URL when relevant. Used by wizard error displays so users don't have to open
+ * DevTools to figure out why an import failed.
+ */
+export const describeAiErrorForUser = (err: unknown): { headline: string; action?: string; url?: string } => {
+  const raw = String((err as any)?.message || err || '');
+  const m = raw.toLowerCase();
+  if (!raw) return { headline: 'אירעה שגיאה לא צפויה.' };
+
+  // Spend cap — the user-set monthly budget on the project. Distinct from
+  // a quota — raising RPM/RPD won't help; user must raise the cap.
+  if (/spending cap|spend cap|exceeded.*spend|monthly.*spending|ai\.studio\/spend|spendcapexhausted/i.test(raw)) {
+    const tailMatch = raw.match(/tail=(\S+?)[\s\]]/) || raw.match(/ending in (\S+)/i);
+    const tail = tailMatch?.[1] || '????';
+    return {
+      headline: 'תקרת ההוצאה החודשית של ה-AI נגמרה',
+      action: `המפתח שמסתיים ב-${tail} הגיע לתקרת התקציב החודשי שהגדרת. צריך להעלות (או להסיר) את התקרה לפני שאפשר להמשיך לעבד טקסטים.`,
+      url: 'https://ai.studio/spend',
+    };
+  }
+  if (/PerDay|per_day|GenerateRequestsPerDay|limit:\s*0|FreeTier|free_tier/i.test(raw)) {
+    return {
+      headline: 'המכסה היומית של ה-AI נגמרה',
+      action: 'נסה שוב מחר, או הפעל חיוב על הפרויקט ב-Google Cloud כדי להגדיל את המכסה.',
+      url: 'https://aistudio.google.com/app/apikey',
+    };
+  }
+  if (/\b429\b|rate.?limit|too many requests/i.test(raw)) {
+    return {
+      headline: 'יותר מדי בקשות ל-AI בדקה האחרונה',
+      action: 'נסה שוב בעוד דקה. אם זה חוזר על עצמו — צריך להפעיל חיוב או להעלות את ה-RPM של הפרויקט.',
+      url: 'https://aistudio.google.com/app/apikey',
+    };
+  }
+  if (/PERMISSION_DENIED|\b403\b|API has not been used/i.test(raw)) {
+    return {
+      headline: 'API ה-AI לא מופעל בפרויקט',
+      action: 'יש להפעיל את Generative Language API בפרויקט הענן הרלוונטי.',
+      url: 'https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com',
+    };
+  }
+  if (/API_KEY_INVALID|key not valid|\b401\b/i.test(raw)) {
+    return {
+      headline: 'מפתח ה-API לא תקין או בוטל',
+      action: 'יש לייצר מפתח חדש ב-AI Studio ולעדכן את ה-Worker.',
+      url: 'https://aistudio.google.com/app/apikey',
+    };
+  }
+  if (/GeminiTimeout|deadline exceeded|\b504\b|aborted|etimedout/i.test(m)) {
+    return {
+      headline: 'התגובה מה-AI נקטעה (timeout)',
+      action: 'נסה שוב, או קצר את הטקסט אם הוא ארוך מאוד.',
+    };
+  }
+  if (/network|failed to fetch|networkerror/i.test(m)) {
+    return {
+      headline: 'בעיית חיבור לאינטרנט',
+      action: 'בדוק את הרשת ונסה שוב.',
+    };
+  }
+  // Generic — surface the first ~120 chars so the user can copy/paste for help.
+  return {
+    headline: 'לא הצלחנו לעבד את הטקסט',
+    action: raw.slice(0, 140),
+  };
+};
+
 const isTransientWorkerError = (status: number, message: string): boolean => {
   // Permanent quota (limit:0, PerDay) must be checked first — even for 429
   if (/PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay|limit:\s*0/i.test(message)) return false;
@@ -386,6 +476,9 @@ export const generateWithFallback = async (
   let lastError: Error | null = null;
   let hadDayQuotaError = false;
   let hadNonDayQuotaError = false;
+  // All per-attempt errors so the "all models failed" summary can scan them
+  // for the most actionable cause (spend cap > daily quota > generic 429).
+  const attemptErrors: Array<{ model: string; message: string }> = [];
   const WORKER_URL = import.meta.env.VITE_WORKER_URL || "https://travelplannerai-api.amitzahy1.workers.dev";
 
   for (let i = 0; i < chain.length; i++) {
@@ -549,11 +642,42 @@ export const generateWithFallback = async (
       return { text, model: modelId };
 
     } catch (error: any) {
-      console.warn(`⚠️ [AI] Failed ${modelId}:`, error.message);
+      const errMsg = error.message || String(error);
+      console.warn(`⚠️ [AI] Failed ${modelId}:`, errMsg);
       lastError = error;
-      const isDayQuotaError = /PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay/i.test(error.message || '');
+      // Record every attempt's failure with its model id so the "all failed"
+      // summary can pick the most informative one. The last attempt (often
+      // an OpenRouter 500 wrapping a 429 — no key info) tends to be the
+      // LEAST informative; a Gemini spend-cap 429 earlier in the chain is
+      // what the user actually needs to know about.
+      attemptErrors.push({ model: modelId, message: errMsg });
+      const isDayQuotaError = /PerDay|per_day|GenerateRequestsPerDay|InputTokensPerModelPerDay/i.test(errMsg);
       if (isDayQuotaError) hadDayQuotaError = true;
       else hadNonDayQuotaError = true;
+
+      // Persistent-failure auto-demote: when a model fails with a cause that
+      // won't fix itself in the next few minutes (spend cap, daily quota,
+      // permission denied, invalid key), write it to the probe cache so
+      // subsequent generateWithFallback calls skip it entirely or demote it
+      // to the end. The cache TTL is 10 minutes; QUOTA failures recover on
+      // their own after the cache expires. Permission/auth/invalid-model
+      // entries get DROPPED entirely by applyProbeToChain.
+      const m = errMsg.match(/\[key=(\S+)\s+tail=(\S+)\s+tier=(\S+)\]/);
+      const tail = m?.[2] || '????';
+      if (/spending cap|spend cap|ai\.studio\/spend/i.test(errMsg)) {
+        markModelFailed(modelId, 'QUOTA', 'Spend cap exhausted', tail);
+      } else if (isDayQuotaError || /FreeTier|free_tier|limit:\s*0/i.test(errMsg)) {
+        markModelFailed(modelId, 'QUOTA', 'Daily quota exhausted', tail);
+      } else if (/PERMISSION_DENIED|\b403\b|API has not been used/i.test(errMsg)) {
+        markModelFailed(modelId, 'PERMISSION', 'Generative Language API not enabled', tail);
+      } else if (/API_KEY_INVALID|key not valid|\b401\b/i.test(errMsg)) {
+        markModelFailed(modelId, 'AUTH', 'Key invalid or revoked', tail);
+      } else if (/NOT_FOUND.*model|model.*not.*found|INVALID_ARGUMENT.*model|\b404\b/i.test(errMsg)) {
+        markModelFailed(modelId, 'INVALID_MODEL', 'Model not available for this key', tail);
+      }
+      // Transient errors (429 RPM, 504 timeout, 503, etc.) are NOT auto-demoted —
+      // they recover on their own.
+
       // Small backoff between different models
       if (i < chain.length - 1) {
         await delay(500 * (i + 1));
@@ -563,9 +687,30 @@ export const generateWithFallback = async (
 
   console.error("❌ [AI] All models failed.");
   const lastMsg = lastError?.message || '';
-  // Pull the diagnostic suffix the last failing model left in the error message
-  // (format: "[key=PREMIUM tail=…YdF8 tier=paid]") and run the classifier so the
-  // user gets ONE concrete action to take.
+
+  // Scan every attempt for actionable patterns and pick the most concrete one
+  // to surface. Priority: spend-cap > daily quota > generic 429 > anything else.
+  // This avoids the bug where an OpenRouter "free tier exhausted" message
+  // (last in the chain) drowned out the real Gemini spend-cap cause.
+  const SPEND_CAP_RE = /spending cap|spend cap|exceeded.*spend|monthly.*spending|project spend|ai\.studio\/spend/i;
+  const spendCapAttempt = attemptErrors.find(a => SPEND_CAP_RE.test(a.message));
+  if (spendCapAttempt) {
+    const m = spendCapAttempt.message.match(/\[key=(\S+)\s+tail=(\S+)\s+tier=(\S+)\]/);
+    const keyKind = m?.[1] || 'PREMIUM';
+    const keyTail = m?.[2] || '????';
+    console.error(
+      `🚨 [AI] ACTION REQUIRED — SPEND_CAP: Monthly spend cap exhausted on key ${keyKind} ${keyTail}. ` +
+      `Go to https://ai.studio/spend and raise (or remove) the cap on the project owning this key. ` +
+      `Identify the project at https://aistudio.google.com/app/apikey.`,
+    );
+    throw new Error(
+      `SpendCapExhausted — Monthly spend cap reached on the ${keyKind} key ending in ${keyTail}. ` +
+      `Raise or remove the cap at https://ai.studio/spend, then try again. ` +
+      `(${attemptErrors.length} models attempted; last: ${spendCapAttempt.model})`,
+    );
+  }
+
+  // Fall back to the previous behavior: pull diagnostics off the last error.
   const diagMatch = lastMsg.match(/\[key=(\S+)\s+tail=(\S+)\s+tier=(\S+)\]/);
   if (diagMatch) {
     const finalClassification = classifyAiError(0, lastMsg, { key: diagMatch[1], keyTail: diagMatch[2] });
@@ -1495,6 +1640,7 @@ export interface AnalyzeTripFilesHints {
   cities?: string[];
   travelers?: { adults: number; children: number; babies: number };
   destination?: string;
+  groupType?: 'family' | 'couple' | 'friends' | 'solo' | 'business' | 'group';
 }
 
 export const analyzeTripFiles = async (
@@ -1519,6 +1665,7 @@ export const analyzeTripFiles = async (
   const hintParts: string[] = [];
   if (hints?.destination) hintParts.push(`Destination: ${hints.destination}`);
   if (hints?.cities && hints.cities.length > 0) hintParts.push(`Cities to expect: ${hints.cities.join(', ')}`);
+  if (hints?.groupType) hintParts.push(`Trip type: ${hints.groupType}`);
   if (hints?.travelers) {
     const t = hints.travelers;
     const total = t.adults + t.children + t.babies;
