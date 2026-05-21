@@ -3,10 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, FileText, ArrowRight, Loader2, Printer, MousePointerClick, Download, FileDown, Plane, Hotel, Home, Globe, Mail } from 'lucide-react';
 import { GlassCard } from '../ui/GlassCard';
 import { analyzeTripFiles } from '../../services/aiService';
+import { TripDetailsPanel } from './TripDetailsPanel';
+import type { TravelersComposition } from '../../types';
 
 interface Step3SmartProps {
         onComplete: (data: any) => void;
         onBack: () => void;
+        country?: string;
+        cities: string[];
+        travelers: TravelersComposition;
+        onCitiesChange: (next: string[]) => void;
+        onTravelersChange: (next: TravelersComposition) => void;
 }
 
 const platforms = [
@@ -17,10 +24,10 @@ const platforms = [
                 color: 'bg-blue-600',
                 textColor: 'text-blue-600',
                 steps: [
-                        { icon: MousePointerClick, text: 'היכנסו ל"הזמנות שלי"', sub: 'באתר או באפליקציה' },
-                        { icon: FileText, text: 'בחרו את ההזמנה', sub: 'לחצו על "הצג אישור"' },
-                        { icon: Printer, text: 'לחצו על "הדפסה"', sub: 'בחלון שנפתח' },
-                        { icon: FileDown, text: 'שמרו כ-PDF', sub: 'בחרו "Save as PDF"' }
+                        { icon: MousePointerClick, text: 'היכנסו לחשבון שלכם', sub: 'באתר Booking.com או באפליקציה' },
+                        { icon: FileText, text: 'פתחו את "ההזמנות שלי" ובחרו את ההזמנה הרלוונטית', sub: '"My Bookings" — לחצו על ההזמנה' },
+                        { icon: Printer, text: 'בתוך ההזמנה — לחצו על "הדפס אישור"', sub: '"Print" / "Print confirmation"' },
+                        { icon: FileDown, text: 'בחלון ההדפסה בחרו "Save as PDF" ושמרו', sub: 'במקום מדפסת אמיתית — בחרו PDF' }
                 ]
         },
         {
@@ -30,10 +37,10 @@ const platforms = [
                 color: 'bg-rose-500',
                 textColor: 'text-rose-500',
                 steps: [
-                        { icon: Plane, text: 'לכו ל"נסיעות"', sub: 'Trips' },
-                        { icon: MousePointerClick, text: 'פרטי נסיעה', sub: 'Details' },
-                        { icon: FileText, text: 'קבלת קבלה', sub: 'Get Receipt' },
-                        { icon: Download, text: 'הורידו כ-PDF', sub: 'Download PDF' }
+                        { icon: Plane, text: 'באפליקציית Airbnb — פתחו את "נסיעות"', sub: '"Trips" בתפריט התחתון' },
+                        { icon: MousePointerClick, text: 'לחצו על הנסיעה ואז על "פרטי הזמנה"', sub: '"Show booking details"' },
+                        { icon: FileText, text: 'גללו למטה לכפתור "Get receipt" וקבלו את הקבלה', sub: 'מתחת לפרטי התשלום' },
+                        { icon: Download, text: 'בעמוד הקבלה — לחצו "Download PDF" ושמרו', sub: 'במחשב או בטלפון' }
                 ]
         },
         {
@@ -43,10 +50,10 @@ const platforms = [
                 color: 'bg-sky-500',
                 textColor: 'text-sky-500',
                 steps: [
-                        { icon: Mail, text: 'פתחו את המייל', sub: 'שקיבלתם מ-Skyscanner' },
-                        { icon: Printer, text: 'הדפסה (Print)', sub: 'מתפריט המייל' },
-                        { icon: FileDown, text: 'שמרו כ-PDF', sub: 'בחרו ביעד "Save as PDF"' },
-                        { icon: UploadCloud, text: 'העלו את הקובץ', sub: 'כאן למטה' }
+                        { icon: Mail, text: 'פתחו את מייל האישור שקיבלתם מ-Skyscanner', sub: 'בדרך כלל מ-no-reply@skyscanner.net' },
+                        { icon: Printer, text: 'בחרו "הדפסה" מהתפריט של המייל', sub: 'בג׳ימייל — שלוש נקודות → Print' },
+                        { icon: FileDown, text: 'בחלון ההדפסה — בחרו "Save as PDF" ושמרו', sub: 'במחשב או בטלפון' },
+                        { icon: UploadCloud, text: 'גררו את ה-PDF לחלון למעלה', sub: 'או לחצו "בחירת קבצים"' }
                 ]
         },
         {
@@ -56,15 +63,22 @@ const platforms = [
                 color: 'bg-blue-500',
                 textColor: 'text-blue-500',
                 steps: [
-                        { icon: FileText, text: 'My Bookings', sub: 'All Bookings' },
-                        { icon: MousePointerClick, text: 'View Detail', sub: '' },
-                        { icon: Download, text: 'Email/Print', sub: '' },
-                        { icon: FileDown, text: 'Save PDF', sub: '' }
+                        { icon: FileText, text: 'באפליקציית Trip.com — פתחו "My Bookings"', sub: 'תחת "Account" / "Me"' },
+                        { icon: MousePointerClick, text: 'לחצו על ההזמנה ואז "View Details"', sub: 'פותח את המסמך המלא' },
+                        { icon: Download, text: 'לחצו "Email itinerary" או "Print" בראש העמוד', sub: 'יוצר גרסה להדפסה' },
+                        { icon: FileDown, text: 'בחלון ההדפסה — שמרו כ-PDF והעלו לכאן', sub: 'Save as PDF → גררו למעלה' }
                 ]
         }
 ];
 
-export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete }) => {
+export const Step3_SmartImport: React.FC<Step3SmartProps> = ({
+        onComplete,
+        country,
+        cities,
+        travelers,
+        onCitiesChange,
+        onTravelersChange,
+}) => {
         const [isDragging, setIsDragging] = useState(false);
         const [files, setFiles] = useState<File[]>([]);
         const [analysisState, setAnalysisState] = useState<'idle' | 'analyzing'>('idle');
@@ -102,7 +116,13 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete }) => 
                 setFiles(newFiles);
                 setAnalysisState('analyzing');
                 try {
-                        const result = await analyzeTripFiles(newFiles);
+                        // Thread the optional wizard hints into the AI extractor.
+                        // Empty arrays / zeroed travelers are filtered out inside.
+                        const result = await analyzeTripFiles(newFiles, {
+                                destination: country,
+                                cities: cities.length > 0 ? cities : undefined,
+                                travelers: (travelers.adults + travelers.children + travelers.babies) > 0 ? travelers : undefined,
+                        });
                         onComplete({ files: newFiles, analysisResult: result });
                 } catch (error) {
                         console.error("Analysis Failed", error);
@@ -119,7 +139,9 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete }) => 
                         {/* Header */}
                         <div className="text-center mb-4 flex-shrink-0 px-4">
                                 <h2 className="text-2xl md:text-3xl font-black text-brand-navy mb-1">בואו נעשה קצת קסמים ✨</h2>
-                                <p className="text-slate-500 text-sm md:text-base">העלו את אישורי ההזמנה שלכם (PDF) וה-AI יבנה לכם את הטיול.</p>
+                                <p className="text-slate-500 text-sm md:text-base">
+                                        השתמשו בשיטה זו אם יש לכם אישור הזמנה בקובץ <span className="font-bold">PDF</span> מ-Booking, Airbnb, חברת תעופה וכד'. ה-AI יקרא את הקובץ ויבנה את הטיול.
+                                </p>
                         </div>
 
                         {/* Content */}
@@ -159,6 +181,18 @@ export const Step3_SmartImport: React.FC<Step3SmartProps> = ({ onComplete }) => 
                                                                         </div>
                                                                 </label>
                                                         </GlassCard>
+
+                                                        {/* Optional trip-details panel — collapsed by default. When the
+                                                            user fills it in, the cities + travelers get passed as hints
+                                                            to analyzeTripFiles so the AI biases the extraction to those
+                                                            cities and group size. */}
+                                                        <TripDetailsPanel
+                                                                country={country}
+                                                                cities={cities}
+                                                                travelers={travelers}
+                                                                onCitiesChange={onCitiesChange}
+                                                                onTravelersChange={onTravelersChange}
+                                                        />
 
                                                         {/* Separator */}
                                                         <div className="flex items-center gap-4 text-slate-300">

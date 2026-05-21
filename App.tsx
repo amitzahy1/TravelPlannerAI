@@ -382,12 +382,27 @@ const AppContent: React.FC = () => {
     }
     // Manual path: hotels & flights stay empty
 
-    // Determine Metadata from AI or Wizard Input
-    const dest = analysis?.metadata?.destination || wizardData.destination || "";
+    // Determine Metadata from AI or Wizard Input.
+    // When the user picked specific cities in the TripDetailsPanel, prefer the
+    // multi-city string ("Vlorë - Tirana, אלבניה") over the country-only Step 1
+    // destination — gives chip generators and AI prompts the actual cities to
+    // work with. Falls back to whatever was extracted from the import.
+    const wizardCities: string[] = Array.isArray(wizardData.cities) ? wizardData.cities : [];
+    const country = wizardData.destination || analysis?.metadata?.destination || "";
+    const dest = wizardCities.length > 0
+      ? [wizardCities.join(' - '), country].filter(Boolean).join(', ')
+      : (analysis?.metadata?.destination || country || "");
     const name = analysis?.metadata?.suggestedName || (dest ? `Trip to ${dest}` : "New Adventure");
     const dates = (analysis?.metadata?.startDate && analysis?.metadata?.endDate)
       ? `${analysis.metadata.startDate} - ${analysis.metadata.endDate}`
       : (wizardData.startDate ? `${wizardData.startDate} - ${wizardData.endDate}` : "");
+
+    // Travelers from the optional wizard panel — only persist when at least
+    // one count is non-zero, otherwise leave the field unset so existing UIs
+    // that check `trip.travelers` continue to fall back to defaults.
+    const wizardTravelers = wizardData.travelers;
+    const hasTravelers = wizardTravelers
+      && (wizardTravelers.adults > 0 || wizardTravelers.children > 0 || wizardTravelers.babies > 0);
 
     const newTrip: Trip = {
       id: crypto.randomUUID(),
@@ -395,6 +410,7 @@ const AppContent: React.FC = () => {
       destination: dest,
       dates,
       coverImage: getDestinationCover(dest),
+      ...(hasTravelers ? { travelers: wizardTravelers } : {}),
       flights: {
         // Don't auto-fill from user.displayName — that's usually just the
         // first name ("Amit"), but airline check-in needs a LAST name.

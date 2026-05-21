@@ -1491,7 +1491,16 @@ export const validateTripData = (data: TripAnalysisResult): TripAnalysisResult =
 // 📄 ANALYZE TRIP FILES — THE MASTER PARSER
 // ============================================================================
 
-export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResult> => {
+export interface AnalyzeTripFilesHints {
+  cities?: string[];
+  travelers?: { adults: number; children: number; babies: number };
+  destination?: string;
+}
+
+export const analyzeTripFiles = async (
+  files: File[],
+  hints?: AnalyzeTripFilesHints,
+): Promise<TripAnalysisResult> => {
   // 1. Validate and filter files
   const { validFiles, errors } = validateFiles(files);
   if (validFiles.length === 0) {
@@ -1503,8 +1512,24 @@ export const analyzeTripFiles = async (files: File[]): Promise<TripAnalysisResul
   if (safeFiles.length === 0) throw new Error("No processable files found. Email files (.eml) are not supported for direct upload.");
 
   // 2. Build multimodal request with the UNIFIED prompt
+  // Hint preamble: when the user filled in the optional TripDetailsPanel in
+  // the wizard, prepend a small context block so the model knows which cities
+  // and traveler counts to bias toward. Hints fill gaps; the model still
+  // prefers structured data extracted from the file itself.
+  const hintParts: string[] = [];
+  if (hints?.destination) hintParts.push(`Destination: ${hints.destination}`);
+  if (hints?.cities && hints.cities.length > 0) hintParts.push(`Cities to expect: ${hints.cities.join(', ')}`);
+  if (hints?.travelers) {
+    const t = hints.travelers;
+    const total = t.adults + t.children + t.babies;
+    if (total > 0) hintParts.push(`Group size: ${t.adults} adults, ${t.children} children, ${t.babies} babies (total ${total})`);
+  }
+  const hintBlock = hintParts.length > 0
+    ? `\n\n⚠️ TRIP CONTEXT (from wizard, fill gaps only — never override file data):\n${hintParts.map(p => `- ${p}`).join('\n')}\n`
+    : '';
+
   const contentParts: any[] = [
-    { text: SYSTEM_PROMPT_ANALYZE_TRIP },
+    { text: SYSTEM_PROMPT_ANALYZE_TRIP + hintBlock },
     { text: `\n\nProcess the following ${safeFiles.length} file(s). Return the extracted data as JSON.\nFile names: ${safeFiles.map(f => f.name).join(', ')}` }
   ];
 

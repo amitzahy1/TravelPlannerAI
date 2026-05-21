@@ -4,14 +4,20 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { Mailbox } from '../Mailbox';
-import { Trip } from '../../types';
+import { Trip, type TravelersComposition } from '../../types';
 import { isMailboxTrip, claimMailboxTrip, mergeTripIntoTarget } from '../../utils/mailbox';
 import { saveTrip, deleteTrip } from '../../services/firestoreService';
 import { Mail } from 'lucide-react';
+import { TripDetailsPanel } from './TripDetailsPanel';
 
 interface Step3MailboxProps {
         onComplete: (data: { mailboxClaimedTripId?: string }) => void;
         onBack: () => void;
+        country?: string;
+        cities: string[];
+        travelers: TravelersComposition;
+        onCitiesChange: (next: string[]) => void;
+        onTravelersChange: (next: TravelersComposition) => void;
 }
 
 /**
@@ -20,7 +26,14 @@ interface Step3MailboxProps {
  * to the user's trips collection in real-time so a freshly forwarded email
  * appears here within seconds.
  */
-export const Step3_Mailbox: React.FC<Step3MailboxProps> = ({ onComplete }) => {
+export const Step3_Mailbox: React.FC<Step3MailboxProps> = ({
+        onComplete,
+        country,
+        cities,
+        travelers,
+        onCitiesChange,
+        onTravelersChange,
+}) => {
         const { user } = useAuth();
         const [trips, setTrips] = useState<Trip[]>([]);
         const [loading, setLoading] = useState(true);
@@ -69,8 +82,22 @@ export const Step3_Mailbox: React.FC<Step3MailboxProps> = ({ onComplete }) => {
                                         תיבת הדואר החכמה
                                 </h2>
                                 <p className="text-slate-500 text-sm">
-                                        העבר אישורי הזמנה לכתובת — ה-AI יבנה לך טיול מהמייל. תוכל להעביר עוד מיילים בכל שלב.
+                                        השתמשו בשיטה זו אם ההזמנות שלכם מגיעות במייל. העבירו אישורי הזמנה (Booking, Airbnb, חברת תעופה) לכתובת אישית שתופיע כאן — וה-AI יבנה את הטיול אוטומטית. אפשר להעביר עוד מיילים בכל שלב.
                                 </p>
+                        </div>
+
+                        {/* Optional trip-details panel — for the mailbox path the hints don't
+                            flow directly into AI extraction (email handler runs server-side at
+                            email-arrival time), but the cities/travelers still land on the final
+                            Trip so HotelsView room-count checks etc. have the data. */}
+                        <div className="px-4 mb-3 flex-shrink-0">
+                                <TripDetailsPanel
+                                        country={country}
+                                        cities={cities}
+                                        travelers={travelers}
+                                        onCitiesChange={onCitiesChange}
+                                        onTravelersChange={onTravelersChange}
+                                />
                         </div>
 
                         <motion.div

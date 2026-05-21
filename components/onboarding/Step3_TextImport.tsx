@@ -30,7 +30,8 @@ import {
         mergeFreeTextResults,
         FreeTextParseResult,
 } from '../../services/freeTextImportService';
-import type { HotelBooking, FlightSegment } from '../../types';
+import type { HotelBooking, FlightSegment, TravelersComposition } from '../../types';
+import { TripDetailsPanel } from './TripDetailsPanel';
 
 interface Step3TextImportProps {
         onComplete: (data: { freeTextResult: FreeTextParseResult; startDate?: string; endDate?: string; freeText: string }) => void;
@@ -43,6 +44,11 @@ interface Step3TextImportProps {
                 freeText?: string;
                 freeTextResult?: FreeTextParseResult;
         };
+        /** Lifted state from the wizard so chips persist across step navigation. */
+        cities: string[];
+        travelers: TravelersComposition;
+        onCitiesChange: (next: string[]) => void;
+        onTravelersChange: (next: TravelersComposition) => void;
 }
 
 type Stage = 'idle' | 'analyzing' | 'error' | 'preview';
@@ -407,7 +413,15 @@ const FlightEditForm: React.FC<{
 // Main component
 // ============================================================================
 
-export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, onBack, initialData }) => {
+export const Step3_TextImport: React.FC<Step3TextImportProps> = ({
+        onComplete,
+        onBack,
+        initialData,
+        cities,
+        travelers,
+        onCitiesChange,
+        onTravelersChange,
+}) => {
         const [stage, setStage] = useState<Stage>(
                 initialData?.freeTextResult ? 'preview' : 'idle'
         );
@@ -475,11 +489,13 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                 setErrorMessage('');
                 setStage('analyzing');
                 try {
+                        const totalTravelers = travelers.adults + travelers.children + travelers.babies;
                         const parsed = await parseFreeTextTrip(text, {
                                 destination: initialData?.destination,
                                 startDate: initialData?.startDate,
                                 endDate: initialData?.endDate,
-                                travelers: initialData?.travelers,
+                                travelers: totalTravelers > 0 ? totalTravelers : initialData?.travelers,
+                                cities: cities.length > 0 ? cities : undefined,
                         });
                         setResult(parsed);
                         setStage('preview');
@@ -583,11 +599,13 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                 setAppendError('');
                 setIsAppending(true);
                 try {
+                        const totalTravelersAppend = travelers.adults + travelers.children + travelers.babies;
                         const more = await parseFreeTextTrip(addMoreText, {
                                 destination: initialData?.destination,
                                 startDate: initialData?.startDate,
                                 endDate: initialData?.endDate,
-                                travelers: initialData?.travelers,
+                                travelers: totalTravelersAppend > 0 ? totalTravelersAppend : initialData?.travelers,
+                                cities: cities.length > 0 ? cities : undefined,
                         });
                         const merged = mergeFreeTextResults(result, more);
                         setResult(merged);
@@ -627,7 +645,7 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                         תיאור הטיול במילים
                                 </h2>
                                 <p className="text-slate-500 text-sm md:text-base">
-                                        הדביקו תיאור חופשי, טבלה או CSV של הטיול. ה-AI יזהה את הפורמט ויחלץ מלונות וטיסות.
+                                        השתמשו בשיטה זו אם הסיכום שלכם הוא <span className="font-bold">טקסט</span> — תיאור חופשי, טבלה, CSV, או פלט שקיבלתם מ-ChatGPT / Gemini. ה-AI יזהה את הפורמט ויחלץ מלונות וטיסות.
                                 </p>
                         </div>
 
@@ -641,6 +659,17 @@ export const Step3_TextImport: React.FC<Step3TextImportProps> = ({ onComplete, o
                                                         exit={{ opacity: 0, y: -10 }}
                                                         className="max-w-3xl mx-auto space-y-4"
                                                 >
+                                                        {/* Optional trip-details panel — collapsed by default. When
+                                                            filled, threads cities + travelers into parseFreeTextTrip
+                                                            as hints so the AI picks the right cities / room counts. */}
+                                                        <TripDetailsPanel
+                                                                country={initialData?.destination}
+                                                                cities={cities}
+                                                                travelers={travelers}
+                                                                onCitiesChange={onCitiesChange}
+                                                                onTravelersChange={onTravelersChange}
+                                                        />
+
                                                         {/* Gemini × Gmail shortcut — full panel on desktop, single
                                                             button on mobile so the textarea + analyze CTA fit one
                                                             screen. Tapping the mobile button opens the same prompt

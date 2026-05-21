@@ -7,6 +7,10 @@ export interface FreeTextParseHints {
   startDate?: string;     // YYYY-MM-DD
   endDate?: string;       // YYYY-MM-DD
   travelers?: number;
+  /** Optional list of specific cities the user picked in the wizard's
+   *  TripDetailsPanel. Biases the model to find hotels/flights in these
+   *  cities when the text is ambiguous (e.g. "Albania" without a city). */
+  cities?: string[];
 }
 
 export interface FreeTextParseResult {
@@ -24,13 +28,15 @@ export interface FreeTextParseResult {
 }
 
 const buildPrompt = (text: string, hints?: FreeTextParseHints) => {
-  const hintBlock = hints && (hints.destination || hints.startDate || hints.endDate || hints.travelers)
+  const hasAnyHint = hints && (hints.destination || hints.startDate || hints.endDate || hints.travelers || (hints.cities && hints.cities.length > 0));
+  const hintBlock = hasAnyHint
     ? `
 Trip context (provided by the user in the wizard):
-- destination: ${hints.destination || 'unknown'}
-- expected start date: ${hints.startDate || 'unknown'}
-- expected end date: ${hints.endDate || 'unknown'}
-- travelers: ${hints.travelers ?? 'unknown'}
+- destination: ${hints!.destination || 'unknown'}
+- specific cities to expect: ${hints!.cities && hints!.cities.length > 0 ? hints!.cities.join(', ') : 'not specified'}
+- expected start date: ${hints!.startDate || 'unknown'}
+- expected end date: ${hints!.endDate || 'unknown'}
+- travelers: ${hints!.travelers ?? 'unknown'}
 If the text is ambiguous about year, city, or guest counts, prefer these values. Never discard structured data from the text in favor of hints — hints only fill gaps.
 `
     : '';

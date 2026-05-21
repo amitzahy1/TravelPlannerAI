@@ -9,6 +9,9 @@ import { Step3_TextImport } from './Step3_TextImport';
 import { Step3_Mailbox } from './Step3_Mailbox';
 import { SuccessAnimation } from './SuccessAnimation';
 import type { ImportMethod } from './Step2_ChoosePath';
+import type { TravelersComposition } from '../../types';
+
+const EMPTY_TRAVELERS: TravelersComposition = { adults: 0, children: 0, babies: 0 };
 
 interface MagicalWizardProps {
         isOpen: boolean;
@@ -19,6 +22,11 @@ interface MagicalWizardProps {
 export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, onComplete }) => {
         const [step, setStep] = useState(0);
         const [tripData, setTripData] = useState<any>({});
+        // Optional trip details collected in the inline panel rendered inside each
+        // Step 3 import method. Threaded into AI hints (parseFreeTextTrip /
+        // analyzeTripFiles) and persisted on the final Trip via App.tsx.
+        const [cities, setCities] = useState<string[]>([]);
+        const [travelers, setTravelers] = useState<TravelersComposition>(EMPTY_TRAVELERS);
 
         // Hide the floating bottom dock while the wizard is open. Without this,
         // the dock floats above the wizard's sticky "המשך" footer on mobile and
@@ -70,7 +78,10 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
         };
 
         const handleStep3Complete = (finalData: any) => {
-                const completeData = { ...tripData, ...finalData };
+                // Always include cities + travelers in the completion payload, even
+                // when empty — App.tsx reads them off the wizard result and writes
+                // them to the Trip. Empty arrays / zeroed travelers are harmless.
+                const completeData = { ...tripData, ...finalData, cities, travelers };
                 setTripData(completeData);
 
                 // Mailbox-claim path: the user is opening an EXISTING trip from
@@ -244,17 +255,34 @@ export const MagicalWizard: React.FC<MagicalWizardProps> = ({ isOpen, onClose, o
                                                                         <Step3_TextImport
                                                                                 onComplete={handleStep3Complete}
                                                                                 onBack={handleStep3Back}
-                                                                                initialData={tripData}
+                                                                                initialData={{
+                                                                                        ...tripData,
+                                                                                        travelers: travelers.adults + travelers.children + travelers.babies,
+                                                                                }}
+                                                                                cities={cities}
+                                                                                travelers={travelers}
+                                                                                onCitiesChange={setCities}
+                                                                                onTravelersChange={setTravelers}
                                                                         />
                                                                 ) : tripData.method === 'mail' ? (
                                                                         <Step3_Mailbox
                                                                                 onComplete={handleStep3Complete}
                                                                                 onBack={handleStep3Back}
+                                                                                country={tripData.destination}
+                                                                                cities={cities}
+                                                                                travelers={travelers}
+                                                                                onCitiesChange={setCities}
+                                                                                onTravelersChange={setTravelers}
                                                                         />
                                                                 ) : (
                                                                         <Step3_SmartImport
                                                                                 onComplete={(data) => handleStep3Complete(data)}
                                                                                 onBack={handleStep3Back}
+                                                                                country={tripData.destination}
+                                                                                cities={cities}
+                                                                                travelers={travelers}
+                                                                                onCitiesChange={setCities}
+                                                                                onTravelersChange={setTravelers}
                                                                         />
                                                                 )}
                                                         </motion.div>
