@@ -81,6 +81,21 @@ export const AIRPORT_TIMEZONES: Record<string, string> = {
         WAW: 'Europe/Warsaw',
         TBS: 'Asia/Tbilisi',
         BUS: 'Asia/Tbilisi', // Batumi
+        // Balkans / Eastern Europe — added 2026-05-21 after user noted TIA
+        // was missing (TLV→TIA & return showed wall-clock duration which
+        // disagreed with the stored value by a few hours).
+        TIA: 'Europe/Tirane',     // Tirana, Albania
+        SKP: 'Europe/Skopje',     // North Macedonia
+        BEG: 'Europe/Belgrade',   // Serbia
+        SOF: 'Europe/Sofia',      // Bulgaria
+        OTP: 'Europe/Bucharest',  // Romania
+        ZAG: 'Europe/Zagreb',     // Croatia
+        DBV: 'Europe/Zagreb',     // Dubrovnik
+        SPU: 'Europe/Zagreb',     // Split
+        LJU: 'Europe/Ljubljana',  // Slovenia
+        SJJ: 'Europe/Sarajevo',   // Sarajevo
+        TGD: 'Europe/Podgorica',  // Montenegro
+        TIV: 'Europe/Podgorica',  // Tivat, Montenegro
 
         // North America
         JFK: 'America/New_York',
