@@ -1432,6 +1432,37 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
         return Array.from(pick.values());
     };
 
+    // Normalize a `recommendationSource` string to one of a fixed set of group
+    // labels for the "filter by source" chip strip. Declared HERE (above
+    // filteredRecommendations) because both the useMemo below and `availableRaters`
+    // later need it — leaving it after filteredRecommendations created a
+    // Temporal Dead Zone crash when the user changed filters in production
+    // builds (Vite/esbuild order preserves source location for `const` decls).
+    const normalizeSource = (raw: string): string => {
+        if (!raw) return '';
+        const low = raw.toLowerCase();
+        if (/^(known for|praised for|offers|serves|recommended for|highly|experience|locals|family-friendly|ranked|ideal for|considered|regarded|features|perfect for)/i.test(raw.trim())) return 'Other';
+        if (raw.length > 80) return 'Other';
+        if (low.includes('youtube')) return 'YouTube';
+        if (low.includes('unesco')) return 'UNESCO';
+        if (low.includes('lonely planet')) return 'Lonely Planet';
+        if (low.includes('atlas obscura')) return 'Atlas Obscura';
+        if (low.includes('wongnai')) return 'Wongnai';
+        if (low.includes('timeout') || low.includes('time out')) return 'TimeOut';
+        if (low.includes('tripadvisor') || low.includes('trip advisor')) return 'TripAdvisor';
+        if (low.includes('klook') || low.includes('kkday')) return 'Klook / KKday';
+        if (low.includes('google')) return 'Google';
+        if (low.includes('michelin')) return 'Michelin Guide';
+        if (low.includes('condé nast') || low.includes('conde nast')) return "Condé Nast";
+        if (low.includes('national geographic') || low.includes('nat geo')) return 'National Geographic';
+        if (low.includes('bbc')) return 'BBC Travel';
+        if (low.includes('official site') || low.includes('official website')) return 'Official Site';
+        if (low.includes('wanderlog') || low.includes('tatinta') || low.includes('thailand magazine') ||
+            low.includes('pattaya') || low.includes('asean now') || low.includes('traveling tum')) return 'Local Media';
+        if (/\b(temple|museum|park|beach|market|island|palace)\b/i.test(raw) && raw.length > 30) return 'Other';
+        return 'Other';
+    };
+
     const filteredRecommendations = useMemo(() => {
         let list: any[] = [];
         if (selectedCategory === 'all') aiCategories.forEach(c => list.push(...c.attractions.map(a => ({
@@ -1512,30 +1543,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
 
     const displayTitle = (title: string) => normalizeNearHotelTitle(HEBREW_TITLES[title] || title);
 
-    const normalizeSource = (raw: string): string => {
-        if (!raw) return '';
-        const low = raw.toLowerCase();
-        if (/^(known for|praised for|offers|serves|recommended for|highly|experience|locals|family-friendly|ranked|ideal for|considered|regarded|features|perfect for)/i.test(raw.trim())) return 'Other';
-        if (raw.length > 80) return 'Other';
-        if (low.includes('youtube')) return 'YouTube';
-        if (low.includes('unesco')) return 'UNESCO';
-        if (low.includes('lonely planet')) return 'Lonely Planet';
-        if (low.includes('atlas obscura')) return 'Atlas Obscura';
-        if (low.includes('wongnai')) return 'Wongnai';
-        if (low.includes('timeout') || low.includes('time out')) return 'TimeOut';
-        if (low.includes('tripadvisor') || low.includes('trip advisor')) return 'TripAdvisor';
-        if (low.includes('klook') || low.includes('kkday')) return 'Klook / KKday';
-        if (low.includes('google')) return 'Google';
-        if (low.includes('michelin')) return 'Michelin Guide';
-        if (low.includes('condé nast') || low.includes('conde nast')) return "Condé Nast";
-        if (low.includes('national geographic') || low.includes('nat geo')) return 'National Geographic';
-        if (low.includes('bbc')) return 'BBC Travel';
-        if (low.includes('official site') || low.includes('official website')) return 'Official Site';
-        if (low.includes('wanderlog') || low.includes('tatinta') || low.includes('thailand magazine') ||
-            low.includes('pattaya') || low.includes('asean now') || low.includes('traveling tum')) return 'Local Media';
-        if (/\b(temple|museum|park|beach|market|island|palace)\b/i.test(raw) && raw.length > 30) return 'Other';
-        return 'Other';
-    };
+    // normalizeSource has been hoisted above filteredRecommendations (see comment there).
 
     const availableRaters = useMemo(() => {
         const sources = new Set<string>();
