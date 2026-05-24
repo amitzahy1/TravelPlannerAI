@@ -346,10 +346,14 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                 <span>{Object.keys(WORLD_DESTINATIONS).length}+ מדינות ו-{Object.values(WORLD_DESTINATIONS).reduce((n, a) => n + a.length, 0)}+ ערים — וגם כל יעד אחר שתקלידו</span>
                         </p>
 
-                        {/* Continue button — sticky on mobile, inline on desktop */}
-                        <div className="hidden md:flex h-24 items-center justify-center mt-8">
+                        {/* Continue button — sticky to the bottom of the modal scroll
+                            area on desktop so it stays in view even when the user has
+                            many country chips visible. Mobile has its own fixed bar
+                            below this block. User reported 2026-05-21 that the button
+                            was scrolling off-screen at smaller viewports. */}
+                        <div className="hidden md:flex sticky bottom-0 z-20 -mx-4 md:-mx-8 px-4 md:px-8 py-4 mt-8 items-center justify-center bg-white/95 backdrop-blur-md border-t border-slate-100 shadow-[0_-8px_24px_rgba(15,23,42,0.04)]">
                                 <AnimatePresence>
-                                        {(destinations.length > 0 || inputValue.length > 1) && (
+                                        {(destinations.length > 0 || inputValue.length > 1) ? (
                                                 <motion.div
                                                         initial={{ opacity: 0, y: 10 }}
                                                         animate={{ opacity: 1, y: 0 }}
@@ -359,9 +363,18 @@ export const Step1_Destination: React.FC<Step1Props> = ({ onNext, initialData })
                                                                 onClick={handleContinue}
                                                                 className="px-12 py-4 text-xl shadow-brand-action/40"
                                                         >
-                                                                המשך לתאריכים
+                                                                המשך לתאריכים{destinations.length > 0 ? ` (${destinations.length})` : ''}
                                                         </RippleButton>
                                                 </motion.div>
+                                        ) : (
+                                                // Disabled placeholder — keeps the sticky bar's height stable
+                                                // so the layout doesn't jump the moment the user starts typing.
+                                                <button
+                                                        disabled
+                                                        className="px-12 py-4 text-xl font-black bg-slate-100 text-slate-400 rounded-2xl cursor-not-allowed"
+                                                >
+                                                        בחרו יעד כדי להמשיך
+                                                </button>
                                         )}
                                 </AnimatePresence>
                         </div>
