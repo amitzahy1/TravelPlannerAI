@@ -254,6 +254,12 @@ interface SyncResult {
         providerStats: Record<string, { ok: boolean; count: number; error?: string }>;
 }
 
+// Shared denylist regex — anything non-chat (TTS/audio/image-gen/embedding/
+// language-specialized) that we never want in a fallback chain regardless of
+// which provider lists it. Centralizing here makes the per-provider filters
+// readable.
+const NON_CHAT_DENY = /tts|whisper|audio|image-gen|image-preview|computer-use|customtools|embedding|guard|safeguard|orpheus|lyria|voice|moderation/i;
+
 const fetchGroqModels = async (env: Env): Promise<string[]> => {
         if (!env.GROQ_API_KEY) return [];
         const response = await fetch('https://api.groq.com/openai/v1/models', {
@@ -261,12 +267,12 @@ const fetchGroqModels = async (env: Env): Promise<string[]> => {
         });
         if (!response.ok) throw new Error(`Groq /models ${response.status}`);
         const data = await response.json() as { data?: Array<{ id: string; active?: boolean }> };
-        const ids = (data.data || [])
+        return (data.data || [])
                 .filter(m => m.active !== false)
                 .map(m => `groq:${m.id}`)
-                // Drop non-chat models (whisper for audio, safety guardrails, embeddings)
-                .filter(id => !/whisper|prompt-guard|safeguard|orpheus|embedding/i.test(id));
-        return ids;
+                .filter(id => !NON_CHAT_DENY.test(id))
+                // Drop language-specialized models (e.g. allam-* is Arabic-only)
+                .filter(id => !/allam/i.test(id));
 };
 
 const fetchOpenRouterModels = async (env: Env): Promise<string[]> => {
@@ -276,12 +282,14 @@ const fetchOpenRouterModels = async (env: Env): Promise<string[]> => {
         // Only free-tier models — keeps the chain entirely no-cost. When the
         // user funds OpenRouter, we can flip this to also include paid models
         // by removing the filter (or via a `tier` query param).
-        const free = (data.data || [])
+        return (data.data || [])
                 .filter(m => m.pricing?.prompt === '0' && m.pricing?.completion === '0')
                 .map(m => `openrouter:${m.id}`)
-                // Drop image/audio/vision-only models that don't take text prompts
-                .filter(id => !/whisper|tts|audio|image-gen|^openrouter:[^/]+\/lyria/i.test(id));
-        return free;
+                .filter(id => !NON_CHAT_DENY.test(id))
+                // Drop coding-specialized + "weird" non-general-purpose models
+                // (laguna = poolside coding model; cobuddy/owl-alpha are
+                // experimental free-tier promos; openrouter/free is a redirect).
+                .filter(id => !/laguna|cobuddy|owl-alpha|openrouter\/free$|coder|\bcode-/i.test(id));
 };
 
 const fetchGeminiModels = async (env: Env): Promise<string[]> => {
@@ -294,10 +302,13 @@ const fetchGeminiModels = async (env: Env): Promise<string[]> => {
                 .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
                 // The name comes as "models/gemini-2.5-flash" — strip the prefix.
                 .map(m => m.name.replace(/^models\//, ''))
-                // Keep only the modern 2.5+/3.x families. Older 1.x/embedding/etc. would just bloat the chain.
-                .filter(id => /^gemini-(2\.5|3\.[0-9]+|3\.\d+)-/.test(id))
-                // Drop deprecated -001 / -002 frozen snapshots — they're superseded by the named alias.
-                .filter(id => !/-00[0-9]+$/.test(id));
+                // Strict allowlist: only the 2.5+/3.x main families (pro, flash, flash-lite).
+                // Excludes TTS / image / computer-use / customtools / preview-001 variants
+                // and any other specialty SKUs Google might add.
+                .filter(id => /^gemini-(2\.5|3\.[0-9]+)-(pro|flash|flash-lite)(-preview)?$/.test(id))
+                // Drop deprecated -001 / -002 frozen snapshots — they're superseded by named aliases.
+                .filter(id => !/-00[0-9]+$/.test(id))
+                .filter(id => !NON_CHAT_DENY.test(id));
 };
 
 /**
@@ -622,8 +633,8 @@ export default {
 
                                 const body = await request.json() as { models?: string[] };
                                 const models = Array.isArray(body.models) ? body.models : [];
-                                if (models.length === 0 || models.length > 20) {
-                                        return new Response(JSON.stringify({ error: 'Provide 1–20 model ids in `models`.' }), {
+                                if (models.length === 0 || models.length > 80) {
+                                        return new Response(JSON.stringify({ error: 'Provide 1–80 model ids in `models`.' }), {
                                                 status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                                         });
                                 }
