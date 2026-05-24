@@ -16,7 +16,7 @@ import { getTripCities, displayCityName } from '../../utils/geoData';
 import { isPlaceInTripScope, inferTripCountry, placeDedupeKey, coordInTripCountries } from '../../utils/tripScope';
 import { isPreciseGoogleUrl } from '../../utils/mapsUrl';
 import { verifyPlacesBatch, applyVerificationResult } from '../../utils/placeVerification';
-import { photonGeocodeRich } from '../../utils/geocodePlaces';
+import { photonGeocodeRich, getCountryBbox, toEnglishCountryName } from '../../utils/geocodePlaces';
 import { generateWithFallback } from '../../services/aiService';
 import { toast } from '../../stores/useToastStore';
 
@@ -252,11 +252,23 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
         setAiHotelProgress({ done: 0, total: hotels.length, resolved: 0 });
         console.log(`🏨 [ai-verify-hotels] starting on ${hotels.length} hotels (country hint: "${tripCountry}")`);
 
+        // Strip rating stars / "Hotel" qualifier from the searchable name —
+        // queries like "Regina City Hotel 4*" confuse both LLMs and Photon
+        // since "4*" rarely appears in OSM data.
+        const cleanHotelName = (raw: string): string =>
+            (raw || '').replace(/\s*\d\s*\*+\s*/g, ' ').replace(/\s+/g, ' ').trim();
+
+        const tripBbox = (() => {
+            const en = toEnglishCountryName(tripCountry);
+            return en ? getCountryBbox(en) : null;
+        })();
+
         let resolved = 0;
         let done = 0;
         for (const h of hotels) {
+            const cleanName = cleanHotelName(h.name || '');
             const prompt = `Find this hotel and return its canonical Google Maps data as JSON.
-Hotel: ${h.name || '(no name)'}
+Hotel: ${cleanName || '(no name)'}
 Address: ${h.address || '(no address)'}
 City: ${h.city || '(no city)'}
 Country: ${tripCountry || '(unknown)'}
@@ -278,6 +290,7 @@ Rules:
 - NEVER fabricate coordinates or URLs. Better to return found:false than guess.
 - lat/lng must be in the country "${tripCountry || 'the address country'}".`;
 
+            let resolvedFromAi = false;
             try {
                 const response = await generateWithFallback(
                     null,
@@ -288,9 +301,8 @@ Rules:
                 const text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
                 const parsed = JSON.parse(text || '{}');
                 if (parsed.found && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
-                    // Country bbox sanity check — refuse coords outside the trip country.
                     if (!coordInTripCountries(parsed.lat, parsed.lng, trip)) {
-                        console.warn(`🏨 [ai-verify-hotels] ${h.name}: AI returned coords outside trip country, rejecting.`);
+                        console.warn(`🏨 [ai-verify-hotels] ${h.name}: AI returned coords outside trip country, rejecting → trying Photon fallback.`);
                     } else {
                         h.lat = parsed.lat;
                         h.lng = parsed.lng;
@@ -303,13 +315,47 @@ Rules:
                         (h as any).verifiedAt = Date.now();
                         (h as any).verificationStatus = 'verified';
                         resolved++;
-                        console.log(`🏨 [ai-verify-hotels ${done + 1}/${hotels.length}] ✓ ${h.name} → (${h.lat?.toFixed(4)}, ${h.lng?.toFixed(4)})${parsed.confidence ? ` [${parsed.confidence}]` : ''}`);
+                        resolvedFromAi = true;
+                        console.log(`🏨 [ai-verify-hotels ${done + 1}/${hotels.length}] ✓ ${h.name} → (${h.lat?.toFixed(4)}, ${h.lng?.toFixed(4)})${parsed.confidence ? ` [${parsed.confidence}]` : ''} [via AI]`);
                     }
-                } else {
-                    console.log(`🏨 [ai-verify-hotels ${done + 1}/${hotels.length}] ✗ ${h.name} → not found by AI`);
                 }
             } catch (e: any) {
-                console.error(`🏨 [ai-verify-hotels] ${h.name} failed:`, e?.message || e);
+                console.error(`🏨 [ai-verify-hotels] ${h.name} AI call failed:`, e?.message || e);
+            }
+
+            // Photon fallback — when the AI returns found:false OR errors
+            // out. Photon queries OSM (real database) so lesser-known hotels
+            // that the free LLM tier (Groq Llama) doesn't recognize from
+            // training data still resolve. Critical when Gemini is capped
+            // and we're stuck on training-data-only models.
+            if (!resolvedFromAi) {
+                const queries = [
+                    [cleanName, h.city, tripCountry].filter(Boolean).join(', '),
+                    [cleanName, h.address].filter(Boolean).join(', '),
+                    [cleanName, tripCountry].filter(Boolean).join(', '),
+                    cleanName,
+                ].filter(Boolean);
+                let photonResolved = false;
+                for (const q of queries) {
+                    try {
+                        const feat = await photonGeocodeRich(q, tripBbox || undefined);
+                        if (feat && coordInTripCountries(feat.lat, feat.lng, trip)) {
+                            h.lat = feat.lat;
+                            h.lng = feat.lng;
+                            if (feat.city && !h.city) h.city = feat.city;
+                            (h as any).verifiedAt = Date.now();
+                            (h as any).verificationStatus = 'verified';
+                            resolved++;
+                            photonResolved = true;
+                            console.log(`🏨 [ai-verify-hotels ${done + 1}/${hotels.length}] ✓ ${h.name} → (${h.lat?.toFixed(4)}, ${h.lng?.toFixed(4)}) [via Photon: "${q}"]`);
+                            break;
+                        }
+                    } catch { /* try next query */ }
+                }
+                if (!photonResolved) {
+                    (h as any).verificationStatus = 'not_found';
+                    console.log(`🏨 [ai-verify-hotels ${done + 1}/${hotels.length}] ✗ ${h.name} → not found by AI or Photon (tried ${queries.length} queries)`);
+                }
             }
             done++;
             setAiHotelProgress({ done, total: hotels.length, resolved });
