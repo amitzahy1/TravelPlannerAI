@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Trip, Attraction, AttractionCategory } from '../types';
-import { MapPin, Ticket, Star, Landmark, Sparkles, Filter as FilterIcon, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid, Heart, Hotel, ChevronLeft as ChevronLeftIcon } from 'lucide-react';
+import { MapPin, Ticket, Star, Landmark, Sparkles, Filter as FilterIcon, StickyNote, Plus, Loader2, BrainCircuit, RotateCw, RefreshCw, Navigation, Calendar, Clock, Trash2, Search, X, List, Map as MapIcon, Trophy, Mountain, ShoppingBag, Palmtree, DollarSign, LayoutGrid, Heart, Hotel, ChevronLeft as ChevronLeftIcon, ClipboardPaste } from 'lucide-react';
+import { ExternalAiPasteModal } from './ExternalAiPasteModal';
 // cleaned imports
 import { getTripCities, locationMatchesCity, displayCityName, cityKey, extractRobustCity } from '../utils/geoData';
 import { getAttractionImage } from '../services/imageMapper';
@@ -135,6 +136,8 @@ const AttractionRecommendationCard: React.FC<{
 export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void }> = ({ trip, onUpdateTrip }) => {
     const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>('recommended');
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+    // Free-path paste-from-external-AI flow (Part B of the 2026-05-21 plan).
+    const [pasteModalOpen, setPasteModalOpen] = useState(false);
 
     // Always-fresh trip ref so background geocoder doesn't clobber user
     // edits made while it's running (the "trip name got deleted" bug).
@@ -2112,15 +2115,26 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                             {/* Primary CTA: one clear button that starts research for ALL
                                                 trip cities at once (user's main complaint: wanted a big
                                                 clear button). City-specific buttons offered as secondary. */}
-                                            <button
-                                                onClick={() => researchAllCities()}
-                                                disabled={isResearchingAll}
-                                                className="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-8 py-3 rounded-2xl text-base font-black shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-60"
-                                            >
-                                                {isResearchingAll
-                                                    ? <><Loader2 className="w-5 h-5 animate-spin" /> סורק ({researchProgress.current}/{researchProgress.total})</>
-                                                    : <><BrainCircuit className="w-5 h-5" /> המלצות AI לכל הטיול</>}
-                                            </button>
+                                            <div className="flex flex-wrap items-center justify-center gap-3">
+                                                <button
+                                                    onClick={() => researchAllCities()}
+                                                    disabled={isResearchingAll}
+                                                    title="קורא ל-Gemini grounded SEARCH דרך ה-Worker שלנו. עלות: ~$0.05 לקריאה. תוצאה מאומתת באינטרנט."
+                                                    className="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-8 py-3 rounded-2xl text-base font-black shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-60"
+                                                >
+                                                    {isResearchingAll
+                                                        ? <><Loader2 className="w-5 h-5 animate-spin" /> סורק ({researchProgress.current}/{researchProgress.total})</>
+                                                        : <><BrainCircuit className="w-5 h-5" /> המלצות AI לכל הטיול</>}
+                                                </button>
+                                                {/* Free path — copy prompt to external AI, paste JSON back */}
+                                                <button
+                                                    onClick={() => setPasteModalOpen(true)}
+                                                    title="פתח פרומפט להעתיק ל-ChatGPT/Gemini/Claude (חינמי ב-tier שלכם). הדבק חזרה את ה-JSON. עלות לאתר: 0 ש״ח."
+                                                    className="bg-white text-emerald-700 border-2 border-emerald-600 px-5 py-3 rounded-2xl text-base font-black shadow-sm hover:bg-emerald-50 transition-all flex items-center gap-2"
+                                                >
+                                                    <ClipboardPaste className="w-5 h-5" /> הדבק מ-ChatGPT (חינמי)
+                                                </button>
+                                            </div>
                                             {tripCities.length > 1 && !isResearchingAll && (
                                                 <div className="pt-3 border-t border-slate-100 w-full max-w-md">
                                                     <div className="text-2xs font-bold text-slate-400 mb-2">או מחקר ממוקד לעיר בודדת:</div>
@@ -2300,6 +2314,15 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 cancelText="ביטול"
                 onConfirm={researchNearHotel}
                 onClose={() => setConfirmNearHotel(false)}
+            />
+            {/* Free-path paste-from-external-AI modal — opened by the green
+                sibling button next to "המלצות AI לכל הטיול". */}
+            <ExternalAiPasteModal
+                isOpen={pasteModalOpen}
+                onClose={() => setPasteModalOpen(false)}
+                trip={trip}
+                kind="attractions"
+                onApply={onUpdateTrip}
             />
         </div>
     );

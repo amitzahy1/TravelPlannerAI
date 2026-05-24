@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Trip, Restaurant, RestaurantIconType, RestaurantCategory } from '../types';
-import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel, Heart } from 'lucide-react';
+import { MapPin, Filter, Coffee, Flame, Fish, Star, Soup, Sandwich, Utensils, StickyNote, Sparkles, BrainCircuit, Loader2, Plus, RotateCw, CheckCircle2, Navigation, Map as MapIcon, List, Calendar, Clock, Trash2, Search, X, Trophy, Wine, Pizza, ChefHat, Store, History, Award, LayoutGrid, RefreshCw, Globe, ChevronLeft, Hotel, Heart, ClipboardPaste } from 'lucide-react';
+import { ExternalAiPasteModal } from './ExternalAiPasteModal';
 // cleaned imports
 import { getFoodImage } from '../services/imageMapper';
 import { getEnglishName } from '../utils/displayName';
@@ -237,6 +238,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [activeTab, setActiveTab] = useState<'my_list' | 'recommended'>('recommended');
     console.log("RestaurantView Loaded - v2 Clean Design - Smart Intent Active");
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+    // Free-path paste-from-external-AI flow (Part B of the 2026-05-21 plan).
+    // Lets the user copy a scoped prompt into their own ChatGPT/Gemini/Claude
+    // and paste the JSON back, bypassing our Gemini quota entirely.
+    const [pasteModalOpen, setPasteModalOpen] = useState(false);
 
     // Always-fresh trip ref — used by background tasks (geocoder) so they
     // don't overwrite trip.name / destination / etc. that the user edits
@@ -2454,15 +2459,26 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                             {/* Big unmistakable primary CTA — the user explicitly asked
                                                 for ONE clear button to run research. City-specific
                                                 options are secondary links below. */}
-                                            <button
-                                                onClick={() => researchAllCities()}
-                                                disabled={isResearchingAll}
-                                                className="bg-gradient-to-r from-orange-600 to-amber-600 text-white px-8 py-3 rounded-2xl text-base font-black shadow-lg shadow-orange-200 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-60"
-                                            >
-                                                {isResearchingAll
-                                                    ? <><Loader2 className="w-5 h-5 animate-spin" /> סורק ({researchProgress.current}/{researchProgress.total})</>
-                                                    : <><BrainCircuit className="w-5 h-5" /> המלצות AI לכל הטיול</>}
-                                            </button>
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <button
+                                                    onClick={() => researchAllCities()}
+                                                    disabled={isResearchingAll}
+                                                    title="קורא ל-Gemini grounded SEARCH דרך ה-Worker שלנו. עלות: ~$0.05 לקריאה. תוצאה מאומתת באינטרנט."
+                                                    className="bg-gradient-to-r from-orange-600 to-amber-600 text-white px-8 py-3 rounded-2xl text-base font-black shadow-lg shadow-orange-200 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-60"
+                                                >
+                                                    {isResearchingAll
+                                                        ? <><Loader2 className="w-5 h-5 animate-spin" /> סורק ({researchProgress.current}/{researchProgress.total})</>
+                                                        : <><BrainCircuit className="w-5 h-5" /> המלצות AI לכל הטיול</>}
+                                                </button>
+                                                {/* Free path — copy prompt to external AI, paste JSON back */}
+                                                <button
+                                                    onClick={() => setPasteModalOpen(true)}
+                                                    title="פתח פרומפט להעתיק ל-ChatGPT/Gemini/Claude (חינמי ב-tier שלכם). הדבק חזרה את ה-JSON. עלות לאתר: 0 ש״ח."
+                                                    className="bg-white text-emerald-700 border-2 border-emerald-600 px-5 py-3 rounded-2xl text-base font-black shadow-sm hover:bg-emerald-50 transition-all flex items-center gap-2"
+                                                >
+                                                    <ClipboardPaste className="w-5 h-5" /> הדבק מ-ChatGPT (חינמי)
+                                                </button>
+                                            </div>
 
                                             {tripCities.length > 1 && !isResearchingAll && (
                                                 <div className="pt-3 border-t border-slate-100 w-full max-w-md">
@@ -2653,6 +2669,16 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 cancelText="ביטול"
                 onConfirm={researchNearHotel}
                 onClose={() => setConfirmNearHotel(false)}
+            />
+            {/* Free-path paste-from-external-AI modal — opened by the green
+                sibling button next to "המלצות AI לכל הטיול". Reuses the
+                services/externalAiImport machinery. */}
+            <ExternalAiPasteModal
+                isOpen={pasteModalOpen}
+                onClose={() => setPasteModalOpen(false)}
+                trip={trip}
+                kind="restaurants"
+                onApply={onUpdateTrip}
             />
         </div>
     );
