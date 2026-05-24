@@ -156,6 +156,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
     // External-AI import (Gemini / ChatGPT / Claude.ai web → paste JSON back)
     const [extAiKind, setExtAiKind] = useState<ExternalAiKind>('attractions');
+    // Prompt scope — 'all' = whole trip in one prompt (default); a specific
+    // city name = scoped prompt that asks the AI to find picks ONLY there.
+    // Per-city prompts return tighter, more accurate results because the AI
+    // doesn't have to split its quota across multiple destinations.
+    const [extAiScope, setExtAiScope] = useState<string>('all');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile Sidebar State
     const [tripToDelete, setTripToDelete] = useState<string | null>(null);
     const [tripToLeave, setTripToLeave] = useState<string | null>(null); // NEW: For shared trip leave confirmation
@@ -760,9 +765,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         // city-level location strings that match the city chips.
         const tripCityList = getTripCities(activeTrip, { lang: 'en', excludeFlightOnly: true });
         const fallback = activeTrip.destinationEnglish || activeTrip.destination || '';
-        const dest = tripCityList.length > 0 ? tripCityList.join(', ') : fallback;
-        return buildExternalAiPrompt(dest, extAiKind, existingPlaceNames(activeTrip, extAiKind));
-    }, [activeTrip, extAiKind]);
+        // Scope override: when the user picks a single city from the dropdown,
+        // we send the AI just that city as the "destination" so it doesn't
+        // split quota across the whole route.
+        const scopedDest = extAiScope !== 'all' && tripCityList.includes(extAiScope)
+            ? extAiScope
+            : (tripCityList.length > 0 ? tripCityList.join(', ') : fallback);
+        return buildExternalAiPrompt(scopedDest, extAiKind, existingPlaceNames(activeTrip, extAiKind));
+    }, [activeTrip, extAiKind, extAiScope]);
 
     const handleExtAiCopy = async () => {
         try {
@@ -1299,9 +1309,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                     >
                                         <div className="flex items-center gap-3 mb-2">
                                             <div className="text-2xl">🍽️</div>
-                                            <div className="text-base font-black text-slate-800">המלצות וטיפים</div>
+                                            <div className="text-base font-black text-slate-800">מסעדות ואטרקציות</div>
                                         </div>
-                                        <div className="text-xs text-slate-500 leading-relaxed">אטרקציות ומסעדות — העתק פרומפט ל-Gemini / ChatGPT, הדבק חזרה את התשובה</div>
+                                        <div className="text-xs text-slate-500 leading-relaxed">העתק פרומפט ל-Gemini / ChatGPT, הדבק חזרה את התשובה</div>
                                     </button>
                                 </div>
 
@@ -1386,7 +1396,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                 {addMode === 'info' && (
                                     <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                                         {/* Kind selector — attractions vs restaurants */}
-                                        <div className="flex gap-2 mb-4">
+                                        <div className="flex gap-2 mb-3">
                                             <button
                                                 onClick={() => setExtAiKind('attractions')}
                                                 className={`flex-1 py-2 rounded-lg font-bold text-xs border transition ${extAiKind === 'attractions' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'}`}
@@ -1400,6 +1410,35 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                 🍽️ מסעדות
                                             </button>
                                         </div>
+
+                                        {/* Scope selector — whole trip vs single city.
+                                            Single-city prompts produce tighter, more
+                                            accurate results (the AI doesn't have to
+                                            split its quota across destinations). */}
+                                        {(() => {
+                                            const tripCityList = activeTrip ? getTripCities(activeTrip, { lang: 'en', excludeFlightOnly: true }) : [];
+                                            if (tripCityList.length <= 1) return null;
+                                            return (
+                                                <div className="flex flex-wrap gap-1.5 mb-4 items-center">
+                                                    <span className="text-[11px] font-bold text-slate-500 ml-1">היקף הפרומפט:</span>
+                                                    <button
+                                                        onClick={() => setExtAiScope('all')}
+                                                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition ${extAiScope === 'all' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                                                    >
+                                                        כל הטיול
+                                                    </button>
+                                                    {tripCityList.map(city => (
+                                                        <button
+                                                            key={city}
+                                                            onClick={() => setExtAiScope(city)}
+                                                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition ${extAiScope === city ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                                                        >
+                                                            {city}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
 
                                         {/* Step 1 — copy prompt, open external AI */}
                                         <div className="space-y-2 mb-4">
@@ -1521,29 +1560,43 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
 {/* end of activeTab === 'add' */}
                         {activeTab === 'owner' && isOwner && (
-                            <div className="space-y-6 animate-fade-in">
-                                {/* Share & Export */}
-                                <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                                    <h3 className="text-base font-black text-slate-800 mb-4 flex items-center gap-2"><Share2 className="w-4 h-4 text-blue-500" /> שיתוף וייצוא</h3>
-                                    <div className="flex gap-3 flex-wrap">
-                                        <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-sm">
-                                            <Share2 className="w-4 h-4" /> שתף טיול
-                                        </button>
-                                        <button onClick={() => exportTripPDF(activeTrip)} className="flex items-center gap-2 px-5 py-3 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-bold border border-indigo-200 hover:bg-indigo-100 transition-all">
-                                            <FileText className="w-4 h-4" /> ייצא PDF
-                                        </button>
-                                    </div>
-                                </div>
+                            <div className="space-y-4 animate-fade-in">
+                                {/* CRITICAL — pure-code trip validator. Flags impossible
+                                    flight durations, hotel/flight conflicts, items in
+                                    the wrong country. No AI cost. Top of the page so
+                                    the user sees the active problems first. */}
+                                <TripValidationBanner trip={activeTrip} />
 
-                                {/* Premium Override */}
-                                <div className="bg-white border border-amber-200 rounded-xl p-6 shadow-sm">
-                                    <h3 className="text-base font-black text-slate-800 mb-1 flex items-center gap-2"><Sparkles className="w-4 h-4 text-amber-500" /> מגבלות AI פרימיום</h3>
-                                    <p className="text-xs text-slate-500 mb-4">כל קטגוריה מורשית להרצה אחת עם מודל פרימיום בחודש. אפס כדי לאפשר הרצה נוספת.</p>
-                                    <div className="space-y-3">
-                                        <div className="flex items-center justify-between bg-amber-50 rounded-lg px-4 py-3">
+                                {/* CRITICAL — fix broken locations on the map. The
+                                    "verify all locations" button heals everything in
+                                    one click; this is the most common reason a user
+                                    visits this tab. */}
+                                <DataHealthPanel trip={activeTrip} onUpdateTrip={(t) => handleUpdateTrip(t)} />
+
+                                {/* RECOVERY — activity log + undo. Useful when something
+                                    was accidentally edited or deleted. */}
+                                <ActivityPanel
+                                    trip={activeTrip}
+                                    onUpdateTrip={(t) => handleUpdateTrip(t)}
+                                    actorUid={user?.uid || ''}
+                                    actorName={user?.displayName || user?.email?.split('@')[0] || 'משתמש'}
+                                />
+
+                                {/* RARE — monthly premium-AI cap reset. Collapsed by
+                                    default; the typical user never opens it. */}
+                                <details className="bg-white border border-slate-200 rounded-xl shadow-sm">
+                                    <summary className="cursor-pointer list-none p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                        <span className="text-sm font-black text-slate-700 flex items-center gap-2">
+                                            <Sparkles className="w-4 h-4 text-amber-500" /> מגבלות AI פרימיום
+                                        </span>
+                                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                                    </summary>
+                                    <div className="px-5 pb-5 space-y-3">
+                                        <p className="text-[11px] text-slate-500">כל קטגוריה מורשית להרצה אחת עם מודל פרימיום בחודש. אפס כדי לאפשר הרצה נוספת.</p>
+                                        <div className="flex items-center justify-between bg-amber-50 rounded-lg px-4 py-2.5">
                                             <div>
                                                 <div className="text-sm font-bold text-slate-700">מחקר מסעדות</div>
-                                                <div className="text-xs text-slate-500">{premiumFood ? `הורץ ב-${new Date(premiumFood).toLocaleDateString('he-IL')}` : 'טרם הורץ'}</div>
+                                                <div className="text-[11px] text-slate-500">{premiumFood ? `הורץ ב-${new Date(premiumFood).toLocaleDateString('he-IL')}` : 'טרם הורץ'}</div>
                                             </div>
                                             <button
                                                 onClick={async () => { if (!user?.uid) return; await resetPremiumRunUsed(user.uid, 'food'); setPremiumFood(null); toast.success('מגבלת מסעדות אופסה'); }}
@@ -1553,10 +1606,10 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                 <RefreshCw className="w-3 h-3" /> אפס
                                             </button>
                                         </div>
-                                        <div className="flex items-center justify-between bg-purple-50 rounded-lg px-4 py-3">
+                                        <div className="flex items-center justify-between bg-purple-50 rounded-lg px-4 py-2.5">
                                             <div>
                                                 <div className="text-sm font-bold text-slate-700">מחקר אטרקציות</div>
-                                                <div className="text-xs text-slate-500">{premiumAttractions ? `הורץ ב-${new Date(premiumAttractions).toLocaleDateString('he-IL')}` : 'טרם הורץ'}</div>
+                                                <div className="text-[11px] text-slate-500">{premiumAttractions ? `הורץ ב-${new Date(premiumAttractions).toLocaleDateString('he-IL')}` : 'טרם הורץ'}</div>
                                             </div>
                                             <button
                                                 onClick={async () => { if (!user?.uid) return; await resetPremiumRunUsed(user.uid, 'attractions'); setPremiumAttractions(null); toast.success('מגבלת אטרקציות אופסה'); }}
@@ -1567,31 +1620,24 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             </button>
                                         </div>
                                     </div>
-                                </div>
+                                </details>
 
-                                {/* Pure-code trip validator — flags impossible flight durations,
-                                    hotel/flight conflicts, items in the wrong country. No AI cost. */}
-                                <TripValidationBanner trip={activeTrip} />
-
-                                {/* Activity log + soft-delete recovery */}
-                                <ActivityPanel
-                                    trip={activeTrip}
-                                    onUpdateTrip={(t) => handleUpdateTrip(t)}
-                                    actorUid={user?.uid || ''}
-                                    actorName={user?.displayName || user?.email?.split('@')[0] || 'משתמש'}
-                                />
-
-                                {/* Data health & logs */}
-                                <DataHealthPanel trip={activeTrip} onUpdateTrip={(t) => handleUpdateTrip(t)} />
-
-                                {/* Model connectivity probe — identifies which Gemini models
-                                    work for the current Cloudflare Worker keys, with a
-                                    concrete remediation per failure. Cached 10 min; the
-                                    same cache is consulted by generateWithFallback to
-                                    auto-drop dead models from the chain. */}
-                                <ModelHealthPanel />
-
-                                <SystemLogs />
+                                {/* DEBUG — model connectivity + system logs. Power-user
+                                    territory; collapsed so it doesn't clutter the main
+                                    flow. ModelHealthPanel auto-syncs the dynamic
+                                    fallback chain; SystemLogs is read-only diagnostics. */}
+                                <details className="bg-white border border-slate-200 rounded-xl shadow-sm">
+                                    <summary className="cursor-pointer list-none p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                        <span className="text-sm font-black text-slate-700 flex items-center gap-2">
+                                            <ShieldCheck className="w-4 h-4 text-slate-500" /> אבחון מערכת (מודלים, לוגים)
+                                        </span>
+                                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                                    </summary>
+                                    <div className="px-5 pb-5 space-y-4">
+                                        <ModelHealthPanel />
+                                        <SystemLogs />
+                                    </div>
+                                </details>
                             </div>
                         )}
                     </div>
