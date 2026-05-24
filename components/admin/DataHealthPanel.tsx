@@ -274,15 +274,41 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 className="text-lg font-black text-slate-800 mb-3">בדיקת שירותים</h3>
+
+                <details className="mb-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-slate-700">
+                        ⓘ מה כל בדיקה עושה?
+                    </summary>
+                    <div className="px-3 pb-3 text-2xs text-slate-600 leading-relaxed space-y-2">
+                        <div>
+                            <strong>AI Worker (Gemini)</strong> — שולח בקשת FAST קצרה (~1 טוקן) דרך
+                            כל שרשרת ה-fallback (Gemini → Groq → OpenRouter). מאשר שהפרוקסי שלנו
+                            ב-Cloudflare זמין, שאחד מהמפתחות מצליח, ושהמודל הראשון בשרשרת מחזיר
+                            תוצאה. <strong>עלות:</strong> ~$0.000001 (כמה אגורות-שבר) או חינם
+                            אם נופל ל-Groq. <strong>למה זה שונה מ-"בדוק עכשיו" של Model Health?</strong>
+                            הבדיקה הזאת מאשרת שהשרשרת השלמה פועלת end-to-end (Worker + key + chain +
+                            parsing); הבדיקה השנייה מודדת כל מודל בנפרד.
+                        </div>
+                        <div>
+                            <strong>Photon (OSM)</strong> — שולח שאילתת גיאוקודינג קטנה (לדוגמה
+                            "Tel Aviv") ל-photon.komoot.io ומאשר שהוא מחזיר קואורדינטות.
+                            זה השירות שבו אנחנו משתמשים ב-"אמת מחדש את כל המקומות" למעלה — אם
+                            הוא נכשל, הסעיף הזה לא יעבוד. <strong>עלות:</strong> 0 ש"ח, חינמי
+                            ובלי מגבלת כמות סבירה.
+                        </div>
+                    </div>
+                </details>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200">
                         <div>
                             <div className="font-bold text-slate-700">AI Worker (Gemini)</div>
-                            <div className="text-xs text-slate-500">FAST intent ping (חינם)</div>
+                            <div className="text-xs text-slate-500">FAST intent ping (~0 ש"ח)</div>
                         </div>
                         <button
                             onClick={pingAi}
                             disabled={pingingService === 'ai'}
+                            title="שולח בקשת ping דרך כל שרשרת ה-AI (Gemini → Groq → OpenRouter). מאשר שהפרוקסי + מפתח + מודל הראשון בשרשרת פועלים end-to-end."
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ${pingStatus.ai === 'ok' ? 'bg-emerald-50 text-emerald-700' : pingStatus.ai === 'fail' ? 'bg-rose-50 text-rose-700' : 'bg-blue-50 text-blue-700'}`}
                         >
                             {pingingService === 'ai' ? <Loader2 className="w-3 h-3 animate-spin" /> : pingStatus.ai === 'ok' ? <CheckCircle2 className="w-3 h-3" /> : pingStatus.ai === 'fail' ? <AlertTriangle className="w-3 h-3" /> : null}
@@ -297,6 +323,7 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                         <button
                             onClick={pingPhoton}
                             disabled={pingingService === 'photon'}
+                            title="גיאוקודר חינמי (photon.komoot.io) שמשמש את 'אמת מחדש את כל המקומות'. בדיקה כאן שולחת שאילתת test קטנה ומוודאת שהשירות חי."
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 ${pingStatus.photon === 'ok' ? 'bg-emerald-50 text-emerald-700' : pingStatus.photon === 'fail' ? 'bg-rose-50 text-rose-700' : 'bg-blue-50 text-blue-700'}`}
                         >
                             {pingingService === 'photon' ? <Loader2 className="w-3 h-3 animate-spin" /> : pingStatus.photon === 'ok' ? <CheckCircle2 className="w-3 h-3" /> : pingStatus.photon === 'fail' ? <AlertTriangle className="w-3 h-3" /> : null}

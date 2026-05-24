@@ -198,9 +198,21 @@ const callGroq = async (
         }
         const actualModelId = modelId.replace(/^groq:/, "");
         const wantJson = (generationConfig?.responseMimeType || "").includes("json");
+        const messages = contentsToOpenRouterMessages(requestContent);
+        // Groq's OpenAI-compat layer HARD-rejects (400) any request that asks
+        // for response_format=json_object whose messages don't literally contain
+        // the word "json". When the caller wants JSON but the prompt doesn't
+        // already include the word, inject a one-line system hint so Groq lets
+        // us through. Mirrors the trick OpenAI compatible SDKs do internally.
+        if (wantJson) {
+                const hasJsonWord = messages.some((m: any) => /json/i.test(typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
+                if (!hasJsonWord) {
+                        messages.unshift({ role: 'system', content: 'Reply with valid JSON only.' });
+                }
+        }
         const body: any = {
                 model: actualModelId,
-                messages: contentsToOpenRouterMessages(requestContent),
+                messages,
                 temperature: generationConfig?.temperature ?? 0.2,
         };
         if (wantJson) body.response_format = { type: "json_object" };

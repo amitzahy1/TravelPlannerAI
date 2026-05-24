@@ -547,8 +547,16 @@ export const generateWithFallback = async (
       // Grounding is incompatible with structured JSON output (responseMimeType /
       // responseSchema), so we omit those for SEARCH and parse JSON from the
       // model's free-form text via cleanJSON() below.
+      //
+      // FAST intent (chat, quick suggestions) intentionally does NOT force
+      // JSON either — chat replies are natural language, and Groq's OpenAI
+      // compatibility layer hard-rejects (HTTP 400) any JSON-mode request
+      // whose messages don't contain the literal word "json". Forcing JSON
+      // on FAST broke every chat fallback when Gemini was spend-capped.
       const isSearch = intent === 'SEARCH';
-      const generationConfig = isSearch
+      const isFast = intent === 'FAST';
+      const wantsJson = !isSearch && !isFast;
+      const generationConfig = !wantsJson
         ? { ...config }  // keep caller-supplied temperature etc; Worker defaults to 0.2
         : {
             ...config,
@@ -659,18 +667,27 @@ export const generateWithFallback = async (
       }
 
       const data = await response.json();
-      // For non-SEARCH intents the Worker enforces a JSON schema, so we can
-      // parse straight through. SEARCH responses come back as grounded
-      // free-form text — strip prose / fences before parsing.
+      // For SMART / ANALYZE intents the Worker enforces a JSON schema, so we
+      // can parse straight through. SEARCH responses come back as grounded
+      // free-form text — strip prose / fences before parsing. FAST responses
+      // are conversational natural-language replies — don't enforce JSON.
       // Lenient parse: recover from unescaped control chars / quotes inside
       // string values (common LLM corruption pattern) before treating the
       // model as failed.
       const rawText = data.text;
-      const cleanedText = isSearch ? cleanJSON(rawText) : rawText;
-      const lenient = parseJsonLenient(cleanedText);
-      const text = lenient.sanitized ? sanitizeJsonControlChars(cleanedText) : cleanedText;
-      if (lenient.sanitized) {
-        console.warn(`⚠️ [AI] ${modelId} returned JSON with control-char corruption — sanitized.`);
+      let text: string;
+      let wasSanitized = false;
+      if (isFast) {
+        // FAST replies are plain text (e.g. chat). No JSON enforcement.
+        text = rawText;
+      } else {
+        const cleanedText = isSearch ? cleanJSON(rawText) : rawText;
+        const lenient = parseJsonLenient(cleanedText);
+        text = lenient.sanitized ? sanitizeJsonControlChars(cleanedText) : cleanedText;
+        wasSanitized = lenient.sanitized;
+        if (lenient.sanitized) {
+          console.warn(`⚠️ [AI] ${modelId} returned JSON with control-char corruption — sanitized.`);
+        }
       }
 
       // Only Gemini-with-googleSearch is actually grounded. Groq/OpenRouter
@@ -679,7 +696,7 @@ export const generateWithFallback = async (
       // UIs (RestaurantsView / AttractionsView) can warn the user when results
       // are AI-invented rather than retrieved from real-world sources.
       const isActuallyGrounded = isSearch && !modelId.startsWith('groq:') && !modelId.startsWith('openrouter:');
-      console.log(`✅ [AI] Success with ${modelId}${isActuallyGrounded ? ' (grounded)' : ''}${lenient.sanitized ? ' (sanitized)' : ''}`);
+      console.log(`✅ [AI] Success with ${modelId}${isActuallyGrounded ? ' (grounded)' : ''}${wasSanitized ? ' (sanitized)' : ''}`);
       if (isSearch && !isActuallyGrounded) {
         console.warn(`⚠️ [AI] ${modelId} returned SEARCH results WITHOUT internet grounding. Items may be hallucinated.`);
         if (!warnedUngroundedThisSession) {
