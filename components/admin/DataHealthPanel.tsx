@@ -42,6 +42,7 @@ const toneClass = (tone: HealthStat['tone']) => {
 
 export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdateTrip }) => {
     const [reverifying, setReverifying] = useState(false);
+    const [reverifyProgress, setReverifyProgress] = useState({ done: 0, total: 0, verified: 0, notFound: 0 });
     const [pingStatus, setPingStatus] = useState<{ ai: 'unknown' | 'ok' | 'fail'; photon: 'unknown' | 'ok' | 'fail' }>({ ai: 'unknown', photon: 'unknown' });
     const [pingingService, setPingingService] = useState<null | 'ai' | 'photon'>(null);
 
@@ -127,6 +128,8 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
     const reverifyAll = async () => {
         if (!trip) return;
         setReverifying(true);
+        setReverifyProgress({ done: 0, total: 0, verified: 0, notFound: 0 });
+        console.log('🔎 [reverify] starting place verification…');
         try {
             // Snapshot working copies — verifyPlacesBatch mutates each item.
             const aiRestaurants = (trip.aiRestaurants || []).map(c => ({ ...c, restaurants: (c.restaurants || []).map(r => ({ ...r })) }));
@@ -168,21 +171,35 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                 })),
             ];
 
+            console.log(`🔎 [reverify] ${verifiable.length} items queued: ` +
+                `${hotels.length} hotels, ${flatAiR.length} AI restaurants, ` +
+                `${flatAiA.length} AI attractions, ${flatManR.length} saved restaurants, ` +
+                `${flatManA.length} saved attractions. Country hint: "${tripCountry}".`);
+            setReverifyProgress({ done: 0, total: verifiable.length, verified: 0, notFound: 0 });
+
+            // Per-result counter — lets the UI show "X/Y done" and the console
+            // stream show what got matched / not_found / ambiguous in real time.
+            let done = 0;
+            let verifiedCount = 0;
+            let notFoundCount = 0;
             await verifyPlacesBatch(verifiable, trip, (id, result) => {
-                const r = flatAiR.find(x => x.id === id);
-                if (r) { applyVerificationResult(r, result); return; }
-                const a = flatAiA.find(x => x.id === id);
-                if (a) { applyVerificationResult(a, result); return; }
-                const mr = flatManR.find(x => x.id === id);
-                if (mr) { applyVerificationResult(mr, result); return; }
-                const ma = flatManA.find(x => x.id === id);
-                if (ma) { applyVerificationResult(ma, result); return; }
-                const h = hotels.find(x => x.id === id);
-                if (h) {
-                    // applyVerificationResult writes lat/lng/verifiedCity etc.
-                    // The hotel type allows these fields already.
-                    applyVerificationResult(h as any, result);
-                }
+                const target = flatAiR.find(x => x.id === id)
+                    || flatAiA.find(x => x.id === id)
+                    || flatManR.find(x => x.id === id)
+                    || flatManA.find(x => x.id === id)
+                    || hotels.find(x => x.id === id);
+                if (target) applyVerificationResult(target as any, result);
+                done++;
+                if ((result as any)?.status === 'verified') verifiedCount++;
+                else if ((result as any)?.status === 'not_found') notFoundCount++;
+                const name = (target as any)?.name || id;
+                const status = (result as any)?.status || '?';
+                const verifiedCity = (result as any)?.verifiedCity || '';
+                console.log(
+                    `🔎 [reverify ${done}/${verifiable.length}] ${status.padEnd(10)} ${name}` +
+                    (verifiedCity ? ` → ${verifiedCity}` : '')
+                );
+                setReverifyProgress({ done, total: verifiable.length, verified: verifiedCount, notFound: notFoundCount });
             }, { forceRefresh: true });
 
             onUpdateTrip({
@@ -193,13 +210,14 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                 attractions,
                 hotels,
             });
-            const total = verifiable.length;
-            const verified = [...flatAiR, ...flatAiA, ...flatManR, ...flatManA, ...hotels]
-                .filter((x: any) => x.verificationStatus === 'verified').length;
-            toast.success(`האימות הושלם — ${verified}/${total} אומתו`);
+            console.log(`✅ [reverify] complete — ${verifiedCount} verified, ${notFoundCount} not_found, ` +
+                `${verifiable.length - verifiedCount - notFoundCount} other (ambiguous / errored) ` +
+                `out of ${verifiable.length} total.`);
+            toast.success(`האימות הושלם — ${verifiedCount}/${verifiable.length} אומתו` +
+                (notFoundCount > 0 ? ` (${notFoundCount} לא נמצאו)` : ''));
         } catch (e) {
-            console.error(e);
-            toast.error('האימות נכשל');
+            console.error('❌ [reverify] failed:', e);
+            toast.error('האימות נכשל — בדוק את הקונסולה');
         } finally {
             setReverifying(false);
         }
@@ -380,11 +398,13 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                     <button
                         onClick={reverifyAll}
                         disabled={reverifying}
-                        title="עובר על כל מלון/מסעדה/אטרקציה ושולח ל-Photon (גאוקודר חינמי) לאיתור lat/lng. עלות AI: 0 ש״ח. זמן: ~0.5-1ש לפריט."
-                        className="flex items-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-sm border border-blue-100"
+                        title="עובר על כל מלון/מסעדה/אטרקציה ושולח ל-Photon (גאוקודר חינמי) לאיתור lat/lng. עלות AI: 0 ש״ח. זמן: ~0.5-1ש לפריט. הקונסולה תראה התקדמות שורה-שורה."
+                        className="flex items-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-sm border border-blue-100 disabled:opacity-70"
                     >
                         {reverifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                        אמת מחדש את כל המקומות
+                        {reverifying && reverifyProgress.total > 0
+                            ? `מאמת… ${reverifyProgress.done}/${reverifyProgress.total} (${reverifyProgress.verified} נמצאו)`
+                            : 'אמת מחדש את כל המקומות'}
                     </button>
                     <button
                         onClick={dropOutOfScope}
