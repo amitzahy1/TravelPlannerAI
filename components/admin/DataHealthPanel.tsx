@@ -241,6 +241,40 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
         toast.success('פריטים מחוץ לטיול הוסרו');
     };
 
+    // Items flagged by either Photon (verificationStatus='not_found') OR
+    // Google Places (googleNotFound=true). Either signal means clicking
+    // the item's Maps link will land on nothing — exactly the user's
+    // complaint. Combined so a single button cleans up both flag types.
+    const notFoundItems = useMemo(() => {
+        const isNotFound = (p: any) =>
+            p.verificationStatus === 'not_found' || p.googleNotFound === true;
+        return {
+            restaurants: allRestaurants.filter(isNotFound),
+            attractions: allAttractions.filter(isNotFound),
+        };
+    }, [allRestaurants, allAttractions]);
+    const notFoundTotal = notFoundItems.restaurants.length + notFoundItems.attractions.length;
+
+    const dropNotFound = () => {
+        if (!trip) return;
+        const isNotFound = (p: any) =>
+            p.verificationStatus === 'not_found' || p.googleNotFound === true;
+        const filterCat = <T extends { restaurants?: Restaurant[]; attractions?: Attraction[] }>(c: T): T => ({
+            ...c,
+            restaurants: c.restaurants?.filter(r => !isNotFound(r)) as any,
+            attractions: c.attractions?.filter(a => !isNotFound(a)) as any,
+        });
+        const updated = {
+            ...trip,
+            aiRestaurants: (trip.aiRestaurants || []).map(filterCat).filter(c => (c.restaurants?.length || 0) > 0),
+            aiAttractions: (trip.aiAttractions || []).map(filterCat).filter(c => (c.attractions?.length || 0) > 0),
+            restaurants: (trip.restaurants || []).map(filterCat).filter(c => (c.restaurants?.length || 0) > 0),
+            attractions: (trip.attractions || []).map(filterCat).filter(c => (c.attractions?.length || 0) > 0),
+        };
+        onUpdateTrip(updated);
+        toast.success(`נמחקו ${notFoundTotal} מקומות שלא נמצאו במפות`);
+    };
+
     const exportReport = () => {
         if (!trip) return;
         const report = {
@@ -414,6 +448,17 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                         הסר פריטים מחוץ לטיול
                     </button>
                     <button
+                        onClick={dropNotFound}
+                        disabled={notFoundTotal === 0}
+                        title="מוחק את כל המסעדות והאטרקציות שהמערכת לא הצליחה לאמת את קיומן ב-Photon או ב-Google Maps. אלו הפריטים שכשלוחצים עליהם לא רואים מקום על המפה."
+                        className="flex items-center gap-2 px-4 py-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-sm border border-rose-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                        {notFoundTotal > 0
+                            ? `מחק ${notFoundTotal} מקומות שלא נמצאו במפות`
+                            : 'אין מקומות שלא נמצאו'}
+                    </button>
+                    <button
                         onClick={exportReport}
                         className="flex items-center gap-2 px-4 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-sm border border-slate-200"
                     >
@@ -421,6 +466,47 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                         ייצא דוח JSON
                     </button>
                 </div>
+
+                {/* Preview list — lets the user see WHICH items will get
+                    deleted before clicking the destructive button. Collapsed
+                    by default to not visually overwhelm; expand to scan and
+                    optionally cancel by closing without clicking. */}
+                {notFoundTotal > 0 && (
+                    <details className="mt-3 bg-rose-50/50 border border-rose-100 rounded-lg">
+                        <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-rose-700">
+                            ראה את {notFoundTotal} המקומות שלא נמצאו
+                        </summary>
+                        <div className="px-3 pb-3 max-h-64 overflow-y-auto space-y-1.5">
+                            {notFoundItems.restaurants.length > 0 && (
+                                <div>
+                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-2 mb-1">
+                                        מסעדות ({notFoundItems.restaurants.length})
+                                    </div>
+                                    {notFoundItems.restaurants.map(r => (
+                                        <div key={r.id} className="text-[11px] text-slate-700 py-0.5">
+                                            • {r.name}
+                                            {r.location && <span className="text-slate-400"> — {r.location}</span>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {notFoundItems.attractions.length > 0 && (
+                                <div>
+                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-2 mb-1">
+                                        אטרקציות ({notFoundItems.attractions.length})
+                                    </div>
+                                    {notFoundItems.attractions.map(a => (
+                                        <div key={a.id} className="text-[11px] text-slate-700 py-0.5">
+                                            • {a.name}
+                                            {a.location && <span className="text-slate-400"> — {a.location}</span>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </details>
+                )}
+
                 <p className="text-[10px] text-slate-400 mt-3">
                     כל הפעולות משתמשות אך ורק ב-Photon (OSM) ו-Gemini Worker — אין שימוש ב-API בתשלום.
                 </p>
