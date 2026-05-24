@@ -142,8 +142,11 @@ rewrite it before sending.
 
 ═══ OUTPUT — JSON ONLY ═══
 No prose, no markdown fences, no explanations, no leading/trailing text.
-EXACTLY this shape:
 
+The importer accepts EITHER of two shapes — pick whichever is easier
+for you to produce. Both are merged identically into the user's trip:
+
+SHAPE A (PREFERRED — categorized): one object per Hebrew category.
 {
   "kind": "${kind}",
   "categories": [
@@ -174,7 +177,28 @@ EXACTLY this shape:
   ]
 }
 
-Return ONE valid JSON object. Nothing else. No \`\`\`json fences. ${entityWordHebrew} only.`;
+SHAPE B (FALLBACK — flat list): if categories are awkward, just
+return a flat array. Each item should still set "categoryTitle" to
+one of the Hebrew categories above so the importer can group it.
+{
+  "${entityWord}": [
+    {
+      "name": "...", "nameEnglish": "...", "description": "...",
+      "location": "...", "lat": <num>, "lng": <num>,
+      "googleMapsUrl": "...", "recommendationSource": "...",
+      "rating": <num>, "reviewCount": <int>,
+      "categoryTitle": "<one of the Hebrew titles above>"${isAttr
+        ? `,
+      "price": "...", "type": "..."`
+        : `,
+      "cuisine": "...", "cuisineTags": ["..."], "isHotelRestaurant": <bool>`}
+    }
+  ]
+}
+
+Return ONE valid JSON object. Nothing else. No \`\`\`json fences. ${entityWordHebrew} only.
+Whichever shape you pick, the importer will sync it back into the website
+correctly — same fields, same merge logic, same display.`;
 }
 
 // ---------------------------------------------------------------------------

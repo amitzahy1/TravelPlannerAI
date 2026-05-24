@@ -378,12 +378,46 @@ const FlightRow: React.FC<{
     return baseIso;
   })();
 
-  // Priority order: (1) user-saved duration, (2) TZ-aware calculation from
-  // IATA codes, (3) naive fallback for flights without known airports.
-  const duration = durationRaw
-    || computeTzAwareDuration()
-    || calculateFlightDuration(depIsoForDuration, arrIsoForDuration)
-    || undefined;
+  // Parse the stored duration string (e.g. "5h 10m", "40m") to minutes.
+  // Returns null when unparseable. Used below to sanity-check.
+  const parseDurationToMinutes = (d?: string): number | null => {
+    if (!d) return null;
+    const lower = d.toLowerCase().trim();
+    const hMatch = lower.match(/(\d+(?:\.\d+)?)\s*h/);
+    const mMatch = lower.match(/(\d+)\s*m/);
+    if (!hMatch && !mMatch) return null;
+    return (hMatch ? parseFloat(hMatch[1]) * 60 : 0) + (mMatch ? parseInt(mMatch[1]) : 0);
+  };
+
+  // Sanity-check the stored value against the timestamps. The AI sometimes
+  // hallucinates the duration during trip extraction (e.g. TLV→TIA shown as
+  // "5h 10m" when it's really ~3h, or the return shown as "40m" when it's
+  // ~2h 40m — the "2h " prefix got dropped). If the stored value is wildly
+  // off the timestamp delta, prefer the computed value instead.
+  // User reported 2026-05-21.
+  const tzAwareDuration = computeTzAwareDuration();
+  const wallClockDuration = calculateFlightDuration(depIsoForDuration, arrIsoForDuration) || undefined;
+  const storedMinutes = parseDurationToMinutes(durationRaw);
+  const tzAwareMinutes = parseDurationToMinutes(tzAwareDuration);
+  const wallClockMinutes = parseDurationToMinutes(wallClockDuration);
+  const referenceMinutes = tzAwareMinutes ?? wallClockMinutes ?? null;
+
+  let duration: string | undefined;
+  if (durationRaw && storedMinutes !== null && referenceMinutes !== null) {
+    // Stored value is parseable AND we have a reference — flag if they
+    // disagree by more than ±60 min or 30%, whichever is larger.
+    const diff = Math.abs(storedMinutes - referenceMinutes);
+    const tolerance = Math.max(60, referenceMinutes * 0.3);
+    if (diff > tolerance) {
+      // Prefer computed; keep stored visible with a strikethrough hint.
+      duration = tzAwareDuration || wallClockDuration || durationRaw;
+    } else {
+      duration = durationRaw;
+    }
+  } else {
+    // Priority order: (1) user-saved duration, (2) TZ-aware calculation, (3) naive fallback.
+    duration = durationRaw || tzAwareDuration || wallClockDuration;
+  }
 
   const depDateObj = (() => {
     try {
