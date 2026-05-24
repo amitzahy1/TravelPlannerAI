@@ -41,17 +41,31 @@ export const categorize = (modelId: string): ModelMeta => {
   let tier: Tier = 'MEDIUM';
   const caps: Capability[] = [];
 
-  // 1) Size-token heuristic — find the FIRST occurrence of "Nb" where N is
-  // 1+ digits. Catches "70b", "405b", "8b", "120b", and decimals like "8.5b".
-  // We skip occurrences inside larger tokens to avoid matching version
-  // numbers like "v3" (no `b` suffix, won't match anyway).
-  const sizeMatch = id.match(/(\d+(?:\.\d+)?)b\b/);
-  if (sizeMatch) {
-    const b = parseFloat(sizeMatch[1]);
-    if (b >= 70) tier = 'STRONG';
-    else if (b >= 20) tier = 'MEDIUM';
-    else if (b >= 5) tier = 'FAST';
-    else tier = 'TINY';
+  // 1) Mixture-of-Experts detection — pattern "Nb-Ne" or "Nb-NNe" means N
+  //    billion params per expert × Ne experts. Effective capacity is closer
+  //    to N×Ne billion total, so the model behaves more like a STRONG one
+  //    despite the small per-expert size. E.g. "llama-4-scout-17b-16e" = 17B
+  //    × 16 experts = ~272B effective. Without this, Scout was being tagged
+  //    as FAST because of the 17b token (user noticed 2026-05-21).
+  const moeMatch = id.match(/(\d+(?:\.\d+)?)b[-]?(\d+)e\b/);
+  if (moeMatch) {
+    const perExpert = parseFloat(moeMatch[1]);
+    const experts = parseFloat(moeMatch[2]);
+    const effective = perExpert * experts;
+    if (effective >= 200) tier = 'STRONG';
+    else if (effective >= 50) tier = 'MEDIUM';
+    else tier = 'FAST';
+  } else {
+    // 1b) Plain size-token heuristic — find the FIRST occurrence of "Nb"
+    // where N is 1+ digits. Catches "70b", "405b", "8b", "120b", "8.5b".
+    const sizeMatch = id.match(/(\d+(?:\.\d+)?)b\b/);
+    if (sizeMatch) {
+      const b = parseFloat(sizeMatch[1]);
+      if (b >= 70) tier = 'STRONG';
+      else if (b >= 20) tier = 'MEDIUM';
+      else if (b >= 5) tier = 'FAST';
+      else tier = 'TINY';
+    }
   }
 
   // 2) Suffix / family overrides — these are stronger signals than raw size,

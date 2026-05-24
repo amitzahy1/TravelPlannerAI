@@ -275,14 +275,34 @@ const fetchGroqModels = async (env: Env): Promise<string[]> => {
                 .filter(id => !/allam/i.test(id));
 };
 
+// Score an OpenRouter free model on "how useful is it as a backup". Bigger
+// size + reasoning capability + brand-name vendors score higher. We use this
+// to cap OpenRouter at the top ~10 free models instead of including all
+// 50+, which were bloating the probe and the fallback chain without value.
+const scoreOpenRouterModel = (id: string): number => {
+        let score = 0;
+        // Size token — primary signal. Bigger = better in this context because
+        // we already have Groq's small/fast models for FAST intent.
+        const sizeMatch = id.match(/(\d+(?:\.\d+)?)b\b/);
+        if (sizeMatch) score += parseFloat(sizeMatch[1]);  // 70b → +70
+        // Reasoning bonus — thinking/distill/r1 models add diversity.
+        if (/-r1\b|reasoning|thinking|distill/i.test(id)) score += 30;
+        // Brand bonus — vendor reliability matters when we're using free tier
+        // (community-hosted models churn faster than vendor-hosted).
+        if (/meta-llama|nvidia|openai|google|qwen|deepseek|anthropic|mistralai|nousresearch/i.test(id)) {
+                score += 20;
+        }
+        return score;
+};
+
 const fetchOpenRouterModels = async (env: Env): Promise<string[]> => {
         const response = await fetch('https://openrouter.ai/api/v1/models');
         if (!response.ok) throw new Error(`OpenRouter /models ${response.status}`);
         const data = await response.json() as { data?: Array<{ id: string; pricing?: { prompt?: string; completion?: string } }> };
         // Only free-tier models — keeps the chain entirely no-cost. When the
         // user funds OpenRouter, we can flip this to also include paid models
-        // by removing the filter (or via a `tier` query param).
-        return (data.data || [])
+        // by removing the pricing filter.
+        const all = (data.data || [])
                 .filter(m => m.pricing?.prompt === '0' && m.pricing?.completion === '0')
                 .map(m => `openrouter:${m.id}`)
                 .filter(id => !NON_CHAT_DENY.test(id))
@@ -290,6 +310,15 @@ const fetchOpenRouterModels = async (env: Env): Promise<string[]> => {
                 // (laguna = poolside coding model; cobuddy/owl-alpha are
                 // experimental free-tier promos; openrouter/free is a redirect).
                 .filter(id => !/laguna|cobuddy|owl-alpha|openrouter\/free$|coder|\bcode-/i.test(id));
+
+        // Score + cap at top 10. Eliminates noise from tiny/specialty models
+        // we'd never reach in the chain anyway — keeps the heavy hitters
+        // (Llama 405B, Nemotron 120B, Hermes 405B, GPT-OSS 120B, etc.).
+        return all
+                .map(id => ({ id, score: scoreOpenRouterModel(id) }))
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 10)
+                .map(x => x.id);
 };
 
 const fetchGeminiModels = async (env: Env): Promise<string[]> => {
@@ -639,32 +668,23 @@ export default {
                                         });
                                 }
 
-                                // Probe sequentially to avoid spiking RPM (which would create
-                                // false-positive QUOTA errors on a brand-new model).
-                                const results: any[] = [];
-                                for (const modelId of models) {
+                                // Parallel probe with concurrency=4. Sequential probing of 35+
+                                // models takes >30s (Worker hard limit), so we batch. 4 concurrent
+                                // is enough to finish a typical chain in ~5-10s without spiking
+                                // RPM hard enough to false-positive a brand-new model's quota.
+                                const probeOne = async (modelId: string): Promise<any> => {
                                         const start = Date.now();
-                                        // OpenRouter: REAL ping (was previously only checking key presence,
-                                        // which made every OpenRouter model report a fake 0ms green even
-                                        // when the model was globally rate-limited or didn't exist).
+
+                                        // OpenRouter probe
                                         if (isOpenRouterModel(modelId)) {
                                                 if (!env.OPENROUTER_API_KEY) {
-                                                        results.push({
-                                                                model: modelId,
-                                                                ok: false,
-                                                                latencyMs: 0,
-                                                                key: 'OPENROUTER',
-                                                                keyTail: 'missing',
-                                                                errorKind: 'AUTH' as ErrorKind,
-                                                                remediation: 'OPENROUTER_API_KEY secret missing — set it in Cloudflare Worker.',
-                                                        });
-                                                        continue;
+                                                        return { model: modelId, ok: false, latencyMs: 0, key: 'OPENROUTER', keyTail: 'missing', errorKind: 'AUTH' as ErrorKind, remediation: 'OPENROUTER_API_KEY secret missing — set it in Cloudflare Worker.' };
                                                 }
                                                 const orTail = env.OPENROUTER_API_KEY.slice(-4);
                                                 try {
                                                         await callOpenRouter([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0, maxOutputTokens: 1 }, env);
-                                                        results.push({ model: modelId, ok: true, latencyMs: Date.now() - start, key: 'OPENROUTER', keyTail: `…${orTail}` });
                                                         console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=OPENROUTER tail=…${orTail})`);
+                                                        return { model: modelId, ok: true, latencyMs: Date.now() - start, key: 'OPENROUTER', keyTail: `…${orTail}` };
                                                 } catch (e: any) {
                                                         const msg = e?.message || String(e);
                                                         const errorKind: ErrorKind = /429|rate.?limit|too many/i.test(msg) ? 'QUOTA'
@@ -679,71 +699,43 @@ export default {
                                                                 : errorKind === 'AUTH'
                                                                 ? `OpenRouter key …${orTail} invalid. Regenerate at https://openrouter.ai/keys.`
                                                                 : `OpenRouter error on key …${orTail}: ${msg.slice(0, 120)}`;
-                                                        results.push({
-                                                                model: modelId,
-                                                                ok: false,
-                                                                latencyMs: Date.now() - start,
-                                                                key: 'OPENROUTER',
-                                                                keyTail: `…${orTail}`,
-                                                                errorKind,
-                                                                errorDetail: msg.slice(0, 240),
-                                                                remediation,
-                                                        });
                                                         console.warn(`[Probe] ${modelId} FAIL (${errorKind} key=OPENROUTER tail=…${orTail}): ${msg.slice(0, 160)}`);
+                                                        return { model: modelId, ok: false, latencyMs: Date.now() - start, key: 'OPENROUTER', keyTail: `…${orTail}`, errorKind, errorDetail: msg.slice(0, 240), remediation };
                                                 }
-                                                continue;
                                         }
-                                        // Groq: real ping with `ping` and 1-token output, just like Gemini probe.
+
+                                        // Groq probe
                                         if (isGroqModel(modelId)) {
                                                 if (!env.GROQ_API_KEY) {
-                                                        results.push({
-                                                                model: modelId,
-                                                                ok: false,
-                                                                latencyMs: 0,
-                                                                key: 'GROQ',
-                                                                keyTail: 'missing',
-                                                                errorKind: 'AUTH' as ErrorKind,
-                                                                remediation: 'GROQ_API_KEY secret missing — sign up at console.groq.com (free, no card) and set the secret in Cloudflare Worker.',
-                                                        });
-                                                        continue;
+                                                        return { model: modelId, ok: false, latencyMs: 0, key: 'GROQ', keyTail: 'missing', errorKind: 'AUTH' as ErrorKind, remediation: 'GROQ_API_KEY secret missing — sign up at console.groq.com (free, no card) and set the secret in Cloudflare Worker.' };
                                                 }
                                                 const groqTail = env.GROQ_API_KEY.slice(-4);
                                                 try {
                                                         await callGroq([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0 }, env);
-                                                        results.push({ model: modelId, ok: true, latencyMs: Date.now() - start, key: 'GROQ', keyTail: `…${groqTail}` });
                                                         console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=GROQ tail=…${groqTail})`);
+                                                        return { model: modelId, ok: true, latencyMs: Date.now() - start, key: 'GROQ', keyTail: `…${groqTail}` };
                                                 } catch (e: any) {
                                                         const msg = e?.message || String(e);
-                                                        results.push({
+                                                        return {
                                                                 model: modelId,
                                                                 ok: false,
                                                                 latencyMs: Date.now() - start,
                                                                 key: 'GROQ',
                                                                 keyTail: `…${groqTail}`,
-                                                                errorKind: /429|rate.?limit/i.test(msg) ? 'QUOTA' as ErrorKind : /401|invalid/i.test(msg) ? 'AUTH' as ErrorKind : 'UNKNOWN' as ErrorKind,
+                                                                errorKind: /429|rate.?limit/i.test(msg) ? 'QUOTA' as ErrorKind : /401|invalid/i.test(msg) ? 'AUTH' as ErrorKind : /404|not.?found/i.test(msg) ? 'INVALID_MODEL' as ErrorKind : 'UNKNOWN' as ErrorKind,
                                                                 errorDetail: msg.slice(0, 240),
                                                                 remediation: `Groq key …${groqTail}: ${msg.slice(0, 120)}. Check the key at https://console.groq.com/keys.`,
-                                                        });
+                                                        };
                                                 }
-                                                continue;
                                         }
-                                        // Gemini: pick the same key/auth that /api/generate would —
-                                        // PREMIUM by default when both keys exist (billing key wins).
+
+                                        // Gemini probe — uses PREMIUM key by default (same as /api/generate)
                                         const usePremiumKey = !!env.GEMINI_PREMIUM_KEY;
                                         const apiKey = usePremiumKey
                                                 ? env.GEMINI_PREMIUM_KEY!
                                                 : (env.GEMINI_API_KEY || env.GEMINI_PREMIUM_KEY);
                                         if (!apiKey) {
-                                                results.push({
-                                                        model: modelId,
-                                                        ok: false,
-                                                        latencyMs: 0,
-                                                        key: 'NONE',
-                                                        keyTail: 'missing',
-                                                        errorKind: 'AUTH' as ErrorKind,
-                                                        remediation: 'Neither GEMINI_API_KEY nor GEMINI_PREMIUM_KEY is set in the Cloudflare Worker.',
-                                                });
-                                                continue;
+                                                return { model: modelId, ok: false, latencyMs: 0, key: 'NONE', keyTail: 'missing', errorKind: 'AUTH' as ErrorKind, remediation: 'Neither GEMINI_API_KEY nor GEMINI_PREMIUM_KEY is set in the Cloudflare Worker.' };
                                         }
                                         const probeKeyTail = apiKey.length >= 4 ? apiKey.slice(-4) : '????';
                                         const probeKeyKind = usePremiumKey ? 'PREMIUM' : (env.GEMINI_API_KEY ? 'FREE' : 'PREMIUM_FALLBACK');
@@ -756,34 +748,30 @@ export default {
                                                 });
                                                 await Promise.race([
                                                         model.generateContent({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }] }),
-                                                        new Promise<never>((_, reject) =>
-                                                                setTimeout(() => reject(new Error('GeminiTimeout: 5s probe')), 5_000),
-                                                        ),
+                                                        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('GeminiTimeout: 5s probe')), 5_000)),
                                                 ]);
-                                                results.push({
-                                                        model: modelId,
-                                                        ok: true,
-                                                        latencyMs: Date.now() - start,
-                                                        key: probeKeyKind,
-                                                        keyTail: `…${probeKeyTail}`,
-                                                });
                                                 console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=${probeKeyKind} tail=…${probeKeyTail})`);
+                                                return { model: modelId, ok: true, latencyMs: Date.now() - start, key: probeKeyKind, keyTail: `…${probeKeyTail}` };
                                         } catch (e: any) {
                                                 const msg = e?.message || String(e);
                                                 const classification = classifyGeminiError(msg, modelId, probeKeyTail);
-                                                results.push({
-                                                        model: modelId,
-                                                        ok: false,
-                                                        latencyMs: Date.now() - start,
-                                                        key: probeKeyKind,
-                                                        keyTail: `…${probeKeyTail}`,
-                                                        errorKind: classification.kind,
-                                                        errorDetail: msg.slice(0, 240),
-                                                        remediation: classification.remediation,
-                                                });
                                                 console.warn(`[Probe] ${modelId} FAIL (${classification.kind} key=${probeKeyKind} tail=…${probeKeyTail}): ${msg.slice(0, 160)}`);
+                                                return { model: modelId, ok: false, latencyMs: Date.now() - start, key: probeKeyKind, keyTail: `…${probeKeyTail}`, errorKind: classification.kind, errorDetail: msg.slice(0, 240), remediation: classification.remediation };
                                         }
-                                }
+                                };
+
+                                // Worker pool with concurrency=4. Each worker pulls the next model
+                                // off the cursor and pushes its result; when the queue is empty
+                                // the worker exits.
+                                const results: any[] = new Array(models.length);
+                                let cursor = 0;
+                                const worker = async () => {
+                                        while (cursor < models.length) {
+                                                const idx = cursor++;
+                                                results[idx] = await probeOne(models[idx]);
+                                        }
+                                };
+                                await Promise.all([worker(), worker(), worker(), worker()]);
 
                                 return new Response(JSON.stringify({ results, probedAt: Date.now() }), {
                                         headers: { ...corsHeaders, "Content-Type": "application/json" },
