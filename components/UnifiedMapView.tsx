@@ -1578,8 +1578,19 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             }, 0);
             let undatedSeq = 0;
             hotels.forEach(h => {
-                const city = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
-                if (!city) return;
+                // Multi-step city extraction. extractRobustCity sometimes returns
+                // a country name (e.g. "Vlorë, Albania" → "Albania") or empty
+                // string. Fall back to h.city, then to the address line itself
+                // so the hotel never silently disappears from the route stops.
+                // Drops only when ALL fallbacks resolve to a country-typed name.
+                const extracted = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
+                const extractedSafe = extracted && !isProvinceOrCountryName(extracted) ? extracted : '';
+                const fallbackCity = h.city && !isProvinceOrCountryName(h.city) ? h.city.split(/[-–,]/)[0].trim() : '';
+                const city = extractedSafe || fallbackCity;
+                if (!city) {
+                    console.warn(`[Map] Dropping hotel "${h.name}" — no usable city in address or h.city`);
+                    return;
+                }
                 const baseTs = parseTripDate(h.checkInDate || '')?.getTime() || 0;
                 let ts: number;
                 if (baseTs) {
@@ -2045,11 +2056,28 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             if (!k) return;
             if (!byKey.has(k)) byKey.set(k, { name: n });
         };
+        // Primary source — trip.hotels. The user always stays in real cities,
+        // so the hotel list is the most reliable per-city anchor. Without
+        // this, a trip with destination="אלבניה" (filtered as a country)
+        // and items mis-tagged with city="Vlora" produces a SINGLE chip
+        // ("Vlora") that absorbs every item — Tirana never appears even
+        // though half the items are physically in Tirana. Same fix as the
+        // RestaurantsView / AttractionsView chip strips.
+        (trip?.hotels || []).forEach(h => {
+            const extracted = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
+            const extractedSafe = extracted && !isProvinceOrCountryName(extracted) ? extracted : '';
+            const fallbackCity = h.city && !isProvinceOrCountryName(h.city) ? h.city.split(/[-–,]/)[0].trim() : '';
+            consider(extractedSafe || fallbackCity);
+        });
         if (trip?.destination) {
             trip.destination.split(/[-–,]/).forEach(c => consider(c));
         }
         mapItems.forEach(item => consider(item.city));
 
+        // Count items via keyword match — for a city chip to count an item
+        // we look at the item's own city field AND its address/name fields,
+        // because AI-generated items frequently have city="Vlora" set on a
+        // Tirana-located item or vice-versa.
         return Array.from(byKey.entries()).map(([key, { name }]) => {
             const keywords = getCityKeywords(name);
             const count = mapItems.filter(i => {
@@ -2060,7 +2088,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 return keywords.some(kw => str.includes(kw));
             }).length;
             return { name, count };
-        }).filter(c => c.count > 0);
+        });
+        // Don't filter by count > 0 — a trip city with zero AI items is
+        // still a legitimate chip; the user wants to be able to focus the
+        // camera there even before research is run.
     }, [mapItems, trip]);
 
     // 5. Render map
@@ -2754,21 +2785,37 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         return;
                     }
 
-                    // Build a "near destination" bounds — include stops within
-                    // 1500km of the destination centroid. Thailand → Bangkok/
-                    // Pattaya/Koh Chang all included; Abu Dhabi (~4000km) left
-                    // as a visible pin but excluded from the auto-fit.
-                    const DEST_RADIUS_KM = 1500;
+                    // Adaptive radius. For large/spread-out countries (Thailand:
+                    // Bangkok→Pattaya→Koh Chang is ~500km; USA coast-to-coast
+                    // is 4000km) we keep the radius generous. For small
+                    // countries (Albania, Israel, Belgium) a 1500km radius
+                    // pulls in half the continent. Derive the radius from
+                    // the trip-country bbox diagonal so the auto-fit
+                    // matches the actual destination's geographical scale.
+                    const tripBboxes = getTripCountryBboxes(trip);
+                    let radiusKm = 1500; // default fallback for unknown destinations
+                    if (tripBboxes.length > 0) {
+                        // Take the diagonal of the widest country bbox + 30%
+                        // for slack on cross-border destinations. Floor at 250km
+                        // (avoid zooming so tight that hotels at city edges fall
+                        // out) and ceiling at 1500km (don't grow beyond the
+                        // legacy default).
+                        const diagonals = tripBboxes.map(([w, s, e, n]) =>
+                            getDistanceKm(s, w, n, e)
+                        );
+                        const widest = Math.max(...diagonals);
+                        radiusKm = Math.max(250, Math.min(1500, widest * 1.3));
+                    }
                     const nearBounds = L.latLngBounds([]);
                     routeStops.forEach(s => {
                         if (!s.coords) return;
                         const dist = getDistanceKm(s.coords.lat, s.coords.lng, destCoords.lat, destCoords.lng);
-                        if (dist <= DEST_RADIUS_KM) nearBounds.extend([s.coords.lat, s.coords.lng]);
+                        if (dist <= radiusKm) nearBounds.extend([s.coords.lat, s.coords.lng]);
                     });
                     visibleItems.forEach(item => {
                         if (item.type === 'airport' || !isValidCoordinate(item.lat, item.lng)) return;
                         const dist = getDistanceKm(item.lat!, item.lng!, destCoords.lat, destCoords.lng);
-                        if (dist <= DEST_RADIUS_KM) nearBounds.extend([item.lat!, item.lng!]);
+                        if (dist <= radiusKm) nearBounds.extend([item.lat!, item.lng!]);
                     });
                     // Always include the destination itself as an anchor
                     nearBounds.extend([destCoords.lat, destCoords.lng]);
