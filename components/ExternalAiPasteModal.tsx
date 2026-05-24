@@ -33,9 +33,12 @@ interface Props {
     /** Optional scope — when set, the prompt focuses on this city only.
      *  When omitted, the prompt covers all trip cities. */
     scopeCity?: string;
+    /** Optional category scope — when set, prompt asks for ONLY this
+     *  category (e.g. "המבורגר"). Used by the per-category refresh menu. */
+    scopeCategory?: string;
 }
 
-export const ExternalAiPasteModal: React.FC<Props> = ({ isOpen, onClose, trip, kind, onApply, scopeCity }) => {
+export const ExternalAiPasteModal: React.FC<Props> = ({ isOpen, onClose, trip, kind, onApply, scopeCity, scopeCategory }) => {
     const [pastedText, setPastedText] = useState('');
     const [parsing, setParsing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -46,8 +49,8 @@ export const ExternalAiPasteModal: React.FC<Props> = ({ isOpen, onClose, trip, k
         // the AI focuses on that city alone. Otherwise the prompt covers
         // every city in the trip (same behavior as the admin export).
         const dest = scopeCity || trip.destinationEnglish || trip.destination || '';
-        return buildExternalAiPrompt(dest, kind, existingPlaceNames(trip, kind));
-    }, [trip, kind, scopeCity]);
+        return buildExternalAiPrompt(dest, kind, existingPlaceNames(trip, kind), scopeCategory);
+    }, [trip, kind, scopeCity, scopeCategory]);
 
     useEffect(() => {
         if (!isOpen) {

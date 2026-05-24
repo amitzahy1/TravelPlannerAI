@@ -138,6 +138,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
     // Free-path paste-from-external-AI flow (Part B of the 2026-05-21 plan).
     const [pasteModalOpen, setPasteModalOpen] = useState(false);
+    // Per-category "Copy prompt" scope. See RestaurantsView for rationale.
+    const [pasteScopeCategory, setPasteScopeCategory] = useState<string | undefined>(undefined);
 
     // Always-fresh trip ref so background geocoder doesn't clobber user
     // edits made while it's running (the "trip name got deleted" bug).
@@ -1845,6 +1847,27 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                     disabled: isBusy,
                                 };
                             })(),
+                            // Sibling "Copy prompt" — same scope picking as the
+                            // refresh above. Opens the paste modal with a prompt
+                            // scoped to the active category (or city, or all).
+                            // See RestaurantsView for the why.
+                            (() => {
+                                const activeCat = selectedCategory !== 'all'
+                                    ? aiCategories.find(c => c.id === selectedCategory)
+                                    : null;
+                                return {
+                                    icon: <ClipboardPaste className="w-4 h-4" />,
+                                    label: activeCat
+                                        ? `העתק פרומפט ל-"${displayTitle(activeCat.title)}"`
+                                        : selectedCity !== 'all'
+                                            ? `העתק פרומפט ל-${selectedCity}`
+                                            : 'העתק פרומפט לכל האטרקציות',
+                                    onSelect: () => {
+                                        setPasteScopeCategory(activeCat ? activeCat.title : undefined);
+                                        setPasteModalOpen(true);
+                                    },
+                                };
+                            })(),
                             ...(selectedCity !== 'all' && aiCategories.length > 0 ? [{
                                 icon: <Plus className="w-4 h-4" />,
                                 label: `הוסף עוד אטרקציות ל${selectedCity}`,
@@ -2319,10 +2342,12 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 sibling button next to "המלצות AI לכל הטיול". */}
             <ExternalAiPasteModal
                 isOpen={pasteModalOpen}
-                onClose={() => setPasteModalOpen(false)}
+                onClose={() => { setPasteModalOpen(false); setPasteScopeCategory(undefined); }}
                 trip={trip}
                 kind="attractions"
                 onApply={onUpdateTrip}
+                scopeCity={selectedCity !== 'all' ? selectedCity : undefined}
+                scopeCategory={pasteScopeCategory}
             />
         </div>
     );

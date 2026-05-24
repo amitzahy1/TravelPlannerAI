@@ -37,7 +37,12 @@ function splitDestinationCities(destination: string): string[] {
 export function buildExternalAiPrompt(
   destination: string,
   kind: Kind,
-  existingNames: string[] = []
+  existingNames: string[] = [],
+  /** Optional category scope. When provided, the prompt asks for ONLY this
+   *  category (e.g. "Burgers"), single-bucket return shape, with a tighter
+   *  quota (10–15 picks). Use this for the per-category refresh flow where
+   *  the user already knows which type of place they want. */
+  scopeCategory?: string,
 ): string {
   const isAttr = kind === 'attractions';
   const categories = isAttr ? ATTRACTION_CATEGORIES : RESTAURANT_CATEGORIES;
@@ -46,8 +51,27 @@ export function buildExternalAiPrompt(
 
   const cities = splitDestinationCities(destination);
   const isMultiCity = cities.length > 1;
-  const targetMin = isMultiCity ? Math.max(18, cities.length * 6) : 18;
-  const targetMax = isMultiCity ? Math.max(30, cities.length * 10) : 30;
+  // Single-category mode uses a tighter quota — the user is asking for one
+  // specific type, not the full catalogue. 10–15 high-quality picks beats
+  // 30 generic ones.
+  const targetMin = scopeCategory
+    ? 10
+    : isMultiCity ? Math.max(18, cities.length * 6) : 18;
+  const targetMax = scopeCategory
+    ? 15
+    : isMultiCity ? Math.max(30, cities.length * 10) : 30;
+
+  const categoryScopeBlock = scopeCategory
+    ? `
+═══ CATEGORY SCOPE — STRICT ═══
+This prompt is scoped to ONE category: "${scopeCategory}".
+Return picks for THIS category ONLY. Use the categoryTitle field with
+EXACTLY this string. Do not include other categories. If you can't find
+${targetMin} solid picks specifically for this category, return what you
+have — half-fitting items diluted to fill the quota are a quality failure.
+═══════════════════════════════════════════════════════════════════════════════
+`
+    : '';
 
   const cityCoverageBlock = isMultiCity
     ? `
@@ -85,9 +109,9 @@ quality failure unless the destination genuinely has no more candidates.
 Empty categories are OK only when the destination has none for them
 (e.g. "חופים ומים" for an inland city).
 ═══════════════════════════════════════════════════════════════════════════════
-${cityCoverageBlock}
+${cityCoverageBlock}${categoryScopeBlock}
 CATEGORIES (use EXACTLY these Hebrew titles in the "title" field):
-${categories.map((c, i) => `${i + 1}. "${c}"`).join('\n')}
+${scopeCategory ? `Only one: "${scopeCategory}"` : categories.map((c, i) => `${i + 1}. "${c}"`).join('\n')}
 
 ═══ QUALITY BAR — pull picks from authoritative sources, not random blogs ═══
 ${isAttr

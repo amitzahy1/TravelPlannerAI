@@ -242,6 +242,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // Lets the user copy a scoped prompt into their own ChatGPT/Gemini/Claude
     // and paste the JSON back, bypassing our Gemini quota entirely.
     const [pasteModalOpen, setPasteModalOpen] = useState(false);
+    // When the user opens the paste modal via the per-category "Copy prompt"
+    // menu item, this holds the category title so the prompt scopes to it.
+    // Cleared when the modal closes.
+    const [pasteScopeCategory, setPasteScopeCategory] = useState<string | undefined>(undefined);
 
     // Always-fresh trip ref — used by background tasks (geocoder) so they
     // don't overwrite trip.name / destination / etc. that the user edits
@@ -1117,9 +1121,25 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 }));
 
             if (freshRestaurants.length > 0) {
-                const updated = aiCategories.map(c =>
-                    c.id === cat.id ? { ...c, restaurants: freshRestaurants } : c
+                // MERGE — keep what the user already has in this category
+                // and add any NEW picks the AI returned. Match by
+                // normalized name so the AI returning a re-spelled
+                // duplicate doesn't double the list. Previously this
+                // REPLACED the category contents, which silently wiped
+                // out manually-added items + every prior research run's
+                // results. User flagged this as a real bug 2026-05-24.
+                const existingNames = new Set(
+                    cat.restaurants.map(r => (r.name || '').toLowerCase().trim())
                 );
+                const additions = freshRestaurants.filter((r: any) =>
+                    !existingNames.has((r.name || '').toLowerCase().trim())
+                );
+                const mergedRestaurants = [...cat.restaurants, ...additions];
+                const updated = aiCategories.map(c =>
+                    c.id === cat.id ? { ...c, restaurants: mergedRestaurants } : c
+                );
+                console.info(`🔄 [refreshCategory] ${cat.title}: kept ${cat.restaurants.length}, ` +
+                    `AI returned ${freshRestaurants.length}, added ${additions.length} new (deduped by name)`);
                 setAiCategories(updated);
                 persistAiRestaurants(updated);
                 await incrementCategoryRefresh(userId, key, tier);
@@ -2171,6 +2191,32 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                     disabled: isBusy,
                                 };
                             })(),
+                            // Sibling action — same scope picking as the refresh
+                            // above (category > city > all) but instead of running
+                            // the in-app AI chain, opens the paste modal with a
+                            // scoped prompt. The user feeds the prompt to their
+                            // own AI subscription (ChatGPT Pro, Gemini Advanced,
+                            // Claude.ai with web access) and pastes the JSON back.
+                            // Returns higher-quality results than the in-app
+                            // chain because the user's AI typically has real web
+                            // grounding — and zero Gemini API cost on our side.
+                            (() => {
+                                const activeCat = selectedCategory !== 'all'
+                                    ? aiCategories.find(c => c.id === selectedCategory)
+                                    : null;
+                                return {
+                                    icon: <ClipboardPaste className="w-4 h-4" />,
+                                    label: activeCat
+                                        ? `העתק פרומפט ל-"${displayTitle(activeCat.title)}"`
+                                        : selectedCity !== 'all'
+                                            ? `העתק פרומפט ל-${selectedCity}`
+                                            : 'העתק פרומפט לכל המסעדות',
+                                    onSelect: () => {
+                                        setPasteScopeCategory(activeCat ? activeCat.title : undefined);
+                                        setPasteModalOpen(true);
+                                    },
+                                };
+                            })(),
                             {
                                 icon: <Hotel className="w-4 h-4" />,
                                 label: 'מצא מסעדות באזור המלון',
@@ -2678,10 +2724,12 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 services/externalAiImport machinery. */}
             <ExternalAiPasteModal
                 isOpen={pasteModalOpen}
-                onClose={() => setPasteModalOpen(false)}
+                onClose={() => { setPasteModalOpen(false); setPasteScopeCategory(undefined); }}
                 trip={trip}
                 kind="restaurants"
                 onApply={onUpdateTrip}
+                scopeCity={selectedCity !== 'all' ? selectedCity : undefined}
+                scopeCategory={pasteScopeCategory}
             />
         </div>
     );
