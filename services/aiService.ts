@@ -37,56 +37,69 @@ const getAuthHeader = async (): Promise<Record<string, string>> => {
 // services/aiHealth.ts auto-demotes it (cached 10 min) so Groq takes over
 // without per-request retry-burn.
 export const GOOGLE_MODELS = {
-  // Tier 1: SMART intent (structured parsing, hotel/flight matching, general JSON).
+  // Tier 1: SMART intent (text-only trip extraction, hotel/flight matching).
+  // Per user direction (2026-05-21): trip-creation quality > cost. Heaviest
+  // model first; cheaper models only as fallback after the strongest options
+  // are exhausted. DeepSeek-R1-distilled and Llama-3.1-405B added as free
+  // reasoning leaders behind Gemini.
   SMART_CANDIDATES: [
-    "gemini-3.5-flash",
+    "gemini-2.5-pro",                                              // PRIMARY — best accuracy for trip base data
+    "gemini-3.5-flash",                                            // strong + faster than Pro
+    "groq:deepseek-r1-distill-llama-70b",                          // NEW — DeepSeek R1 reasoning, free via Groq
+    "groq:llama-3.3-70b-versatile",
+    "openrouter:deepseek/deepseek-r1:free",                        // NEW — DeepSeek R1, free via OpenRouter
+    "openrouter:deepseek/deepseek-chat:free",                      // NEW — DeepSeek V3 chat, free
+    "openrouter:meta-llama/llama-3.1-405b-instruct:free",          // 405B, free
+    "openrouter:nousresearch/hermes-3-llama-3.1-405b:free",        // NEW — 405B tuned, free
+    "openrouter:google/gemini-flash-1.5-exp:free",                 // NEW — Gemini via OpenRouter (BYPASSES spend cap)
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash",
-    "groq:llama-3.3-70b-versatile",                              // NEW free fallback — Llama 3.3 70B
-    "groq:llama-3.1-8b-instant",                                 // NEW free fallback — tiny+fast
-    "openrouter:meta-llama/llama-3.3-70b-instruct:free",         // OpenRouter free
-    "openrouter:meta-llama/llama-3.1-405b-instruct:free",        // OpenRouter free — big model
-    "openrouter:google/gemma-2-9b-it:free",                      // OpenRouter free
-    "openrouter:mistralai/mistral-7b-instruct:free",             // OpenRouter free
+    "groq:llama-3.1-8b-instant",                                   // tiny but fast
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",
     "gemini-2.5-flash-lite",
-    "gemini-2.5-pro",
   ],
   // Tier 2: SEARCH intent (restaurant/attraction market research, grounded).
-  // Grounding only works on Gemini, so Groq/OpenRouter are last-resort
-  // ungrounded fallbacks here — they still produce reasonable lists.
+  // Grounding ONLY works on Gemini, so non-Gemini models are last-resort
+  // ungrounded fallbacks. They still produce reasonable category lists
+  // from training data even without live search.
   RESEARCH_CANDIDATES: [
     "gemini-3.5-flash",
     "gemini-2.5-flash",
     "gemini-3.1-flash-lite",
     "gemini-2.5-pro",
     "gemini-2.5-flash-lite",
-    "groq:llama-3.3-70b-versatile",                              // NEW — ungrounded but strong
+    "openrouter:google/gemini-flash-1.5-exp:free",                 // NEW — Gemini Flash 1.5 via OpenRouter (bypasses spend cap)
+    "groq:llama-3.3-70b-versatile",                                // ungrounded but strong
+    "openrouter:meta-llama/llama-3.1-405b-instruct:free",          // ungrounded 405B
+    "openrouter:nousresearch/hermes-3-llama-3.1-405b:free",        // NEW — ungrounded 405B tuned
     "openrouter:meta-llama/llama-3.3-70b-instruct:free",
-    "openrouter:meta-llama/llama-3.1-405b-instruct:free",        // NEW
   ],
   // Tier 3: FAST intent (chat, quick suggestions). Latency > capability.
-  // groq:llama-3.1-8b-instant added — same latency class as Flash-Lite but
-  // doesn't share Gemini's spend cap.
+  // DeepSeek V3 chat added as the "actually free + quality" middle option.
   FAST_CANDIDATES: [
     "gemini-3.1-flash-lite",
+    "groq:llama-3.1-8b-instant",                                   // fastest free
+    "openrouter:deepseek/deepseek-chat:free",                      // NEW — DeepSeek V3 free, great for chat
+    "openrouter:google/gemini-flash-1.5-exp:free",                 // NEW — Gemini via OpenRouter
     "gemini-2.5-flash-lite",
+    "groq:llama-3.3-70b-versatile",
     "gemini-2.5-flash",
-    "groq:llama-3.1-8b-instant",                                 // NEW free fallback
-    "groq:llama-3.3-70b-versatile",                              // NEW free fallback
     "openrouter:meta-llama/llama-3.3-70b-instruct:free",
   ],
-  // Tier 4: ANALYZE intent — deep document/PDF extraction. Multimodal vision
-  // capability is Gemini-only (Groq/OpenRouter free don't accept PDF), so the
-  // text-only Llama fallbacks won't help for actual PDFs — but they DO help
-  // when the wizard sends extracted text rather than the raw file (text path
-  // already does this) and when "PDF was already converted to text upstream".
+  // Tier 4: ANALYZE intent — deep document/PDF extraction. Per user direction,
+  // Pro 2.5 STAYS as primary (trip-creation quality matters most). Free
+  // multimodal Gemini via OpenRouter sneaks in as a fallback that bypasses
+  // the spend cap. Text-only Llama variants help when content has already
+  // been converted to text upstream.
   DOC_CANDIDATES: [
-    "gemini-2.5-pro",
-    "gemini-3.5-flash",
+    "gemini-2.5-pro",                                              // PRIMARY — best multimodal PDF (user-locked)
+    "gemini-3.5-flash",                                            // multimodal fallback
+    "openrouter:google/gemini-flash-1.5-exp:free",                 // NEW — free multimodal Gemini via OpenRouter
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash",
-    "groq:llama-3.3-70b-versatile",                              // text-only fallback
-    "openrouter:meta-llama/llama-3.1-405b-instruct:free",        // text-only fallback
+    "groq:deepseek-r1-distill-llama-70b",                          // NEW — text-only reasoning post-extraction
+    "groq:llama-3.3-70b-versatile",                                // text-only fallback
+    "openrouter:meta-llama/llama-3.1-405b-instruct:free",          // text-only fallback
   ],
 };
 

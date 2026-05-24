@@ -498,17 +498,53 @@ export default {
                                 const results: any[] = [];
                                 for (const modelId of models) {
                                         const start = Date.now();
-                                        // OpenRouter models: not probed (different provider, no shared quota).
+                                        // OpenRouter: REAL ping (was previously only checking key presence,
+                                        // which made every OpenRouter model report a fake 0ms green even
+                                        // when the model was globally rate-limited or didn't exist).
                                         if (isOpenRouterModel(modelId)) {
-                                                results.push({
-                                                        model: modelId,
-                                                        ok: !!env.OPENROUTER_API_KEY,
-                                                        latencyMs: 0,
-                                                        key: 'OPENROUTER',
-                                                        keyTail: env.OPENROUTER_API_KEY ? `…${env.OPENROUTER_API_KEY.slice(-4)}` : 'missing',
-                                                        errorKind: env.OPENROUTER_API_KEY ? undefined : 'AUTH',
-                                                        remediation: env.OPENROUTER_API_KEY ? undefined : 'OPENROUTER_API_KEY secret missing — set it in Cloudflare Worker.',
-                                                });
+                                                if (!env.OPENROUTER_API_KEY) {
+                                                        results.push({
+                                                                model: modelId,
+                                                                ok: false,
+                                                                latencyMs: 0,
+                                                                key: 'OPENROUTER',
+                                                                keyTail: 'missing',
+                                                                errorKind: 'AUTH' as ErrorKind,
+                                                                remediation: 'OPENROUTER_API_KEY secret missing — set it in Cloudflare Worker.',
+                                                        });
+                                                        continue;
+                                                }
+                                                const orTail = env.OPENROUTER_API_KEY.slice(-4);
+                                                try {
+                                                        await callOpenRouter([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0, maxOutputTokens: 1 }, env);
+                                                        results.push({ model: modelId, ok: true, latencyMs: Date.now() - start, key: 'OPENROUTER', keyTail: `…${orTail}` });
+                                                        console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=OPENROUTER tail=…${orTail})`);
+                                                } catch (e: any) {
+                                                        const msg = e?.message || String(e);
+                                                        const errorKind: ErrorKind = /429|rate.?limit|too many/i.test(msg) ? 'QUOTA'
+                                                                : /401|invalid.*key|API_KEY_INVALID/i.test(msg) ? 'AUTH'
+                                                                : /404|not.?found|model.*not/i.test(msg) ? 'INVALID_MODEL'
+                                                                : /403|forbidden|permission/i.test(msg) ? 'PERMISSION'
+                                                                : 'UNKNOWN';
+                                                        const remediation = errorKind === 'QUOTA'
+                                                                ? `OpenRouter free tier rate-limited on ${modelId}. Wait a minute, or fund the key at https://openrouter.ai/credits to unlock paid variants.`
+                                                                : errorKind === 'INVALID_MODEL'
+                                                                ? `Model ${modelId} not available on OpenRouter. Remove from chain or check the slug at https://openrouter.ai/models.`
+                                                                : errorKind === 'AUTH'
+                                                                ? `OpenRouter key …${orTail} invalid. Regenerate at https://openrouter.ai/keys.`
+                                                                : `OpenRouter error on key …${orTail}: ${msg.slice(0, 120)}`;
+                                                        results.push({
+                                                                model: modelId,
+                                                                ok: false,
+                                                                latencyMs: Date.now() - start,
+                                                                key: 'OPENROUTER',
+                                                                keyTail: `…${orTail}`,
+                                                                errorKind,
+                                                                errorDetail: msg.slice(0, 240),
+                                                                remediation,
+                                                        });
+                                                        console.warn(`[Probe] ${modelId} FAIL (${errorKind} key=OPENROUTER tail=…${orTail}): ${msg.slice(0, 160)}`);
+                                                }
                                                 continue;
                                         }
                                         // Groq: real ping with `ping` and 1-token output, just like Gemini probe.
