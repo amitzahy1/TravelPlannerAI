@@ -2125,18 +2125,28 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         const visibleItems = activeCity === 'ALL'
             ? validItems
             : (() => {
-                // Use geoData's cityKey which canonicalises both Hebrew and English
-                // city names to the same key — covers ALL cities, not just the
-                // 12-entry HEBREW_TO_ENGLISH_CITY_MAP used by getCityKeywords.
-                const activeCityKey = cityKey(activeCity);
-                const keywords = getCityKeywords(activeCity);
+                // Use locationMatchesCity — same matcher as the chip COUNT
+                // and as RestaurantsView / AttractionsView list filters. It
+                // checks name + nameEnglish + address + city + description
+                // with diacritic stripping (Vlorë ↔ vlora) and Hebrew alias
+                // resolution (טירנה ↔ tirana). The previous keyword-only
+                // matcher silently filtered out every Tirana item because
+                // their item.city was tagged "Vlora" by the AI, yielding
+                // chip=51 / filter=0 — clicking Tirana looked broken.
                 return validItems.filter(i => {
-                    // Primary: canonical key match (handles Hebrew ↔ English variants)
-                    if (activeCityKey && cityKey(i.city || '') === activeCityKey) return true;
-                    // Fallback: keyword substring match in address
-                    const addr = (i.address || '').toLowerCase();
-                    const iCity = (i.city || '').toLowerCase();
-                    return keywords.some(kw => addr.includes(kw) || iCity.includes(kw));
+                    if (i.type === 'hotel') {
+                        // Hotels match the active city when their address/name
+                        // resolves to it. Falls through to locationMatchesCity
+                        // for Hebrew/diacritic-safe checks.
+                        return locationMatchesCity(i.address || '', activeCity)
+                            || locationMatchesCity(i.city || '', activeCity)
+                            || locationMatchesCity(i.name || '', activeCity);
+                    }
+                    return locationMatchesCity(i.city || '', activeCity)
+                        || locationMatchesCity(i.address || '', activeCity)
+                        || locationMatchesCity(i.name || '', activeCity)
+                        || locationMatchesCity((i as any).nameEnglish || '', activeCity)
+                        || locationMatchesCity(i.description || '', activeCity);
                 });
             })();
 
@@ -2166,13 +2176,16 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             return hotelAnchors.some(a => getDistanceKm(lat, lng, a.lat, a.lng) <= MAX_TRIP_RADIUS_KM);
         };
 
-        // ZOOM-GATED VISIBILITY: at low/regional zoom (<=10) the map shows
-        // only the trip backbone — hotels, flights, route polyline. Saved
-        // and AI restaurants/attractions reveal once the user zooms in to
-        // the city level. Keeps the first-glance picture clean and makes
-        // the trip route read instantly.
+        // ZOOM-GATED VISIBILITY: on the MAIN MAP view (no `items` prop, the
+        // wrapper builds raw from trip.* itself) we keep restaurants/attractions
+        // hidden at country zoom so the trip backbone (route, hotels) reads
+        // cleanly. But when the parent passes `items` explicitly (food tab,
+        // attractions tab) the user is browsing THAT category — hiding their
+        // pins at country zoom defeats the entire purpose of the view. So
+        // those tabs render places at any zoom. User confirmed 2026-05-24:
+        // "I want to see all restaurants/attractions in every city by default."
         const PLACES_REVEAL_ZOOM = 11;
-        const showPlaces = mapZoom >= PLACES_REVEAL_ZOOM || activeCity !== 'ALL';
+        const showPlaces = !!items || mapZoom >= PLACES_REVEAL_ZOOM || activeCity !== 'ALL';
         // Tier drives label content + which marker types render. When a
         // city filter is active, jump straight to tier 3 so the user
         // sees full info inside the city they picked.
@@ -3106,10 +3119,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 </div>
             )}
 
-            {/* Zoom-in hint — moved to the bottom (above the bottom stats
-                 bar) so it doesn't fight the city-filter pills at the top.
-                 Lower z-index than markers so it never blocks pin clicks. */}
-            {mapZoom < 11 && activeCity === 'ALL' && (mapItems.some(i => i.type === 'restaurant' || i.type === 'attraction')) && (
+            {/* Zoom-in hint — only on the MAIN MAP view (no items prop)
+                 where places are zoom-gated. Food / attractions tabs pass
+                 items explicitly and render places at every zoom, so the
+                 hint would be misleading there. */}
+            {!items && mapZoom < 11 && activeCity === 'ALL' && (mapItems.some(i => i.type === 'restaurant' || i.type === 'attraction')) && (
                 <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[600] bg-white/95 backdrop-blur px-3 py-1.5 rounded-full shadow-md border border-slate-200 flex items-center gap-1.5 pointer-events-none">
                     <span className="text-[11px] font-bold text-slate-600">🔍 התקרב כדי לראות מסעדות ואטרקציות</span>
                 </div>
