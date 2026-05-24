@@ -175,6 +175,9 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const [routeCities, setRouteCities] = useState<string[]>([]);
     const [newCityInput, setNewCityInput] = useState('');
     const [showMap, setShowMap] = useState(false);
+    // Track which trips we've already auto-merged hotel cities into the route
+    // for this session — once merged, user manual removals stick.
+    const autoMergedTripsRef = useRef<Set<string>>(new Set());
 
     // --- Derived State for Date Range ---
     const [startDate, setStartDate] = useState('');
@@ -205,10 +208,36 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     useEffect(() => {
         if (activeTrip) {
             // Sync Route - Handle both ' - ' and ' & ' separators for backward compatibility
-            if (activeTrip.destination) {
-                // Split by ' - ' OR ' & ' to ensure separate chips
-                setRouteCities(activeTrip.destination.split(/ - | & /).map(s => s.trim()).filter(Boolean));
-            } else {
+            const fromDestination = activeTrip.destination
+                ? activeTrip.destination.split(/ - | & /).map(s => s.trim()).filter(Boolean)
+                : [];
+
+            // Auto-merge hotel-derived cities into the route ONCE per trip per
+            // session. User asked 2026-05-21: "the cities of my hotels (Tirana,
+            // Vlora) should always be in the route automatically — if I want
+            // to remove I'll do it manually". By tracking the auto-merge per
+            // session we let manual removals stick — once the user has touched
+            // the route, the persisted destination string is the source of
+            // truth on the next load.
+            const alreadyMerged = autoMergedTripsRef.current.has(activeTrip.id);
+            const hotelCities = getTripCities(activeTrip, { excludeFlightOnly: true, lang: 'he' });
+            const additions = hotelCities.filter(c => !fromDestination.some(d => d.toLowerCase() === c.toLowerCase()));
+            const shouldAutoMerge = !alreadyMerged && additions.length > 0;
+            const merged = shouldAutoMerge ? [...fromDestination, ...additions] : fromDestination;
+            setRouteCities(merged);
+            if (shouldAutoMerge) {
+                autoMergedTripsRef.current.add(activeTrip.id);
+                // Persist so the merge is durable across reloads. Skip if the
+                // result is identical to the existing destination (defensive
+                // against a render loop).
+                const newDest = merged.join(' - ');
+                if (newDest && newDest !== activeTrip.destination) {
+                    // setTimeout breaks the synchronous useEffect → handleUpdateTrip
+                    // → trips state change → useEffect cycle.
+                    setTimeout(() => handleUpdateTrip({ destination: newDest }), 0);
+                }
+            }
+            if (!activeTrip.destination && fromDestination.length === 0 && additions.length === 0) {
                 setRouteCities([]);
             }
 

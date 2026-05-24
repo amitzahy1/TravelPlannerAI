@@ -2476,7 +2476,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                                     title="פתח פרומפט להעתיק ל-ChatGPT/Gemini/Claude (חינמי ב-tier שלכם). הדבק חזרה את ה-JSON. עלות לאתר: 0 ש״ח."
                                                     className="bg-white text-emerald-700 border-2 border-emerald-600 px-5 py-3 rounded-2xl text-base font-black shadow-sm hover:bg-emerald-50 transition-all flex items-center gap-2"
                                                 >
-                                                    <ClipboardPaste className="w-5 h-5" /> הדבק מ-ChatGPT (חינמי)
+                                                    <ClipboardPaste className="w-5 h-5" /> הדבק ידנית מ-AI חיצוני (חינמי)
                                                 </button>
                                             </div>
 

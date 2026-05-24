@@ -102,7 +102,7 @@ export const ItineraryView: React.FC<{
     const [transferModal, setTransferModal] = useState<{ date: string, defaultTime: string } | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
     const [externalEvents, setExternalEvents] = useState<TimelineEvent[]>([]);
-    const [viewingCategory, setViewingCategory] = useState<'food' | 'attractions' | 'hotels' | null>(null);
+    const [viewingCategory, setViewingCategory] = useState<'food' | 'attractions' | 'hotels' | 'flights' | null>(null);
     // Smart-recommendations card is hidden by default and toggled from
     // the new TripContextBar pill below the hero — saves a row that was
     // permanently consumed before.
@@ -978,11 +978,14 @@ export const ItineraryView: React.FC<{
                     {/* Interactive Hero Stats Bar with Popover */}
                     <div className="relative pointer-events-auto">
                         <div className="flex gap-6 bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-3xl">
-                            <div className="flex flex-col items-center min-w-[60px]">
-                                <Plane className="w-8 h-8 text-blue-400 mb-1" />
+                            <button
+                                onClick={() => setViewingCategory(viewingCategory === 'flights' ? null : 'flights')}
+                                className={`flex flex-col items-center min-w-[60px] hover:scale-110 transition-transform cursor-pointer group ${viewingCategory === 'flights' ? 'scale-110' : ''}`}
+                            >
+                                <Plane className={`w-8 h-8 mb-1 transition-colors ${viewingCategory === 'flights' ? 'text-blue-300' : 'text-blue-400 group-hover:text-blue-300'}`} />
                                 <span className="text-3xl font-black text-white leading-none">{totalStats.flights}</span>
-                                <span className="text-2xs uppercase font-bold text-white/60 tracking-wider mt-1">טיסות</span>
-                            </div>
+                                <span className="text-2xs uppercase font-bold text-white/60 tracking-wider mt-1 group-hover:text-white">טיסות</span>
+                            </button>
                             <div className="w-px bg-white/20"></div>
                             <button
                                 onClick={() => setViewingCategory(viewingCategory === 'hotels' ? null : 'hotels')}
@@ -1024,7 +1027,10 @@ export const ItineraryView: React.FC<{
                                         {/* Header */}
                                         <div className="flex justify-between items-center mb-3">
                                             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-                                                {viewingCategory === 'hotels' ? 'מלונות' : viewingCategory === 'food' ? 'הרשימה שלי — מסעדות' : 'הרשימה שלי — אטרקציות'}
+                                                {viewingCategory === 'hotels' ? 'מלונות'
+                                                    : viewingCategory === 'food' ? 'הרשימה שלי — מסעדות'
+                                                    : viewingCategory === 'flights' ? 'טיסות והעברות'
+                                                    : 'הרשימה שלי — אטרקציות'}
                                             </h3>
                                             <div className="bg-slate-100 px-2 py-0.5 rounded text-2xs text-slate-400 font-mono hidden">POPUP MODE</div>
                                             <button onClick={() => setViewingCategory(null)} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
@@ -1032,7 +1038,69 @@ export const ItineraryView: React.FC<{
                                             </button>
                                         </div>
 
+                                        {/* Flights + transports — separate render path because the item
+                                            shape is different from hotels/restaurants/attractions. Shows
+                                            airline + flight#, route, date/time, and a 'מפה' link to the
+                                            destination airport in Maps. */}
+                                        {viewingCategory === 'flights' && (
+                                            <div className="flex flex-col gap-1.5 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                                {(trip.flights?.segments || []).length === 0 && (!trip.transports || trip.transports.length === 0) && (
+                                                    <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
+                                                        <div className="p-4 rounded-full bg-slate-50 text-blue-200"><Plane className="w-8 h-8" /></div>
+                                                        <span className="text-sm font-bold">אין טיסות או העברות בטיול</span>
+                                                    </div>
+                                                )}
+                                                {(trip.flights?.segments || []).map((seg, idx) => {
+                                                    const dateLabel = seg.date || (seg.departureTime?.includes('T') ? seg.departureTime.split('T')[0] : '');
+                                                    const depHHMM = seg.departureTime?.includes('T') ? seg.departureTime.split('T')[1]?.slice(0, 5) : seg.departureTime || '';
+                                                    const arrHHMM = seg.arrivalTime?.includes('T') ? seg.arrivalTime.split('T')[1]?.slice(0, 5) : seg.arrivalTime || '';
+                                                    const mapsTo = seg.toCity || seg.toCode || '';
+                                                    const mapsHref = mapsTo ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((seg.toCode || '') + ' airport ' + mapsTo)}` : '#';
+                                                    return (
+                                                        <div key={`flight-${idx}`} className="flex items-stretch bg-white border border-slate-200 rounded-lg overflow-hidden hover:border-blue-300 transition-colors">
+                                                            <div className="flex items-start gap-2.5 p-2 flex-1 min-w-0">
+                                                                <div className="w-12 h-12 rounded-md bg-blue-50 flex-shrink-0 flex items-center justify-center">
+                                                                    <Plane className="w-5 h-5 text-blue-600" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-start justify-between gap-2">
+                                                                        <span className="text-[13px] font-black text-slate-800 truncate" dir="ltr">{seg.airline || ''} {seg.flightNumber || ''}</span>
+                                                                        <span className="text-[11px] font-bold text-slate-500 flex-shrink-0">{seg.duration || ''}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-600 mt-0.5" dir="ltr">
+                                                                        <span className="font-bold">{seg.fromCode || seg.fromCity}</span>
+                                                                        <span className="text-slate-400">→</span>
+                                                                        <span className="font-bold">{seg.toCode || seg.toCity}</span>
+                                                                        {depHHMM && <span className="text-slate-400">·</span>}
+                                                                        {depHHMM && <span>{depHHMM}{arrHHMM ? `–${arrHHMM}` : ''}</span>}
+                                                                    </div>
+                                                                    {dateLabel && <div className="text-[10px] text-slate-500 mt-0.5">{dateLabel}</div>}
+                                                                </div>
+                                                            </div>
+                                                            <a href={mapsHref} target="_blank" rel="noopener noreferrer" title="פתח שדה תעופה ב-Maps" className="flex flex-col items-center justify-center px-2.5 border-r border-slate-200 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors flex-shrink-0">
+                                                                <MapPin className="w-4 h-4" />
+                                                                <span className="text-[9px] font-bold mt-0.5">מפה</span>
+                                                            </a>
+                                                        </div>
+                                                    );
+                                                })}
+                                                {(trip.transports || []).map((t: any, idx: number) => (
+                                                    <div key={`transport-${idx}`} className="flex items-start gap-2.5 bg-white border border-slate-200 rounded-lg p-2 hover:border-blue-300 transition-colors">
+                                                        <div className="w-12 h-12 rounded-md bg-amber-50 flex-shrink-0 flex items-center justify-center">
+                                                            <Navigation className="w-5 h-5 text-amber-600" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-[13px] font-black text-slate-800 truncate">{t.title || t.name || `העברה ${idx + 1}`}</div>
+                                                            <div className="text-[11px] text-slate-600 mt-0.5" dir="ltr">{t.from || t.fromCity || ''} {t.to || t.toCity ? `→ ${t.to || t.toCity}` : ''}</div>
+                                                            <div className="text-[10px] text-slate-500 mt-0.5">{t.date || ''} {t.time || ''} · {t.mode || 'transfer'}</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
                                         {/* Compact 1-column list — each row is a small horizontal card */}
+                                        {viewingCategory !== 'flights' && (
                                         <div className="flex flex-col gap-1.5 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                                             {(viewingCategory === 'hotels' ? (trip.hotels || []) :
                                                 viewingCategory === 'food' ? favoriteRestaurants :
@@ -1148,6 +1216,7 @@ export const ItineraryView: React.FC<{
                                                     </div>
                                                 )}
                                         </div>
+                                        )}
                                     </div>
                                 </div>
                             </>,

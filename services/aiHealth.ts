@@ -213,6 +213,47 @@ export const syncModelsOnWorker = async (): Promise<{ chains: RemoteChains; sync
  * If no probe bundle exists yet, creates a minimal one with only this entry.
  * Existing entries for this model are overwritten.
  */
+/**
+ * Mark EVERY model belonging to a given provider as failed in the probe
+ * cache. Called from generateWithFallback when one provider's model
+ * returns a key-level error (SPEND_CAP, AUTH, billing) — sibling models
+ * share the same key/project so they'll all fail the same way. Without
+ * this, the chain wastes 5+ attempts (~10 seconds) trying each Gemini
+ * variant before reaching Groq/OpenRouter.
+ */
+export const markProviderFailed = (providerPrefix: 'gemini' | 'groq:' | 'openrouter:' | string, errorKind: ProbeErrorKind, detail?: string, keyTail = '????'): void => {
+  try {
+    const existing = readProbeCache() || { results: [], probedAt: Date.now() };
+    // We don't have a list of all provider models here — instead, mark a
+    // wildcard entry that applyProbeToChain will respect for ANY model
+    // matching the prefix. Implemented by adding entries for any models
+    // currently in cache that match the prefix, PLUS a sentinel entry
+    // keyed by the prefix itself.
+    const prefix = providerPrefix === 'gemini' ? 'gemini-' : providerPrefix;
+    const updated = existing.results.map(r =>
+      r.model.startsWith(prefix) ? { ...r, ok: false, errorKind, errorDetail: detail?.slice(0, 240), keyTail } : r,
+    );
+    // Sentinel — applyProbeToChain checks for this and demotes ANY chain
+    // model starting with the prefix even if it wasn't probed.
+    const sentinelId = `__provider:${prefix}`;
+    const without = updated.filter(r => r.model !== sentinelId);
+    without.push({
+      model: sentinelId,
+      ok: false,
+      latencyMs: 0,
+      key: 'AUTO',
+      keyTail,
+      errorKind,
+      errorDetail: detail?.slice(0, 240),
+      remediation: undefined,
+    });
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ results: without, probedAt: existing.probedAt }));
+    console.warn(`📌 [aiHealth] Marked ALL ${prefix}* models as ${errorKind} — short-circuiting future ${prefix} attempts this session.`);
+  } catch {
+    /* sessionStorage quota / unavailable */
+  }
+};
+
 export const markModelFailed = (model: string, errorKind: ProbeErrorKind, detail?: string, keyTail = '????'): void => {
   try {
     const existing = readProbeCache() || { results: [], probedAt: Date.now() };
@@ -261,12 +302,24 @@ export const applyProbeToChain = (chain: string[]): string[] => {
   const bundle = readProbeCache();
   if (!bundle) return chain;
   const byModel = new Map<string, ProbeResult>();
-  for (const r of bundle.results) byModel.set(r.model, r);
+  // Provider-level sentinels (added by markProviderFailed) — keyed
+  // "__provider:gemini-" / "__provider:groq:" / etc.
+  const providerSentinels: Array<{ prefix: string; res: ProbeResult }> = [];
+  for (const r of bundle.results) {
+    if (r.model.startsWith('__provider:')) {
+      providerSentinels.push({ prefix: r.model.replace(/^__provider:/, ''), res: r });
+    } else {
+      byModel.set(r.model, r);
+    }
+  }
 
   const survivors: string[] = [];
   const demoted: string[] = [];
   for (const m of chain) {
-    const r = byModel.get(m);
+    // First check provider sentinel — if any model in chain starts with a
+    // failed-provider prefix, treat it as failed without an explicit probe.
+    const sentinelHit = providerSentinels.find(s => m.startsWith(s.prefix));
+    const r = byModel.get(m) || (sentinelHit ? { ...sentinelHit.res, model: m } : undefined);
     if (!r) { survivors.push(m); continue; }
     if (r.ok) { survivors.push(m); continue; }
     if (r.errorKind === 'INVALID_MODEL' || r.errorKind === 'PERMISSION' || r.errorKind === 'AUTH') {

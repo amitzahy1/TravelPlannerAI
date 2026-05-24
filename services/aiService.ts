@@ -2,7 +2,7 @@ import { StagedTripData, StagedCategories } from "../types";
 import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 import { auth } from "./firebaseConfig";
 import { parseJsonLenient, sanitizeJsonControlChars } from "./jsonSanitizer";
-import { applyProbeToChain, markModelFailed, getCachedRemoteChains, getRemoteChains } from "./aiHealth";
+import { applyProbeToChain, markModelFailed, markProviderFailed, getCachedRemoteChains, getRemoteChains } from "./aiHealth";
 
 // Fire-and-forget boot-time fetch — pulls the dynamically-synced chains from
 // /api/chains so generateWithFallback can prefer them over the hardcoded
@@ -802,19 +802,70 @@ export const generateWithFallback = async (
       // entries get DROPPED entirely by applyProbeToChain.
       const m = errMsg.match(/\[key=(\S+)\s+tail=(\S+)\s+tier=(\S+)\]/);
       const tail = m?.[2] || '????';
+      // Detect the PROVIDER of the failing model so we can short-circuit
+      // ALL of its siblings on key-level errors. Sibling Gemini models share
+      // the same project + spend cap; trying them in sequence after one
+      // returned SPEND_CAP just wastes ~2s × 5 models. User request 2026-05-21.
+      const providerPrefix = modelId.startsWith('groq:') ? 'groq:'
+        : modelId.startsWith('openrouter:') ? 'openrouter:'
+        : modelId.startsWith('gemini-') ? 'gemini-'
+        : null;
+
       if (/spending cap|spend cap|ai\.studio\/spend/i.test(errMsg)) {
-        markModelFailed(modelId, 'QUOTA', 'Spend cap exhausted', tail);
+        // Spend-cap is per-PROJECT (= per-key). Every sibling sharing that
+        // key will fail identically. Demote them all in one shot.
+        if (providerPrefix === 'gemini-') {
+          markProviderFailed('gemini-', 'QUOTA', 'Project spend cap exhausted', tail);
+          console.warn(`⏭️ [AI] Spend cap on ${modelId} — short-circuiting ALL gemini-* models (same project).`);
+        } else {
+          markModelFailed(modelId, 'QUOTA', 'Spend cap exhausted', tail);
+        }
       } else if (isDayQuotaError || /FreeTier|free_tier|limit:\s*0/i.test(errMsg)) {
-        markModelFailed(modelId, 'QUOTA', 'Daily quota exhausted', tail);
+        // Daily quota also per-key — same logic.
+        if (providerPrefix === 'gemini-') {
+          markProviderFailed('gemini-', 'QUOTA', 'Daily quota exhausted', tail);
+          console.warn(`⏭️ [AI] Daily quota on ${modelId} — short-circuiting ALL gemini-* models.`);
+        } else {
+          markModelFailed(modelId, 'QUOTA', 'Daily quota exhausted', tail);
+        }
       } else if (/PERMISSION_DENIED|\b403\b|API has not been used/i.test(errMsg)) {
-        markModelFailed(modelId, 'PERMISSION', 'Generative Language API not enabled', tail);
+        // API-disabled is also per-project. Skip all siblings.
+        if (providerPrefix === 'gemini-') {
+          markProviderFailed('gemini-', 'PERMISSION', 'Generative Language API not enabled', tail);
+        } else {
+          markModelFailed(modelId, 'PERMISSION', 'Generative Language API not enabled', tail);
+        }
       } else if (/API_KEY_INVALID|key not valid|\b401\b/i.test(errMsg)) {
-        markModelFailed(modelId, 'AUTH', 'Key invalid or revoked', tail);
+        // Auth failure is per-KEY. Skip all siblings sharing that key.
+        if (providerPrefix) {
+          markProviderFailed(providerPrefix, 'AUTH', 'Key invalid or revoked', tail);
+        } else {
+          markModelFailed(modelId, 'AUTH', 'Key invalid or revoked', tail);
+        }
       } else if (/NOT_FOUND.*model|model.*not.*found|INVALID_ARGUMENT.*model|\b404\b/i.test(errMsg)) {
+        // INVALID_MODEL is per-MODEL, not per-provider — leave siblings alone.
         markModelFailed(modelId, 'INVALID_MODEL', 'Model not available for this key', tail);
       }
       // Transient errors (429 RPM, 504 timeout, 503, etc.) are NOT auto-demoted —
       // they recover on their own.
+
+      // If a provider-level demote just happened (spend cap / quota /
+      // permission / auth), drop the remaining same-provider models from
+      // THIS chain run so we don't waste time retrying them sequentially.
+      // We mutate `chain` in place by splicing out the matching entries
+      // ahead of the cursor — applyProbeToChain handles future calls.
+      const isProviderFatal =
+        /spending cap|spend cap|ai\.studio\/spend|FreeTier|free_tier|limit:\s*0|PerDay|PERMISSION_DENIED|API has not been used|API_KEY_INVALID|key not valid|\b401\b|\b403\b/i.test(errMsg);
+      if (isProviderFatal && providerPrefix) {
+        const remainingSiblings = chain.slice(i + 1).filter(m => m.startsWith(providerPrefix));
+        if (remainingSiblings.length > 0) {
+          chain = [
+            ...chain.slice(0, i + 1),
+            ...chain.slice(i + 1).filter(m => !m.startsWith(providerPrefix)),
+          ];
+          console.warn(`⏭️ [AI] Skipped ${remainingSiblings.length} remaining ${providerPrefix}* models (same key → same failure).`);
+        }
+      }
 
       // Small backoff between different models
       if (i < chain.length - 1) {

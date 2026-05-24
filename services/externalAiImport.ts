@@ -261,10 +261,34 @@ export function parseExternalAiResponse(raw: string, expectedKind: Kind): Parsed
   }
 
   if (!data || typeof data !== 'object') throw new Error('התשובה לא במבנה צפוי.');
+
+  // Accept BOTH supported shapes:
+  //   "Quick" : { kind, categories: [{title, restaurants|attractions: []}] }
+  //   "Deep"  : { restaurants: [...], attractions: [...] }   (flat — used by
+  //             Deep Research prompts that don't bother with categories)
+  // When we see Deep shape, synthesize a single Quick-shape category named
+  // "המלצות AI" so the rest of the merger doesn't care which prompt format
+  // the user used. Fixes the "שדה categories חסר" error the user hit when
+  // pasting a Deep-shape response into the external-AI modal (2026-05-21).
+  if (!Array.isArray(data.categories)) {
+    const deepItems = (expectedKind === 'attractions' ? data.attractions : data.restaurants);
+    if (Array.isArray(deepItems) && deepItems.length > 0) {
+      // Wrap the flat array into a single "המלצות AI" category. Items can
+      // still carry their own `categoryTitle` field — downstream code reads
+      // that first and the wrapper only acts as a fallback bucket.
+      const itemKeyForDeep = expectedKind === 'attractions' ? 'attractions' : 'restaurants';
+      data = {
+        kind: expectedKind,
+        categories: [{ title: 'המלצות AI', [itemKeyForDeep]: deepItems }],
+      };
+    } else {
+      throw new Error('ה-JSON שהודבק לא מכיל "categories" וגם לא "restaurants"/"attractions". בדוק שהדבקת את התשובה המלאה מה-AI.');
+    }
+  }
+
   if (data.kind && data.kind !== expectedKind) {
     throw new Error(`ה-JSON הוא של ${data.kind} אבל ביקשת ${expectedKind}.`);
   }
-  if (!Array.isArray(data.categories)) throw new Error('שדה "categories" חסר או לא מערך.');
 
   const isAttr = expectedKind === 'attractions';
   const itemKey = isAttr ? 'attractions' : 'restaurants';

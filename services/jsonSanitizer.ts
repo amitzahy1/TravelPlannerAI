@@ -98,11 +98,90 @@ export interface LenientParseResult<T = any> {
 }
 
 /**
- * Strict-parse first; on failure, sanitize and retry. Throws the SANITIZED-pass
- * error (with the strict error attached as `.cause`) if both fail.
+ * Brace-balance recovery — when sanitizing wasn't enough to fix the JSON
+ * (e.g. Llama truncated the response mid-array, leaving an unclosed `[`),
+ * walk the string and find the last position where braces + brackets are
+ * balanced, then truncate to that point and try to close it. Recovers
+ * partial results from cut-off LLM responses instead of dropping the
+ * whole payload.
  *
- * Callers that want to differentiate "valid JSON" from "almost-valid JSON" can
- * read `result.sanitized` to decide whether to show a user warning.
+ * Returns null when no balanced prefix can be coaxed into valid JSON.
+ */
+const truncateToLastBalanced = (s: string): string | null => {
+  let braceDepth = 0;
+  let bracketDepth = 0;
+  let inString = false;
+  let escape = false;
+  // Track positions where the outermost structure is balanced (depth=0
+  // and we're at the closing brace of the root object/array).
+  let lastBalancedEnd = -1;
+  let rootOpenIdx = -1;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === '{') { braceDepth++; if (rootOpenIdx < 0) rootOpenIdx = i; }
+    else if (c === '}') { braceDepth--; if (braceDepth === 0 && bracketDepth === 0) lastBalancedEnd = i + 1; }
+    else if (c === '[') { bracketDepth++; if (rootOpenIdx < 0) rootOpenIdx = i; }
+    else if (c === ']') { bracketDepth--; if (braceDepth === 0 && bracketDepth === 0) lastBalancedEnd = i + 1; }
+  }
+  if (lastBalancedEnd > 0) return s.slice(0, lastBalancedEnd);
+
+  // No fully-balanced root found. Try harder: if we're deep in an array,
+  // close it at the last comma/element boundary before the cutoff.
+  if (rootOpenIdx >= 0 && (braceDepth > 0 || bracketDepth > 0)) {
+    // Find the last comma OR closing brace/bracket at any depth level
+    // before the truncation, then synthesize closing braces/brackets.
+    let lastEntryEnd = -1;
+    braceDepth = 0; bracketDepth = 0; inString = false; escape = false;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (escape) { escape = false; continue; }
+      if (c === '\\') { escape = true; continue; }
+      if (c === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (c === '{') braceDepth++;
+      else if (c === '}') { braceDepth--; lastEntryEnd = i; }
+      else if (c === '[') bracketDepth++;
+      else if (c === ']') { bracketDepth--; lastEntryEnd = i; }
+      else if (c === ',' && (braceDepth + bracketDepth) >= 1) {
+        // Comma at any depth — last complete sibling element ends here.
+        lastEntryEnd = i;
+      }
+    }
+    if (lastEntryEnd > rootOpenIdx) {
+      // Truncate to just before the trailing comma if any, then close.
+      const prefix = s.slice(0, lastEntryEnd).replace(/,\s*$/, '');
+      // Recount depth at that point to know what to close
+      let bD = 0, brD = 0, inS = false, esc = false;
+      for (let i = 0; i < prefix.length; i++) {
+        const c = prefix[i];
+        if (esc) { esc = false; continue; }
+        if (c === '\\') { esc = true; continue; }
+        if (c === '"') { inS = !inS; continue; }
+        if (inS) continue;
+        if (c === '{') bD++; else if (c === '}') bD--;
+        else if (c === '[') brD++; else if (c === ']') brD--;
+      }
+      let closer = '';
+      while (brD-- > 0) closer += ']';
+      while (bD-- > 0) closer += '}';
+      return prefix + closer;
+    }
+  }
+  return null;
+};
+
+/**
+ * Strict-parse first; on failure, sanitize and retry. If sanitizing also
+ * fails, attempt brace-balance recovery (truncate to last balanced point
+ * + auto-close any open braces/brackets). Throws only when all three
+ * passes fail.
+ *
+ * Callers that want to differentiate "valid JSON" from "almost-valid JSON"
+ * can read `result.sanitized` to decide whether to show a user warning.
  */
 export const parseJsonLenient = <T = any>(candidate: string): LenientParseResult<T> => {
   try {
@@ -116,6 +195,16 @@ export const parseJsonLenient = <T = any>(candidate: string): LenientParseResult
         strictError: strictErr,
       };
     } catch (secondErr: any) {
+      // Last resort — brace-balance recovery. Helps with Llama / GPT-OSS
+      // truncating mid-array on long responses.
+      const trimmed = truncateToLastBalanced(sanitizedText);
+      if (trimmed) {
+        try {
+          const value = JSON.parse(trimmed) as T;
+          console.warn(`⚠️ [jsonSanitizer] Recovered via brace-balance truncation (lost ${sanitizedText.length - trimmed.length} chars from the tail).`);
+          return { value, sanitized: true, strictError: strictErr };
+        } catch { /* fall through */ }
+      }
       const wrapped = new Error(
         `JSON parse failed even after sanitization. strict="${strictErr?.message?.slice(0, 120) || strictErr}" sanitized="${secondErr?.message?.slice(0, 120) || secondErr}"`,
       );

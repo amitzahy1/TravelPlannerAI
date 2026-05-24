@@ -107,22 +107,30 @@ export const ExternalAiPasteModal: React.FC<Props> = ({ isOpen, onClose, trip, k
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0.95, opacity: 0 }}
                         onClick={e => e.stopPropagation()}
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+                        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
                     >
+                        {/* Floating close X — absolute-positioned so it's ALWAYS
+                            visible regardless of scroll position or transforms.
+                            The previous sticky-header approach hid behind the site
+                            nav at certain viewport sizes (user-reported 2026-05-21). */}
+                        <button
+                            onClick={onClose}
+                            aria-label="סגור"
+                            title="סגור"
+                            className="absolute top-3 left-3 z-10 p-2 bg-white border border-slate-200 rounded-full shadow-md hover:bg-slate-50 hover:shadow-lg transition-all"
+                        >
+                            <X className="w-5 h-5 text-slate-600" />
+                        </button>
+
                         {/* Header */}
-                        <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3 flex items-center justify-between rounded-t-2xl">
-                            <div>
-                                <h2 className="text-lg font-black text-slate-900">
-                                    📋 הדבק {entityHe} מ-AI חיצוני
-                                </h2>
-                                <p className="text-2xs text-slate-500 mt-0.5">
-                                    הריצו את הפרומפט ב-ChatGPT / Gemini / Claude (חינם ב-tier שלכם) והדביקו את ה-JSON.
-                                    <strong> עלות לאתר: 0 ש"ח.</strong>
-                                </p>
-                            </div>
-                            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
-                                <X className="w-5 h-5 text-slate-500" />
-                            </button>
+                        <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3 pl-14 rounded-t-2xl">
+                            <h2 className="text-lg font-black text-slate-900">
+                                📋 הדבק {entityHe} מ-AI חיצוני
+                            </h2>
+                            <p className="text-2xs text-slate-500 mt-0.5">
+                                הריצו את הפרומפט ב-ChatGPT / Gemini / Claude (חינם ב-tier שלכם) והדביקו את ה-JSON.
+                                <strong> עלות לאתר: 0 ש"ח.</strong>
+                            </p>
                         </div>
 
                         {/* Body */}
@@ -189,14 +197,22 @@ export const ExternalAiPasteModal: React.FC<Props> = ({ isOpen, onClose, trip, k
                                 <div className="text-2xs text-slate-500">
                                     בלי שאילתה ל-Gemini שלנו · בלי שריפת תקציב · האימות מתבצע אחרי הוספה
                                 </div>
-                                <button
-                                    onClick={apply}
-                                    disabled={parsing || !pastedText.trim()}
-                                    className="flex items-center gap-2 px-5 py-2.5 text-sm font-black bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {parsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                                    {parsing ? 'מעבד…' : `הוסף ${entityHe} לטיול`}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={onClose}
+                                        className="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+                                    >
+                                        סגור
+                                    </button>
+                                    <button
+                                        onClick={apply}
+                                        disabled={parsing || !pastedText.trim()}
+                                        className="flex items-center gap-2 px-5 py-2.5 text-sm font-black bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {parsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                        {parsing ? 'מעבד…' : `הוסף ${entityHe} לטיול`}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </motion.div>
