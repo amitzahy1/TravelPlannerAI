@@ -38,72 +38,69 @@ const getAuthHeader = async (): Promise<Record<string, string>> => {
 // without per-request retry-burn.
 export const GOOGLE_MODELS = {
   // Tier 1: SMART intent (text-only trip extraction, hotel/flight matching).
-  // Per user direction (2026-05-21): trip-creation quality > cost. Heaviest
-  // model first.
+  // Order per user direction (2026-05-21): trip-creation quality > cost,
+  // so Gemini Pro is primary. Behind it sit the strongest verified free
+  // providers (Groq → OpenRouter) and finally smaller / rate-limited
+  // backups.
   //
-  // Slugs verified via probe + provider API (2026-05-21). Removed all
-  // hallucinated slugs (groq:deepseek-*, openrouter:deepseek/deepseek-chat:free,
-  // openrouter:google/gemini-flash-1.5-exp:free, openrouter:meta-llama/llama-3.1-405b-instruct:free)
-  // — those were guesses that don't exist in production.
+  // All slugs probe-verified 2026-05-21. Removed: deepseek-v4-flash:free
+  // (402 paid-only), and 4 hallucinated slugs that don't exist.
   SMART_CANDIDATES: [
-    "gemini-2.5-pro",                                              // PRIMARY — best accuracy
-    "gemini-3.5-flash",                                            // strong + faster than Pro
-    "groq:llama-3.3-70b-versatile",                                // ✓ probe-verified 60ms
-    "groq:openai/gpt-oss-120b",                                    // NEW — GPT-OSS 120B on Groq, free
-    "groq:meta-llama/llama-4-scout-17b-16e-instruct",              // NEW — Llama 4 Scout (preview)
-    "groq:qwen/qwen3-32b",                                         // NEW — Qwen 3 reasoning (preview)
-    "openrouter:deepseek/deepseek-v4-flash:free",                  // NEW — real DeepSeek V4 free slug
-    "openrouter:nvidia/nemotron-3-super-120b-a12b:free",           // NEW — 120B Nemotron free
-    "openrouter:arcee-ai/trinity-large-thinking:free",             // NEW — reasoning model free
-    "openrouter:google/gemma-4-31b-it:free",                       // NEW — Gemma 4 31B free
-    "openrouter:nousresearch/hermes-3-llama-3.1-405b:free",        // probe-verified slug, 429 today
-    "openrouter:meta-llama/llama-3.3-70b-instruct:free",           // probe-verified slug, 429 today
+    "gemini-2.5-pro",                                              // PRIMARY — best accuracy for trip base
+    "gemini-3.5-flash",                                            // strong Gemini fallback
+    "groq:openai/gpt-oss-120b",                                    // ⭐ 120B model @ 133ms — best free SMART option
+    "groq:llama-3.3-70b-versatile",                                // ⭐ 64ms — fastest Groq
+    "groq:meta-llama/llama-4-scout-17b-16e-instruct",              // Llama 4 generation (slower but newest)
+    "groq:qwen/qwen3-32b",                                         // Qwen 3 reasoning
+    "openrouter:nvidia/nemotron-3-super-120b-a12b:free",           // 120B NVIDIA, slow but works
+    "openrouter:arcee-ai/trinity-large-thinking:free",             // thinking model, slow but works
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash",
-    "groq:llama-3.1-8b-instant",                                   // ✓ probe-verified 139ms
+    "groq:openai/gpt-oss-20b",                                     // smaller GPT-OSS @ 102ms
+    "groq:llama-3.1-8b-instant",                                   // tiny Groq fallback
+    "openrouter:meta-llama/llama-3.3-70b-instruct:free",           // rate-limited but real
+    "openrouter:nousresearch/hermes-3-llama-3.1-405b:free",        // 405B rate-limited but real
+    "openrouter:google/gemma-4-31b-it:free",                       // Gemma 4 rate-limited but real
     "gemini-2.5-flash-lite",
   ],
   // Tier 2: SEARCH intent (restaurant/attraction market research, grounded).
-  // Grounding ONLY works on Gemini. Non-Gemini = ungrounded fallbacks (still
-  // produce reasonable category lists from training data, just no live search).
+  // Grounding ONLY works on Gemini. Non-Gemini = ungrounded fallbacks.
   RESEARCH_CANDIDATES: [
     "gemini-3.5-flash",
     "gemini-2.5-flash",
     "gemini-3.1-flash-lite",
     "gemini-2.5-pro",
     "gemini-2.5-flash-lite",
-    "groq:llama-3.3-70b-versatile",                                // ungrounded but big + fast
-    "groq:openai/gpt-oss-120b",                                    // NEW — large ungrounded backup
-    "openrouter:deepseek/deepseek-v4-flash:free",                  // NEW — DeepSeek V4
-    "openrouter:nvidia/nemotron-3-super-120b-a12b:free",           // NEW — 120B
-    "openrouter:nousresearch/hermes-3-llama-3.1-405b:free",        // 405B fallback (rate-limited)
+    "groq:openai/gpt-oss-120b",                                    // ⭐ 120B ungrounded
+    "groq:llama-3.3-70b-versatile",                                // 64ms ungrounded
+    "openrouter:nvidia/nemotron-3-super-120b-a12b:free",           // 120B ungrounded backup
+    "openrouter:nousresearch/hermes-3-llama-3.1-405b:free",        // 405B (rate-limited)
     "openrouter:meta-llama/llama-3.3-70b-instruct:free",           // (rate-limited)
   ],
   // Tier 3: FAST intent (chat, quick suggestions). Latency > capability.
   FAST_CANDIDATES: [
     "gemini-3.1-flash-lite",
-    "groq:llama-3.1-8b-instant",                                   // ✓ fastest free, probe-verified
-    "groq:openai/gpt-oss-20b",                                     // NEW — small GPT-OSS, free
-    "openrouter:deepseek/deepseek-v4-flash:free",                  // NEW — DeepSeek V4 (real slug)
-    "openrouter:google/gemma-4-26b-a4b-it:free",                   // NEW — Gemma 4 26B (smaller variant)
+    "groq:llama-3.1-8b-instant",                                   // ⭐ 173ms — fastest free
+    "groq:openai/gpt-oss-20b",                                     // ⭐ 102ms — even faster GPT-OSS small
+    "groq:llama-3.3-70b-versatile",                                // 64ms — overkill for chat but free
     "gemini-2.5-flash-lite",
-    "groq:llama-3.3-70b-versatile",
+    "groq:openai/gpt-oss-120b",                                    // 133ms — overkill but available
     "gemini-2.5-flash",
+    "openrouter:google/gemma-4-26b-a4b-it:free",                   // Gemma 4 small (rate-limited)
     "openrouter:meta-llama/llama-3.3-70b-instruct:free",
   ],
-  // Tier 4: ANALYZE intent — deep document/PDF extraction. Pro 2.5 STAYS as
-  // primary (user-locked: trip-creation quality > cost). Multimodal is
-  // Gemini-only; other models help when content has been converted to text
-  // upstream.
+  // Tier 4: ANALYZE intent — deep document/PDF extraction. Pro 2.5 PRIMARY
+  // (user-locked: trip-creation quality > cost). Multimodal is Gemini-only;
+  // other models help when content has been converted to text upstream.
   DOC_CANDIDATES: [
-    "gemini-2.5-pro",                                              // PRIMARY — best multimodal PDF (user-locked)
+    "gemini-2.5-pro",                                              // PRIMARY — best multimodal PDF
     "gemini-3.5-flash",                                            // multimodal fallback
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash",
-    "groq:llama-3.3-70b-versatile",                                // text-only post-extraction fallback
-    "groq:openai/gpt-oss-120b",                                    // NEW — GPT-OSS 120B text fallback
-    "openrouter:deepseek/deepseek-v4-flash:free",                  // NEW — DeepSeek V4 text fallback
-    "openrouter:arcee-ai/trinity-large-thinking:free",             // NEW — reasoning model text fallback
+    "groq:openai/gpt-oss-120b",                                    // ⭐ 120B text-only post-extraction
+    "groq:llama-3.3-70b-versatile",                                // text-only fallback
+    "openrouter:arcee-ai/trinity-large-thinking:free",             // text-only reasoning fallback
+    "openrouter:nvidia/nemotron-3-super-120b-a12b:free",           // text-only 120B fallback
   ],
 };
 
