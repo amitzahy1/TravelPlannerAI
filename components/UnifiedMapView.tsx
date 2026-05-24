@@ -8,7 +8,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Trip } from '../types';
 import { Loader2, Map as MapIcon, RefreshCw } from 'lucide-react';
-import { extractRobustCity, cleanCityName, cityKey } from '../utils/geoData';
+import { extractRobustCity, cleanCityName, cityKey, locationMatchesCity } from '../utils/geoData';
 import { normalizeCityForChip, isProvinceOrCountryName } from '../utils/cityNormalize';
 import { getCountryBbox, coordInBbox, extractCoordsFromMapsUrl, toEnglishCountryName } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, getTripCountryBbox, getTripCountries, getTripCountryBboxes, placeInTripCountries, getCountryForHotel, coordInTripCountries, coordInTripCities, getTripCityBboxes } from '../utils/tripScope';
@@ -2074,18 +2074,23 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         }
         mapItems.forEach(item => consider(item.city));
 
-        // Count items via keyword match — for a city chip to count an item
-        // we look at the item's own city field AND its address/name fields,
-        // because AI-generated items frequently have city="Vlora" set on a
-        // Tirana-located item or vice-versa.
+        // Count items via locationMatchesCity — same matcher as the
+        // RestaurantsView / AttractionsView list chips. It handles Hebrew/
+        // English/diacritics (Vlorë ↔ vlora) and checks across multiple
+        // fields (name, nameEnglish, address, city, description) so an item
+        // tagged with city="Vlora" but whose name says "Tirana Restaurant"
+        // gets credited to Tirana when that's the chip we're counting.
+        // Per-chip independent count (an item that mentions both cities
+        // counts in BOTH) — matches the food/attractions list-view chip
+        // behavior we shipped in 26fa814.
         return Array.from(byKey.entries()).map(([key, { name }]) => {
-            const keywords = getCityKeywords(name);
             const count = mapItems.filter(i => {
                 if (i.type === 'hotel') return false; // hotel pins aren't "results"
-                const itemKey = normalizeCityForChip(i.city || '') || cityKey(i.city || '');
-                if (itemKey && itemKey === key) return true;
-                const str = (i.address || i.city || i.name || '').toLowerCase();
-                return keywords.some(kw => str.includes(kw));
+                return locationMatchesCity(i.city || '', name)
+                    || locationMatchesCity(i.address || '', name)
+                    || locationMatchesCity(i.name || '', name)
+                    || locationMatchesCity((i as any).nameEnglish || '', name)
+                    || locationMatchesCity(i.description || '', name);
             }).length;
             return { name, count };
         });
@@ -2223,13 +2228,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         };
         visibleItems.forEach(item => {
             if (item.type === 'airport') return;
-            // DEFAULT-VIEW DECLUTTER (per user spec): at the trip-overview zoom
-            // (tier ≤ 2 with no city filter), the map shows ONLY the route
-            // story — colored polylines + numbered city pills. Hotels reveal
-            // at zoom ≥ 11 (tier ≥ 3) so the regional view stays clean. When
-            // a city filter is active the user has explicitly asked to focus
-            // there, so we render hotels regardless of tier.
-            if (item.type === 'hotel' && tier <= 2 && activeCity === 'ALL') return;
+            // Hotels are ALWAYS rendered — the user explicitly said "I have
+            // to see where the hotel is to know which restaurants/attractions
+            // are nearby — this is critical." The earlier declutter rule
+            // (hide hotels at tier ≤ 2 in ALL view) hid the user's own
+            // anchor on the food/attractions maps where they're trying to
+            // judge which AI picks are walkable. The "ALL trip overview
+            // looks cleaner without hotels" argument loses to the
+            // "where's my hotel?" argument every time.
             // Hide restaurants/attractions at low zoom unless a city filter is active.
             if (!showPlaces && (item.type === 'restaurant' || item.type === 'attraction')) return;
             if (item.type !== 'hotel' && !isInTripRegion(item.lat!, item.lng!)) return;
@@ -2408,13 +2414,24 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             bounds.extend([item.lat!, item.lng!]);
         });
 
-        // Include hotel coords in bounds — if a city filter is active, only
-        // hotels in that city so the zoom is city-scoped, not trip-wide.
+        // Include hotel coords in bounds — but ONLY hotels whose lat/lng
+        // falls inside the trip country. Without this filter, a hotel that
+        // was mis-geocoded to Israel (Albania-trip "Vlorë" matching an
+        // Israeli place name) drags the auto-fit bounds across the
+        // Mediterranean and the user sees half of Europe instead of the
+        // actual destination. Same defensive check as the initial-view
+        // fitBounds at line ~1929.
         if (trip?.hotels?.length) {
             const activeCityKey = activeCity !== 'ALL' ? cityKey(activeCity) : null;
             const kws = activeCityKey ? getCityKeywords(activeCity) : null;
+            const tripBboxesForBounds = getTripCountryBboxes(trip);
+            const isInsideTripCountry = (lat: number, lng: number) =>
+                tripBboxesForBounds.length === 0
+                    ? true // no bbox info — be permissive
+                    : tripBboxesForBounds.some(([w, s, e, n]) => lat >= s && lat <= n && lng >= w && lng <= e);
             trip.hotels.forEach(h => {
                 if (!isValidCoordinate(h.lat, h.lng)) return;
+                if (!isInsideTripCountry(h.lat as number, h.lng as number)) return;
                 if (activeCityKey) {
                     const hCity = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
                     if (cityKey(hCity) === activeCityKey) { bounds.extend([h.lat!, h.lng!]); return; }
