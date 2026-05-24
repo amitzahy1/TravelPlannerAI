@@ -14,6 +14,7 @@ import { Trip, Restaurant, Attraction } from '../../types';
 import { ActivitySquare, MapPin, AlertTriangle, CheckCircle2, RefreshCw, Trash2, Download, Loader2 } from 'lucide-react';
 import { getTripCities, displayCityName } from '../../utils/geoData';
 import { isPlaceInTripScope, inferTripCountry, placeDedupeKey, coordInTripCountries } from '../../utils/tripScope';
+import { isPreciseGoogleUrl } from '../../utils/mapsUrl';
 import { verifyPlacesBatch, applyVerificationResult } from '../../utils/placeVerification';
 import { photonGeocodeRich } from '../../utils/geocodePlaces';
 import { generateWithFallback } from '../../services/aiService';
@@ -255,39 +256,37 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
     // with no real location" — none of the older signals caught these
     // because Photon happily verified each generic name to whatever
     // first hit it returned, even when far from the destination.
+    // Reason taxonomy. An item is junk when ANY of the conditions below
+    // holds. Photon "verified" doesn't actually validate the BUSINESS NAME
+    // — only that the address resolves somewhere — so we also flag items
+    // whose googleMapsUrl is missing or non-precise (no place_id/cid/ftid).
+    // Without a precise URL we have no real place identifier; clicking it
+    // hits the client-side /maps/search/ fallback which often shows
+    // "no results" for the made-up name. That's the "Bastille" case the
+    // user reported: address geocodes, name doesn't exist.
+    const junkReason = (p: any): string | null => {
+        if (p.verificationStatus === 'not_found') return 'לא נמצא';
+        if (p.googleNotFound === true) return 'Google לא מצא';
+        if (typeof p.lat === 'number' && typeof p.lng === 'number' && trip && !coordInTripCountries(p.lat, p.lng, trip)) return 'מחוץ למדינה';
+        const hasCoords = typeof p.lat === 'number' && typeof p.lng === 'number';
+        const url = typeof p.googleMapsUrl === 'string' ? p.googleMapsUrl.trim() : '';
+        if (!url) return hasCoords ? 'ללא קישור Maps' : 'ללא קישור וללא קואורדינטות';
+        if (!isPreciseGoogleUrl(url)) return 'קישור הוא חיפוש (לא מקום אמיתי)';
+        return null;
+    };
     const junkItems = useMemo(() => {
-        if (!trip) return { restaurants: [], attractions: [] };
-        const isJunk = (p: any): boolean => {
-            if (p.verificationStatus === 'not_found') return true;
-            if (p.googleNotFound === true) return true;
-            // Coords present but outside trip country → wrong-country match
-            if (typeof p.lat === 'number' && typeof p.lng === 'number' &&
-                !coordInTripCountries(p.lat, p.lng, trip)) return true;
-            // No coords AND no Maps URL → opening it goes nowhere
-            const hasCoords = typeof p.lat === 'number' && typeof p.lng === 'number';
-            const hasUrl = typeof p.googleMapsUrl === 'string' && p.googleMapsUrl.trim().length > 0;
-            if (!hasCoords && !hasUrl) return true;
-            return false;
-        };
+        const isJunk = (p: any) => junkReason(p) !== null;
         return {
             restaurants: allRestaurants.filter(isJunk),
             attractions: allAttractions.filter(isJunk),
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [allRestaurants, allAttractions, trip]);
     const junkTotal = junkItems.restaurants.length + junkItems.attractions.length;
 
     const dropNotFound = () => {
         if (!trip) return;
-        const isJunk = (p: any): boolean => {
-            if (p.verificationStatus === 'not_found') return true;
-            if (p.googleNotFound === true) return true;
-            if (typeof p.lat === 'number' && typeof p.lng === 'number' &&
-                !coordInTripCountries(p.lat, p.lng, trip)) return true;
-            const hasCoords = typeof p.lat === 'number' && typeof p.lng === 'number';
-            const hasUrl = typeof p.googleMapsUrl === 'string' && p.googleMapsUrl.trim().length > 0;
-            if (!hasCoords && !hasUrl) return true;
-            return false;
-        };
+        const isJunk = (p: any) => junkReason(p) !== null;
         const filterCat = <T extends { restaurants?: Restaurant[]; attractions?: Attraction[] }>(c: T): T => ({
             ...c,
             restaurants: c.restaurants?.filter(r => !isJunk(r)) as any,
@@ -301,7 +300,32 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
             attractions: (trip.attractions || []).map(filterCat).filter(c => (c.attractions?.length || 0) > 0),
         };
         onUpdateTrip(updated);
-        toast.success(`נמחקו ${junkTotal} מקומות זבל (לא נמצאו / מחוץ למדינה / ללא קישור)`);
+        toast.success(`נמחקו ${junkTotal} מקומות זבל`);
+    };
+
+    // Per-item delete — strips one specific place from wherever it lives
+    // (ai / manual, restaurants / attractions). The user reviews the preview
+    // list and clicks ✕ on any single row to surgically remove it without
+    // running the bulk delete.
+    const dropOne = (id: string, kind: 'restaurant' | 'attraction') => {
+        if (!trip) return;
+        const filterById = <T extends { restaurants?: Restaurant[]; attractions?: Attraction[] }>(c: T): T => ({
+            ...c,
+            restaurants: kind === 'restaurant'
+                ? c.restaurants?.filter(r => r.id !== id) as any
+                : c.restaurants,
+            attractions: kind === 'attraction'
+                ? c.attractions?.filter(a => a.id !== id) as any
+                : c.attractions,
+        });
+        const updated = {
+            ...trip,
+            aiRestaurants: (trip.aiRestaurants || []).map(filterById).filter(c => (c.restaurants?.length || 0) > 0),
+            aiAttractions: (trip.aiAttractions || []).map(filterById).filter(c => (c.attractions?.length || 0) > 0),
+            restaurants: (trip.restaurants || []).map(filterById).filter(c => (c.restaurants?.length || 0) > 0),
+            attractions: (trip.attractions || []).map(filterById).filter(c => (c.attractions?.length || 0) > 0),
+        };
+        onUpdateTrip(updated);
     };
 
     const exportReport = () => {
@@ -496,31 +520,30 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                     </button>
                 </div>
 
-                {/* Preview list — shows WHY each item is flagged so the user
-                    can audit before clicking the destructive button.
-                    Reason badges: not_found / no_url / outside / no_coords. */}
+                {/* Preview list — shows WHY each item is flagged + a per-item
+                    ✕ button so the user can audit and surgically delete one
+                    place at a time instead of running the bulk button. */}
                 {junkTotal > 0 && (() => {
-                    const reasonFor = (p: any): string => {
-                        if (p.verificationStatus === 'not_found') return 'לא נמצא';
-                        if (p.googleNotFound === true) return 'Google לא מצא';
-                        if (typeof p.lat === 'number' && typeof p.lng === 'number' && trip && !coordInTripCountries(p.lat, p.lng, trip)) return 'מחוץ למדינה';
-                        const hasUrl = typeof p.googleMapsUrl === 'string' && p.googleMapsUrl.trim().length > 0;
-                        if (!hasUrl) return 'אין קישור Maps';
-                        return '—';
-                    };
-                    const Row = ({ p }: { p: any }) => (
-                        <div className="text-[11px] text-slate-700 py-0.5 flex items-center gap-2">
-                            <span className="text-[9px] px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded-full font-bold whitespace-nowrap">{reasonFor(p)}</span>
+                    const Row = ({ p, kind }: { p: any; kind: 'restaurant' | 'attraction' }) => (
+                        <div className="text-[11px] text-slate-700 py-0.5 flex items-center gap-2 group">
+                            <span className="text-[9px] px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded-full font-bold whitespace-nowrap">{junkReason(p) || '—'}</span>
                             <span className="flex-1 min-w-0 truncate">
                                 {p.name}
                                 {p.location && <span className="text-slate-400"> — {p.location}</span>}
                             </span>
+                            <button
+                                onClick={() => dropOne(p.id, kind)}
+                                title="מחק רק את הפריט הזה"
+                                className="opacity-40 hover:opacity-100 text-rose-600 hover:bg-rose-100 rounded px-1.5 py-0.5 text-[10px] font-bold transition-all"
+                            >
+                                ✕
+                            </button>
                         </div>
                     );
                     return (
                         <details className="mt-3 bg-rose-50/50 border border-rose-100 rounded-lg">
                             <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-rose-700">
-                                ראה ובדוק את {junkTotal} המקומות (לפני מחיקה)
+                                ראה ובדוק את {junkTotal} המקומות (מחיקה פרטנית או באצווה)
                             </summary>
                             <div className="px-3 pb-3 max-h-72 overflow-y-auto">
                                 {junkItems.restaurants.length > 0 && (
@@ -528,7 +551,7 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-2 mb-1">
                                             מסעדות ({junkItems.restaurants.length})
                                         </div>
-                                        {junkItems.restaurants.map((r: any) => <Row key={r.id} p={r} />)}
+                                        {junkItems.restaurants.map((r: any) => <Row key={r.id} p={r} kind="restaurant" />)}
                                     </div>
                                 )}
                                 {junkItems.attractions.length > 0 && (
@@ -536,7 +559,7 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-2 mb-1">
                                             אטרקציות ({junkItems.attractions.length})
                                         </div>
-                                        {junkItems.attractions.map((a: any) => <Row key={a.id} p={a} />)}
+                                        {junkItems.attractions.map((a: any) => <Row key={a.id} p={a} kind="attraction" />)}
                                     </div>
                                 )}
                             </div>

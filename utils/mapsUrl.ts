@@ -18,7 +18,7 @@
 const cleanForQuery = (s: string | undefined | null): string =>
         (s || '').replace(/\(.*?\)/g, '').replace(/\s+/g, ' ').trim();
 
-const isPreciseGoogleUrl = (url: string | undefined | null): boolean => {
+export const isPreciseGoogleUrl = (url: string | undefined | null): boolean => {
         if (!url) return false;
         try {
                 const u = new URL(url);
