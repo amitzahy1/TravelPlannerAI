@@ -13,7 +13,7 @@ import React, { useMemo, useState } from 'react';
 import { Trip, Restaurant, Attraction } from '../../types';
 import { ActivitySquare, MapPin, AlertTriangle, CheckCircle2, RefreshCw, Trash2, Download, Loader2 } from 'lucide-react';
 import { getTripCities, displayCityName } from '../../utils/geoData';
-import { isPlaceInTripScope, inferTripCountry, placeDedupeKey } from '../../utils/tripScope';
+import { isPlaceInTripScope, inferTripCountry, placeDedupeKey, coordInTripCountries } from '../../utils/tripScope';
 import { verifyPlacesBatch, applyVerificationResult } from '../../utils/placeVerification';
 import { photonGeocodeRich } from '../../utils/geocodePlaces';
 import { generateWithFallback } from '../../services/aiService';
@@ -241,28 +241,57 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
         toast.success('פריטים מחוץ לטיול הוסרו');
     };
 
-    // Items flagged by either Photon (verificationStatus='not_found') OR
-    // Google Places (googleNotFound=true). Either signal means clicking
-    // the item's Maps link will land on nothing — exactly the user's
-    // complaint. Combined so a single button cleans up both flag types.
-    const notFoundItems = useMemo(() => {
-        const isNotFound = (p: any) =>
-            p.verificationStatus === 'not_found' || p.googleNotFound === true;
-        return {
-            restaurants: allRestaurants.filter(isNotFound),
-            attractions: allAttractions.filter(isNotFound),
+    // Combined "junk" detection. An item is junk when ANY of these holds:
+    //   1. Photon flagged it not_found  → place doesn't exist
+    //   2. Google Places flagged it     → enrichment couldn't match
+    //   3. Coords are outside the trip country (defensive against
+    //      Photon "verifying" a wrong-country same-named place — e.g.
+    //      a generic restaurant name matched in Indonesia for an
+    //      Albania trip; verificationStatus='verified' but coords are
+    //      wrong-country)
+    //   4. No googleMapsUrl AND no lat/lng → no way to ever open it
+    //      on Maps; the AI made up a name with no real place behind it
+    // The user reported per-category refresh dumps adding "lots of junk
+    // with no real location" — none of the older signals caught these
+    // because Photon happily verified each generic name to whatever
+    // first hit it returned, even when far from the destination.
+    const junkItems = useMemo(() => {
+        if (!trip) return { restaurants: [], attractions: [] };
+        const isJunk = (p: any): boolean => {
+            if (p.verificationStatus === 'not_found') return true;
+            if (p.googleNotFound === true) return true;
+            // Coords present but outside trip country → wrong-country match
+            if (typeof p.lat === 'number' && typeof p.lng === 'number' &&
+                !coordInTripCountries(p.lat, p.lng, trip)) return true;
+            // No coords AND no Maps URL → opening it goes nowhere
+            const hasCoords = typeof p.lat === 'number' && typeof p.lng === 'number';
+            const hasUrl = typeof p.googleMapsUrl === 'string' && p.googleMapsUrl.trim().length > 0;
+            if (!hasCoords && !hasUrl) return true;
+            return false;
         };
-    }, [allRestaurants, allAttractions]);
-    const notFoundTotal = notFoundItems.restaurants.length + notFoundItems.attractions.length;
+        return {
+            restaurants: allRestaurants.filter(isJunk),
+            attractions: allAttractions.filter(isJunk),
+        };
+    }, [allRestaurants, allAttractions, trip]);
+    const junkTotal = junkItems.restaurants.length + junkItems.attractions.length;
 
     const dropNotFound = () => {
         if (!trip) return;
-        const isNotFound = (p: any) =>
-            p.verificationStatus === 'not_found' || p.googleNotFound === true;
+        const isJunk = (p: any): boolean => {
+            if (p.verificationStatus === 'not_found') return true;
+            if (p.googleNotFound === true) return true;
+            if (typeof p.lat === 'number' && typeof p.lng === 'number' &&
+                !coordInTripCountries(p.lat, p.lng, trip)) return true;
+            const hasCoords = typeof p.lat === 'number' && typeof p.lng === 'number';
+            const hasUrl = typeof p.googleMapsUrl === 'string' && p.googleMapsUrl.trim().length > 0;
+            if (!hasCoords && !hasUrl) return true;
+            return false;
+        };
         const filterCat = <T extends { restaurants?: Restaurant[]; attractions?: Attraction[] }>(c: T): T => ({
             ...c,
-            restaurants: c.restaurants?.filter(r => !isNotFound(r)) as any,
-            attractions: c.attractions?.filter(a => !isNotFound(a)) as any,
+            restaurants: c.restaurants?.filter(r => !isJunk(r)) as any,
+            attractions: c.attractions?.filter(a => !isJunk(a)) as any,
         });
         const updated = {
             ...trip,
@@ -272,7 +301,7 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
             attractions: (trip.attractions || []).map(filterCat).filter(c => (c.attractions?.length || 0) > 0),
         };
         onUpdateTrip(updated);
-        toast.success(`נמחקו ${notFoundTotal} מקומות שלא נמצאו במפות`);
+        toast.success(`נמחקו ${junkTotal} מקומות זבל (לא נמצאו / מחוץ למדינה / ללא קישור)`);
     };
 
     const exportReport = () => {
@@ -449,14 +478,14 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                     </button>
                     <button
                         onClick={dropNotFound}
-                        disabled={notFoundTotal === 0}
-                        title="מוחק את כל המסעדות והאטרקציות שהמערכת לא הצליחה לאמת את קיומן ב-Photon או ב-Google Maps. אלו הפריטים שכשלוחצים עליהם לא רואים מקום על המפה."
+                        disabled={junkTotal === 0}
+                        title="מוחק את כל המסעדות והאטרקציות שלא ניתן לפתוח במפות. מקור הזיהוי: Photon לא מצא, או Google לא מצא, או הקואורדינטות מחוץ למדינת הטיול, או שאין קישור Google Maps וגם אין קואורדינטות."
                         className="flex items-center gap-2 px-4 py-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-sm border border-rose-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Trash2 className="w-4 h-4" />
-                        {notFoundTotal > 0
-                            ? `מחק ${notFoundTotal} מקומות שלא נמצאו במפות`
-                            : 'אין מקומות שלא נמצאו'}
+                        {junkTotal > 0
+                            ? `מחק ${junkTotal} מקומות זבל`
+                            : 'אין מקומות זבל'}
                     </button>
                     <button
                         onClick={exportReport}
@@ -467,45 +496,53 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                     </button>
                 </div>
 
-                {/* Preview list — lets the user see WHICH items will get
-                    deleted before clicking the destructive button. Collapsed
-                    by default to not visually overwhelm; expand to scan and
-                    optionally cancel by closing without clicking. */}
-                {notFoundTotal > 0 && (
-                    <details className="mt-3 bg-rose-50/50 border border-rose-100 rounded-lg">
-                        <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-rose-700">
-                            ראה את {notFoundTotal} המקומות שלא נמצאו
-                        </summary>
-                        <div className="px-3 pb-3 max-h-64 overflow-y-auto space-y-1.5">
-                            {notFoundItems.restaurants.length > 0 && (
-                                <div>
-                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-2 mb-1">
-                                        מסעדות ({notFoundItems.restaurants.length})
-                                    </div>
-                                    {notFoundItems.restaurants.map(r => (
-                                        <div key={r.id} className="text-[11px] text-slate-700 py-0.5">
-                                            • {r.name}
-                                            {r.location && <span className="text-slate-400"> — {r.location}</span>}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            {notFoundItems.attractions.length > 0 && (
-                                <div>
-                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-2 mb-1">
-                                        אטרקציות ({notFoundItems.attractions.length})
-                                    </div>
-                                    {notFoundItems.attractions.map(a => (
-                                        <div key={a.id} className="text-[11px] text-slate-700 py-0.5">
-                                            • {a.name}
-                                            {a.location && <span className="text-slate-400"> — {a.location}</span>}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                {/* Preview list — shows WHY each item is flagged so the user
+                    can audit before clicking the destructive button.
+                    Reason badges: not_found / no_url / outside / no_coords. */}
+                {junkTotal > 0 && (() => {
+                    const reasonFor = (p: any): string => {
+                        if (p.verificationStatus === 'not_found') return 'לא נמצא';
+                        if (p.googleNotFound === true) return 'Google לא מצא';
+                        if (typeof p.lat === 'number' && typeof p.lng === 'number' && trip && !coordInTripCountries(p.lat, p.lng, trip)) return 'מחוץ למדינה';
+                        const hasUrl = typeof p.googleMapsUrl === 'string' && p.googleMapsUrl.trim().length > 0;
+                        if (!hasUrl) return 'אין קישור Maps';
+                        return '—';
+                    };
+                    const Row = ({ p }: { p: any }) => (
+                        <div className="text-[11px] text-slate-700 py-0.5 flex items-center gap-2">
+                            <span className="text-[9px] px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded-full font-bold whitespace-nowrap">{reasonFor(p)}</span>
+                            <span className="flex-1 min-w-0 truncate">
+                                {p.name}
+                                {p.location && <span className="text-slate-400"> — {p.location}</span>}
+                            </span>
                         </div>
-                    </details>
-                )}
+                    );
+                    return (
+                        <details className="mt-3 bg-rose-50/50 border border-rose-100 rounded-lg">
+                            <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-rose-700">
+                                ראה ובדוק את {junkTotal} המקומות (לפני מחיקה)
+                            </summary>
+                            <div className="px-3 pb-3 max-h-72 overflow-y-auto">
+                                {junkItems.restaurants.length > 0 && (
+                                    <div>
+                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-2 mb-1">
+                                            מסעדות ({junkItems.restaurants.length})
+                                        </div>
+                                        {junkItems.restaurants.map((r: any) => <Row key={r.id} p={r} />)}
+                                    </div>
+                                )}
+                                {junkItems.attractions.length > 0 && (
+                                    <div>
+                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-2 mb-1">
+                                            אטרקציות ({junkItems.attractions.length})
+                                        </div>
+                                        {junkItems.attractions.map((a: any) => <Row key={a.id} p={a} />)}
+                                    </div>
+                                )}
+                            </div>
+                        </details>
+                    );
+                })()}
 
                 <p className="text-[10px] text-slate-400 mt-3">
                     כל הפעולות משתמשות אך ורק ב-Photon (OSM) ו-Gemini Worker — אין שימוש ב-API בתשלום.
