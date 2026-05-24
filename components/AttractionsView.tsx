@@ -388,13 +388,17 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // picked from "מחק את הקטגוריה" in the ⋮ menu.
     const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
 
+    // Empty the category, keep the chip (consistent with RestaurantsView
+    // after the user clarified intent — wanted contents wiped, not the
+    // category itself gone). Lets the chip stay around for re-population.
     const handleDeleteCategory = (categoryId: string) => {
-        const next = aiCategories.filter(c => c.id !== categoryId);
+        const next = aiCategories.map(c =>
+            c.id === categoryId ? { ...c, attractions: [] } : c
+        );
         setAiCategories(next);
         persistAiAttractions(next);
-        if (selectedCategory === categoryId) setSelectedCategory('all');
         setConfirmDeleteCategory(null);
-        toast.success('הקטגוריה נמחקה');
+        toast.success('כל האטרקציות בקטגוריה נמחקו');
     };
     const [confirmNearHotel, setConfirmNearHotel] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);

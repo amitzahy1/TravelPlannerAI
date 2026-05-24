@@ -1082,6 +1082,21 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                         finalLat = urlCoords.lat;
                         finalLng = urlCoords.lng;
                     }
+                    // Country-bbox validation. A hotel whose stored lat/lng
+                    // falls OUTSIDE the trip country is almost certainly a
+                    // bad geocode (Photon match to a same-named place in
+                    // another country — exactly the "Albania hotel at
+                    // Israel coords" case). Treating it as missing here
+                    // lets the geocoding effect (step 2 below) re-resolve
+                    // it from the address + country bias. Without this the
+                    // hotel either renders at the wrong place OR stretches
+                    // the auto-fit bounds across continents.
+                    if (typeof finalLat === 'number' && typeof finalLng === 'number' && trip && !coordInTripCountries(finalLat, finalLng, trip)) {
+                        console.warn(`[Hotel] ${h.name}: stored coords (${finalLat}, ${finalLng}) ` +
+                            `are OUTSIDE trip country — clearing so the geocoder re-resolves from address.`);
+                        finalLat = undefined as any;
+                        finalLng = undefined as any;
+                    }
                     raw.push({
                         id: h.id, type: 'hotel', name: h.name, address: h.address,
                         lat: finalLat, lng: finalLng, description: h.roomType, date: h.checkInDate, city,
