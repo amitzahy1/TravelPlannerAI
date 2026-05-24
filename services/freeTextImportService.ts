@@ -1,6 +1,8 @@
 import type { HotelBooking, FlightSegment, Transport, TransportMode } from '../types';
 import { generateWithFallback, analyzeTripFiles } from './aiService';
 import { parseJsonLenient } from './jsonSanitizer';
+import { photonGeocodeRich, getCountryBbox, toEnglishCountryName } from '../utils/geocodePlaces';
+import { AIRPORT_TIMEZONES, SMALL_AIRPORT_COORDS } from '../utils/airportTimezones';
 
 export interface FreeTextParseHints {
   destination?: string;
@@ -238,7 +240,74 @@ export async function parseFreeTextTrip(
   const summary: string = parsed.summary
     || `נמצאו ${hotels.length} מלונות, ${flights.length} טיסות ו-${transports.length} העברות`;
 
+  // Auto-enrich extracted entities with real coordinates. Without this,
+  // hotels land in the trip with no lat/lng → map shows nothing for them
+  // → user has to manually run "verify all locations" after creation.
+  // User explicitly asked 2026-05-24: "this should be part of the trip
+  // creation process". So: parallel-Photon every hotel + airport here.
+  const countryHint = hints?.destination || (parsed.destination as string | undefined) || '';
+  await enrichExtractedData({ hotels, flights, transports }, countryHint);
+
   return { hotels, flights, transports, summary };
+}
+
+/**
+ * Enrich extracted entities with real coordinates. For hotels: Photon
+ * geocoding with country bbox bias. For flights: IATA code lookup against
+ * our hand-curated airport tables. Mutates the inputs in place; returns
+ * stats for logging. Failures don't throw — the trip still gets created
+ * even if geocoding is degraded, and the user can fix individual items
+ * later via the DataHealthPanel verify-all button.
+ */
+async function enrichExtractedData(
+  data: { hotels: HotelBooking[]; flights: FlightSegment[]; transports: Transport[] },
+  countryHint: string,
+): Promise<{ hotelsResolved: number; airportsResolved: number }> {
+  const countryEn = toEnglishCountryName(countryHint || '');
+  const bbox = countryEn ? getCountryBbox(countryEn) : null;
+
+  // Hotels — parallel Photon. Skip ones the AI already returned with
+  // lat/lng. Country bbox bias prevents Photon from matching a same-named
+  // place in another country.
+  const hotelTasks = data.hotels.map(async h => {
+    if (typeof h.lat === 'number' && typeof h.lng === 'number') return false;
+    const query = [h.name, h.address, h.city, countryEn].filter(Boolean).join(', ');
+    if (!query) return false;
+    try {
+      const feat = await photonGeocodeRich(query, bbox || undefined);
+      if (feat) {
+        h.lat = feat.lat;
+        h.lng = feat.lng;
+        if (!h.city && feat.city) h.city = feat.city;
+        return true;
+      }
+    } catch {
+      /* network failure — leave hotel without coords; DataHealthPanel can retry */
+    }
+    return false;
+  });
+
+  // Flights — IATA code → hardcoded airport coords lookup. Free, no network.
+  let airportsResolved = 0;
+  data.flights.forEach(f => {
+    const fromUp = (f.fromCode || '').toUpperCase();
+    const toUp = (f.toCode || '').toUpperCase();
+    if (fromUp && SMALL_AIRPORT_COORDS[fromUp]) airportsResolved++;
+    if (toUp && SMALL_AIRPORT_COORDS[toUp]) airportsResolved++;
+    // Timezone tagging lets FlightCard compute TZ-aware durations correctly
+    // even when the AI returned wall-clock times only. Done at extraction
+    // time so the trip is born with the right data.
+    if (fromUp && AIRPORT_TIMEZONES[fromUp]) (f as any).fromTimezone = AIRPORT_TIMEZONES[fromUp];
+    if (toUp && AIRPORT_TIMEZONES[toUp]) (f as any).toTimezone = AIRPORT_TIMEZONES[toUp];
+  });
+
+  const hotelResults = await Promise.all(hotelTasks);
+  const hotelsResolved = hotelResults.filter(Boolean).length;
+
+  console.info(`🧭 [trip-create] enriched ${hotelsResolved}/${data.hotels.length} hotels via Photon, ` +
+    `${airportsResolved}/${data.flights.length * 2} airports via IATA table (country hint: "${countryEn || '?'}").`);
+
+  return { hotelsResolved, airportsResolved };
 }
 
 /**
