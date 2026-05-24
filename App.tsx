@@ -474,11 +474,18 @@ const AppContent: React.FC = () => {
 
       // Fire-and-forget: start AI research for food + attractions in the
       // background so results are ready when the user navigates to those
-      // tabs. Saves partial results to Firestore after each city — React
-      // Query will pick them up on the next invalidation.
-      runBackgroundResearch(newTrip, user?.uid)
-        .then(() => queryClient.invalidateQueries({ queryKey: ['trips'] }))
-        .catch(err => console.warn('Background research error (non-fatal):', err));
+      // tabs. Gated behind a localStorage toggle (off by default since
+      // 2026-05-21) because each run fires 4 grounded SEARCH calls ≈
+      // $0.20-0.50 of Gemini quota per new trip, often before the user
+      // even navigates to the relevant tabs. Admin can enable via the
+      // ModelHealthPanel toggle.
+      if (localStorage.getItem('autoBgResearch') === 'true') {
+        runBackgroundResearch(newTrip, user?.uid)
+          .then(() => queryClient.invalidateQueries({ queryKey: ['trips'] }))
+          .catch(err => console.warn('Background research error (non-fatal):', err));
+      } else {
+        console.log('[bgResearch] auto-trigger disabled. Enable in admin → Model Health → "מחקר רקע אוטומטי".');
+      }
     } catch (error) {
       console.error("Failed to save trip:", error);
       toast.error("שגיאה בשמירת הטיול. נסה שוב.");

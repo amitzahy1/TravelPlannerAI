@@ -66,6 +66,23 @@ export const ModelHealthPanel: React.FC = () => {
     const [syncing, setSyncing] = useState(false);
     const [remoteChainsInfo, setRemoteChainsInfo] = useState(() => getCachedRemoteChains());
 
+    // Background-research auto-trigger toggle. Off by default since 2026-05-21
+    // because each run fires ~4 grounded SEARCH calls (= ~$0.20-0.50 of Gemini
+    // quota) on every new trip creation, often before the user even navigates
+    // to the relevant tabs.
+    const [autoBgResearch, setAutoBgResearch] = useState<boolean>(() => {
+        try { return localStorage.getItem('autoBgResearch') === 'true'; } catch { return false; }
+    });
+    const toggleAutoBg = () => {
+        const next = !autoBgResearch;
+        setAutoBgResearch(next);
+        try { localStorage.setItem('autoBgResearch', next ? 'true' : 'false'); } catch { /* ignore */ }
+        toast.success(next
+            ? 'מחקר רקע אוטומטי הופעל — טיולים חדשים יקבלו המלצות AI אוטומטית.'
+            : 'מחקר רקע אוטומטי כובה — חיסכון של ~$0.30 לכל טיול חדש.',
+        );
+    };
+
     // Refresh the cache view periodically so "X seconds ago" stays accurate.
     useEffect(() => {
         const id = setInterval(() => {
@@ -192,6 +209,34 @@ export const ModelHealthPanel: React.FC = () => {
                     <span>שרשרת מודלים דינמית · עודכנה {formatProbedAt(remoteChainsInfo.syncedAt)} · {uniqueModels.length} מודלים מקטלוג חי</span>
                 </div>
             )}
+
+            {/* Background research auto-trigger toggle. Off by default (saves
+                $0.20-0.50 of Gemini quota per new trip). Admin can opt back in
+                if they want pre-baked AI recommendations to be ready when the
+                user navigates to the food / attractions tabs. */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3 flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                    <div className="font-bold text-slate-800 text-sm">מחקר רקע אוטומטי</div>
+                    <div className="text-2xs text-slate-500 mt-0.5">
+                        כשכבוי: טיולים חדשים נשמרים בלי המלצות AI אוטומטיות. ה-AI רץ רק כשהמשתמש לוחץ ידנית
+                        ב-Food / Attractions. <strong>חיסכון: ~$0.30 לטיול חדש.</strong>
+                        כשמופעל: 4 קריאות SEARCH grounded חוצות-מודל פועלות ברקע על כל טיול חדש.
+                    </div>
+                </div>
+                <button
+                    onClick={toggleAutoBg}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full transition-colors ${
+                        autoBgResearch ? 'bg-emerald-600' : 'bg-slate-300'
+                    }`}
+                    title={autoBgResearch ? 'מופעל — לחץ לכבות' : 'כבוי — לחץ להפעיל'}
+                >
+                    <span
+                        className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform translate-y-0.5 ${
+                            autoBgResearch ? 'translate-x-0.5' : 'translate-x-[22px]'
+                        }`}
+                    />
+                </button>
+            </div>
 
             <p className="text-xs text-slate-600 mb-3">
                 בודק חיבור לכל מודלי Gemini ו-OpenRouter המוגדרים בשרשרת fallback.
