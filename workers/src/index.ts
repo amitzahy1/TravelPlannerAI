@@ -140,7 +140,8 @@ const callOpenRouter = async (
         requestContent: any,
         modelId: string,
         generationConfig: any,
-        env: Env
+        env: Env,
+        signal?: AbortSignal,
 ): Promise<{ text: string; model: string }> => {
         if (!env.OPENROUTER_API_KEY) {
                 throw new Error("Missing OPENROUTER_API_KEY");
@@ -155,6 +156,7 @@ const callOpenRouter = async (
                         "HTTP-Referer": "https://amitzahy1.github.io/TravelPlannerAI/",
                         "X-Title": "Travel Planner Pro",
                 },
+                signal,
                 body: JSON.stringify({
                         model: actualModelId,
                         messages: contentsToOpenRouterMessages(requestContent),
@@ -191,7 +193,8 @@ const callGroq = async (
         requestContent: any,
         modelId: string,
         generationConfig: any,
-        env: Env
+        env: Env,
+        signal?: AbortSignal,
 ): Promise<{ text: string; model: string }> => {
         if (!env.GROQ_API_KEY) {
                 throw new Error("Missing GROQ_API_KEY");
@@ -223,6 +226,7 @@ const callGroq = async (
                         "Content-Type": "application/json",
                         "Authorization": `Bearer ${env.GROQ_API_KEY}`,
                 },
+                signal,
                 body: JSON.stringify(body),
         });
         if (!response.ok) {
@@ -681,21 +685,17 @@ export default {
                                 }
 
                                 // Parallel probe with concurrency=6. Each model has an 8-second hard
-                                // race timeout so one slow model (e.g. nvidia/nemotron-3-super-120b
-                                // takes 19s on the free tier) doesn't block the whole Worker past
-                                // its 30s wall-clock budget. Probes that exceed 8s are marked
-                                // TIMEOUT — still useful signal, just not a green check.
+                                // AbortSignal timeout — Cloudflare Workers' setTimeout doesn't reliably
+                                // fire while an `await fetch` is pending (race conditions with the event
+                                // loop), so we use AbortSignal.timeout() which forcibly cancels the
+                                // underlying TCP connection. A previous probe run logged a 508-second
+                                // latency for one OpenRouter model because the setTimeout-based race
+                                // never won — AbortSignal closes that loophole.
                                 const PROBE_TIMEOUT_MS = 8000;
-                                const raceWithTimeout = <T>(p: Promise<T>, label: string): Promise<T> =>
-                                        Promise.race([
-                                                p,
-                                                new Promise<never>((_, reject) =>
-                                                        setTimeout(() => reject(new Error(`ProbeTimeout: ${PROBE_TIMEOUT_MS}ms — ${label}`)), PROBE_TIMEOUT_MS),
-                                                ),
-                                        ]);
 
                                 const probeOne = async (modelId: string): Promise<any> => {
                                         const start = Date.now();
+                                        const abortSignal = AbortSignal.timeout(PROBE_TIMEOUT_MS);
 
                                         // OpenRouter probe
                                         if (isOpenRouterModel(modelId)) {
@@ -704,15 +704,14 @@ export default {
                                                 }
                                                 const orTail = env.OPENROUTER_API_KEY.slice(-4);
                                                 try {
-                                                        await raceWithTimeout(
-                                                                callOpenRouter([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0, maxOutputTokens: 1 }, env),
-                                                                modelId,
-                                                        );
+                                                        await callOpenRouter([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0, maxOutputTokens: 1 }, env, abortSignal);
                                                         console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=OPENROUTER tail=…${orTail})`);
                                                         return { model: modelId, ok: true, latencyMs: Date.now() - start, key: 'OPENROUTER', keyTail: `…${orTail}` };
                                                 } catch (e: any) {
                                                         const msg = e?.message || String(e);
-                                                        const errorKind: ErrorKind = /ProbeTimeout/.test(msg) ? 'TIMEOUT'
+                                                        // AbortError fires when AbortSignal.timeout cancels the fetch.
+                                                        const isTimeout = /AbortError|abort|timeout/i.test(msg);
+                                                        const errorKind: ErrorKind = isTimeout ? 'TIMEOUT'
                                                                 : /429|rate.?limit|too many/i.test(msg) ? 'QUOTA'
                                                                 : /401|invalid.*key|API_KEY_INVALID/i.test(msg) ? 'AUTH'
                                                                 : /404|not.?found|model.*not/i.test(msg) ? 'INVALID_MODEL'
@@ -739,27 +738,26 @@ export default {
                                                 }
                                                 const groqTail = env.GROQ_API_KEY.slice(-4);
                                                 try {
-                                                        await raceWithTimeout(
-                                                                callGroq([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0 }, env),
-                                                                modelId,
-                                                        );
+                                                        await callGroq([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0 }, env, abortSignal);
                                                         console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=GROQ tail=…${groqTail})`);
                                                         return { model: modelId, ok: true, latencyMs: Date.now() - start, key: 'GROQ', keyTail: `…${groqTail}` };
                                                 } catch (e: any) {
                                                         const msg = e?.message || String(e);
+                                                        // AbortError fires when AbortSignal.timeout cancels the fetch.
+                                                        const isTimeout = /AbortError|abort|timeout/i.test(msg);
                                                         return {
                                                                 model: modelId,
                                                                 ok: false,
                                                                 latencyMs: Date.now() - start,
                                                                 key: 'GROQ',
                                                                 keyTail: `…${groqTail}`,
-                                                                errorKind: /ProbeTimeout/.test(msg) ? 'TIMEOUT' as ErrorKind
+                                                                errorKind: isTimeout ? 'TIMEOUT' as ErrorKind
                                                                         : /429|rate.?limit/i.test(msg) ? 'QUOTA' as ErrorKind
                                                                         : /401|invalid/i.test(msg) ? 'AUTH' as ErrorKind
                                                                         : /404|not.?found/i.test(msg) ? 'INVALID_MODEL' as ErrorKind
                                                                         : 'UNKNOWN' as ErrorKind,
                                                                 errorDetail: msg.slice(0, 240),
-                                                                remediation: /ProbeTimeout/.test(msg)
+                                                                remediation: isTimeout
                                                                         ? `${modelId} took >${PROBE_TIMEOUT_MS}ms — too slow for production. Demoted in chain.`
                                                                         : `Groq key …${groqTail}: ${msg.slice(0, 120)}. Check the key at https://console.groq.com/keys.`,
                                                         };
@@ -777,20 +775,42 @@ export default {
                                         const probeKeyTail = apiKey.length >= 4 ? apiKey.slice(-4) : '????';
                                         const probeKeyKind = usePremiumKey ? 'PREMIUM' : (env.GEMINI_API_KEY ? 'FREE' : 'PREMIUM_FALLBACK');
 
-                                        try {
-                                                const genAI = new GoogleGenerativeAI(apiKey);
-                                                const model = genAI.getGenerativeModel({
-                                                        model: modelId,
-                                                        generationConfig: { maxOutputTokens: 1, temperature: 0 },
+                                        // Direct fetch to the REST endpoint instead of GoogleGenerativeAI
+                                                // SDK, so we can attach the same AbortSignal.timeout as the
+                                                // OpenRouter / Groq probes. The SDK's Promise.race-based
+                                                // timeout has the same Cloudflare event-loop bug we just
+                                                // worked around. Endpoint shape matches v1beta generateContent.
+                                                try {
+                                                const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+                                                const probeResponse = await fetch(url, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        signal: abortSignal,
+                                                        body: JSON.stringify({
+                                                                contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+                                                                generationConfig: { maxOutputTokens: 1, temperature: 0 },
+                                                        }),
                                                 });
-                                                await Promise.race([
-                                                        model.generateContent({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }] }),
-                                                        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('GeminiTimeout: 5s probe')), 5_000)),
-                                                ]);
+                                                if (!probeResponse.ok) {
+                                                        const errBody = await probeResponse.text().catch(() => '');
+                                                        throw new Error(`Gemini ${probeResponse.status}: ${errBody.slice(0, 200)}`);
+                                                }
                                                 console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=${probeKeyKind} tail=…${probeKeyTail})`);
                                                 return { model: modelId, ok: true, latencyMs: Date.now() - start, key: probeKeyKind, keyTail: `…${probeKeyTail}` };
                                         } catch (e: any) {
                                                 const msg = e?.message || String(e);
+                                                // AbortError fires when AbortSignal.timeout cancels the fetch.
+                                                const isTimeout = /AbortError|abort|timeout/i.test(msg);
+                                                if (isTimeout) {
+                                                        console.warn(`[Probe] ${modelId} TIMEOUT (key=${probeKeyKind} tail=…${probeKeyTail})`);
+                                                        return {
+                                                                model: modelId, ok: false, latencyMs: Date.now() - start,
+                                                                key: probeKeyKind, keyTail: `…${probeKeyTail}`,
+                                                                errorKind: 'TIMEOUT' as ErrorKind,
+                                                                errorDetail: msg.slice(0, 240),
+                                                                remediation: `${modelId} took >${PROBE_TIMEOUT_MS}ms — too slow for production. Demoted in chain.`,
+                                                        };
+                                                }
                                                 const classification = classifyGeminiError(msg, modelId, probeKeyTail);
                                                 console.warn(`[Probe] ${modelId} FAIL (${classification.kind} key=${probeKeyKind} tail=…${probeKeyTail}): ${msg.slice(0, 160)}`);
                                                 return { model: modelId, ok: false, latencyMs: Date.now() - start, key: probeKeyKind, keyTail: `…${probeKeyTail}`, errorKind: classification.kind, errorDetail: msg.slice(0, 240), remediation: classification.remediation };
