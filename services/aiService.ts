@@ -455,6 +455,58 @@ const isTransientWorkerError = (status: number, message: string): boolean => {
 // 🔄 GENERATE WITH FALLBACK (THE WATERFALL)
 // ============================================================================
 
+// =====================================================================
+// 💾 SEARCH cache — sessionStorage-backed map from (prompt hash + intent)
+// to the model response. Lives 24h. Only SEARCH intent is cached (the
+// grounded-Gemini path that costs $0.03-0.10 per call). SMART / ANALYZE
+// / FAST are not cached because they're cheaper, mutate often, or both.
+//
+// Cache hits skip the entire Worker round-trip → repeat clicks on the
+// same city chip are instant + free.
+// =====================================================================
+
+const SEARCH_CACHE_KEY_PREFIX = 'ai-search-cache:v1:';
+const SEARCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000;  // 24h
+
+interface CachedResponse {
+  text: string;
+  model: string;
+  cachedAt: number;
+}
+
+// Stable hash of the request — same prompt + same intent = same key.
+// SHA-1 via SubtleCrypto would be cleanest, but it's async and we want
+// sync read/write here. A simple DJB2 hash is enough since the namespace
+// is small (per-session sessionStorage).
+const hashRequest = (contents: any, intent: string): string => {
+  const serialized = typeof contents === 'string' ? contents : JSON.stringify(contents);
+  let h = 5381;
+  for (let i = 0; i < serialized.length; i++) {
+    h = ((h << 5) + h) + serialized.charCodeAt(i);
+    h = h & h; // 32-bit
+  }
+  return `${intent}-${Math.abs(h).toString(36)}`;
+};
+
+const readSearchCache = (key: string): CachedResponse | null => {
+  try {
+    const raw = sessionStorage.getItem(SEARCH_CACHE_KEY_PREFIX + key);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as CachedResponse;
+    if (!entry?.cachedAt || Date.now() - entry.cachedAt > SEARCH_CACHE_TTL_MS) return null;
+    return entry;
+  } catch { return null; }
+};
+
+const writeSearchCache = (key: string, entry: { text: string; model: string }): void => {
+  try {
+    sessionStorage.setItem(
+      SEARCH_CACHE_KEY_PREFIX + key,
+      JSON.stringify({ ...entry, cachedAt: Date.now() } satisfies CachedResponse),
+    );
+  } catch { /* quota / disabled */ }
+};
+
 /**
  * The core proxy caller. Tries each model in the chain, with backoff on 429.
  * CRITICAL FIX: Uses spread operator to avoid mutating the shared model arrays.
@@ -466,6 +518,18 @@ export const generateWithFallback = async (
   intent: AIIntent = 'SMART',
   preferTier: 'paid' | 'free' = 'free'
 ): Promise<any> => {
+  // SEARCH cache — same prompt within 24h returns the cached response
+  // instead of burning another $0.03-0.10 grounded SEARCH call. Saves
+  // the dominant cost in the app (restaurant/attraction city chips).
+  if (intent === 'SEARCH') {
+    const cacheKey = hashRequest(contents, intent);
+    const cached = readSearchCache(cacheKey);
+    if (cached) {
+      console.log(`💾 [AI] Cache HIT for SEARCH ${cacheKey} (${Math.round((Date.now() - cached.cachedAt) / 60_000)}m old, model=${cached.model})`);
+      return { text: cached.text, model: cached.model, grounded: false, fromCache: true };
+    }
+  }
+
   // Prefer the dynamic chains synced from /api/chains (Worker KV) when
   // available. Falls back to the hardcoded GOOGLE_MODELS below when the
   // remote fetch hasn't completed yet or the Worker is unreachable.
@@ -707,6 +771,11 @@ export const generateWithFallback = async (
             12000,
           );
         }
+      }
+      // SEARCH cache write — only when the result is actually grounded (we
+      // don't want to cache hallucinated ungrounded responses).
+      if (isSearch && isActuallyGrounded) {
+        writeSearchCache(hashRequest(contents, intent), { text, model: modelId });
       }
       return { text, model: modelId, grounded: isActuallyGrounded };
 
