@@ -2407,6 +2407,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                         items={getMapItems()}
                         trip={trip}
                         activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
+                        onCityChange={(city) => setSelectedCity(city ?? 'all')}
                         title="מפת מסעדות"
                         savedNames={savedRestaurantNames}
                         onAddToList={(item) => {

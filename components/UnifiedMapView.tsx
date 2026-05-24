@@ -97,6 +97,12 @@ interface UnifiedMapViewProps {
     // (not the internal filter bar). Changing this prop triggers a smooth
     // flyToBounds animation instead of an instant fitBounds.
     activeCity?: string | null;
+    // Callback for when the user clicks a city pill inside the map.
+    // Required when `activeCity` is controlled — without it, the parent's
+    // state is never updated and the controlled-mirror effect snaps the
+    // chip selection back to whatever the parent has, making clicks
+    // appear to do nothing.
+    onCityChange?: (city: string | null) => void;
     // Concentric translucent circles around each hotel coord (1.2km
     // ≈ 15min walk and 2.4km ≈ 30min walk at 5 km/h).
     walkingCircles?: boolean;
@@ -780,6 +786,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     compactView = false,
     embedded = false,
     activeCity: controlledActiveCity,
+    onCityChange,
     walkingCircles = false,
     heatmap = false,
     flyTo = null,
@@ -3002,6 +3009,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         }
 
         setActiveCity(cityName);
+        // Notify the parent (RestaurantsView / AttractionsView) so their
+        // selectedCity state updates too — without this, the controlled
+        // mirror effect at the top of the component snaps activeCity back
+        // to the parent's value on the next render and the click appears
+        // to do nothing.
+        if (onCityChange) {
+            onCityChange(cityName === 'ALL' ? null : cityName);
+        }
         lastCityClickRef.current = { city: cityName, ts: now, idx: -1 };
     };
 
