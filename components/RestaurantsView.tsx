@@ -507,14 +507,18 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     // Confirmation modal reads this to show the right name + count.
     const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
 
+    // Empty the category — keep the chip itself (so "המבורגר" can be
+    // re-populated later without re-creating the category) but remove
+    // every restaurant inside it. User clarified 2026-05-24 that they
+    // wanted to wipe contents only, not lose the category name.
     const handleDeleteCategory = (categoryId: string) => {
-        const next = aiCategories.filter(c => c.id !== categoryId);
+        const next = aiCategories.map(c =>
+            c.id === categoryId ? { ...c, restaurants: [] } : c
+        );
         setAiCategories(next);
         persistAiRestaurants(next);
-        // Reset selection if the deleted category was active.
-        if (selectedCategory === categoryId) setSelectedCategory('all');
         setConfirmDeleteCategory(null);
-        toast.success('הקטגוריה נמחקה');
+        toast.success('כל המסעדות בקטגוריה נמחקו');
     };
     const [confirmNearHotel, setConfirmNearHotel] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
