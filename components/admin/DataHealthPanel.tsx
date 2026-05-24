@@ -131,23 +131,72 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
             // Snapshot working copies — verifyPlacesBatch mutates each item.
             const aiRestaurants = (trip.aiRestaurants || []).map(c => ({ ...c, restaurants: (c.restaurants || []).map(r => ({ ...r })) }));
             const aiAttractions = (trip.aiAttractions || []).map(c => ({ ...c, attractions: (c.attractions || []).map(a => ({ ...a })) }));
+            // Manual lists (user-curated, separate from AI research slices).
+            const restaurants = (trip.restaurants || []).map(c => ({ ...c, restaurants: (c.restaurants || []).map(r => ({ ...r })) }));
+            const attractions = (trip.attractions || []).map(c => ({ ...c, attractions: (c.attractions || []).map(a => ({ ...a })) }));
+            // Hotels are at the trip root, not nested in categories.
+            const hotels = (trip.hotels || []).map(h => ({ ...h }));
 
-            const flatR = aiRestaurants.flatMap(c => c.restaurants);
-            const flatA = aiAttractions.flatMap(c => c.attractions);
-            const allItems = [
-                ...flatR.map(r => ({ id: r.id, name: r.name, location: r.location, googleMapsUrl: r.googleMapsUrl, countryHint: r.region, lat: r.lat, lng: r.lng, verifiedAt: r.verifiedAt, verificationStatus: r.verificationStatus })),
-                ...flatA.map(a => ({ id: a.id, name: a.name, location: a.location, googleMapsUrl: a.googleMapsUrl, countryHint: a.region, lat: a.lat, lng: a.lng, verifiedAt: a.verifiedAt, verificationStatus: a.verificationStatus })),
+            const flatAiR = aiRestaurants.flatMap(c => c.restaurants);
+            const flatAiA = aiAttractions.flatMap(c => c.attractions);
+            const flatManR = restaurants.flatMap(c => c.restaurants);
+            const flatManA = attractions.flatMap(c => c.attractions);
+
+            // Country hint from the trip — Photon biases its geocoding to this
+            // country, so "Vlorë" no longer gets matched to an Israeli town
+            // when the trip is in Albania. Falls back to the raw country string
+            // from trip.destination when inferTripCountry can't resolve.
+            const tripCountry = inferTripCountry(trip) || trip.destination || '';
+
+            const verifiable = [
+                ...flatAiR.map(r => ({ id: r.id, name: r.name, location: r.location, googleMapsUrl: r.googleMapsUrl, countryHint: r.region || tripCountry, lat: r.lat, lng: r.lng, verifiedAt: r.verifiedAt, verificationStatus: r.verificationStatus })),
+                ...flatAiA.map(a => ({ id: a.id, name: a.name, location: a.location, googleMapsUrl: a.googleMapsUrl, countryHint: a.region || tripCountry, lat: a.lat, lng: a.lng, verifiedAt: a.verifiedAt, verificationStatus: a.verificationStatus })),
+                ...flatManR.map(r => ({ id: r.id, name: r.name, location: r.location, googleMapsUrl: r.googleMapsUrl, countryHint: r.region || tripCountry, lat: r.lat, lng: r.lng, verifiedAt: r.verifiedAt, verificationStatus: r.verificationStatus })),
+                ...flatManA.map(a => ({ id: a.id, name: a.name, location: a.location, googleMapsUrl: a.googleMapsUrl, countryHint: a.region || tripCountry, lat: a.lat, lng: a.lng, verifiedAt: a.verifiedAt, verificationStatus: a.verificationStatus })),
+                // Hotels: Photon query is built from name + address. The hotel's
+                // own `city` is the strongest country/scope hint we have.
+                ...hotels.map(h => ({
+                    id: h.id,
+                    name: h.name,
+                    location: h.address || '',
+                    googleMapsUrl: (h as any).googleMapsUrl as string | undefined,
+                    countryHint: h.city || tripCountry,
+                    lat: h.lat,
+                    lng: h.lng,
+                    verifiedAt: (h as any).verifiedAt as number | undefined,
+                    verificationStatus: (h as any).verificationStatus as any,
+                })),
             ];
 
-            await verifyPlacesBatch(allItems, trip, (id, result) => {
-                const r = flatR.find(x => x.id === id);
+            await verifyPlacesBatch(verifiable, trip, (id, result) => {
+                const r = flatAiR.find(x => x.id === id);
                 if (r) { applyVerificationResult(r, result); return; }
-                const a = flatA.find(x => x.id === id);
-                if (a) applyVerificationResult(a, result);
+                const a = flatAiA.find(x => x.id === id);
+                if (a) { applyVerificationResult(a, result); return; }
+                const mr = flatManR.find(x => x.id === id);
+                if (mr) { applyVerificationResult(mr, result); return; }
+                const ma = flatManA.find(x => x.id === id);
+                if (ma) { applyVerificationResult(ma, result); return; }
+                const h = hotels.find(x => x.id === id);
+                if (h) {
+                    // applyVerificationResult writes lat/lng/verifiedCity etc.
+                    // The hotel type allows these fields already.
+                    applyVerificationResult(h as any, result);
+                }
             }, { forceRefresh: true });
 
-            onUpdateTrip({ ...trip, aiRestaurants, aiAttractions });
-            toast.success('האימות הושלם');
+            onUpdateTrip({
+                ...trip,
+                aiRestaurants,
+                aiAttractions,
+                restaurants,
+                attractions,
+                hotels,
+            });
+            const total = verifiable.length;
+            const verified = [...flatAiR, ...flatAiA, ...flatManR, ...flatManA, ...hotels]
+                .filter((x: any) => x.verificationStatus === 'verified').length;
+            toast.success(`האימות הושלם — ${verified}/${total} אומתו`);
         } catch (e) {
             console.error(e);
             toast.error('האימות נכשל');
