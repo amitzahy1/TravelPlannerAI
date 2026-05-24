@@ -29,6 +29,7 @@ import { UnifiedMapView } from './UnifiedMapView';
 import { DataHealthPanel } from './admin/DataHealthPanel';
 import { ActivityPanel } from './admin/ActivityPanel';
 import { ModelHealthPanel } from './admin/ModelHealthPanel';
+import { TripValidationBanner } from './admin/TripValidationBanner';
 import { DeepResearchPanel } from './DeepResearchPanel';
 
 
@@ -1647,6 +1648,10 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Pure-code trip validator — flags impossible flight durations,
+                                    hotel/flight conflicts, items in the wrong country. No AI cost. */}
+                                <TripValidationBanner trip={activeTrip} />
 
                                 {/* Activity log + soft-delete recovery */}
                                 <ActivityPanel
