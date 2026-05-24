@@ -1351,12 +1351,12 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             {/* JSON detection — redirect to the recommendations tile before wasting an AI call */}
                                             {freeText.trim().startsWith('{') && (
                                                 <div className="mt-2 bg-rose-50 border border-rose-200 rounded-md p-2.5 text-[11px] text-rose-700 flex items-center justify-between gap-2">
-                                                    <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> זה נראה כמו JSON של מקומות. עבור ל"המלצות וטיפים" כדי להוסיף ישירות.</span>
+                                                    <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> זה נראה כמו JSON של מקומות. עבור ל"מסעדות ואטרקציות" כדי להוסיף ישירות.</span>
                                                     <button
                                                         onClick={() => { setJsonOnlyText(freeText); setFreeText(''); setAddMode('info'); }}
                                                         className="px-2.5 py-1 bg-rose-600 text-white rounded-md font-bold text-[11px] hover:bg-rose-700 shrink-0"
                                                     >
-                                                        העבר להמלצות
+                                                        העבר למסעדות ואטרקציות
                                                     </button>
                                                 </div>
                                             )}
