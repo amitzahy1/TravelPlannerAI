@@ -1578,19 +1578,36 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             }, 0);
             let undatedSeq = 0;
             hotels.forEach(h => {
-                // Multi-step city extraction. extractRobustCity sometimes returns
-                // a country name (e.g. "Vlorë, Albania" → "Albania") or empty
-                // string. Fall back to h.city, then to the address line itself
-                // so the hotel never silently disappears from the route stops.
-                // Drops only when ALL fallbacks resolve to a country-typed name.
+                // Multi-step city extraction. Each step is tried in order;
+                // the first one that yields a real city wins. Without this
+                // chain, hotels whose address parses to a COUNTRY ("Vlorë,
+                // Albania" → "Albania") get silently dropped from route
+                // stops, leaving the main map showing only one numbered
+                // stop even though the trip has two cities.
+                //   1. extractRobustCity from address+name
+                //   2. h.city directly (split on separators, take first part)
+                //   3. Address line's first comma-separated token
+                //   4. Hotel name's first word as last-resort
                 const extracted = cleanCityName(extractRobustCity(h.address || '', h.name || '', trip));
                 const extractedSafe = extracted && !isProvinceOrCountryName(extracted) ? extracted : '';
-                const fallbackCity = h.city && !isProvinceOrCountryName(h.city) ? h.city.split(/[-–,]/)[0].trim() : '';
-                const city = extractedSafe || fallbackCity;
+                const fallbackCity = h.city && !isProvinceOrCountryName(h.city)
+                    ? h.city.split(/[-–,;]/)[0].trim()
+                    : '';
+                const addressFirstPart = h.address
+                    ? cleanCityName(h.address.split(/[,;]/)[0].trim())
+                    : '';
+                const addressFirstSafe = addressFirstPart && !isProvinceOrCountryName(addressFirstPart)
+                    ? addressFirstPart
+                    : '';
+                const city = extractedSafe || fallbackCity || addressFirstSafe;
                 if (!city) {
-                    console.warn(`[Map] Dropping hotel "${h.name}" — no usable city in address or h.city`);
+                    console.warn(`[Map] Dropping hotel "${h.name}" — no usable city. ` +
+                        `address="${h.address}", h.city="${h.city}", ` +
+                        `extracted="${extracted}", fallback="${fallbackCity}", addressFirst="${addressFirstPart}"`);
                     return;
                 }
+                console.info(`[Map] Hotel "${h.name}" → routeStop city="${city}" (source: ` +
+                    `${extractedSafe ? 'extractRobustCity' : fallbackCity ? 'h.city' : 'address[0]'})`);
                 const baseTs = parseTripDate(h.checkInDate || '')?.getTime() || 0;
                 let ts: number;
                 if (baseTs) {
@@ -2893,18 +2910,28 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
             popupOpenRef.current = false;
         }
 
+        // Helper — matches an item against a city via locationMatchesCity,
+        // the same diacritic-safe, Hebrew-aware matcher used by the chip
+        // count + visible-items filter. Critical: keyword-only matching
+        // misses items whose city was AI-mis-tagged but whose name or
+        // description contains the right city — exactly the Tirana/Vlora
+        // case where ALL items had item.city="Vlora" so clicking Tirana
+        // found 0 items and the chip click did nothing.
+        const matchesCity = (i: MapItem, city: string): boolean => {
+            return locationMatchesCity(i.city || '', city)
+                || locationMatchesCity(i.address || '', city)
+                || locationMatchesCity(i.name || '', city)
+                || locationMatchesCity((i as any).nameEnglish || '', city)
+                || locationMatchesCity(i.description || '', city);
+        };
+
         // Double-tap on the same NON-ALL pill → step through that city's hotels.
         // Reads from MAPITEMS (which has the resolved coords from geocoding)
         // not trip.hotels (which often has no lat/lng on this trip).
         if (cityName !== 'ALL' && last?.city === cityName && now - last.ts < 1500 && map) {
-            const targetKey = cityKey(cityName);
-            const keywords = getCityKeywords(cityName);
             const cityHotels = mapItems.filter(i => {
                 if (i.type !== 'hotel' || !isValidCoordinate(i.lat, i.lng)) return false;
-                if (targetKey && cityKey(i.city || '') === targetKey) return true;
-                const addr = (i.address || '').toLowerCase();
-                const iCity = (i.city || '').toLowerCase();
-                return keywords.some(kw => addr.includes(kw) || iCity.includes(kw));
+                return matchesCity(i, cityName);
             });
             if (cityHotels.length > 0) {
                 const nextIdx = (last.idx + 1) % cityHotels.length;
@@ -2926,18 +2953,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         if (map) {
             const targetItems = cityName === 'ALL'
                 ? mapItems.filter(i => isValidCoordinate(i.lat, i.lng) && i.type !== 'airport')
-                : (() => {
-                    const targetKey = cityKey(cityName);
-                    const keywords = getCityKeywords(cityName);
-                    return mapItems.filter(i => {
-                        if (!isValidCoordinate(i.lat, i.lng)) return false;
-                        if (i.type === 'airport') return false;
-                        if (targetKey && cityKey(i.city || '') === targetKey) return true;
-                        const addr = (i.address || '').toLowerCase();
-                        const iCity = (i.city || '').toLowerCase();
-                        return keywords.some(kw => addr.includes(kw) || iCity.includes(kw));
-                    });
-                })();
+                : mapItems.filter(i => {
+                    if (!isValidCoordinate(i.lat, i.lng)) return false;
+                    if (i.type === 'airport') return false;
+                    return matchesCity(i, cityName);
+                });
 
             // eslint-disable-next-line no-console
             console.info(`[CityClick] ${cityName} → targetItems=${targetItems.length}`);
