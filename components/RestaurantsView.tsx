@@ -151,6 +151,7 @@ const getCuisineVisuals = (cuisine: string = '') => {
 
 import { cleanTextForMap } from '../utils/textUtils';
 import { getTripCities, locationMatchesCity, displayCityName, cityKey, extractRobustCity } from '../utils/geoData';
+import { categoryTitleToEnglish } from '../utils/categoryTranslate';
 import { geocodePlacesBatch, photonGeocodeRich } from '../utils/geocodePlaces';
 import { isPlaceInTripScope, resolvePlaceCity } from '../utils/tripScope';
 import { safeMapsUrl } from '../utils/mapsUrl';
@@ -502,6 +503,19 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [searchResults, setSearchResults] = useState<Restaurant[] | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<ExtendedRestaurant | null>(null);
     const [confirmReset, setConfirmReset] = useState(false);
+    // Holds the id of the category the user picked from "מחק את הקטגוריה".
+    // Confirmation modal reads this to show the right name + count.
+    const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
+
+    const handleDeleteCategory = (categoryId: string) => {
+        const next = aiCategories.filter(c => c.id !== categoryId);
+        setAiCategories(next);
+        persistAiRestaurants(next);
+        // Reset selection if the deleted category was active.
+        if (selectedCategory === categoryId) setSelectedCategory('all');
+        setConfirmDeleteCategory(null);
+        toast.success('הקטגוריה נמחקה');
+    };
     const [confirmNearHotel, setConfirmNearHotel] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [searchExpanded, setSearchExpanded] = useState(false);
@@ -1102,12 +1116,17 @@ HARD RULES:
                 ? displayCityName(cat.region as string, 'en')
                 : (trip.destinationEnglish || displayCityName(tripCities[0], 'en'));
             const catTitle = cat.title;
+            // Translate the Hebrew category label to English for the AI prompt
+            // so non-Hebrew-trained models reliably grasp the concept ("Burger"
+            // beats "המבורגר" for grounded web search). Hebrew is kept ONLY in
+            // the output instruction so the UI still gets Hebrew labels.
+            const catTitleEn = categoryTitleToEnglish(catTitle);
             const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-            const prompt = `You are a food expert. As of ${currentDate}, find the BEST restaurants in "${cityEn}" for the category: "${catTitle}".
+            const prompt = `You are a food expert. As of ${currentDate}, find the BEST restaurants in "${cityEn}" for the category: ${catTitleEn}${catTitleEn !== catTitle ? ` (Hebrew label: "${catTitle}")` : ''}.
 Return AT LEAST 10 currently operating restaurants (aim 12). Apply the same strict operational check as always — omit any closed place.
 Respond in the same JSON format:
 { "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl", "business_status", "verification_needed" } ] }
-Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be in English.`;
+Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be in English. "description" MUST be in Hebrew (1–2 short sentences, traveler-facing).`;
 
             const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH', tier);
             const rawData = JSON.parse(response.text || '{}');
@@ -2239,6 +2258,21 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 onSelect: handleBulkRefreshSaved,
                                 disabled: !!bulkRefreshing,
                             }] : []),
+                            // Delete-category — only when a single category is
+                            // selected. Removes that category and all its items
+                            // in one go. Requires explicit confirmation to
+                            // prevent fat-finger clicks. Surgical alternative
+                            // to "reset all research".
+                            ...(selectedCategory !== 'all' && aiCategories.find(c => c.id === selectedCategory) ? [(() => {
+                                const activeCat = aiCategories.find(c => c.id === selectedCategory)!;
+                                const itemCount = activeCat.restaurants.length;
+                                return {
+                                    icon: <Trash2 className="w-4 h-4" />,
+                                    label: `מחק את הקטגוריה "${displayTitle(activeCat.title)}" (${itemCount})`,
+                                    onSelect: () => setConfirmDeleteCategory(activeCat.id),
+                                    danger: true,
+                                };
+                            })()] : []),
                             ...(aiCategories.length > 0 ? [{
                                 icon: <Trash2 className="w-4 h-4" />,
                                 label: 'אפס מחקר',
@@ -2664,6 +2698,23 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                 onConfirm={handleResetResearch}
                 onClose={() => setConfirmReset(false)}
             />
+            {(() => {
+                if (!confirmDeleteCategory) return null;
+                const cat = aiCategories.find(c => c.id === confirmDeleteCategory);
+                if (!cat) return null;
+                return (
+                    <ConfirmModal
+                        isOpen={true}
+                        title={`למחוק את הקטגוריה "${displayTitle(cat.title)}"?`}
+                        message={`${cat.restaurants.length} מסעדות בקטגוריה זו יימחקו לצמיתות. הפעולה אינה ניתנת לביטול.`}
+                        confirmText="מחק קטגוריה"
+                        cancelText="ביטול"
+                        isDangerous
+                        onConfirm={() => handleDeleteCategory(confirmDeleteCategory)}
+                        onClose={() => setConfirmDeleteCategory(null)}
+                    />
+                );
+            })()}
             <ConfirmModal
                 isOpen={showRefreshLimitModal}
                 title="הגעת למכסה החודשית"

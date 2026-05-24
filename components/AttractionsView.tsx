@@ -4,6 +4,7 @@ import { MapPin, Ticket, Star, Landmark, Sparkles, Filter as FilterIcon, StickyN
 import { ExternalAiPasteModal } from './ExternalAiPasteModal';
 // cleaned imports
 import { getTripCities, locationMatchesCity, displayCityName, cityKey, extractRobustCity } from '../utils/geoData';
+import { categoryTitleToEnglish } from '../utils/categoryTranslate';
 import { getAttractionImage } from '../services/imageMapper';
 import { getEnglishName } from '../utils/displayName';
 import { useLazyPlaceImage } from '../hooks/useLazyPlaceImage';
@@ -383,6 +384,18 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
     const [confirmReset, setConfirmReset] = useState(false);
+    // See RestaurantsView for rationale — holds id of the category the user
+    // picked from "מחק את הקטגוריה" in the ⋮ menu.
+    const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
+
+    const handleDeleteCategory = (categoryId: string) => {
+        const next = aiCategories.filter(c => c.id !== categoryId);
+        setAiCategories(next);
+        persistAiAttractions(next);
+        if (selectedCategory === categoryId) setSelectedCategory('all');
+        setConfirmDeleteCategory(null);
+        toast.success('הקטגוריה נמחקה');
+    };
     const [confirmNearHotel, setConfirmNearHotel] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [searchExpanded, setSearchExpanded] = useState(false);
@@ -930,12 +943,16 @@ HARD RULES:
                 ? displayCityName(cat.region as string, 'en')
                 : (trip.destinationEnglish || displayCityName(tripCities[0], 'en'));
             const catTitle = cat.title;
+            // Translate Hebrew → English for AI grounding. See RestaurantsView
+            // for the rationale: non-Hebrew-trained models grasp the concept
+            // better from English ("Museums & Culture" beats "מוזיאונים ותרבות").
+            const catTitleEn = categoryTitleToEnglish(catTitle);
             const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-            const prompt = `You are a travel expert. As of ${currentDate}, find the BEST attractions in "${cityEn}" for the category: "${catTitle}".
+            const prompt = `You are a travel expert. As of ${currentDate}, find the BEST attractions in "${cityEn}" for the category: ${catTitleEn}${catTitleEn !== catTitle ? ` (Hebrew label: "${catTitle}")` : ''}.
 Return AT LEAST 8 currently operating places (aim 10). Omit any permanently or temporarily closed attraction.
 Respond in JSON:
 { "attractions": [ { "name", "nameEnglish", "description", "location", "type", "rating", "recommendationSource", "googleMapsUrl", "business_status", "verification_needed" } ] }
-Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be in English.`;
+Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be in English. "description" MUST be in Hebrew (1–2 short sentences, traveler-facing).`;
 
             const response = await generateWithFallback(null, [{ role: 'user', parts: [{ text: prompt }] }], { responseMimeType: 'application/json', temperature: 0.1 }, 'SEARCH', tier);
             const rawData = JSON.parse(response.text || '{}');
@@ -1896,6 +1913,19 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 onSelect: handleBulkRefreshSaved,
                                 disabled: !!bulkRefreshing,
                             }] : []),
+                            // Delete-category — only when a single category is
+                            // selected. Surgical alternative to "reset all
+                            // research". See RestaurantsView for rationale.
+                            ...(selectedCategory !== 'all' && aiCategories.find(c => c.id === selectedCategory) ? [(() => {
+                                const activeCat = aiCategories.find(c => c.id === selectedCategory)!;
+                                const itemCount = activeCat.attractions.length;
+                                return {
+                                    icon: <Trash2 className="w-4 h-4" />,
+                                    label: `מחק את הקטגוריה "${displayTitle(activeCat.title)}" (${itemCount})`,
+                                    onSelect: () => setConfirmDeleteCategory(activeCat.id),
+                                    danger: true,
+                                };
+                            })()] : []),
                             ...(aiCategories.length > 0 ? [{
                                 icon: <Trash2 className="w-4 h-4" />,
                                 label: 'אפס מחקר',
@@ -2283,6 +2313,23 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                 onConfirm={handleResetResearch}
                 onClose={() => setConfirmReset(false)}
             />
+            {(() => {
+                if (!confirmDeleteCategory) return null;
+                const cat = aiCategories.find(c => c.id === confirmDeleteCategory);
+                if (!cat) return null;
+                return (
+                    <ConfirmModal
+                        isOpen={true}
+                        title={`למחוק את הקטגוריה "${displayTitle(cat.title)}"?`}
+                        message={`${cat.attractions.length} אטרקציות בקטגוריה זו יימחקו לצמיתות. הפעולה אינה ניתנת לביטול.`}
+                        confirmText="מחק קטגוריה"
+                        cancelText="ביטול"
+                        isDangerous
+                        onConfirm={() => handleDeleteCategory(confirmDeleteCategory)}
+                        onClose={() => setConfirmDeleteCategory(null)}
+                    />
+                );
+            })()}
             <ConfirmModal
                 isOpen={showRefreshLimitModal}
                 title="הגעת למכסה החודשית"

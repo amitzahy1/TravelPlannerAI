@@ -9,6 +9,7 @@
 
 import type { Trip, Restaurant, Attraction, RestaurantCategory, AttractionCategory } from '../types';
 import { parseJsonLenient } from './jsonSanitizer';
+import { categoryTitleToEnglish } from '../utils/categoryTranslate';
 
 export type Kind = 'attractions' | 'restaurants';
 
@@ -61,12 +62,19 @@ export function buildExternalAiPrompt(
     ? 15
     : isMultiCity ? Math.max(30, cities.length * 10) : 30;
 
+  // The AI category label has TWO forms:
+  //   - English  → fed to the model so non-Hebrew-trained AIs grasp the
+  //                concept ("Burger" >>> "המבורגר" for web grounding)
+  //   - Hebrew   → echoed back verbatim in the OUTPUT's categoryTitle
+  //                so the trip UI continues showing Hebrew labels.
+  const scopeCategoryEn = scopeCategory ? categoryTitleToEnglish(scopeCategory) : '';
   const categoryScopeBlock = scopeCategory
     ? `
 ═══ CATEGORY SCOPE — STRICT ═══
-This prompt is scoped to ONE category: "${scopeCategory}".
-Return picks for THIS category ONLY. Use the categoryTitle field with
-EXACTLY this string. Do not include other categories. If you can't find
+This prompt is scoped to ONE category: ${scopeCategoryEn}${scopeCategoryEn !== scopeCategory ? ` (Hebrew label: "${scopeCategory}")` : ''}.
+Return picks for THIS category ONLY. In the OUTPUT JSON, the "categoryTitle"
+field MUST be the Hebrew string "${scopeCategory}" verbatim (the UI uses
+Hebrew labels). Do not include other categories. If you can't find
 ${targetMin} solid picks specifically for this category, return what you
 have — half-fitting items diluted to fill the quota are a quality failure.
 ═══════════════════════════════════════════════════════════════════════════════
