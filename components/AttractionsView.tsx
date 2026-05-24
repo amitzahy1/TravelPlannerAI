@@ -488,6 +488,12 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
         // Tally checks the same fields as attractionMatchesCity — see that
         // function's comment for why we look at name + description too.
+        //
+        // Count per matching chip (NO early-return). The chip count must equal
+        // "how many items this chip's filter would show". An item that mentions
+        // two cities legitimately shows under both filters and should count
+        // twice. The early-return version was making later chips read 0 even
+        // when clicking them surfaced dozens of items.
         const tally = (region?: string, location?: string, name?: string, nameEnglish?: string, description?: string) => {
             for (const k of orderedKeys) {
                 const display = cityByKey.get(k)!.display;
@@ -499,7 +505,6 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     || locationMatchesCity(description || '', display)
                 ) {
                     cityByKey.get(k)!.count += 1;
-                    return;
                 }
             }
         };

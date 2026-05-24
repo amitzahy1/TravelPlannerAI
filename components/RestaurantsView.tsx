@@ -614,6 +614,15 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         // lives in the NAME ("Vlora Bar Cafe") rather than `location` still
         // gets attributed to the right chip. Otherwise chip counts read 0
         // even when the city tab has plenty of items.
+        //
+        // Count per matching chip (NO early-return). The chip count must equal
+        // "how many items this chip's filter would show", because that's what
+        // the user expects. An item that mentions two cities (rare but real:
+        // "Best Tirana restaurant — close to Vlora beach") legitimately shows
+        // under both filters, so it counts twice in the chip strip too. Without
+        // this, items get absorbed by whichever chip comes first in orderedKeys
+        // and the later chip silently reads 0 even though clicking it shows
+        // dozens of items.
         const tally = (region?: string, location?: string, name?: string, nameEnglish?: string, description?: string) => {
             for (const k of orderedKeys) {
                 const display = cityByKey.get(k)!.display;
@@ -625,7 +634,6 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
                     || locationMatchesCity(description || '', display)
                 ) {
                     cityByKey.get(k)!.count += 1;
-                    return;
                 }
             }
         };
