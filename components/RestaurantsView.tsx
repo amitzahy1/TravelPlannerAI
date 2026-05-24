@@ -656,15 +656,10 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         }));
     }, [trip.restaurants, trip.aiRestaurants, trip.hotels]);
 
-    // When switching to map view, auto-focus on the first trip city (= the
-    // city of the earliest-checkin hotel) instead of staying on "all route".
-    // Honors any explicit city pick the user has already made.
-    useEffect(() => {
-        if (viewMode !== 'map') return;
-        if (selectedCity !== 'all') return;
-        const first = presentCities[0]?.display;
-        if (first) setSelectedCity(first);
-    }, [viewMode, presentCities, selectedCity]);
+    // Default map view stays on "all route" so the user sees the whole
+    // trip country with every city pinned. They zoom into a specific
+    // city by clicking its chip. Auto-focusing to the first city hid the
+    // multi-city geography on map open — reverted 2026-05-24.
 
     // Walking minutes from a place to its NEAREST hotel — null when either
     // the place or every hotel is missing coords. Used by the distance filter

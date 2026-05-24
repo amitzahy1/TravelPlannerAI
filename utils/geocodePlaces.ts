@@ -52,6 +52,38 @@ const COUNTRY_BBOXES: Record<string, [number, number, number, number]> = {
   'brazil':         [-73.9,-33.8, -28.8,   5.3],
   'argentina':      [-73.6,-55.1, -53.6, -21.8],
   'peru':           [-81.3,-18.4, -68.7,   0.0],
+  // Balkans / Eastern Europe — added 2026-05-24 after user reported an
+  // Albania trip showing Israel on the map. Without an entry here,
+  // getTripCountryBboxes returns []; the bad-coord filter becomes a no-op;
+  // hotels mis-geocoded to Israel pass through and the map fits to Israel.
+  'albania':        [ 19.3, 39.6,  21.1,  42.7],
+  'serbia':         [ 18.8, 41.9,  23.0,  46.2],
+  'bulgaria':       [ 22.4, 41.2,  28.6,  44.2],
+  'romania':        [ 20.3, 43.6,  29.7,  48.3],
+  'north macedonia':[ 20.5, 40.8,  23.0,  42.4],
+  'slovenia':       [ 13.4, 45.4,  16.6,  46.9],
+  'bosnia':         [ 15.7, 42.6,  19.6,  45.3],
+  'montenegro':     [ 18.4, 41.9,  20.4,  43.6],
+  'czechia':        [ 12.1, 48.6,  18.9,  51.1],
+  'czech republic': [ 12.1, 48.6,  18.9,  51.1],
+  'hungary':        [ 16.1, 45.7,  22.9,  48.6],
+  'slovakia':       [ 16.8, 47.7,  22.6,  49.6],
+  'poland':         [ 14.1, 49.0,  24.2,  54.8],
+  'austria':        [  9.5, 46.4,  17.2,  49.0],
+  'belgium':        [  2.5, 49.5,   6.4,  51.5],
+  'ireland':        [-10.7, 51.4,  -5.4,  55.4],
+  'norway':         [  4.6, 57.8,  31.0,  71.2],
+  'sweden':         [ 10.9, 55.3,  24.2,  69.1],
+  'denmark':        [  8.0, 54.5,  15.2,  57.8],
+  'finland':        [ 20.5, 59.8,  31.6,  70.1],
+  'estonia':        [ 21.8, 57.5,  28.2,  59.7],
+  'latvia':         [ 20.9, 55.7,  28.2,  58.1],
+  'lithuania':      [ 20.9, 53.9,  26.8,  56.5],
+  'ukraine':        [ 22.1, 44.4,  40.2,  52.4],
+  'jordan':         [ 34.9, 29.2,  39.3,  33.4],
+  'china':          [ 73.5, 18.2, 134.8,  53.6],
+  'hong kong':      [113.8, 22.1, 114.4,  22.6],
+  'taiwan':         [119.5, 21.9, 122.0,  25.3],
 };
 
 // Maps Hebrew country names to their English equivalents in COUNTRY_BBOXES.
@@ -70,6 +102,17 @@ const HEBREW_COUNTRY_ALIASES: Record<string, string> = {
   'סינגפור': 'singapore', 'מלזיה': 'malaysia', 'פיליפינים': 'philippines',
   'איחוד האמירויות': 'uae', 'ברזיל': 'brazil', 'ארגנטינה': 'argentina',
   'פרו': 'peru', 'באלי': 'bali', 'מלדיביים': 'maldives',
+  // Balkans / Eastern Europe (matched 2026-05-24 against new bbox entries)
+  'אלבניה': 'albania', 'סרביה': 'serbia', 'בולגריה': 'bulgaria',
+  'רומניה': 'romania', 'מקדוניה': 'north macedonia',
+  'סלובניה': 'slovenia', 'בוסניה': 'bosnia', 'מונטנגרו': 'montenegro',
+  'צ\'כיה': 'czech republic', 'צכיה': 'czech republic',
+  'הונגריה': 'hungary', 'סלובקיה': 'slovakia', 'פולין': 'poland',
+  'אוסטריה': 'austria', 'בלגיה': 'belgium', 'אירלנד': 'ireland',
+  'נורווגיה': 'norway', 'שוודיה': 'sweden', 'דנמרק': 'denmark',
+  'פינלנד': 'finland', 'אסטוניה': 'estonia', 'לטביה': 'latvia',
+  'ליטא': 'lithuania', 'אוקראינה': 'ukraine', 'ירדן': 'jordan',
+  'סין': 'china', 'הונג קונג': 'hong kong', 'טייוואן': 'taiwan',
 };
 
 /**
