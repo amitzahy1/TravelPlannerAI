@@ -13,9 +13,9 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Activity, RefreshCw, CheckCircle2, AlertTriangle, XCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { Activity, RefreshCw, CheckCircle2, AlertTriangle, XCircle, ExternalLink, Loader2, Download } from 'lucide-react';
 import { GOOGLE_MODELS } from '../../services/aiService';
-import { probeModels, readProbeCache, clearProbeCache, type ProbeBundle, type ProbeResult } from '../../services/aiHealth';
+import { probeModels, readProbeCache, clearProbeCache, syncModelsOnWorker, getCachedRemoteChains, type ProbeBundle, type ProbeResult } from '../../services/aiHealth';
 import { toast } from '../../stores/useToastStore';
 
 const STATUS_TONE: Record<string, string> = {
@@ -63,25 +63,34 @@ const formatProbedAt = (ms: number): string => {
 export const ModelHealthPanel: React.FC = () => {
     const [bundle, setBundle] = useState<ProbeBundle | null>(() => readProbeCache());
     const [running, setRunning] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+    const [remoteChainsInfo, setRemoteChainsInfo] = useState(() => getCachedRemoteChains());
 
     // Refresh the cache view periodically so "X seconds ago" stays accurate.
     useEffect(() => {
         const id = setInterval(() => {
             const fresh = readProbeCache();
             if (fresh) setBundle(fresh);
+            // Also refresh the dynamic-chain freshness banner.
+            setRemoteChainsInfo(getCachedRemoteChains());
         }, 30_000);
         return () => clearInterval(id);
     }, []);
 
+    // Always probe what the LIVE chain knows about — when the dynamic-sync has
+    // populated remoteChainsInfo, use that; otherwise fall back to the hardcoded
+    // constants. Ensures we don't probe a stale model list when the cron has
+    // already published a newer one.
     const uniqueModels = React.useMemo(() => {
+        const chains = remoteChainsInfo?.chains ?? GOOGLE_MODELS;
         const all = new Set<string>([
-            ...GOOGLE_MODELS.SMART_CANDIDATES,
-            ...GOOGLE_MODELS.RESEARCH_CANDIDATES,
-            ...GOOGLE_MODELS.FAST_CANDIDATES,
-            ...GOOGLE_MODELS.DOC_CANDIDATES,
+            ...chains.SMART_CANDIDATES,
+            ...chains.RESEARCH_CANDIDATES,
+            ...chains.FAST_CANDIDATES,
+            ...chains.DOC_CANDIDATES,
         ]);
         return Array.from(all);
-    }, []);
+    }, [remoteChainsInfo]);
 
     const handleProbe = async () => {
         setRunning(true);
@@ -107,6 +116,33 @@ export const ModelHealthPanel: React.FC = () => {
         toast.success('מטמון בדיקת מודלים נוקה.');
     };
 
+    // Trigger a fresh sync of all provider catalogs on the Worker. Pulls
+    // Groq + OpenRouter + Gemini model lists, runs the categorizer, and
+    // rewrites the KV cache. The cron runs this daily at 04:00 UTC — this
+    // button is for when a provider just shipped a new model and we don't
+    // want to wait.
+    const handleSync = async () => {
+        setSyncing(true);
+        try {
+            const result = await syncModelsOnWorker();
+            setRemoteChainsInfo({ chains: result.chains, syncedAt: result.syncedAt, providerStats: result.providerStats });
+            const stats = result.providerStats || {};
+            const ok = Object.values(stats).filter((s: any) => s.ok).length;
+            const failed = Object.values(stats).filter((s: any) => !s.ok).length;
+            const total = (result.models || []).length;
+            if (failed === 0) {
+                toast.success(`סנכרון הצליח — ${total} מודלים מ-${ok} ספקים.`);
+            } else {
+                toast.warning(`סנכרון הסתיים עם ${failed} שגיאות מתוך ${ok + failed} ספקים — ראה קונסולה.`);
+            }
+            console.log('[ModelHealthPanel] sync result', result);
+        } catch (err: any) {
+            toast.error(`סנכרון נכשל: ${err?.message?.slice(0, 140) || 'unknown'}`);
+        } finally {
+            setSyncing(false);
+        }
+    };
+
     const sortedResults: ProbeResult[] = bundle
         ? [...bundle.results].sort((a, b) => Number(b.ok) - Number(a.ok) || a.model.localeCompare(b.model))
         : [];
@@ -128,6 +164,15 @@ export const ModelHealthPanel: React.FC = () => {
                         </button>
                     )}
                     <button
+                        onClick={handleSync}
+                        disabled={syncing}
+                        title="מושך את רשימת המודלים הנוכחית מ-Groq + OpenRouter + Gemini ובונה מחדש את שרשרת ה-fallback. רץ אוטומטית פעם ביום."
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                        {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                        {syncing ? 'מסנכרן…' : 'סנכרן מודלים'}
+                    </button>
+                    <button
                         onClick={handleProbe}
                         disabled={running}
                         className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
@@ -137,6 +182,16 @@ export const ModelHealthPanel: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Dynamic-chain freshness banner — shows when the chain config was
+                last synced from provider catalogs. The cron updates this daily;
+                the green "סנכרן מודלים" button forces an immediate refresh. */}
+            {remoteChainsInfo && (
+                <div className="text-2xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 mb-3 flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>שרשרת מודלים דינמית · עודכנה {formatProbedAt(remoteChainsInfo.syncedAt)} · {uniqueModels.length} מודלים מקטלוג חי</span>
+                </div>
+            )}
 
             <p className="text-xs text-slate-600 mb-3">
                 בודק חיבור לכל מודלי Gemini ו-OpenRouter המוגדרים בשרשרת fallback.

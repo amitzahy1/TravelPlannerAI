@@ -2,7 +2,12 @@ import { StagedTripData, StagedCategories } from "../types";
 import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 import { auth } from "./firebaseConfig";
 import { parseJsonLenient, sanitizeJsonControlChars } from "./jsonSanitizer";
-import { applyProbeToChain, markModelFailed } from "./aiHealth";
+import { applyProbeToChain, markModelFailed, getCachedRemoteChains, getRemoteChains } from "./aiHealth";
+
+// Fire-and-forget boot-time fetch — pulls the dynamically-synced chains from
+// /api/chains so generateWithFallback can prefer them over the hardcoded
+// constants below. Falls back gracefully when the Worker is unreachable.
+void getRemoteChains();
 import { toast } from "../stores/useToastStore";
 
 // Fire the "ungrounded SEARCH" warning only ONCE per browser session — the
@@ -461,20 +466,29 @@ export const generateWithFallback = async (
   intent: AIIntent = 'SMART',
   preferTier: 'paid' | 'free' = 'free'
 ): Promise<any> => {
+  // Prefer the dynamic chains synced from /api/chains (Worker KV) when
+  // available. Falls back to the hardcoded GOOGLE_MODELS below when the
+  // remote fetch hasn't completed yet or the Worker is unreachable.
+  const remote = getCachedRemoteChains();
+  const SMART = remote?.chains.SMART_CANDIDATES ?? GOOGLE_MODELS.SMART_CANDIDATES;
+  const SEARCH = remote?.chains.RESEARCH_CANDIDATES ?? GOOGLE_MODELS.RESEARCH_CANDIDATES;
+  const FAST = remote?.chains.FAST_CANDIDATES ?? GOOGLE_MODELS.FAST_CANDIDATES;
+  const DOC = remote?.chains.DOC_CANDIDATES ?? GOOGLE_MODELS.DOC_CANDIDATES;
+
   // Build model chain WITHOUT mutating the originals.
-  // - SEARCH:  market research (food / attractions) — 3.5-flash with grounding first.
-  // - ANALYZE: deep doc/PDF extraction — Pro 2.5 first, then Flash chain as fallback.
-  // - SMART:   structured parsing — 3.5-flash first, Pro as last resort.
+  // - SEARCH:  market research (food / attractions) — flash with grounding first.
+  // - ANALYZE: deep doc/PDF extraction — Pro first, then flash chain as fallback.
+  // - SMART:   structured parsing — pro first (per user direction), free fallbacks.
   // - FAST:    chat / quick lookups — flash-lite only, stay cheap.
   let chain: string[];
   if (intent === 'SEARCH') {
-    chain = [...GOOGLE_MODELS.RESEARCH_CANDIDATES];
+    chain = [...SEARCH];
   } else if (intent === 'ANALYZE') {
-    chain = [...GOOGLE_MODELS.DOC_CANDIDATES, ...GOOGLE_MODELS.SMART_CANDIDATES];
+    chain = [...DOC, ...SMART];
   } else if (intent === 'SMART') {
-    chain = [...GOOGLE_MODELS.SMART_CANDIDATES, ...GOOGLE_MODELS.FAST_CANDIDATES];
+    chain = [...SMART, ...FAST];
   } else {
-    chain = [...GOOGLE_MODELS.FAST_CANDIDATES];
+    chain = [...FAST];
   }
 
   // Deduplicate (in case same model appears in both tiers)

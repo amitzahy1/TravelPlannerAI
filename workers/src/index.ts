@@ -11,6 +11,7 @@
 import { SignJWT, importPKCS8, jwtVerify, createRemoteJWKSet } from 'jose';
 import PostalMime from 'postal-mime';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { categorize, buildChains, type ModelMeta, type BuiltChains } from './lib/modelCategorizer';
 
 // --- INTERFACES ---
 interface Env {
@@ -21,6 +22,7 @@ interface Env {
         FIREBASE_SERVICE_ACCOUNT: string;
         FIREBASE_PROJECT_ID: string;
         AUTH_SECRET: string;
+        AI_CHAINS_CACHE?: KVNamespace;  // Cloudflare KV — caches dynamic chain config
 }
 
 // Hard allow-list. Only these accounts can invoke /api/generate.
@@ -225,8 +227,141 @@ const callGroq = async (
         return { text, model: data?.model || modelId };
 };
 
+// ============================================================================
+// 📦 DYNAMIC MODEL CHAIN SYNC
+// ============================================================================
+//
+// Each provider exposes a /models endpoint with their current catalog. The
+// sync helpers below fetch them, normalize the IDs (prefix groq: / openrouter:),
+// run them through the shared categorizer, and store the assembled chains in
+// Cloudflare KV. Triggered by:
+//   - daily cron at 04:00 UTC (see [triggers] in wrangler.toml → scheduled())
+//   - manual admin click → POST /api/sync-models
+// Frontend reads the cached result via GET /api/chains; falls back to its
+// own hardcoded constants when KV is empty or the Worker is unreachable.
+//
+// Provider catalogs:
+//   Groq:       GET https://api.groq.com/openai/v1/models  (Bearer GROQ_API_KEY)
+//   OpenRouter: GET https://openrouter.ai/api/v1/models     (no auth needed)
+//   Gemini:     GET https://generativelanguage.googleapis.com/v1beta/models?key=KEY
+
+const CHAINS_KV_KEY = 'chains:v1';
+
+interface SyncResult {
+        chains: BuiltChains;
+        models: ModelMeta[];
+        syncedAt: number;
+        providerStats: Record<string, { ok: boolean; count: number; error?: string }>;
+}
+
+const fetchGroqModels = async (env: Env): Promise<string[]> => {
+        if (!env.GROQ_API_KEY) return [];
+        const response = await fetch('https://api.groq.com/openai/v1/models', {
+                headers: { Authorization: `Bearer ${env.GROQ_API_KEY}` },
+        });
+        if (!response.ok) throw new Error(`Groq /models ${response.status}`);
+        const data = await response.json() as { data?: Array<{ id: string; active?: boolean }> };
+        const ids = (data.data || [])
+                .filter(m => m.active !== false)
+                .map(m => `groq:${m.id}`)
+                // Drop non-chat models (whisper for audio, safety guardrails, embeddings)
+                .filter(id => !/whisper|prompt-guard|safeguard|orpheus|embedding/i.test(id));
+        return ids;
+};
+
+const fetchOpenRouterModels = async (env: Env): Promise<string[]> => {
+        const response = await fetch('https://openrouter.ai/api/v1/models');
+        if (!response.ok) throw new Error(`OpenRouter /models ${response.status}`);
+        const data = await response.json() as { data?: Array<{ id: string; pricing?: { prompt?: string; completion?: string } }> };
+        // Only free-tier models — keeps the chain entirely no-cost. When the
+        // user funds OpenRouter, we can flip this to also include paid models
+        // by removing the filter (or via a `tier` query param).
+        const free = (data.data || [])
+                .filter(m => m.pricing?.prompt === '0' && m.pricing?.completion === '0')
+                .map(m => `openrouter:${m.id}`)
+                // Drop image/audio/vision-only models that don't take text prompts
+                .filter(id => !/whisper|tts|audio|image-gen|^openrouter:[^/]+\/lyria/i.test(id));
+        return free;
+};
+
+const fetchGeminiModels = async (env: Env): Promise<string[]> => {
+        const key = env.GEMINI_PREMIUM_KEY || env.GEMINI_API_KEY;
+        if (!key) return [];
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+        if (!response.ok) throw new Error(`Gemini /models ${response.status}`);
+        const data = await response.json() as { models?: Array<{ name: string; supportedGenerationMethods?: string[]; description?: string }> };
+        return (data.models || [])
+                .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+                // The name comes as "models/gemini-2.5-flash" — strip the prefix.
+                .map(m => m.name.replace(/^models\//, ''))
+                // Keep only the modern 2.5+/3.x families. Older 1.x/embedding/etc. would just bloat the chain.
+                .filter(id => /^gemini-(2\.5|3\.[0-9]+|3\.\d+)-/.test(id))
+                // Drop deprecated -001 / -002 frozen snapshots — they're superseded by the named alias.
+                .filter(id => !/-00[0-9]+$/.test(id));
+};
+
+/**
+ * Fetch all provider catalogs, build chains, and write to KV. Pure side-effect
+ * function — returns the result so the caller can either log it (cron) or
+ * return it to the client (manual sync via /api/sync-models).
+ */
+const syncModels = async (env: Env): Promise<SyncResult> => {
+        const providerStats: Record<string, { ok: boolean; count: number; error?: string }> = {};
+
+        const safeFetch = async (name: string, fn: () => Promise<string[]>): Promise<string[]> => {
+                try {
+                        const ids = await fn();
+                        providerStats[name] = { ok: true, count: ids.length };
+                        return ids;
+                } catch (e: any) {
+                        providerStats[name] = { ok: false, count: 0, error: e?.message?.slice(0, 200) };
+                        console.warn(`[sync] ${name} fetch failed: ${e?.message}`);
+                        return [];
+                }
+        };
+
+        const [groqIds, openrouterIds, geminiIds] = await Promise.all([
+                safeFetch('groq', () => fetchGroqModels(env)),
+                safeFetch('openrouter', () => fetchOpenRouterModels(env)),
+                safeFetch('gemini', () => fetchGeminiModels(env)),
+        ]);
+
+        const allIds = [...geminiIds, ...groqIds, ...openrouterIds];
+        const models = allIds.map(categorize);
+        const chains = buildChains(models);
+
+        const result: SyncResult = {
+                chains,
+                models,
+                syncedAt: Date.now(),
+                providerStats,
+        };
+
+        // Cache for 25 hours (one hour over the cron interval so the worker
+        // never serves an empty result while a fresh sync is in flight).
+        if (env.AI_CHAINS_CACHE) {
+                await env.AI_CHAINS_CACHE.put(CHAINS_KV_KEY, JSON.stringify(result), {
+                        expirationTtl: 25 * 3600,
+                });
+        }
+
+        console.log(`[sync] gemini=${providerStats.gemini?.count ?? 0} groq=${providerStats.groq?.count ?? 0} openrouter=${providerStats.openrouter?.count ?? 0} total=${allIds.length}`);
+        return result;
+};
+
 // --- MAIN HANDLER ---
 export default {
+        // Cron trigger — daily 04:00 UTC per wrangler.toml [triggers].
+        async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+                ctx.waitUntil(
+                        syncModels(env).then(r => {
+                                console.log(`[cron] sync ok at ${new Date(r.syncedAt).toISOString()}`);
+                        }).catch(e => {
+                                console.error(`[cron] sync failed: ${e?.message}`);
+                        }),
+                );
+        },
+
         async email(message: ForwardableEmailMessage, env: Env, ctx: ExecutionContext) {
                 console.log(`[Email Handler] Received email from: ${message.from}`);
                 try {
@@ -642,6 +777,76 @@ export default {
                                 return new Response(JSON.stringify({ results, probedAt: Date.now() }), {
                                         headers: { ...corsHeaders, "Content-Type": "application/json" },
                                 });
+                        }
+
+                        // Dynamic chain config — frontend reads the cached chain on app
+                        // boot. Public endpoint (no auth) since the data is purely a list
+                        // of model ids, no secrets. Returns the most recent successful
+                        // sync, or a clear "stale=true" marker if KV is empty.
+                        if (url.pathname === "/api/chains" && request.method === "GET") {
+                                if (!env.AI_CHAINS_CACHE) {
+                                        return new Response(JSON.stringify({ error: 'AI_CHAINS_CACHE KV not bound on Worker', stale: true }), {
+                                                status: 503,
+                                                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                                        });
+                                }
+                                const cached = await env.AI_CHAINS_CACHE.get(CHAINS_KV_KEY);
+                                if (!cached) {
+                                        return new Response(JSON.stringify({ error: 'Chain cache empty — run /api/sync-models first', stale: true }), {
+                                                status: 404,
+                                                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                                        });
+                                }
+                                return new Response(cached, {
+                                        headers: {
+                                                ...corsHeaders,
+                                                "Content-Type": "application/json",
+                                                "Cache-Control": "public, max-age=600", // browser/CDN can hold for 10 min
+                                        },
+                                });
+                        }
+
+                        // Manual sync trigger — admin click in ModelHealthPanel. Same
+                        // auth + allow-list as /api/generate. Cron runs this daily, but
+                        // the admin can force a refresh on demand if a provider just
+                        // shipped a new model and they don't want to wait.
+                        if (url.pathname === "/api/sync-models" && request.method === "POST") {
+                                const authHeader = request.headers.get('Authorization') || '';
+                                const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+                                if (!idToken) {
+                                        return new Response(JSON.stringify({ error: 'Missing Authorization bearer token' }), {
+                                                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                                        });
+                                }
+                                if (!env.FIREBASE_PROJECT_ID) {
+                                        return new Response(JSON.stringify({ error: 'Server misconfigured: FIREBASE_PROJECT_ID missing' }), {
+                                                status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                                        });
+                                }
+                                let caller: { email: string; uid: string };
+                                try {
+                                        caller = await verifyFirebaseToken(idToken, env.FIREBASE_PROJECT_ID);
+                                } catch {
+                                        return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                                                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                                        });
+                                }
+                                if (!ALLOWED_EMAILS.has(caller.email)) {
+                                        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+                                                status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                                        });
+                                }
+
+                                try {
+                                        const result = await syncModels(env);
+                                        return new Response(JSON.stringify(result), {
+                                                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                                        });
+                                } catch (e: any) {
+                                        return new Response(JSON.stringify({ error: e?.message || String(e) }), {
+                                                status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+                                        });
+                                }
                         }
 
                         // Email Import Endpoint (Apps Script + Testing)

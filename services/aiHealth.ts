@@ -85,6 +85,124 @@ export const clearProbeCache = (): void => {
   loggedDemotions.clear();
 };
 
+// =====================================================================
+// 🔄 Dynamic chain config — fetched from Worker /api/chains, cached in
+// sessionStorage so the wider app can read it synchronously. The Worker
+// cron resyncs daily and the admin can trigger a manual resync via
+// /api/sync-models. When the Worker is unreachable or KV is empty, the
+// frontend silently falls back to its hardcoded GOOGLE_MODELS const.
+// =====================================================================
+
+export type Intent = 'SMART' | 'RESEARCH' | 'FAST' | 'DOC';
+
+export interface RemoteChains {
+  SMART_CANDIDATES: string[];
+  RESEARCH_CANDIDATES: string[];
+  FAST_CANDIDATES: string[];
+  DOC_CANDIDATES: string[];
+}
+
+export interface RemoteChainsBundle {
+  chains: RemoteChains;
+  syncedAt: number;
+  providerStats?: Record<string, { ok: boolean; count: number; error?: string }>;
+}
+
+const CHAINS_CACHE_KEY = 'ai-remote-chains-v1';
+const CHAINS_TTL_MS = 60 * 60 * 1000; // 1h client cache
+
+const readChainsCache = (): RemoteChainsBundle | null => {
+  try {
+    const raw = sessionStorage.getItem(CHAINS_CACHE_KEY);
+    if (!raw) return null;
+    const bundle = JSON.parse(raw) as RemoteChainsBundle;
+    if (!bundle?.chains || typeof bundle.syncedAt !== 'number') return null;
+    if (Date.now() - bundle.syncedAt > CHAINS_TTL_MS) return null;
+    return bundle;
+  } catch { return null; }
+};
+
+const writeChainsCache = (bundle: RemoteChainsBundle): void => {
+  try { sessionStorage.setItem(CHAINS_CACHE_KEY, JSON.stringify(bundle)); } catch { /* quota */ }
+};
+
+// In-memory copy so generateWithFallback can read synchronously (avoids the
+// async-everywhere refactor). Hydrated by getRemoteChains() on first call.
+let inMemoryChains: RemoteChainsBundle | null = readChainsCache();
+
+/**
+ * Fetch the dynamic chain config from the Worker. Public endpoint (no auth).
+ * Returns null on any error so the caller can fall back to its hardcoded
+ * constants without throwing.
+ */
+export const getRemoteChains = async (): Promise<RemoteChainsBundle | null> => {
+  // Serve from in-memory if still fresh.
+  if (inMemoryChains && Date.now() - inMemoryChains.syncedAt <= CHAINS_TTL_MS) {
+    return inMemoryChains;
+  }
+  // Disk-cache fallback.
+  const disk = readChainsCache();
+  if (disk) {
+    inMemoryChains = disk;
+    return disk;
+  }
+  try {
+    const WORKER_URL = import.meta.env.VITE_WORKER_URL || 'https://travelplannerai-api.amitzahy1.workers.dev';
+    const response = await fetch(`${WORKER_URL}/api/chains`);
+    if (!response.ok) {
+      console.warn(`[aiHealth] /api/chains returned ${response.status} — using hardcoded chain`);
+      return null;
+    }
+    const body = await response.json() as RemoteChainsBundle & { stale?: boolean };
+    if (body.stale || !body.chains) {
+      console.warn('[aiHealth] /api/chains returned stale=true — using hardcoded chain');
+      return null;
+    }
+    inMemoryChains = body;
+    writeChainsCache(body);
+    console.log(`📡 [aiHealth] Loaded dynamic chains synced ${Math.round((Date.now() - body.syncedAt) / 60000)}m ago`);
+    return body;
+  } catch (err: any) {
+    console.warn(`[aiHealth] Failed to fetch /api/chains: ${err?.message} — using hardcoded chain`);
+    return null;
+  }
+};
+
+/**
+ * Synchronous accessor for the in-memory chains. Returns null if no remote
+ * fetch has succeeded yet. Used by generateWithFallback to prefer dynamic
+ * chains without making every call async.
+ */
+export const getCachedRemoteChains = (): RemoteChainsBundle | null => inMemoryChains;
+
+/**
+ * Admin-only: triggers a fresh sync on the Worker. Returns the full sync
+ * result (chains + per-provider stats + model metadata) so the panel can
+ * show what was discovered.
+ */
+export const syncModelsOnWorker = async (): Promise<{ chains: RemoteChains; syncedAt: number; providerStats: any; models: any[] }> => {
+  const WORKER_URL = import.meta.env.VITE_WORKER_URL || 'https://travelplannerai-api.amitzahy1.workers.dev';
+  const authHeader = await getAuthHeader();
+  const response = await fetch(`${WORKER_URL}/api/sync-models`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader },
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error(`Sync failed: ${response.status}${detail ? ` — ${detail.slice(0, 200)}` : ''}`);
+  }
+  const result = await response.json() as any;
+  // Update local cache so subsequent calls use the freshly-synced data.
+  const bundle: RemoteChainsBundle = {
+    chains: result.chains,
+    syncedAt: result.syncedAt,
+    providerStats: result.providerStats,
+  };
+  inMemoryChains = bundle;
+  writeChainsCache(bundle);
+  return result;
+};
+
 /**
  * Mark a specific model as failed in the probe cache without running a full
  * probe. Used by generateWithFallback when it observes a hard failure
