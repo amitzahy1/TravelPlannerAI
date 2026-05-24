@@ -1906,26 +1906,40 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
         // Pick an initial view from the trip itself so mobile users never see
         // a flash of the wrong region while bounds are computed asynchronously.
-        // Order: hotel coords → trip-country bbox → world view (NOT Caucasus).
-        const hotelCoords: L.LatLngExpression[] = (trip?.hotels || [])
-            .filter(h => typeof h.lat === 'number' && typeof h.lng === 'number')
-            .map(h => [h.lat as number, h.lng as number]);
+        // Order: hotel coords (INSIDE the trip country bbox) → trip-country
+        // bbox → world view. Filter out hotels whose stored lat/lng falls
+        // OUTSIDE the trip country — those are bad AI extractions / wrong
+        // Photon matches (e.g. Albania trip with hotels geocoded to Israel
+        // because "Tirana" / "Vlora" matched ambiguous Israeli town names).
+        // User reported 2026-05-21: map showed Israel for an Albania trip.
+        const tripBboxes = trip ? getTripCountryBboxes(trip) : [];
+        const isInsideAnyTripBbox = (lat: number, lng: number): boolean => {
+            if (tripBboxes.length === 0) return true; // no bbox = no filter possible
+            return tripBboxes.some(([w, s, e, n]) => lat >= s && lat <= n && lng >= w && lng <= e);
+        };
+        const allHotelsWithCoords = (trip?.hotels || []).filter(h => typeof h.lat === 'number' && typeof h.lng === 'number');
+        const validHotels = allHotelsWithCoords.filter(h => isInsideAnyTripBbox(h.lat as number, h.lng as number));
+        const outOfCountryCount = allHotelsWithCoords.length - validHotels.length;
+        if (outOfCountryCount > 0) {
+            console.warn(
+                `🗺️ [Map] ${outOfCountryCount}/${allHotelsWithCoords.length} hotels have coords OUTSIDE the trip country — ignoring for initial view. ` +
+                'Click "אמת מחדש את כל המקומות" in admin → Data Health to re-geocode with Photon + country hint.',
+            );
+        }
+        const hotelCoords: L.LatLngExpression[] = validHotels.map(h => [h.lat as number, h.lng as number]);
         if (hotelCoords.length >= 2) {
             map.fitBounds(L.latLngBounds(hotelCoords), { padding: [40, 40], maxZoom: 11 });
         } else if (hotelCoords.length === 1) {
             map.setView(hotelCoords[0], 11);
+        } else if (tripBboxes.length > 0) {
+            // bbox tuple is [minLon, minLat, maxLon, maxLat] (west, south, east, north).
+            const corners: L.LatLngExpression[] = tripBboxes.flatMap(([w, s, e, n]) => [
+                [s, w] as L.LatLngExpression,
+                [n, e] as L.LatLngExpression,
+            ]);
+            map.fitBounds(L.latLngBounds(corners), { padding: [40, 40], maxZoom: 6 });
         } else {
-            const bboxes = trip ? getTripCountryBboxes(trip) : [];
-            if (bboxes.length > 0) {
-                // bbox tuple is [minLon, minLat, maxLon, maxLat] (west, south, east, north).
-                const corners: L.LatLngExpression[] = bboxes.flatMap(([w, s, e, n]) => [
-                    [s, w] as L.LatLngExpression,
-                    [n, e] as L.LatLngExpression,
-                ]);
-                map.fitBounds(L.latLngBounds(corners), { padding: [40, 40], maxZoom: 6 });
-            } else {
-                map.setView([20, 0], 2);
-            }
+            map.setView([20, 0], 2);
         }
 
         const tileUrl = tileTheme === 'dark'

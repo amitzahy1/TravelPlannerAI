@@ -195,18 +195,57 @@ export const parseJsonLenient = <T = any>(candidate: string): LenientParseResult
         strictError: strictErr,
       };
     } catch (secondErr: any) {
-      // Last resort — brace-balance recovery. Helps with Llama / GPT-OSS
-      // truncating mid-array on long responses.
-      const trimmed = truncateToLastBalanced(sanitizedText);
+      // Recovery pass 1 — comma-injection. Llama / GPT-OSS frequently emit
+      // arrays like `[{...} {...}]` with the comma missing between elements
+      // (or missing between an array and the next property in an object).
+      // The error position points at the spot where a delimiter was expected.
+      // Inject a comma there and retry. Repeat up to 8× to fix several gaps.
+      const commaInjectionMessages = /Expected '?,'?|Expected double-quoted property name|Expected ':' after property/;
+      let injectedText = sanitizedText;
+      let injectionErr: any = secondErr;
+      let injectionCount = 0;
+      for (let i = 0; i < 8; i++) {
+        const msg = (injectionErr?.message || '') as string;
+        if (!commaInjectionMessages.test(msg)) break;
+        const posMatch = msg.match(/at position (\d+)/);
+        if (!posMatch) break;
+        const pos = parseInt(posMatch[1]);
+        if (pos <= 0 || pos > injectedText.length) break;
+        // Only inject between structural tokens (closing brace/bracket/quote
+        // followed by opening brace/quote). Avoids creating `,,` or breaking
+        // strings.
+        const before = injectedText.slice(0, pos).trimEnd();
+        const after = injectedText.slice(pos).trimStart();
+        const lastBefore = before.slice(-1);
+        const firstAfter = after.slice(0, 1);
+        const okBefore = /[}\]"\d]/.test(lastBefore);
+        const okAfter = /[{["]/.test(firstAfter);
+        if (!okBefore || !okAfter) break;
+        injectedText = injectedText.slice(0, pos) + ',' + injectedText.slice(pos);
+        injectionCount++;
+        try {
+          const value = JSON.parse(injectedText) as T;
+          console.warn(`⚠️ [jsonSanitizer] Recovered via comma injection (${injectionCount} missing commas).`);
+          return { value, sanitized: true, strictError: strictErr };
+        } catch (e: any) {
+          injectionErr = e;
+        }
+      }
+
+      // Recovery pass 2 — brace-balance truncation. Helps with Llama / GPT-OSS
+      // truncating mid-array on long responses (where comma-injection can't
+      // help because the tail is genuinely cut off).
+      const trimmed = truncateToLastBalanced(injectedText);
       if (trimmed) {
         try {
           const value = JSON.parse(trimmed) as T;
-          console.warn(`⚠️ [jsonSanitizer] Recovered via brace-balance truncation (lost ${sanitizedText.length - trimmed.length} chars from the tail).`);
+          console.warn(`⚠️ [jsonSanitizer] Recovered via brace-balance truncation (lost ${injectedText.length - trimmed.length} chars from the tail${injectionCount ? `, after ${injectionCount} comma injections` : ''}).`);
           return { value, sanitized: true, strictError: strictErr };
         } catch { /* fall through */ }
       }
+
       const wrapped = new Error(
-        `JSON parse failed even after sanitization. strict="${strictErr?.message?.slice(0, 120) || strictErr}" sanitized="${secondErr?.message?.slice(0, 120) || secondErr}"`,
+        `JSON parse failed even after sanitization + ${injectionCount} comma injections + brace-balance. strict="${strictErr?.message?.slice(0, 120) || strictErr}" sanitized="${secondErr?.message?.slice(0, 120) || secondErr}"`,
       );
       (wrapped as any).cause = strictErr;
       throw wrapped;
