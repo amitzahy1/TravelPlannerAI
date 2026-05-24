@@ -1061,50 +1061,78 @@ export const ItineraryView: React.FC<{
                                                     const n = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
                                                     return n > 0 ? `${n} לילות` : null;
                                                 })();
+                                                // Maps URL — uses any stored googleMapsUrl, else builds
+                                                // a search query from name + address + city. Lets the
+                                                // user open the place in Google Maps as an alternative
+                                                // to scheduling it (per user request 2026-05-21).
+                                                const mapsHref = safeMapsUrl(
+                                                    item.googleMapsUrl,
+                                                    item.name || item.nameEnglish || '',
+                                                    rawAddress || undefined,
+                                                    city || undefined,
+                                                );
                                                 return (
-                                                    <button
+                                                    <div
                                                         key={item.id || idx}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setViewingCategory(null);
-                                                            setScheduleItem({ item, type: viewingCategory === 'food' ? 'food' : 'attraction' });
-                                                        }}
-                                                        className="flex items-start gap-2.5 bg-white border border-slate-200 rounded-lg p-2 hover:bg-slate-50 hover:border-blue-300 transition-colors text-right group"
+                                                        className="flex items-stretch bg-white border border-slate-200 rounded-lg hover:border-blue-300 transition-colors overflow-hidden"
                                                     >
-                                                        <img
-                                                            src={item.imageUrl || item.image || url}
-                                                            alt=""
-                                                            loading="lazy"
-                                                            className="w-12 h-12 rounded-md object-cover bg-slate-100 flex-shrink-0"
-                                                        />
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-start justify-between gap-2">
-                                                                <span className="text-[13px] font-black text-slate-800 truncate min-w-0" dir="ltr">{item.name}</span>
-                                                                {rating && (
-                                                                    <span className="inline-flex items-center gap-0.5 text-[11px] font-black text-slate-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md flex-shrink-0 tabular-nums">
-                                                                        <span className="text-yellow-500">★</span>{rating}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex items-center flex-wrap gap-x-1.5 text-[11px] text-slate-500 mt-0.5">
-                                                                {category && (
-                                                                    <span className="font-semibold text-slate-600 whitespace-normal">{category}</span>
-                                                                )}
-                                                                {nights && (
-                                                                    <span className="font-bold text-indigo-600 flex-shrink-0">{nights}</span>
-                                                                )}
-                                                                {city && (category || nights) && <span className="text-slate-300">·</span>}
-                                                                {city && (
-                                                                    <span className="font-medium whitespace-nowrap">{city}</span>
-                                                                )}
-                                                            </div>
-                                                            {recBy && viewingCategory !== 'hotels' && (
-                                                                <div className="text-[10px] text-amber-700 mt-0.5 font-bold truncate" dir="ltr">
-                                                                    🏆 {String(recBy).replace(/Bib/i, 'Michelin')}
+                                                        {/* Main click target — adds to itinerary */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setViewingCategory(null);
+                                                                setScheduleItem({ item, type: viewingCategory === 'food' ? 'food' : 'attraction' });
+                                                            }}
+                                                            title="הוסף ליומן"
+                                                            className="flex items-start gap-2.5 p-2 hover:bg-slate-50 flex-1 min-w-0 text-right group"
+                                                        >
+                                                            <img
+                                                                src={item.imageUrl || item.image || url}
+                                                                alt=""
+                                                                loading="lazy"
+                                                                className="w-12 h-12 rounded-md object-cover bg-slate-100 flex-shrink-0"
+                                                            />
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <span className="text-[13px] font-black text-slate-800 truncate min-w-0" dir="ltr">{item.name}</span>
+                                                                    {rating && (
+                                                                        <span className="inline-flex items-center gap-0.5 text-[11px] font-black text-slate-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md flex-shrink-0 tabular-nums">
+                                                                            <span className="text-yellow-500">★</span>{rating}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                    </button>
+                                                                <div className="flex items-center flex-wrap gap-x-1.5 text-[11px] text-slate-500 mt-0.5">
+                                                                    {category && (
+                                                                        <span className="font-semibold text-slate-600 whitespace-normal">{category}</span>
+                                                                    )}
+                                                                    {nights && (
+                                                                        <span className="font-bold text-indigo-600 flex-shrink-0">{nights}</span>
+                                                                    )}
+                                                                    {city && (category || nights) && <span className="text-slate-300">·</span>}
+                                                                    {city && (
+                                                                        <span className="font-medium whitespace-nowrap">{city}</span>
+                                                                    )}
+                                                                </div>
+                                                                {recBy && viewingCategory !== 'hotels' && (
+                                                                    <div className="text-[10px] text-amber-700 mt-0.5 font-bold truncate" dir="ltr">
+                                                                        🏆 {String(recBy).replace(/Bib/i, 'Michelin')}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                        {/* Side icon — open in Google Maps */}
+                                                        <a
+                                                            href={mapsHref}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            title="פתח ב-Google Maps"
+                                                            className="flex flex-col items-center justify-center px-2.5 border-r border-slate-200 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors flex-shrink-0"
+                                                        >
+                                                            <MapPin className="w-4 h-4" />
+                                                            <span className="text-[9px] font-bold mt-0.5">מפה</span>
+                                                        </a>
+                                                    </div>
                                                 );
                                             })}
 
