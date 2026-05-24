@@ -11,7 +11,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Trip, Restaurant, Attraction } from '../../types';
-import { ActivitySquare, MapPin, AlertTriangle, CheckCircle2, RefreshCw, Trash2, Download, Loader2 } from 'lucide-react';
+import { ActivitySquare, MapPin, AlertTriangle, CheckCircle2, RefreshCw, Trash2, Download, Loader2, Hotel as HotelIcon } from 'lucide-react';
 import { getTripCities, displayCityName } from '../../utils/geoData';
 import { isPlaceInTripScope, inferTripCountry, placeDedupeKey, coordInTripCountries } from '../../utils/tripScope';
 import { isPreciseGoogleUrl } from '../../utils/mapsUrl';
@@ -44,6 +44,11 @@ const toneClass = (tone: HealthStat['tone']) => {
 export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdateTrip }) => {
     const [reverifying, setReverifying] = useState(false);
     const [reverifyProgress, setReverifyProgress] = useState({ done: 0, total: 0, verified: 0, notFound: 0 });
+    // AI hotel-verify: dedicated flow for "find the real hotel" via the AI
+    // chain (SMART intent). Falls back through Gemini → Groq → OpenRouter
+    // automatically when Gemini is capped — same as the rest of the app.
+    const [aiHotelVerifying, setAiHotelVerifying] = useState(false);
+    const [aiHotelProgress, setAiHotelProgress] = useState({ done: 0, total: 0, resolved: 0 });
     const [pingStatus, setPingStatus] = useState<{ ai: 'unknown' | 'ok' | 'fail'; photon: 'unknown' | 'ok' | 'fail' }>({ ai: 'unknown', photon: 'unknown' });
     const [pingingService, setPingingService] = useState<null | 'ai' | 'photon'>(null);
 
@@ -222,6 +227,98 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
         } finally {
             setReverifying(false);
         }
+    };
+
+    // AI-driven hotel verifier — asks the LLM for the canonical lat/lng +
+    // precise Maps URL for each hotel. User explicitly asked for this in
+    // addition to Photon because:
+    //   1. Photon only matches addresses (street names), not business names.
+    //      A hotel "Bastille" at "Rruga Vaso" geocodes to the street, not
+    //      the building. Photon says "verified" but the pin is wrong.
+    //   2. The LLM, given a hotel name + city + country, can produce a
+    //      precise Google Maps URL with place_id when it has grounded
+    //      data — which makes safeMapsUrl trust the URL as-is instead of
+    //      falling back to a generic search.
+    // Uses SMART intent so it's cheap and the chain falls through Gemini →
+    // Groq → OpenRouter automatically when the cap is hit.
+    const verifyHotelsWithAi = async () => {
+        if (!trip || !trip.hotels?.length) {
+            toast.info('אין מלונות בטיול לאימות');
+            return;
+        }
+        setAiHotelVerifying(true);
+        const tripCountry = inferTripCountry(trip) || trip.destination || '';
+        const hotels = trip.hotels.map(h => ({ ...h }));
+        setAiHotelProgress({ done: 0, total: hotels.length, resolved: 0 });
+        console.log(`🏨 [ai-verify-hotels] starting on ${hotels.length} hotels (country hint: "${tripCountry}")`);
+
+        let resolved = 0;
+        let done = 0;
+        for (const h of hotels) {
+            const prompt = `Find this hotel and return its canonical Google Maps data as JSON.
+Hotel: ${h.name || '(no name)'}
+Address: ${h.address || '(no address)'}
+City: ${h.city || '(no city)'}
+Country: ${tripCountry || '(unknown)'}
+
+Return strict JSON only, no markdown:
+{
+  "found": true | false,
+  "canonicalName": "<the hotel's real name on Google Maps>",
+  "canonicalAddress": "<full street address>",
+  "city": "<city name only>",
+  "lat": <decimal latitude>,
+  "lng": <decimal longitude>,
+  "googleMapsUrl": "<a real https://www.google.com/maps URL — include place_id or cid when known; OMIT this field if you don't have a precise URL>",
+  "confidence": "high" | "medium" | "low"
+}
+
+Rules:
+- If you can't find a real hotel matching this description, return {"found": false}.
+- NEVER fabricate coordinates or URLs. Better to return found:false than guess.
+- lat/lng must be in the country "${tripCountry || 'the address country'}".`;
+
+            try {
+                const response = await generateWithFallback(
+                    null,
+                    [{ role: 'user', parts: [{ text: prompt }] }],
+                    { responseMimeType: 'application/json', temperature: 0.0 },
+                    'SMART',
+                );
+                const text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
+                const parsed = JSON.parse(text || '{}');
+                if (parsed.found && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+                    // Country bbox sanity check — refuse coords outside the trip country.
+                    if (!coordInTripCountries(parsed.lat, parsed.lng, trip)) {
+                        console.warn(`🏨 [ai-verify-hotels] ${h.name}: AI returned coords outside trip country, rejecting.`);
+                    } else {
+                        h.lat = parsed.lat;
+                        h.lng = parsed.lng;
+                        if (parsed.canonicalName) h.name = parsed.canonicalName;
+                        if (parsed.canonicalAddress) h.address = parsed.canonicalAddress;
+                        if (parsed.city) h.city = parsed.city;
+                        if (parsed.googleMapsUrl && typeof parsed.googleMapsUrl === 'string') {
+                            (h as any).googleMapsUrl = parsed.googleMapsUrl;
+                        }
+                        (h as any).verifiedAt = Date.now();
+                        (h as any).verificationStatus = 'verified';
+                        resolved++;
+                        console.log(`🏨 [ai-verify-hotels ${done + 1}/${hotels.length}] ✓ ${h.name} → (${h.lat?.toFixed(4)}, ${h.lng?.toFixed(4)})${parsed.confidence ? ` [${parsed.confidence}]` : ''}`);
+                    }
+                } else {
+                    console.log(`🏨 [ai-verify-hotels ${done + 1}/${hotels.length}] ✗ ${h.name} → not found by AI`);
+                }
+            } catch (e: any) {
+                console.error(`🏨 [ai-verify-hotels] ${h.name} failed:`, e?.message || e);
+            }
+            done++;
+            setAiHotelProgress({ done, total: hotels.length, resolved });
+        }
+
+        onUpdateTrip({ ...trip, hotels });
+        setAiHotelVerifying(false);
+        console.log(`✅ [ai-verify-hotels] complete — ${resolved}/${hotels.length} resolved`);
+        toast.success(`אומתו ${resolved}/${hotels.length} מלונות`);
     };
 
     const dropOutOfScope = () => {
@@ -492,6 +589,17 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                         {reverifying && reverifyProgress.total > 0
                             ? `מאמת… ${reverifyProgress.done}/${reverifyProgress.total} (${reverifyProgress.verified} נמצאו)`
                             : 'אמת מחדש את כל המקומות'}
+                    </button>
+                    <button
+                        onClick={verifyHotelsWithAi}
+                        disabled={aiHotelVerifying || !trip?.hotels?.length}
+                        title="שולח כל מלון ל-AI לאיתור הקואורדינטות וקישור Google Maps המדויק. עוקף את המגבלות של Photon שמאתר רק כתובות (לא את שם העסק). משתמש ב-SMART chain — אם Gemini חסום בגלל קוטה, נופל אוטומטית ל-Groq/OpenRouter."
+                        className="flex items-center gap-2 px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-sm border border-emerald-100 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                        {aiHotelVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <HotelIcon className="w-4 h-4" />}
+                        {aiHotelVerifying && aiHotelProgress.total > 0
+                            ? `מאמת מלונות עם AI… ${aiHotelProgress.done}/${aiHotelProgress.total} (${aiHotelProgress.resolved} נמצאו)`
+                            : `אמת מלונות עם AI (${trip?.hotels?.length || 0})`}
                     </button>
                     <button
                         onClick={dropOutOfScope}
