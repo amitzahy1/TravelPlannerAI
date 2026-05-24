@@ -680,10 +680,20 @@ export default {
                                         });
                                 }
 
-                                // Parallel probe with concurrency=4. Sequential probing of 35+
-                                // models takes >30s (Worker hard limit), so we batch. 4 concurrent
-                                // is enough to finish a typical chain in ~5-10s without spiking
-                                // RPM hard enough to false-positive a brand-new model's quota.
+                                // Parallel probe with concurrency=6. Each model has an 8-second hard
+                                // race timeout so one slow model (e.g. nvidia/nemotron-3-super-120b
+                                // takes 19s on the free tier) doesn't block the whole Worker past
+                                // its 30s wall-clock budget. Probes that exceed 8s are marked
+                                // TIMEOUT — still useful signal, just not a green check.
+                                const PROBE_TIMEOUT_MS = 8000;
+                                const raceWithTimeout = <T>(p: Promise<T>, label: string): Promise<T> =>
+                                        Promise.race([
+                                                p,
+                                                new Promise<never>((_, reject) =>
+                                                        setTimeout(() => reject(new Error(`ProbeTimeout: ${PROBE_TIMEOUT_MS}ms — ${label}`)), PROBE_TIMEOUT_MS),
+                                                ),
+                                        ]);
+
                                 const probeOne = async (modelId: string): Promise<any> => {
                                         const start = Date.now();
 
@@ -694,17 +704,23 @@ export default {
                                                 }
                                                 const orTail = env.OPENROUTER_API_KEY.slice(-4);
                                                 try {
-                                                        await callOpenRouter([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0, maxOutputTokens: 1 }, env);
+                                                        await raceWithTimeout(
+                                                                callOpenRouter([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0, maxOutputTokens: 1 }, env),
+                                                                modelId,
+                                                        );
                                                         console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=OPENROUTER tail=…${orTail})`);
                                                         return { model: modelId, ok: true, latencyMs: Date.now() - start, key: 'OPENROUTER', keyTail: `…${orTail}` };
                                                 } catch (e: any) {
                                                         const msg = e?.message || String(e);
-                                                        const errorKind: ErrorKind = /429|rate.?limit|too many/i.test(msg) ? 'QUOTA'
+                                                        const errorKind: ErrorKind = /ProbeTimeout/.test(msg) ? 'TIMEOUT'
+                                                                : /429|rate.?limit|too many/i.test(msg) ? 'QUOTA'
                                                                 : /401|invalid.*key|API_KEY_INVALID/i.test(msg) ? 'AUTH'
                                                                 : /404|not.?found|model.*not/i.test(msg) ? 'INVALID_MODEL'
                                                                 : /403|forbidden|permission/i.test(msg) ? 'PERMISSION'
                                                                 : 'UNKNOWN';
-                                                        const remediation = errorKind === 'QUOTA'
+                                                        const remediation = errorKind === 'TIMEOUT'
+                                                                ? `${modelId} took >${PROBE_TIMEOUT_MS}ms to respond to a 1-token ping. Too slow for production. Demoted in chain.`
+                                                                : errorKind === 'QUOTA'
                                                                 ? `OpenRouter free tier rate-limited on ${modelId}. Wait a minute, or fund the key at https://openrouter.ai/credits to unlock paid variants.`
                                                                 : errorKind === 'INVALID_MODEL'
                                                                 ? `Model ${modelId} not available on OpenRouter. Remove from chain or check the slug at https://openrouter.ai/models.`
@@ -723,7 +739,10 @@ export default {
                                                 }
                                                 const groqTail = env.GROQ_API_KEY.slice(-4);
                                                 try {
-                                                        await callGroq([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0 }, env);
+                                                        await raceWithTimeout(
+                                                                callGroq([{ role: 'user', parts: [{ text: 'ping' }] }], modelId, { temperature: 0 }, env),
+                                                                modelId,
+                                                        );
                                                         console.log(`[Probe] ${modelId} OK (${Date.now() - start}ms key=GROQ tail=…${groqTail})`);
                                                         return { model: modelId, ok: true, latencyMs: Date.now() - start, key: 'GROQ', keyTail: `…${groqTail}` };
                                                 } catch (e: any) {
@@ -734,9 +753,15 @@ export default {
                                                                 latencyMs: Date.now() - start,
                                                                 key: 'GROQ',
                                                                 keyTail: `…${groqTail}`,
-                                                                errorKind: /429|rate.?limit/i.test(msg) ? 'QUOTA' as ErrorKind : /401|invalid/i.test(msg) ? 'AUTH' as ErrorKind : /404|not.?found/i.test(msg) ? 'INVALID_MODEL' as ErrorKind : 'UNKNOWN' as ErrorKind,
+                                                                errorKind: /ProbeTimeout/.test(msg) ? 'TIMEOUT' as ErrorKind
+                                                                        : /429|rate.?limit/i.test(msg) ? 'QUOTA' as ErrorKind
+                                                                        : /401|invalid/i.test(msg) ? 'AUTH' as ErrorKind
+                                                                        : /404|not.?found/i.test(msg) ? 'INVALID_MODEL' as ErrorKind
+                                                                        : 'UNKNOWN' as ErrorKind,
                                                                 errorDetail: msg.slice(0, 240),
-                                                                remediation: `Groq key …${groqTail}: ${msg.slice(0, 120)}. Check the key at https://console.groq.com/keys.`,
+                                                                remediation: /ProbeTimeout/.test(msg)
+                                                                        ? `${modelId} took >${PROBE_TIMEOUT_MS}ms — too slow for production. Demoted in chain.`
+                                                                        : `Groq key …${groqTail}: ${msg.slice(0, 120)}. Check the key at https://console.groq.com/keys.`,
                                                         };
                                                 }
                                         }
@@ -772,9 +797,12 @@ export default {
                                         }
                                 };
 
-                                // Worker pool with concurrency=4. Each worker pulls the next model
+                                // Worker pool with concurrency=6. Each worker pulls the next model
                                 // off the cursor and pushes its result; when the queue is empty
-                                // the worker exits.
+                                // the worker exits. Combined with the 8s per-probe timeout, a
+                                // typical 25-model chain finishes in ~6-12s well under the
+                                // Cloudflare Worker 30s wall.
+                                const CONCURRENCY = 6;
                                 const results: any[] = new Array(models.length);
                                 let cursor = 0;
                                 const worker = async () => {
@@ -783,7 +811,7 @@ export default {
                                                 results[idx] = await probeOne(models[idx]);
                                         }
                                 };
-                                await Promise.all([worker(), worker(), worker(), worker()]);
+                                await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
                                 return new Response(JSON.stringify({ results, probedAt: Date.now() }), {
                                         headers: { ...corsHeaders, "Content-Type": "application/json" },
