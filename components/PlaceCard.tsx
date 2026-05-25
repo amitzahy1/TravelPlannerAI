@@ -135,16 +135,17 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                  like "FINE DINING 💎" / "MICHELIN GUIDE". */}
                         <div className="absolute top-2 inset-x-2 flex items-start justify-between gap-1.5 z-30 pointer-events-none">
                                 <div className="flex items-center gap-1 min-w-0 flex-1">
-                                        {/* Luxury nameplate — dark base with a thin gold
-                                            hairline border + champagne-cream serif text.
-                                            Reads like a fine-dining menu plate. Stays
-                                            high-contrast against any food photo behind
-                                            it; the gold ring catches the eye without
-                                            shouting like the original yellow block. */}
+                                        {/* Cuisine label — uses the same sans-serif as the
+                                            place name (the card inherits the page font),
+                                            with a soft warm-ivory background and a thin
+                                            gold accent ring. Light + premium without the
+                                            heavy serif from the previous pass.
+                                            User feedback 2026-05-25: serif was ugly, make
+                                            it match the restaurant-name font + lighter
+                                            background. */}
                                         <span
                                                 dir="ltr"
-                                                style={{ fontFamily: '"Playfair Display", Georgia, "Times New Roman", serif' }}
-                                                className="px-3 py-1.5 rounded bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-md text-amber-100 text-[10px] font-bold tracking-[0.22em] uppercase truncate shadow-[0_6px_16px_-3px_rgba(0,0,0,0.55)] ring-[0.5px] ring-amber-300/30"
+                                                className="px-2.5 py-1 rounded-md bg-gradient-to-b from-white/97 to-amber-50/95 backdrop-blur-md text-slate-900 text-[10px] font-extrabold tracking-[0.06em] uppercase truncate shadow-[0_4px_12px_-2px_rgba(0,0,0,0.4)] ring-[0.5px] ring-amber-500/35"
                                         >
                                                 {visualLabel}
                                         </span>
