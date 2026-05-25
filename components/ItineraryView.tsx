@@ -1416,8 +1416,16 @@ export const ItineraryView: React.FC<{
                                             >
                                                 <span
                                                     aria-hidden
-                                                    className={`absolute top-0 bottom-0 right-0 w-1 ${accentStrip}`}
-                                                    style={accentStrip === headerColorClass ? headerInlineStyle : undefined}
+                                                    className="absolute top-0 bottom-0 right-0 w-1"
+                                                    style={accentStrip === headerColorClass
+                                                        ? { background: theme.hexBg }
+                                                        : { background: isFirstDay
+                                                            ? 'linear-gradient(to bottom, #3b82f6, #38bdf8)'
+                                                            : isLastDay
+                                                                ? 'linear-gradient(to bottom, #f59e0b, #fb7185)'
+                                                                : hasFlight
+                                                                    ? '#60a5fa'
+                                                                    : '#334155' }}
                                                 />
 
                                                 {/* Date badge */}
@@ -1488,8 +1496,8 @@ export const ItineraryView: React.FC<{
                                         >
                                             {/* Header — slim band: day-of-week + date + location */}
                                             <div
-                                                className={`${headerColorClass} relative flex items-center justify-between gap-2 px-3 py-2`}
-                                                style={headerInlineStyle}
+                                                className="relative flex items-center justify-between gap-2 px-3 py-2"
+                                                style={{ background: theme.hexBg }}
                                                 data-debug-bg={theme.hexBg}
                                                 data-debug-class={theme.bg}
                                                 data-debug-city={dayCityHe}
@@ -1576,8 +1584,10 @@ export const ItineraryView: React.FC<{
                                     : '';
                                 return (
                                     <div
-                                        className={`${modalTheme.bg} border-b border-white/10 p-5 flex items-center justify-between flex-shrink-0`}
-                                        style={{ backgroundColor: modalTheme.hexBg }}
+                                        className="border-b border-white/10 p-5 flex items-center justify-between flex-shrink-0"
+                                        style={{ background: modalTheme.hexBg }}
+                                        data-debug-modal-bg={modalTheme.hexBg}
+                                        data-debug-modal-city={activeDay.locationContext}
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className="bg-white/20 backdrop-blur-sm text-white min-w-[56px] h-12 px-2 rounded-xl flex flex-col items-center justify-center font-bold text-sm border border-white/20 shadow-inner">
