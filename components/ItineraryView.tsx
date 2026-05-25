@@ -103,6 +103,12 @@ export const ItineraryView: React.FC<{
     const [isSyncing, setIsSyncing] = useState(false);
     const [externalEvents, setExternalEvents] = useState<TimelineEvent[]>([]);
     const [viewingCategory, setViewingCategory] = useState<'food' | 'attractions' | 'hotels' | 'flights' | null>(null);
+    // City filter inside the food/attractions/hotels popover. null = "all
+    // cities". Reset when the popover closes or the category changes,
+    // otherwise switching between Food and Places carries a stale city
+    // selection that may not exist in the new list.
+    const [viewingCity, setViewingCity] = useState<string | null>(null);
+    React.useEffect(() => { setViewingCity(null); }, [viewingCategory]);
     // Smart-recommendations card is hidden by default and toggled from
     // the new TripContextBar pill below the hero — saves a row that was
     // permanently consumed before.
@@ -1154,20 +1160,18 @@ export const ItineraryView: React.FC<{
                                             </div>
                                         )}
 
-                                        {/* Compact 1-column list — each row is a small horizontal card */}
-                                        {viewingCategory !== 'flights' && (
-                                        <div className="flex flex-col gap-1.5 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                                            {(viewingCategory === 'hotels' ? (trip.hotels || []) :
+                                        {/* Compact 1-column list — each row is a small horizontal card.
+                                            Items are city-tagged up-front so the tabs above can
+                                            partition them; the same city string is then used as the
+                                            row's location label so what you see in the tab matches
+                                            what's tagged on the row. */}
+                                        {viewingCategory !== 'flights' && (() => {
+                                            const rawItems: any[] = viewingCategory === 'hotels' ? (trip.hotels || []) :
                                                 viewingCategory === 'food' ? favoriteRestaurants :
-                                                    favoriteAttractions
-                                            ).map((item: any, idx: number) => {
-                                                const tags = [item.cuisine || item.type || ''];
-                                                const { url } = getPlaceImage(item.name || '', viewingCategory === 'food' ? 'food' : 'attraction', tags);
-                                                const rating = item.rating || item.googleRating;
-                                                const category = item.cuisine || item.type;
-                                                const recBy = item.recommendationSource;
-                                                // City only — never the full address. Try verifiedCity / city /
-                                                // explicit fields first, then extract from the address string.
+                                                    favoriteAttractions;
+                                            // Compute the display city for each item once. extractRobustCity
+                                            // is the same fallback chain the row used to run inline.
+                                            const taggedItems = rawItems.map((item: any) => {
                                                 const rawAddress = item.address || item.location || '';
                                                 let city = item.verifiedCity || item.city || '';
                                                 if (!city && rawAddress) {
@@ -1176,6 +1180,53 @@ export const ItineraryView: React.FC<{
                                                 if (city) {
                                                     try { city = displayCityName(city, 'he') || city; } catch { /* keep raw */ }
                                                 }
+                                                return { item, city: city || 'ללא עיר', rawAddress };
+                                            });
+                                            // Ordered list of unique cities. Sort by count desc so the
+                                            // city with the most items is the leftmost (in RTL: rightmost
+                                            // / first-read) tab.
+                                            const cityCounts = new Map<string, number>();
+                                            taggedItems.forEach(t => cityCounts.set(t.city, (cityCounts.get(t.city) || 0) + 1));
+                                            const cities = Array.from(cityCounts.entries())
+                                                .sort((a, b) => b[1] - a[1])
+                                                .map(([c]) => c);
+                                            const showTabs = cities.length > 1;
+                                            const activeCity = viewingCity && cities.includes(viewingCity) ? viewingCity : null;
+                                            const filtered = activeCity
+                                                ? taggedItems.filter(t => t.city === activeCity)
+                                                : taggedItems;
+                                            return (
+                                                <>
+                                                    {showTabs && (
+                                                        <div className="flex items-center gap-1 mb-2 overflow-x-auto custom-scrollbar pb-1">
+                                                            <button
+                                                                onClick={() => setViewingCity(null)}
+                                                                className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors ${activeCity === null
+                                                                    ? 'bg-slate-900 text-white'
+                                                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                                            >
+                                                                הכל ({taggedItems.length})
+                                                            </button>
+                                                            {cities.map(c => (
+                                                                <button
+                                                                    key={c}
+                                                                    onClick={() => setViewingCity(c)}
+                                                                    className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors ${activeCity === c
+                                                                        ? 'bg-slate-900 text-white'
+                                                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                                                >
+                                                                    {c} ({cityCounts.get(c)})
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                        <div className="flex flex-col gap-1.5 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                                            {filtered.map(({ item, city, rawAddress }, idx: number) => {
+                                                const tags = [item.cuisine || item.type || ''];
+                                                const { url } = getPlaceImage(item.name || '', viewingCategory === 'food' ? 'food' : 'attraction', tags);
+                                                const rating = item.rating || item.googleRating;
+                                                const category = item.cuisine || item.type;
+                                                const recBy = item.recommendationSource;
                                                 const nights = (() => {
                                                     if (viewingCategory !== 'hotels') return null;
                                                     const start = parseDateString(item.checkInDate || '');
@@ -1271,7 +1322,9 @@ export const ItineraryView: React.FC<{
                                                     </div>
                                                 )}
                                         </div>
-                                        )}
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </>,
