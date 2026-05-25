@@ -202,9 +202,15 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
         const googleMapsUrl = safeMapsUrl(item.googleMapsUrl, displayName, navAddress, navCity, navCountry);
 
         return createPortal(
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pb-24 md:pb-4" onClick={onClose}>
                         <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" />
-                        <div className="relative w-full max-w-md max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
+                        {/* On mobile we cap the modal at calc(100vh - 7rem) and add
+                            pb-24 to the outer container so the modal stops above the
+                            floating mobile dock (z-999999 in src/index.css). Without
+                            this the modal extends to 90vh and the dock crops the
+                            bottom — typically the embedded map preview. Desktop
+                            keeps 90vh since the dock is hidden ≥ md. */}
+                        <div className="relative w-full max-w-md max-h-[calc(100vh-7rem)] md:max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
 
                                 <button onClick={onClose} aria-label="סגירה" className="absolute top-3 left-3 z-20 p-2.5 bg-black/55 hover:bg-black/75 text-white rounded-full backdrop-blur-md ring-1 ring-white/30 shadow-lg transition-all active:scale-95">
                                         <X className="w-6 h-6" />

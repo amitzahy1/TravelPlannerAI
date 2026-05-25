@@ -143,9 +143,16 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                             User feedback 2026-05-25: serif was ugly, make
                                             it match the restaurant-name font + lighter
                                             background. */}
+                                        {/* Cuisine/category chip — sized to fit common labels
+                                            ("MEDITERRANEAN", "FINE DINING", "COCKTAILS",
+                                            "CAFE & BAKERY", "CULTURE") without truncation.
+                                            User feedback 2026-05-25: text was cut to
+                                            "MEDITE...", "CAFE & ..." — drop font to 9px,
+                                            trim padding + letter-spacing so the full
+                                            label fits in the available width. */}
                                         <span
                                                 dir="ltr"
-                                                className="px-2.5 py-1 rounded-md bg-gradient-to-b from-slate-800/90 to-slate-900/90 backdrop-blur-md text-white text-[10px] font-bold tracking-[0.08em] uppercase truncate shadow-[0_4px_12px_-2px_rgba(0,0,0,0.5)] ring-[0.5px] ring-white/15"
+                                                className="px-2 py-1 rounded-md bg-gradient-to-b from-slate-800/90 to-slate-900/90 backdrop-blur-md text-white text-[9px] font-bold tracking-[0.03em] uppercase truncate shadow-[0_4px_12px_-2px_rgba(0,0,0,0.5)] ring-[0.5px] ring-white/15"
                                         >
                                                 {visualLabel}
                                         </span>
