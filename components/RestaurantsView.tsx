@@ -2529,22 +2529,22 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                         {/* Source filter overlay — top-left corner of the map.
                             Compact vertical stack so it doesn't fight the
                             top-center city chips owned by UnifiedMapView. */}
-                        <div className="absolute top-3 left-3 z-[1100] flex flex-col gap-1 bg-white/97 backdrop-blur-md p-1 rounded-xl shadow-lg border border-white/70 pointer-events-auto">
+                        <div className="absolute top-3 left-3 z-[1100] flex flex-col gap-1.5 bg-white/97 backdrop-blur-md p-2 rounded-2xl shadow-xl border-2 border-slate-200 pointer-events-auto">
                             <button
                                 onClick={() => setMapSourceFilter('all')}
-                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition ${mapSourceFilter === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                                className={`px-3.5 py-1.5 rounded-lg text-[12px] font-bold whitespace-nowrap transition ${mapSourceFilter === 'all' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
                             >
                                 כל ההמלצות
                             </button>
                             <button
                                 onClick={() => setMapSourceFilter('mine')}
-                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition ${mapSourceFilter === 'mine' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                                className={`px-3.5 py-1.5 rounded-lg text-[12px] font-bold whitespace-nowrap transition ${mapSourceFilter === 'mine' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
                             >
                                 הרשימה שלי
                             </button>
                             <button
                                 onClick={() => setMapSourceFilter('ai')}
-                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition ${mapSourceFilter === 'ai' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                                className={`px-3.5 py-1.5 rounded-lg text-[12px] font-bold whitespace-nowrap transition ${mapSourceFilter === 'ai' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
                             >
                                 AI בלבד
                             </button>

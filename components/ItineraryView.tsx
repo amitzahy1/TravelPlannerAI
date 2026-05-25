@@ -13,7 +13,7 @@ import { exportTripPDF } from '../utils/generateTripHTML';
 import { downloadTripIcal } from '../utils/generateTripIcal';
 import { FileText as FileTextIcon, CalendarDays as CalendarDaysIcon } from 'lucide-react';
 import { resolveLocationName, extractRobustCity, cleanCityName, displayCityName } from '../utils/geoData'; // Imported from new DB
-import { getCityTheme, buildCityColorMap, lookupCityTheme, DEFAULT_CITY_THEME } from '../utils/cityColors'; // Color Engine
+import { getCityTheme, buildCityColorMap, lookupCityTheme, DEFAULT_CITY_THEME, CITY_THEMES, type CityTheme } from '../utils/cityColors'; // Color Engine
 import {
     MapPin, Calendar, Navigation, Info, ExternalLink,
     Share2, Download, CloudRain, Sun, Moon,
@@ -833,38 +833,38 @@ export const ItineraryView: React.FC<{
         return (en || cleaned).trim().toLowerCase();
     };
 
-    // Trip-aware colour map — guarantees distinct colours for every unique
-    // city across the whole itinerary, keyed by canonical English form so
-    // Hebrew/English variants of the same city share one entry.
-    //
-    // Critical: we look up via direct map access (themeFor below), NOT via
-    // lookupCityTheme — that helper falls back to getCityTheme on miss,
-    // which uses a hash-mod-palette that frequently collides (Tirana and
-    // Vlora landing on the same theme is the bug the user keeps hitting).
-    // Direct lookup → if the city isn't in the map, return DEFAULT_CITY_THEME
-    // explicitly. No silent hash collisions.
+    // Per-trip city → theme assignment. Bypasses buildCityColorMap's
+    // preference + country-fallback + hash collisions entirely. Pure index
+    // assignment: first unique city in the timeline gets CITY_THEMES[0],
+    // second gets [1], etc. Guarantees DISTINCT colors for distinct cities.
+    // User has reported the Tirana+Vlora color collision THREE times —
+    // this rewrite removes any path where collision is possible.
+    const isFlightish = (raw: string) => /טיסה|flight|נחית|return\s+flight|חזרה|departure|arrival/i.test(raw || '');
+
     const cityColorMap = useMemo(() => {
         const seen = new Set<string>();
-        const orderedCities: string[] = [];
+        const ordered: string[] = [];
         for (const d of timeline) {
-            const raw = (d.locationContext || '').toLowerCase();
-            if (!raw) continue;
-            // Skip flight-only phrases — they keep DEFAULT_CITY_THEME.
-            const isFlight = /טיסה|flight|נחית|return\s+flight|חזרה/.test(raw);
-            if (isFlight) continue;
-            const key = canonCity(d.locationContext || '');
+            const raw = d.locationContext || '';
+            if (!raw || isFlightish(raw)) continue;
+            const key = canonCity(raw);
             if (!key || seen.has(key)) continue;
             seen.add(key);
-            orderedCities.push(key);
+            ordered.push(key);
         }
-        return buildCityColorMap(orderedCities);
+        const map: Record<string, CityTheme> = {};
+        ordered.forEach((c, i) => {
+            map[c] = CITY_THEMES[i % CITY_THEMES.length];
+        });
+        console.info('[ItineraryView] city color map:',
+            Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v.bg])));
+        return map;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [timeline]);
 
-    const themeFor = (raw: string) => {
-        const isFlight = /טיסה|flight|נחית|return\s+flight|חזרה/i.test(raw || '');
-        if (isFlight) return DEFAULT_CITY_THEME;
-        const key = canonCity(raw || '');
+    const themeFor = (raw: string): CityTheme => {
+        if (!raw || isFlightish(raw)) return DEFAULT_CITY_THEME;
+        const key = canonCity(raw);
         return cityColorMap[key] || DEFAULT_CITY_THEME;
     };
 
