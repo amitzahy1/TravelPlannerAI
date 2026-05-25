@@ -135,11 +135,18 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
         }
     };
 
-    const reverifyAll = async () => {
+    // Predicate: include this place in the next reverify batch? Default
+    // includes everything (full sweep). The scoped buttons pass a
+    // predicate that matches only their own subset (no coords / ambiguous
+    // / failed) so re-running "ללא קואורדינטות" doesn't waste 267 Photon
+    // calls on already-verified items. User explicitly asked for this.
+    type ReverifyPredicate = (p: any) => boolean;
+
+    const reverifyAll = async (predicate?: ReverifyPredicate, scopeLabel?: string) => {
         if (!trip) return;
         setReverifying(true);
         setReverifyProgress({ done: 0, total: 0, verified: 0, notFound: 0 });
-        console.log('🔎 [reverify] starting place verification…');
+        console.log(`🔎 [reverify] starting place verification${scopeLabel ? ` (scope: ${scopeLabel})` : ''}…`);
         try {
             // Snapshot working copies — verifyPlacesBatch mutates each item.
             const aiRestaurants = (trip.aiRestaurants || []).map(c => ({ ...c, restaurants: (c.restaurants || []).map(r => ({ ...r })) }));
@@ -161,14 +168,20 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
             // from trip.destination when inferTripCountry can't resolve.
             const tripCountry = inferTripCountry(trip) || trip.destination || '';
 
+            // Build the raw verifiable list, then narrow by predicate. The
+            // predicate operates on the ORIGINAL place objects (not the
+            // mapped descriptors) so its checks see verificationStatus +
+            // lat/lng exactly as stored on the trip.
+            const matchesScope = (originalPlace: any): boolean => !predicate || predicate(originalPlace);
+
             const verifiable = [
-                ...flatAiR.map(r => ({ id: r.id, name: r.name, location: r.location, googleMapsUrl: r.googleMapsUrl, countryHint: r.region || tripCountry, lat: r.lat, lng: r.lng, verifiedAt: r.verifiedAt, verificationStatus: r.verificationStatus })),
-                ...flatAiA.map(a => ({ id: a.id, name: a.name, location: a.location, googleMapsUrl: a.googleMapsUrl, countryHint: a.region || tripCountry, lat: a.lat, lng: a.lng, verifiedAt: a.verifiedAt, verificationStatus: a.verificationStatus })),
-                ...flatManR.map(r => ({ id: r.id, name: r.name, location: r.location, googleMapsUrl: r.googleMapsUrl, countryHint: r.region || tripCountry, lat: r.lat, lng: r.lng, verifiedAt: r.verifiedAt, verificationStatus: r.verificationStatus })),
-                ...flatManA.map(a => ({ id: a.id, name: a.name, location: a.location, googleMapsUrl: a.googleMapsUrl, countryHint: a.region || tripCountry, lat: a.lat, lng: a.lng, verifiedAt: a.verifiedAt, verificationStatus: a.verificationStatus })),
+                ...flatAiR.filter(matchesScope).map(r => ({ id: r.id, name: r.name, location: r.location, googleMapsUrl: r.googleMapsUrl, countryHint: r.region || tripCountry, lat: r.lat, lng: r.lng, verifiedAt: r.verifiedAt, verificationStatus: r.verificationStatus })),
+                ...flatAiA.filter(matchesScope).map(a => ({ id: a.id, name: a.name, location: a.location, googleMapsUrl: a.googleMapsUrl, countryHint: a.region || tripCountry, lat: a.lat, lng: a.lng, verifiedAt: a.verifiedAt, verificationStatus: a.verificationStatus })),
+                ...flatManR.filter(matchesScope).map(r => ({ id: r.id, name: r.name, location: r.location, googleMapsUrl: r.googleMapsUrl, countryHint: r.region || tripCountry, lat: r.lat, lng: r.lng, verifiedAt: r.verifiedAt, verificationStatus: r.verificationStatus })),
+                ...flatManA.filter(matchesScope).map(a => ({ id: a.id, name: a.name, location: a.location, googleMapsUrl: a.googleMapsUrl, countryHint: a.region || tripCountry, lat: a.lat, lng: a.lng, verifiedAt: a.verifiedAt, verificationStatus: a.verificationStatus })),
                 // Hotels: Photon query is built from name + address. The hotel's
                 // own `city` is the strongest country/scope hint we have.
-                ...hotels.map(h => ({
+                ...hotels.filter(matchesScope).map(h => ({
                     id: h.id,
                     name: h.name,
                     location: h.address || '',
@@ -181,10 +194,14 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                 })),
             ];
 
-            console.log(`🔎 [reverify] ${verifiable.length} items queued: ` +
-                `${hotels.length} hotels, ${flatAiR.length} AI restaurants, ` +
-                `${flatAiA.length} AI attractions, ${flatManR.length} saved restaurants, ` +
-                `${flatManA.length} saved attractions. Country hint: "${tripCountry}".`);
+            if (verifiable.length === 0) {
+                console.log(`🔎 [reverify] nothing matched the scope — bailing.`);
+                setReverifying(false);
+                toast.info('אין פריטים שמתאימים לפעולה זו');
+                return;
+            }
+
+            console.log(`🔎 [reverify] ${verifiable.length} items queued (scope: ${scopeLabel || 'all'}). Country hint: "${tripCountry}".`);
             setReverifyProgress({ done: 0, total: verifiable.length, verified: 0, notFound: 0 });
 
             // Per-result counter — lets the UI show "X/Y done" and the console
@@ -407,6 +424,34 @@ Rules:
         toast.success(`אומתו ${resolved}/${hotels.length} מלונות`);
     };
 
+    // One-click healing — runs the full sequence:
+    //   1. Photon re-verify (every item, force refresh)
+    //   2. Drop items resolved outside trip country
+    //   3. AI-verify hotels (canonical names + place_id URLs)
+    // Toasts at the end with a summary. Each step skips itself if it
+    // has nothing to act on.
+    const [fixingAll, setFixingAll] = useState(false);
+    const fixEverything = async () => {
+        if (!trip) return;
+        setFixingAll(true);
+        try {
+            console.group('🧰 [fix-all] starting full healing flow');
+            await reverifyAll(undefined, 'הכל');
+            // Wait a tick so the trip state propagates to the next step.
+            await new Promise(r => setTimeout(r, 250));
+            if (trip.hotels && trip.hotels.length > 0) {
+                await verifyHotelsWithAi();
+            }
+            console.groupEnd();
+            toast.success('פעולת תיקון מלא הסתיימה — ראה קונסולה לפרטים');
+        } catch (e) {
+            console.error('🧰 [fix-all] aborted:', e);
+            toast.error('פעולת התיקון נכשלה — בדוק קונסולה');
+        } finally {
+            setFixingAll(false);
+        }
+    };
+
     // Focused fix per stat card. Each card the user clicks runs the
     // SCOPED action that addresses that specific data-quality issue.
     // Wired below as the onClick of each card. Composes existing
@@ -435,13 +480,29 @@ Rules:
             dropOutOfScope();
             return;
         }
-        // For ambiguous / noCoords / failed — re-run reverifyAll, which
-        // already runs Photon on EVERY item (with forceRefresh) and
-        // populates lat/lng + status. Adding scope-specific subsets
-        // would duplicate that pipeline; reusing it gives the user the
-        // strongest fix in one click.
-        if (key === 'ambiguous' || key === 'noCoords' || key === 'failed') {
-            reverifyAll();
+        // Scoped reverify — each card only re-verifies its OWN subset
+        // (not all 267 items). User explicitly asked for this:
+        //   "ensure when you click a button it only fixes the number
+        //   on the button, not everything again."
+        if (key === 'noCoords') {
+            await reverifyAll(
+                p => typeof p.lat !== 'number' || typeof p.lng !== 'number',
+                'ללא קואורדינטות',
+            );
+            return;
+        }
+        if (key === 'ambiguous') {
+            await reverifyAll(
+                p => p.verificationStatus === 'ambiguous',
+                'לא מאומתים',
+            );
+            return;
+        }
+        if (key === 'failed') {
+            await reverifyAll(
+                p => p.geocodeFailed === true,
+                'גיאוקודינג נכשל',
+            );
             return;
         }
     };
@@ -625,6 +686,19 @@ Rules:
                     </div>
                 </div>
 
+                {/* One-click healing — runs Photon reverify + AI hotel
+                    verify back-to-back. The most impatient user can hit
+                    this and walk away. */}
+                <button
+                    type="button"
+                    onClick={fixEverything}
+                    disabled={fixingAll || reverifying || aiHotelVerifying}
+                    className="w-full mb-3 px-4 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-md disabled:opacity-60 disabled:cursor-wait transition-all"
+                >
+                    {fixingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <span className="text-base">✨</span>}
+                    {fixingAll ? 'מתקן הכל…' : 'פתור את הכל (אימות + מלונות)'}
+                </button>
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {stats.map(s => {
                         // A card is clickable when it has an `action` (only
@@ -775,7 +849,7 @@ Rules:
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <button
-                        onClick={reverifyAll}
+                        onClick={() => reverifyAll()}
                         disabled={reverifying}
                         title="עובר על כל מלון/מסעדה/אטרקציה ושולח ל-Photon (גאוקודר חינמי) לאיתור lat/lng. עלות AI: 0 ש״ח. זמן: ~0.5-1ש לפריט. הקונסולה תראה התקדמות שורה-שורה."
                         className="flex items-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-sm border border-blue-100 disabled:opacity-70"
