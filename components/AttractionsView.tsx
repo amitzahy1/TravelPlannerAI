@@ -455,7 +455,9 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [searchExpanded, setSearchExpanded] = useState(false);
     useEffect(() => { setSearchExpanded(false); }, [activeTab]);
     const isMobile = useIsMobile();
-    const [filtersExpanded, setFiltersExpanded] = useState(!isMobile);
+    // Map filter card defaults to collapsed — user explicitly asked
+    // 2026-05-25 so the map gets more room until the user opts in.
+    const [filtersExpanded, setFiltersExpanded] = useState(false);
     // Background-geocoding progress so the map view can show a loading
     // banner when AI results are still being resolved to lat/lng. Failed
     // items (`geocodeFailed: true`) live on the attractions themselves
@@ -2135,7 +2137,7 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                                 onClick={() => setMapSourceFilter('ai')}
                                 className={`px-3.5 py-1.5 rounded-lg text-[12px] font-bold whitespace-nowrap transition ${mapSourceFilter === 'ai' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
                             >
-                                AI בלבד
+                                המלצות AI
                             </button>
                         </div>
                     </div>
