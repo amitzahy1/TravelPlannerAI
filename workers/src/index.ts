@@ -434,11 +434,18 @@ export default {
         async fetch(request: Request, env: Env, ctx: ExecutionContext) {
                 // CORS Headers — allow production + local dev
                 const origin = request.headers.get("Origin") || "";
-                const allowedOrigin = (
-                        origin === "https://amitzahy1.github.io" ||
-                        origin.startsWith("http://localhost:") ||
-                        origin.startsWith("http://127.0.0.1:")
-                ) ? origin : "https://amitzahy1.github.io";
+                // Allowed origins:
+                //   - https://wetravel-bxd.pages.dev — production SPA (Pages)
+                //   - https://*.wetravel-bxd.pages.dev — Pages preview/branch deploys
+                //   - https://amitzahy1.github.io — legacy GitHub Pages host (still serving)
+                //   - localhost — dev
+                const isPagesProd = origin === "https://wetravel-bxd.pages.dev";
+                const isPagesPreview = /^https:\/\/[a-z0-9-]+\.wetravel-bxd\.pages\.dev$/i.test(origin);
+                const isLegacyGh = origin === "https://amitzahy1.github.io";
+                const isLocal = origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
+                const allowedOrigin = (isPagesProd || isPagesPreview || isLegacyGh || isLocal)
+                        ? origin
+                        : "https://wetravel-bxd.pages.dev";
                 const corsHeaders = {
                         "Access-Control-Allow-Origin": allowedOrigin,
                         "Access-Control-Allow-Methods": "POST, OPTIONS",
