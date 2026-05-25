@@ -470,6 +470,26 @@ Rules:
     const dropNotFound = () => {
         if (!trip) return;
         const isJunk = (p: any) => junkReason(p) !== null;
+
+        // Pre-delete diagnostic: list everything that's about to go so the
+        // user can see in the console exactly what happened. User reported
+        // "I clicked delete but nothing showed in the console" — fixed.
+        const beforeCount = {
+            aiR: (trip.aiRestaurants || []).reduce((s, c) => s + (c.restaurants?.length || 0), 0),
+            aiA: (trip.aiAttractions || []).reduce((s, c) => s + (c.attractions?.length || 0), 0),
+            mR: (trip.restaurants || []).reduce((s, c) => s + (c.restaurants?.length || 0), 0),
+            mA: (trip.attractions || []).reduce((s, c) => s + (c.attractions?.length || 0), 0),
+        };
+        console.log(`🗑️ [dropJunk] starting — ${junkTotal} junk items to remove.`);
+        console.log(`🗑️ [dropJunk] BEFORE: ${beforeCount.aiR} AI restaurants, ${beforeCount.aiA} AI attractions, ` +
+            `${beforeCount.mR} saved restaurants, ${beforeCount.mA} saved attractions`);
+        junkItems.restaurants.forEach((r: any) => {
+            console.log(`🗑️ [dropJunk] - ${r.name} (${junkReason(r)})`);
+        });
+        junkItems.attractions.forEach((a: any) => {
+            console.log(`🗑️ [dropJunk] - ${a.name} (${junkReason(a)})`);
+        });
+
         const filterCat = <T extends { restaurants?: Restaurant[]; attractions?: Attraction[] }>(c: T): T => ({
             ...c,
             restaurants: c.restaurants?.filter(r => !isJunk(r)) as any,
@@ -483,7 +503,20 @@ Rules:
             attractions: (trip.attractions || []).map(filterCat).filter(c => (c.attractions?.length || 0) > 0),
         };
         onUpdateTrip(updated);
-        toast.success(`נמחקו ${junkTotal} מקומות זבל`);
+
+        const afterCount = {
+            aiR: (updated.aiRestaurants || []).reduce((s, c) => s + (c.restaurants?.length || 0), 0),
+            aiA: (updated.aiAttractions || []).reduce((s, c) => s + (c.attractions?.length || 0), 0),
+            mR: (updated.restaurants || []).reduce((s, c) => s + (c.restaurants?.length || 0), 0),
+            mA: (updated.attractions || []).reduce((s, c) => s + (c.attractions?.length || 0), 0),
+        };
+        const totalRemoved = (beforeCount.aiR - afterCount.aiR) + (beforeCount.aiA - afterCount.aiA)
+            + (beforeCount.mR - afterCount.mR) + (beforeCount.mA - afterCount.mA);
+        console.log(`🗑️ [dropJunk] AFTER: ${afterCount.aiR} AI restaurants, ${afterCount.aiA} AI attractions, ` +
+            `${afterCount.mR} saved restaurants, ${afterCount.mA} saved attractions`);
+        console.log(`✅ [dropJunk] removed ${totalRemoved} items total. ` +
+            `Reload the food/attractions tabs to see the trimmed list.`);
+        toast.success(`נמחקו ${totalRemoved} מקומות זבל (פרטים בקונסולה)`);
     };
 
     // Per-item delete — strips one specific place from wherever it lives
