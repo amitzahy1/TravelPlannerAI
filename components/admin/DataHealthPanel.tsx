@@ -142,8 +142,16 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
     // calls on already-verified items. User explicitly asked for this.
     type ReverifyPredicate = (p: any) => boolean;
 
-    const reverifyAll = async (predicate?: ReverifyPredicate, scopeLabel?: string) => {
-        if (!trip) return;
+    // Returns the updated Trip so callers chaining multiple mutations
+    // (e.g. fixEverything → reverify → AI hotel verify) can pass the
+    // freshly-updated state to the next step instead of relying on the
+    // stale `trip` captured in this component's closure. Without this,
+    // verifyHotelsWithAi would call `onUpdateTrip({...trip, hotels})`
+    // with the PRE-reverify trip and silently wipe out every
+    // verified/ambiguous status the reverify just wrote — exactly the
+    // bug the user observed: console showed 94 verified, UI showed 54.
+    const reverifyAll = async (predicate?: ReverifyPredicate, scopeLabel?: string): Promise<Trip | null> => {
+        if (!trip) return null;
         setReverifying(true);
         setReverifyProgress({ done: 0, total: 0, verified: 0, notFound: 0 });
         console.log(`🔎 [reverify] starting place verification${scopeLabel ? ` (scope: ${scopeLabel})` : ''}…`);
@@ -198,7 +206,7 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                 console.log(`🔎 [reverify] nothing matched the scope — bailing.`);
                 setReverifying(false);
                 toast.info('אין פריטים שמתאימים לפעולה זו');
-                return;
+                return null;
             }
 
             console.log(`🔎 [reverify] ${verifiable.length} items queued (scope: ${scopeLabel || 'all'}). Country hint: "${tripCountry}".`);
@@ -233,22 +241,25 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                 setReverifyProgress({ done, total: verifiable.length, verified: verifiedCount, notFound: notFoundCount });
             }, { forceRefresh: true });
 
-            onUpdateTrip({
+            const updatedTrip: Trip = {
                 ...trip,
                 aiRestaurants,
                 aiAttractions,
                 restaurants,
                 attractions,
                 hotels,
-            });
+            };
+            onUpdateTrip(updatedTrip);
             console.log(`✅ [reverify] complete — ${verifiedCount} verified, ${notFoundCount} not_found, ` +
                 `${verifiable.length - verifiedCount - notFoundCount} other (ambiguous / errored) ` +
                 `out of ${verifiable.length} total.`);
             toast.success(`האימות הושלם — ${verifiedCount}/${verifiable.length} אומתו` +
                 (notFoundCount > 0 ? ` (${notFoundCount} לא נמצאו)` : ''));
+            return updatedTrip;
         } catch (e) {
             console.error('❌ [reverify] failed:', e);
             toast.error('האימות נכשל — בדוק את הקונסולה');
+            return null;
         } finally {
             setReverifying(false);
         }
@@ -266,14 +277,18 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
     //      falling back to a generic search.
     // Uses SMART intent so it's cheap and the chain falls through Gemini →
     // Groq → OpenRouter automatically when the cap is hit.
-    const verifyHotelsWithAi = async () => {
-        if (!trip || !trip.hotels?.length) {
+    // tripOverride: callers chaining multiple mutations (fixEverything)
+    // must pass the freshly-updated trip so we don't overwrite earlier
+    // verification work by spreading a stale `trip` from closure.
+    const verifyHotelsWithAi = async (tripOverride?: Trip | null): Promise<Trip | null> => {
+        const baseTrip = tripOverride || trip;
+        if (!baseTrip || !baseTrip.hotels?.length) {
             toast.info('אין מלונות בטיול לאימות');
-            return;
+            return null;
         }
         setAiHotelVerifying(true);
-        const tripCountry = inferTripCountry(trip) || trip.destination || '';
-        const hotels = trip.hotels.map(h => ({ ...h }));
+        const tripCountry = inferTripCountry(baseTrip) || baseTrip.destination || '';
+        const hotels = baseTrip.hotels.map(h => ({ ...h }));
         setAiHotelProgress({ done: 0, total: hotels.length, resolved: 0 });
         console.log(`🏨 [ai-verify-hotels] starting on ${hotels.length} hotels (country hint: "${tripCountry}")`);
 
@@ -301,7 +316,7 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
             // The user explicitly flagged this: "you have a Google Maps URL
             // for each hotel — it's the real location."
             const urlCoords = extractCoordsFromMapsUrl(h.googleMapsUrl);
-            if (urlCoords && coordInTripCountries(urlCoords.lat, urlCoords.lng, trip)) {
+            if (urlCoords && coordInTripCountries(urlCoords.lat, urlCoords.lng, baseTrip)) {
                 h.lat = urlCoords.lat;
                 h.lng = urlCoords.lng;
                 (h as any).verifiedAt = Date.now();
@@ -350,7 +365,7 @@ Rules:
                 const text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
                 const parsed = JSON.parse(text || '{}');
                 if (parsed.found && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
-                    if (!coordInTripCountries(parsed.lat, parsed.lng, trip)) {
+                    if (!coordInTripCountries(parsed.lat, parsed.lng, baseTrip)) {
                         console.warn(`🏨 [ai-verify-hotels] ${h.name}: AI returned coords outside trip country, rejecting → trying Photon fallback.`);
                     } else {
                         h.lat = parsed.lat;
@@ -396,7 +411,7 @@ Rules:
                 for (const q of queries) {
                     try {
                         const feat = await photonGeocodeRich(q, tripBbox || undefined);
-                        if (feat && coordInTripCountries(feat.lat, feat.lng, trip)) {
+                        if (feat && coordInTripCountries(feat.lat, feat.lng, baseTrip)) {
                             h.lat = feat.lat;
                             h.lng = feat.lng;
                             if (feat.city && !h.city) h.city = feat.city;
@@ -418,10 +433,12 @@ Rules:
             setAiHotelProgress({ done, total: hotels.length, resolved });
         }
 
-        onUpdateTrip({ ...trip, hotels });
+        const finalTrip: Trip = { ...baseTrip, hotels };
+        onUpdateTrip(finalTrip);
         setAiHotelVerifying(false);
         console.log(`✅ [ai-verify-hotels] complete — ${resolved}/${hotels.length} resolved`);
         toast.success(`אומתו ${resolved}/${hotels.length} מלונות`);
+        return finalTrip;
     };
 
     // One-click healing — runs the full sequence:
@@ -436,11 +453,17 @@ Rules:
         setFixingAll(true);
         try {
             console.group('🧰 [fix-all] starting full healing flow');
-            await reverifyAll(undefined, 'הכל');
-            // Wait a tick so the trip state propagates to the next step.
+            // CRITICAL: capture the updated trip from reverifyAll and pass
+            // it forward. The `trip` prop in this closure is frozen at
+            // fix-all's start; reading it after onUpdateTrip wouldn't pick
+            // up the reverify result. Without this chain, the hotel verify
+            // step spreads the stale trip and wipes the reverified
+            // statuses (user saw: console said 94 verified, UI said 54).
+            const afterReverify = await reverifyAll(undefined, 'הכל');
             await new Promise(r => setTimeout(r, 250));
-            if (trip.hotels && trip.hotels.length > 0) {
-                await verifyHotelsWithAi();
+            const next = afterReverify || trip;
+            if (next.hotels && next.hotels.length > 0) {
+                await verifyHotelsWithAi(next);
             }
             console.groupEnd();
             toast.success('פעולת תיקון מלא הסתיימה — ראה קונסולה לפרטים');
