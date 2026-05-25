@@ -1115,6 +1115,22 @@ export const ItineraryView: React.FC<{
                                                     const dateLabel = seg.date || (seg.departureTime?.includes('T') ? seg.departureTime.split('T')[0] : '');
                                                     const depHHMM = seg.departureTime?.includes('T') ? seg.departureTime.split('T')[1]?.slice(0, 5) : seg.departureTime || '';
                                                     const arrHHMM = seg.arrivalTime?.includes('T') ? seg.arrivalTime.split('T')[1]?.slice(0, 5) : seg.arrivalTime || '';
+                                                    // Wall-clock duration fallback when seg.duration isn't
+                                                    // stored. Ignores timezone (we don't have airport TZ
+                                                    // data on the segment), so this is "local-time delta"
+                                                    // — close enough for the user's quick glance. Wraps
+                                                    // past midnight by adding 24h when arrival < departure.
+                                                    const fmtDuration = (dep: string, arr: string): string => {
+                                                        const [dh, dm] = dep.split(':').map(Number);
+                                                        const [ah, am] = arr.split(':').map(Number);
+                                                        if ([dh, dm, ah, am].some(n => Number.isNaN(n))) return '';
+                                                        let mins = (ah * 60 + am) - (dh * 60 + dm);
+                                                        if (mins < 0) mins += 24 * 60;
+                                                        const h = Math.floor(mins / 60);
+                                                        const m = mins % 60;
+                                                        return `${h}h ${m.toString().padStart(2, '0')}m`;
+                                                    };
+                                                    const duration = seg.duration || (depHHMM && arrHHMM ? fmtDuration(depHHMM, arrHHMM) : '');
                                                     const mapsTo = seg.toCity || seg.toCode || '';
                                                     const mapsHref = mapsTo ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((seg.toCode || '') + ' airport ' + mapsTo)}` : '#';
                                                     return (
@@ -1126,7 +1142,7 @@ export const ItineraryView: React.FC<{
                                                                 <div className="flex-1 min-w-0">
                                                                     <div className="flex items-start justify-between gap-2">
                                                                         <span className="text-[13px] font-black text-slate-800 truncate" dir="ltr">{seg.airline || ''} {seg.flightNumber || ''}</span>
-                                                                        <span className="text-[11px] font-bold text-slate-500 flex-shrink-0">{seg.duration || ''}</span>
+                                                                        <span className="text-[11px] font-bold text-slate-500 flex-shrink-0">{duration}</span>
                                                                     </div>
                                                                     <div className="flex items-center gap-1.5 text-[11px] text-slate-600 mt-0.5" dir="ltr">
                                                                         <span className="font-bold">{seg.fromCode || seg.fromCity}</span>
@@ -1190,7 +1206,11 @@ export const ItineraryView: React.FC<{
                                             const cities = Array.from(cityCounts.entries())
                                                 .sort((a, b) => b[1] - a[1])
                                                 .map(([c]) => c);
-                                            const showTabs = cities.length > 1;
+                                            // Show city chips whenever we have at least one city. Even
+                                            // single-city cases get a chip showing the city + count so the
+                                            // attractions modal stays visually consistent with the food modal
+                                            // when the user's curated list happens to be all from one place.
+                                            const showTabs = cities.length >= 1;
                                             const activeCity = viewingCity && cities.includes(viewingCity) ? viewingCity : null;
                                             const filtered = activeCity
                                                 ? taggedItems.filter(t => t.city === activeCity)
