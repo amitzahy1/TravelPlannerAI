@@ -553,23 +553,30 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
             return aCountry - bCountry;
         });
 
-        // Tally checks the same fields as attractionMatchesCity — see that
-        // function's comment for why we look at name + description too.
-        //
-        // Count per matching chip (NO early-return). The chip count must equal
-        // "how many items this chip's filter would show". An item that mentions
-        // two cities legitimately shows under both filters and should count
-        // twice. The early-return version was making later chips read 0 even
-        // when clicking them surfaced dozens of items.
-        const tally = (region?: string, location?: string, name?: string, nameEnglish?: string, description?: string) => {
+        // Use the SAME coord-first matcher as the filter (getPrimaryCityForAttraction).
+        // Earlier the count used a "match any field" OR scan that returned
+        // true for both cities when an item's description mentioned both,
+        // while the filter used coord-first geography. They disagreed:
+        // Vlora chip showed 26, Tirana showed 0, but clicking Tirana
+        // surfaced lots of items. User reported "the number next to the
+        // city doesn't represent anything." Fixed.
+        const anchors = buildCityAnchors(trip);
+        const countItem = (a: any) => {
+            const primary = getPrimaryCityForAttraction(a, anchors);
             for (const k of orderedKeys) {
                 const display = cityByKey.get(k)!.display;
+                const displayEn = (displayCityName(display, 'en') || display).trim().toLowerCase();
+                if (primary) {
+                    if (primary.toLowerCase() === displayEn) cityByKey.get(k)!.count += 1;
+                    continue;
+                }
+                // No coords on the item → string fallback (same as filter).
                 if (
-                    locationMatchesCity(region || '', display)
-                    || locationMatchesCity(location || '', display)
-                    || locationMatchesCity(name || '', display)
-                    || locationMatchesCity(nameEnglish || '', display)
-                    || locationMatchesCity(description || '', display)
+                    locationMatchesCity(a.region || '', display)
+                    || locationMatchesCity(a.location || '', display)
+                    || locationMatchesCity(a.name || '', display)
+                    || locationMatchesCity(a.nameEnglish || '', display)
+                    || locationMatchesCity(a.description || '', display)
                 ) {
                     cityByKey.get(k)!.count += 1;
                 }
@@ -581,9 +588,9 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         // when the AI run returned zero attractions there).
         const isCountable = (a: { verificationStatus?: string }) =>
             a.verificationStatus !== 'not_found' && a.verificationStatus !== 'ambiguous';
-        const walk = (cats?: { region?: string; attractions: { region?: string; location?: string; name?: string; nameEnglish?: string; description?: string; verificationStatus?: string }[] }[]) => {
+        const walk = (cats?: { region?: string; attractions: { region?: string; location?: string; name?: string; nameEnglish?: string; description?: string; verificationStatus?: string; lat?: number; lng?: number }[] }[]) => {
             (cats || []).forEach(cat => cat.attractions.forEach(a => {
-                if (isCountable(a)) tally(a.region || cat.region, a.location, a.name, a.nameEnglish, a.description);
+                if (isCountable(a)) countItem({ ...a, region: a.region || cat.region });
             }));
         };
         walk(trip.attractions);

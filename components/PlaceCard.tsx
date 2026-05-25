@@ -137,7 +137,7 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                 <div className="flex items-center gap-1 min-w-0 flex-1">
                                         <span
                                                 dir="ltr"
-                                                className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-900 text-[11px] font-black uppercase tracking-wide truncate shadow-lg shadow-black/30 ring-1 ring-amber-500/30"
+                                                className="px-2.5 py-1 rounded-md bg-white/95 backdrop-blur-md text-slate-900 text-[10px] font-bold uppercase tracking-[0.1em] truncate shadow-[0_4px_12px_-2px_rgba(0,0,0,0.35)] ring-1 ring-black/5"
                                         >
                                                 {visualLabel}
                                         </span>
