@@ -8,6 +8,20 @@ export default {
                 "./utils/**/*.{js,ts,jsx,tsx}",   // Add utils to scan for dynamic classes in cityColors.ts
 
         ],
+        // Safelist every theme class referenced in utils/cityColors.ts.
+        // Tailwind's content scan picks up most of them, but with the
+        // current build pipeline (Vite + JIT) some were dropped from the
+        // generated CSS, leaving the div with the className but no
+        // background colour rule. User confirmed via console log on
+        // 2026-05-25: themeFor returned 'bg-orange-500' for Vlora days
+        // yet the days rendered dark blue (parent showing through).
+        // Brute-force include all 14 city-theme palette colours so the
+        // build never misses one again.
+        safelist: [
+                {
+                        pattern: /^(bg|border|text)-(slate|orange|blue|rose|emerald|violet|amber|cyan|fuchsia|lime|indigo|red|sky|teal|pink)-(100|200|300|400|500|600|700|800|900)$/,
+                },
+        ],
         theme: {
                 extend: {
                         fontFamily: {
