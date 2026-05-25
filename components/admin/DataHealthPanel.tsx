@@ -459,21 +459,84 @@ Rules:
     const handleStatClick = async (key: HealthStat['key']) => {
         if (!trip) return;
         if (key === 'duplicates') {
-            // Just show the dupes inline. Listed in console + alert for now.
-            const seen = new Map<string, any[]>();
-            [...allRestaurants, ...allAttractions].forEach(p => {
-                const k = placeDedupeKey({ name: p.name, region: p.region, location: p.location }, trip);
-                const arr = seen.get(k) || [];
-                arr.push(p);
-                seen.set(k, arr);
-            });
-            const dupes = Array.from(seen.entries()).filter(([_, arr]) => arr.length > 1);
-            console.group('🪞 [duplicates] groups found:');
-            dupes.forEach(([k, arr]) => {
-                console.log(`  ${k}:`, arr.map(p => p.name).join(' | '));
-            });
+            // Auto-merge duplicates. For each group of ≥2 items sharing
+            // the same dedupe key, score each by data completeness and
+            // keep the best one. User asked 2026-05-25: "instead of just
+            // showing the dupes in console, write logic that deletes one
+            // and keeps the most accurate."
+            //
+            // Score components (higher = better):
+            //   +3 verified  /  +1 ambiguous  /  -1 not_found
+            //   +2 has lat AND lng
+            //   +2 has googleMapsUrl
+            //   +1 has description
+            //   +1 has rating
+            //   +1 has imageUrl
+            const scorePlace = (p: any): number => {
+                let s = 0;
+                if (p.verificationStatus === 'verified') s += 3;
+                else if (p.verificationStatus === 'ambiguous') s += 1;
+                else if (p.verificationStatus === 'not_found') s -= 1;
+                if (typeof p.lat === 'number' && typeof p.lng === 'number') s += 2;
+                if (typeof p.googleMapsUrl === 'string' && p.googleMapsUrl.trim()) s += 2;
+                if (typeof p.description === 'string' && p.description.trim().length > 10) s += 1;
+                if (typeof p.googleRating === 'number' && p.googleRating > 0) s += 1;
+                if (typeof (p as any).rating === 'number' && (p as any).rating > 0) s += 1;
+                if (typeof p.imageUrl === 'string' && p.imageUrl.trim()) s += 1;
+                return s;
+            };
+
+            const buildGroups = (items: any[]) => {
+                const groups = new Map<string, any[]>();
+                items.forEach(p => {
+                    const k = placeDedupeKey({ name: p.name, region: p.region, location: p.location }, trip);
+                    const arr = groups.get(k) || [];
+                    arr.push(p);
+                    groups.set(k, arr);
+                });
+                return groups;
+            };
+
+            const restaurantGroups = buildGroups(allRestaurants);
+            const attractionGroups = buildGroups(allAttractions);
+
+            // Build a set of IDs to DROP (everything except the highest-scoring one per group).
+            const dropIds = new Set<string>();
+            let dropped = 0;
+            console.group('🪞 [dedupe] auto-merging duplicate groups:');
+            const reportGroup = (k: string, arr: any[]) => {
+                if (arr.length < 2) return;
+                const sorted = [...arr].sort((a, b) => scorePlace(b) - scorePlace(a));
+                const winner = sorted[0];
+                const losers = sorted.slice(1);
+                console.log(`  "${k}" — keeping "${winner.name}" (score ${scorePlace(winner)}), dropping: ${losers.map(l => `"${l.name}" (score ${scorePlace(l)})`).join(', ')}`);
+                losers.forEach(l => { dropIds.add(l.id); dropped++; });
+            };
+            restaurantGroups.forEach((arr, k) => reportGroup(k, arr));
+            attractionGroups.forEach((arr, k) => reportGroup(k, arr));
             console.groupEnd();
-            toast.info(`${dupes.length} קבוצות כפילויות — ראה קונסולה`);
+
+            if (dropIds.size === 0) {
+                toast.info('לא נמצאו כפילויות');
+                return;
+            }
+
+            // Apply: filter the dropped IDs out of every list, drop empty categories.
+            const filterCat = <T extends { restaurants?: Restaurant[]; attractions?: Attraction[] }>(c: T): T => ({
+                ...c,
+                restaurants: c.restaurants?.filter(r => !dropIds.has(r.id)) as any,
+                attractions: c.attractions?.filter(a => !dropIds.has(a.id)) as any,
+            });
+            const updated = {
+                ...trip,
+                aiRestaurants: (trip.aiRestaurants || []).map(filterCat).filter(c => (c.restaurants?.length || 0) > 0),
+                aiAttractions: (trip.aiAttractions || []).map(filterCat).filter(c => (c.attractions?.length || 0) > 0),
+                restaurants: (trip.restaurants || []).map(filterCat).filter(c => (c.restaurants?.length || 0) > 0),
+                attractions: (trip.attractions || []).map(filterCat).filter(c => (c.attractions?.length || 0) > 0),
+            };
+            onUpdateTrip(updated);
+            console.log(`✅ [dedupe] removed ${dropped} duplicate(s). Kept the highest-scoring entry per group.`);
+            toast.success(`נמחקו ${dropped} כפילויות — נשמרה הרשומה המלאה ביותר מכל קבוצה`);
             return;
         }
         if (key === 'outOfScope') {
