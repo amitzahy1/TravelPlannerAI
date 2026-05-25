@@ -856,8 +856,11 @@ export const ItineraryView: React.FC<{
         ordered.forEach((c, i) => {
             map[c] = CITY_THEMES[i % CITY_THEMES.length];
         });
-        console.info('[ItineraryView] city color map:',
-            Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v.bg])));
+        const debugMap = Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v.bg]));
+        console.info('[ItineraryView] city color map:', JSON.stringify(debugMap));
+        console.info('[ItineraryView] ordered cities:', JSON.stringify(ordered));
+        console.info('[ItineraryView] timeline locationContexts:',
+            JSON.stringify(timeline.map(d => d.locationContext || '(empty)')));
         return map;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [timeline]);
