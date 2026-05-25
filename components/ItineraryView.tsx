@@ -871,9 +871,14 @@ export const ItineraryView: React.FC<{
     }, [timeline]);
 
     const themeFor = (raw: string): CityTheme => {
-        if (!raw || isFlightish(raw)) return DEFAULT_CITY_THEME;
+        if (!raw || isFlightish(raw)) {
+            console.log(`[themeFor] "${raw}" → FLIGHT → default(slate)`);
+            return DEFAULT_CITY_THEME;
+        }
         const key = canonCity(raw);
-        return cityColorMap[key] || DEFAULT_CITY_THEME;
+        const theme = cityColorMap[key] || DEFAULT_CITY_THEME;
+        console.log(`[themeFor] "${raw}" → key="${key}" → ${theme.bg} (mapKeys=${Object.keys(cityColorMap).join(',')})`);
+        return theme;
     };
 
     // City × nights for the hero — only cities the user actually has a
