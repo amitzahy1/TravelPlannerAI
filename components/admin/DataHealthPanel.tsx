@@ -84,7 +84,7 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
         // Duplicate check
         const seen = new Map<string, number>();
         [...allRestaurants, ...allAttractions].forEach(p => {
-            const k = placeDedupeKey({ name: p.name, region: p.region, location: p.location }, trip);
+            const k = placeDedupeKey({ name: p.name, region: p.region, location: p.location, verifiedCity: (p as any).verifiedCity }, trip);
             seen.set(k, (seen.get(k) || 0) + 1);
         });
         const duplicates = Array.from(seen.values()).filter(v => v > 1).length;
@@ -512,7 +512,7 @@ Rules:
             const buildGroups = (items: any[]) => {
                 const groups = new Map<string, any[]>();
                 items.forEach(p => {
-                    const k = placeDedupeKey({ name: p.name, region: p.region, location: p.location }, trip);
+                    const k = placeDedupeKey({ name: p.name, region: p.region, location: p.location, verifiedCity: (p as any).verifiedCity }, trip);
                     const arr = groups.get(k) || [];
                     arr.push(p);
                     groups.set(k, arr);
@@ -520,8 +520,12 @@ Rules:
                 return groups;
             };
 
-            const restaurantGroups = buildGroups(allRestaurants);
-            const attractionGroups = buildGroups(allAttractions);
+            // Unified grouping (matches the stat-card duplicate count).
+            // Earlier we grouped restaurants and attractions separately,
+            // which missed cross-category duplicates AND items spread
+            // across multiple AI city lists that the stat card counted
+            // as a single group. The unified key collapses them.
+            const allGroups = buildGroups([...allRestaurants, ...allAttractions]);
 
             // Build a set of IDs to DROP (everything except the highest-scoring one per group).
             const dropIds = new Set<string>();
@@ -535,8 +539,8 @@ Rules:
                 console.log(`  "${k}" — keeping "${winner.name}" (score ${scorePlace(winner)}), dropping: ${losers.map(l => `"${l.name}" (score ${scorePlace(l)})`).join(', ')}`);
                 losers.forEach(l => { dropIds.add(l.id); dropped++; });
             };
-            restaurantGroups.forEach((arr, k) => reportGroup(k, arr));
-            attractionGroups.forEach((arr, k) => reportGroup(k, arr));
+            allGroups.forEach((arr, k) => reportGroup(k, arr));
+            console.log(`🪞 [dedupe] scanned ${allRestaurants.length + allAttractions.length} items → ${allGroups.size} unique keys → ${dropIds.size} drops queued.`);
             console.groupEnd();
 
             if (dropIds.size === 0) {

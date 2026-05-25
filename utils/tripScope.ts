@@ -175,11 +175,19 @@ export const normalizePlaceName = (name: string): string => {
  * categories without false positives from punctuation drift.
  */
 export const placeDedupeKey = (
-    place: { name?: string; region?: string; location?: string },
+    place: { name?: string; region?: string; location?: string; verifiedCity?: string },
     trip?: Trip,
 ): string => {
     const name = normalizePlaceName(place.name || '');
-    let city = place.region || '';
+    // City preference: verifiedCity (set by reverify — always normalized to
+    // the real-world city Photon resolved) > region (AI-assigned, often
+    // wrong when the AI duplicated an item across city lists) > location
+    // last-segment > trip.destination. Using region as the primary key
+    // missed duplicates like "Nouvelle Vague" appearing 3 times under
+    // 3 different region tags ("Vlora", "Tirana", "all") even though
+    // they all geocode to the same Tirana spot. After reverify writes
+    // verifiedCity, the keys collapse and dedupe finds them.
+    let city = place.verifiedCity || place.region || '';
     if (!city && place.location) {
         const parts = place.location.split(',').map(s => s.trim()).filter(Boolean);
         city = parts[parts.length - 1] || '';
