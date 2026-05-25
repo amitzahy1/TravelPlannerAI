@@ -819,11 +819,27 @@ export const ItineraryView: React.FC<{
 
     const activeDay = useMemo(() => timeline.find(d => d.dateIso === selectedDayIso), [timeline, selectedDayIso]);
 
-    // Trip-aware colour map — guarantees distinct colours for every unique city
-    // across the whole itinerary, so Pattaya / Bangkok / Abu Dhabi never collide.
+    // Canonicalize a city label to its English form before feeding the
+    // colour map. The locationContext may arrive as Hebrew ("וולורה"),
+    // English ("Vlora") or even mixed across days of the same trip —
+    // depending on how the AI extracted each hotel. Without canonicalising,
+    // "Tirana" and "טירנה" become two separate keys with two separate
+    // colours, OR both get hashed to the same theme. Both fail the user.
+    // User reported 2026-05-25: "Tirana and Vlora both show in purple."
+    const canonCity = (raw: string): string => {
+        const cleaned = cleanCityName(raw || '');
+        if (!cleaned) return '';
+        const en = displayCityName(cleaned, 'en');
+        return (en || cleaned).trim().toLowerCase();
+    };
+
+    // Trip-aware colour map — guarantees distinct colours for every unique
+    // city across the whole itinerary, keyed by canonical English form so
+    // Hebrew/English variants of the same city share one entry.
     const cityColorMap = useMemo(() => {
-        const cities = timeline.map(d => cleanCityName(d.locationContext || '')).filter(Boolean);
+        const cities = timeline.map(d => canonCity(d.locationContext || '')).filter(Boolean);
         return buildCityColorMap(cities);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [timeline]);
 
     // City × nights for the hero — only cities the user actually has a
@@ -1313,8 +1329,14 @@ export const ItineraryView: React.FC<{
 
                                     // Use dynamic theme engine — trip-aware so distinct cities always
                                     // get distinct colours (see buildCityColorMap above).
-                                    const theme = lookupCityTheme(cityColorMap, cleanCityName(day.locationContext));
+                                    const theme = lookupCityTheme(cityColorMap, canonCity(day.locationContext));
                                     const headerColorClass = theme.bg;
+                                    // Hebrew display name — guarantees the same city renders
+                                    // identically across cards regardless of how the source
+                                    // string was stored (Hebrew / English / mixed).
+                                    const dayCityHe = day.locationContext
+                                        ? (displayCityName(cleanCityName(day.locationContext), 'he') || day.locationContext)
+                                        : '';
 
                                     // COMPACT VIEW — IPO-grade strip-list card (R3)
                                     if (viewMode === 'compact') {
@@ -1363,7 +1385,7 @@ export const ItineraryView: React.FC<{
                                                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                                                     <div className="flex items-center gap-1.5 min-w-0">
                                                         <h3 className="text-sm font-bold text-slate-900 truncate">
-                                                            {dayTitle || day.locationContext || 'יום בטיול'}
+                                                            {dayTitle || dayCityHe || 'יום בטיול'}
                                                         </h3>
                                                         {topChip && (
                                                             <span className={`inline-flex items-center gap-0.5 rounded-pill px-1.5 py-0.5 text-2xs font-bold ring-1 shrink-0 ${
@@ -1433,7 +1455,7 @@ export const ItineraryView: React.FC<{
                                                     })()}
                                                 </div>
                                                 <h3 className="text-xs font-bold text-white leading-tight truncate max-w-[55%]" title={day.locationContext}>
-                                                    {day.locationContext || 'יום בטיול'}
+                                                    {dayCityHe || 'יום בטיול'}
                                                 </h3>
                                             </div>
 
@@ -1494,7 +1516,10 @@ export const ItineraryView: React.FC<{
                         <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] animate-scale-in" onClick={e => e.stopPropagation()}>
                             {/* Modal Header */}
                             {(() => {
-                                const modalTheme = lookupCityTheme(cityColorMap, cleanCityName(activeDay.locationContext));
+                                const modalTheme = lookupCityTheme(cityColorMap, canonCity(activeDay.locationContext));
+                                const modalCityHe = activeDay.locationContext
+                                    ? (displayCityName(cleanCityName(activeDay.locationContext), 'he') || activeDay.locationContext)
+                                    : '';
                                 return (
                                     <div className={`${modalTheme.bg} border-b border-white/10 p-5 flex items-center justify-between flex-shrink-0`}>
                                         <div className="flex items-center gap-3">
@@ -1503,7 +1528,7 @@ export const ItineraryView: React.FC<{
                                             </div>
                                             <div>
                                                 <div className="text-xs font-bold text-white/70 uppercase tracking-wider">{activeDay.displayDayOfWeek}</div>
-                                                <h2 className="text-lg font-black text-white">{activeDay.locationContext || 'לו"ז יומי'}</h2>
+                                                <h2 className="text-lg font-black text-white">{modalCityHe || 'לו"ז יומי'}</h2>
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
