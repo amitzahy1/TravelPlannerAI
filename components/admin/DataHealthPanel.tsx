@@ -26,10 +26,14 @@ interface DataHealthPanelProps {
 }
 
 interface HealthStat {
+    /** Stable key so callers can wire click handlers per-card. */
+    key: 'total' | 'verified' | 'ambiguous' | 'noCoords' | 'failed' | 'outOfScope' | 'duplicates';
     label: string;
     value: string | number;
     tone: 'good' | 'warn' | 'bad' | 'neutral';
     detail?: string;
+    /** Action label shown on hover/inside the card when clickable. */
+    action?: string;
 }
 
 const toneClass = (tone: HealthStat['tone']) => {
@@ -86,13 +90,13 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
         const duplicates = Array.from(seen.values()).filter(v => v > 1).length;
 
         return [
-            { label: 'מקומות בטיול', value: total, tone: 'neutral' },
-            { label: 'מאומתים', value: verified, tone: verified > 0 ? 'good' : 'neutral' },
-            { label: 'לא מאומתים', value: ambiguous, tone: ambiguous > 0 ? 'warn' : 'good', detail: 'מיקום שאינו תואם לעיר/מדינה בוודאות' },
-            { label: 'ללא קואורדינטות', value: noCoords, tone: noCoords > 0 ? 'warn' : 'good' },
-            { label: 'גיאוקודינג נכשל', value: failed, tone: failed > 0 ? 'bad' : 'good' },
-            { label: 'מחוץ לטיול', value: outOfScope, tone: outOfScope > 0 ? 'bad' : 'good' },
-            { label: 'כפילויות', value: duplicates, tone: duplicates > 0 ? 'warn' : 'good' },
+            { key: 'total',      label: 'מקומות בטיול', value: total, tone: 'neutral' },
+            { key: 'verified',   label: 'מאומתים', value: verified, tone: verified > 0 ? 'good' : 'neutral' },
+            { key: 'ambiguous',  label: 'לא מאומתים', value: ambiguous, tone: ambiguous > 0 ? 'warn' : 'good', detail: 'מיקום שאינו תואם לעיר/מדינה בוודאות', action: ambiguous > 0 ? 'אמת מחדש' : undefined },
+            { key: 'noCoords',   label: 'ללא קואורדינטות', value: noCoords, tone: noCoords > 0 ? 'warn' : 'good', action: noCoords > 0 ? 'מצא קואורדינטות' : undefined },
+            { key: 'failed',     label: 'גיאוקודינג נכשל', value: failed, tone: failed > 0 ? 'bad' : 'good', action: failed > 0 ? 'נסה שוב' : undefined },
+            { key: 'outOfScope', label: 'מחוץ לטיול', value: outOfScope, tone: outOfScope > 0 ? 'bad' : 'good', action: outOfScope > 0 ? 'הסר' : undefined },
+            { key: 'duplicates', label: 'כפילויות', value: duplicates, tone: duplicates > 0 ? 'warn' : 'good', action: duplicates > 0 ? 'הצג כפילויות' : undefined },
         ];
     }, [trip, allRestaurants, allAttractions]);
 
@@ -403,6 +407,45 @@ Rules:
         toast.success(`אומתו ${resolved}/${hotels.length} מלונות`);
     };
 
+    // Focused fix per stat card. Each card the user clicks runs the
+    // SCOPED action that addresses that specific data-quality issue.
+    // Wired below as the onClick of each card. Composes existing
+    // helpers — no new verification logic, just better routing.
+    const handleStatClick = async (key: HealthStat['key']) => {
+        if (!trip) return;
+        if (key === 'duplicates') {
+            // Just show the dupes inline. Listed in console + alert for now.
+            const seen = new Map<string, any[]>();
+            [...allRestaurants, ...allAttractions].forEach(p => {
+                const k = placeDedupeKey({ name: p.name, region: p.region, location: p.location }, trip);
+                const arr = seen.get(k) || [];
+                arr.push(p);
+                seen.set(k, arr);
+            });
+            const dupes = Array.from(seen.entries()).filter(([_, arr]) => arr.length > 1);
+            console.group('🪞 [duplicates] groups found:');
+            dupes.forEach(([k, arr]) => {
+                console.log(`  ${k}:`, arr.map(p => p.name).join(' | '));
+            });
+            console.groupEnd();
+            toast.info(`${dupes.length} קבוצות כפילויות — ראה קונסולה`);
+            return;
+        }
+        if (key === 'outOfScope') {
+            dropOutOfScope();
+            return;
+        }
+        // For ambiguous / noCoords / failed — re-run reverifyAll, which
+        // already runs Photon on EVERY item (with forceRefresh) and
+        // populates lat/lng + status. Adding scope-specific subsets
+        // would duplicate that pipeline; reusing it gives the user the
+        // strongest fix in one click.
+        if (key === 'ambiguous' || key === 'noCoords' || key === 'failed') {
+            reverifyAll();
+            return;
+        }
+    };
+
     const dropOutOfScope = () => {
         if (!trip) return;
         const filterCat = <T extends { restaurants?: Restaurant[]; attractions?: Attraction[] }>(c: T): T => ({
@@ -583,13 +626,46 @@ Rules:
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {stats.map(s => (
-                        <div key={s.label} className={`p-3 rounded-xl border ${toneClass(s.tone)}`}>
-                            <div className="text-xs font-bold opacity-80">{s.label}</div>
-                            <div className="text-2xl font-black mt-1">{s.value}</div>
-                            {s.detail && <div className="text-[10px] opacity-70 mt-1">{s.detail}</div>}
-                        </div>
-                    ))}
+                    {stats.map(s => {
+                        // A card is clickable when it has an `action` (only
+                        // shows when value > 0 and there's something to fix).
+                        const clickable = !!s.action && (typeof s.value === 'number' ? s.value > 0 : true);
+                        const baseClasses = `p-3 rounded-xl border text-right transition-all ${toneClass(s.tone)}`;
+                        const clickableClasses = clickable
+                            ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
+                            : '';
+                        const content = (
+                            <>
+                                <div className="text-xs font-bold opacity-80">{s.label}</div>
+                                <div className="text-2xl font-black mt-1">{s.value}</div>
+                                {s.detail && <div className="text-[10px] opacity-70 mt-1">{s.detail}</div>}
+                                {clickable && (
+                                    <div className="text-[10px] font-bold mt-2 opacity-90 underline">
+                                        ← {s.action}
+                                    </div>
+                                )}
+                            </>
+                        );
+                        if (clickable) {
+                            return (
+                                <button
+                                    key={s.key}
+                                    type="button"
+                                    onClick={() => handleStatClick(s.key)}
+                                    disabled={reverifying}
+                                    className={`${baseClasses} ${clickableClasses} disabled:opacity-60 disabled:cursor-wait`}
+                                    title={s.action}
+                                >
+                                    {content}
+                                </button>
+                            );
+                        }
+                        return (
+                            <div key={s.key} className={baseClasses}>
+                                {content}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
