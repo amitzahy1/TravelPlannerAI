@@ -212,11 +212,29 @@ export const verifyPlace = async (
                         };
                 }
                 if (distance > 5000) {
-                        // Photon and the URL disagree by more than 5 km — almost
-                        // certainly two different places. Downgrade.
-                        status = 'ambiguous';
-                        confidence = Math.min(confidence, 0.45);
-                        source = 'photon';
+                        // Photon and the URL disagree by more than 5 km. Earlier
+                        // version always downgraded to ambiguous. New rule: if
+                        // Photon's coords ARE inside the trip country AND the URL
+                        // coords AREN'T, the URL is wrong (AI fabricated it from
+                        // a same-named place elsewhere). Trust Photon, keep
+                        // verified. This was the main cause of the user's 138
+                        // residual ambiguous items — most AI-generated URLs
+                        // pointed somewhere outside Albania.
+                        const urlInsideCountry = tripBbox
+                                ? coordInBbox(urlCoords.lat, urlCoords.lng, tripBbox)
+                                : false;
+                        if (!urlInsideCountry) {
+                                // URL is the suspect, not Photon. Keep verified status,
+                                // mild confidence reduction since cross-check failed.
+                                confidence = Math.min(confidence, 0.7);
+                                source = 'photon';
+                        } else {
+                                // Both coords are in-country but disagree — could be
+                                // a real two-different-places case. Downgrade.
+                                status = 'ambiguous';
+                                confidence = Math.min(confidence, 0.45);
+                                source = 'photon';
+                        }
                 }
                 // 500 m – 5 km: minor disagreement, keep Photon coords + status as-is.
         }
