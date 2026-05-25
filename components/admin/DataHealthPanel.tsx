@@ -16,7 +16,7 @@ import { getTripCities, displayCityName } from '../../utils/geoData';
 import { isPlaceInTripScope, inferTripCountry, placeDedupeKey, coordInTripCountries } from '../../utils/tripScope';
 import { isPreciseGoogleUrl } from '../../utils/mapsUrl';
 import { verifyPlacesBatch, applyVerificationResult } from '../../utils/placeVerification';
-import { photonGeocodeRich, getCountryBbox, toEnglishCountryName } from '../../utils/geocodePlaces';
+import { photonGeocodeRich, getCountryBbox, toEnglishCountryName, extractCoordsFromMapsUrl } from '../../utils/geocodePlaces';
 import { generateWithFallback } from '../../services/aiService';
 import { toast } from '../../stores/useToastStore';
 
@@ -267,6 +267,30 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
         let done = 0;
         for (const h of hotels) {
             const cleanName = cleanHotelName(h.name || '');
+
+            // STEP 0 — User's stored Google Maps URL is the ground truth.
+            // The hotels page lets the user paste the actual booking URL,
+            // which often encodes precise coords (!3d!4d / @lat,lng / ?q=).
+            // If we can extract coords from it AND they're inside the trip
+            // country, we're DONE — no AI call, no Photon round-trip.
+            // The user explicitly flagged this: "you have a Google Maps URL
+            // for each hotel — it's the real location."
+            const urlCoords = extractCoordsFromMapsUrl(h.googleMapsUrl);
+            if (urlCoords && coordInTripCountries(urlCoords.lat, urlCoords.lng, trip)) {
+                h.lat = urlCoords.lat;
+                h.lng = urlCoords.lng;
+                (h as any).verifiedAt = Date.now();
+                (h as any).verificationStatus = 'verified';
+                resolved++;
+                done++;
+                console.log(`🏨 [ai-verify-hotels ${done}/${hotels.length}] ✓ ${h.name} → (${urlCoords.lat.toFixed(4)}, ${urlCoords.lng.toFixed(4)}) [via stored Maps URL]`);
+                setAiHotelProgress({ done, total: hotels.length, resolved });
+                continue;
+            }
+            if (h.googleMapsUrl && !urlCoords) {
+                console.info(`🏨 [ai-verify-hotels] ${h.name}: googleMapsUrl exists but no coords extractable (probably a short link). Falling back to AI/Photon.`);
+            }
+
             const prompt = `Find this hotel and return its canonical Google Maps data as JSON.
 Hotel: ${cleanName || '(no name)'}
 Address: ${h.address || '(no address)'}
@@ -309,8 +333,16 @@ Rules:
                         if (parsed.canonicalName) h.name = parsed.canonicalName;
                         if (parsed.canonicalAddress) h.address = parsed.canonicalAddress;
                         if (parsed.city) h.city = parsed.city;
+                        // Only overwrite the user's stored URL when the AI's
+                        // URL is MORE PRECISE (has place_id/cid/ftid). Never
+                        // replace a precise user URL with a generic search URL.
                         if (parsed.googleMapsUrl && typeof parsed.googleMapsUrl === 'string') {
-                            (h as any).googleMapsUrl = parsed.googleMapsUrl;
+                            const currentUrl = (h as any).googleMapsUrl as string | undefined;
+                            const newIsPrecise = isPreciseGoogleUrl(parsed.googleMapsUrl);
+                            const currentIsPrecise = isPreciseGoogleUrl(currentUrl);
+                            if (newIsPrecise || !currentIsPrecise) {
+                                (h as any).googleMapsUrl = parsed.googleMapsUrl;
+                            }
                         }
                         (h as any).verifiedAt = Date.now();
                         (h as any).verificationStatus = 'verified';
