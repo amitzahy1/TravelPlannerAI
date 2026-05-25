@@ -423,6 +423,8 @@ export const AttractionsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
     const [researchProgress, setResearchProgress] = useState({ current: 0, total: 0 });
 
     const [selectedCity, setSelectedCity] = useState<string>('all');
+    // Map-view source filter — see RestaurantsView for rationale.
+    const [mapSourceFilter, setMapSourceFilter] = useState<'all' | 'mine' | 'ai'>('all');
     const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set());
     const [filterPrices, setFilterPrices] = useState<Set<string>>(new Set());
     const [textQuery, setTextQuery] = useState('');
@@ -1661,8 +1663,9 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
         // Map view shows EVERYTHING by default — both saved (solid pin) and
         // AI suggestions (dashed pin) — so the user sees the full picture
         // without toggling tabs. The list-view tab still scopes the list.
-        const includeSaved = true;
-        const includeAi = true;
+        // User-controlled via the mapSourceFilter toggle.
+        const includeSaved = mapSourceFilter !== 'ai';
+        const includeAi = mapSourceFilter !== 'mine';
 
         const savedNameKeys = new Set<string>();
         const savedCoordKeys = new Set<string>();
@@ -2031,6 +2034,28 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
 
             {viewMode === 'map' ? (
                 <div className="space-y-3">
+                    {/* Source filter — see RestaurantsView for rationale. */}
+                    <div className="flex items-center gap-1.5 justify-center">
+                        <button
+                            onClick={() => setMapSourceFilter('all')}
+                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${mapSourceFilter === 'all' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                        >
+                            כל ההמלצות
+                        </button>
+                        <button
+                            onClick={() => setMapSourceFilter('mine')}
+                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${mapSourceFilter === 'mine' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                        >
+                            הרשימה שלי בלבד
+                        </button>
+                        <button
+                            onClick={() => setMapSourceFilter('ai')}
+                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${mapSourceFilter === 'ai' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                        >
+                            המלצות AI בלבד
+                        </button>
+                    </div>
+
                     {/* Filter card — map-only. Collapsible on mobile, expanded
                         on desktop. Affects only the markers on the map. */}
                     {(filterOptions.types.length > 0 || filterOptions.prices.length > 0) && (

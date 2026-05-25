@@ -390,6 +390,12 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
 
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
     const [selectedCity, setSelectedCity] = useState<string>('all');
+    // Map-view source filter — lets the user narrow the pins to:
+    //   'all'   — saved + AI suggestions (default; full picture)
+    //   'mine'  — only places already on their saved list
+    //   'ai'    — only AI suggestions
+    // User asked 2026-05-25 for this toggle on the food map page.
+    const [mapSourceFilter, setMapSourceFilter] = useState<'all' | 'mine' | 'ai'>('all');
 
     // Admin-gated controls (bulk refresh, delete-all-not-found).
     const userIsAdmin = isAdmin(user);
@@ -1985,8 +1991,8 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         // the user sees the full picture of their food options without
         // toggling tabs. Marker style differentiates the two sources.
         // The list-view tab still scopes the list itself.
-        const includeSaved = true;
-        const includeAi = true;
+        const includeSaved = mapSourceFilter !== 'ai';
+        const includeAi = mapSourceFilter !== 'mine';
         savedFlat.forEach(r => {
             if (!includeSaved) return;
             if (selectedCity !== 'all' && !restaurantMatchesCity(r, selectedCity)) return;
@@ -2428,6 +2434,30 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
 
             {viewMode === 'map' ? (
                 <div className="space-y-3">
+                    {/* Source filter — narrows the pins shown on the map.
+                        User asked 2026-05-25 to be able to choose between
+                        "only my saved list" vs "all recommendations". */}
+                    <div className="flex items-center gap-1.5 justify-center">
+                        <button
+                            onClick={() => setMapSourceFilter('all')}
+                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${mapSourceFilter === 'all' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                        >
+                            כל ההמלצות
+                        </button>
+                        <button
+                            onClick={() => setMapSourceFilter('mine')}
+                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${mapSourceFilter === 'mine' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                        >
+                            הרשימה שלי בלבד
+                        </button>
+                        <button
+                            onClick={() => setMapSourceFilter('ai')}
+                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${mapSourceFilter === 'ai' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                        >
+                            המלצות AI בלבד
+                        </button>
+                    </div>
+
                     {/* Filter card — map-only. Collapsed by default on mobile,
                         expanded on desktop. Affects only the markers on the map. */}
                     {(filterOptions.cuisines.length > 0 || filterOptions.prices.length > 0) && (
