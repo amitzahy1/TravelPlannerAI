@@ -1490,6 +1490,9 @@ export const ItineraryView: React.FC<{
                                             <div
                                                 className={`${headerColorClass} relative flex items-center justify-between gap-2 px-3 py-2`}
                                                 style={headerInlineStyle}
+                                                data-debug-bg={theme.hexBg}
+                                                data-debug-class={theme.bg}
+                                                data-debug-city={dayCityHe}
                                             >
                                                 <div className="text-white flex items-baseline gap-1.5 min-w-0">
                                                     {(() => {
