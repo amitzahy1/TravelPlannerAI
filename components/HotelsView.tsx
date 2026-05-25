@@ -901,14 +901,23 @@ export const HotelsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => void 
                                 {hotels.length > hotelGroups.length && ` (${hotels.length} הזמנות)`}
                             </p>
                         </div>
-                        <div className="flex gap-2 w-full sm:w-auto flex-shrink-0">
+                        {/* Add-hotel buttons — collapsed into a small subtle
+                            pair on the side. User feedback 2026-05-25: the
+                            big purple gradient + "ידני" buttons dominated
+                            the page even though most users add hotels
+                            via the trip wizard or AI import, not here. */}
+                        <div className="flex gap-1.5 flex-shrink-0 self-start sm:self-center">
                             <button onClick={() => setIsSmartAddOpen(true)}
-                                className="flex-1 sm:flex-none bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md">
-                                <Sparkles className="w-4 h-4" /> הוספה חכמה (AI)
+                                title="הוסף מלון אוטומטית מאישור הזמנה (AI)"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 text-[11px] font-bold transition-colors">
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">AI</span>
                             </button>
                             <button onClick={handleAddNew}
-                                className="flex-1 sm:flex-none bg-white text-indigo-600 border border-indigo-200 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all hover:bg-indigo-50">
-                                <Plus className="w-4 h-4" /> ידני
+                                title="הוסף מלון ידנית"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-bold transition-colors">
+                                <Plus className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">ידני</span>
                             </button>
                         </div>
                     </div>

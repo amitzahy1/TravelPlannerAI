@@ -888,13 +888,21 @@ export const FlightsView: React.FC<{ trip: Trip, onUpdateTrip?: (t: Trip) => voi
             {transports.length > 0 && ` · ${transports.length} נוספות`}
           </p>
         </div>
+        {/* Add-transfer button — collapsed to a small subtle chip. User
+            feedback 2026-05-25: the big black button dominated the page
+            and its label ("הוסף הסעה / מעבורת") was too narrow — the
+            same dialog handles trains, taxis, transfers, and ferries.
+            New label is the umbrella term "העברה" (matches the page
+            title "ההעברות שלי"). Flights themselves come in via the
+            wizard / email import; rarely added one-off from this page. */}
         {onUpdateTrip && (
           <button
             onClick={() => setIsAddingTransport(true)}
-            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm"
+            title="הוסף קטע נסיעה — רכבת, אוטובוס, הסעה, מעבורת או כל העברה אחרת"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-[11px] font-bold transition-colors flex-shrink-0 self-start sm:self-center"
           >
-            <Plus className="w-4 h-4" />
-            הוסף הסעה / מעבורת
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ העברה</span>
           </button>
         )}
       </div>

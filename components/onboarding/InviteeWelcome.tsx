@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
         Plane, Hotel, Map as MapIcon, Utensils, Ticket, Eye, X, Check,
@@ -50,6 +50,17 @@ interface SlideDef {
 export const InviteeWelcome: React.FC<InviteeWelcomeProps> = ({ trip, onDismiss }) => {
         const [step, setStep] = useState(0);
         const [direction, setDirection] = useState(1);
+
+        // Hide the mobile floating-dock while the welcome modal is open.
+        // The dock has z-index 999999 (set in src/index.css) which sits
+        // above this modal's z-[110], so on mobile the "Next" button at
+        // the bottom of the modal was being covered by the tab bar.
+        // MagicalWizard uses the same `body.modal-open` toggle — reusing
+        // that CSS hook keeps the override centralized.
+        useEffect(() => {
+                document.body.classList.add('modal-open');
+                return () => document.body.classList.remove('modal-open');
+        }, []);
 
         const destination = trip.destination || trip.destinationEnglish || 'הטיול';
         const year = getTripYear(trip);
