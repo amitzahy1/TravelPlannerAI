@@ -154,7 +154,17 @@ export const verifyPlace = async (
                 }
         }
 
-        // 2. Score against trip context.
+        // 2. Score against trip context. RELAXED — earlier version required
+        // EXACT city-name match for "verified", which flagged ~70% of items
+        // as ambiguous because Photon returns Albanian suburbs (Dajt,
+        // Qendër Vlorë, Tiranë) instead of the trip's nominal city
+        // (Tirana, Vlora). Those items ARE real and findable. They passed
+        // the 25 km centroid distance check above (lines 138-155), so we
+        // know they're in the right NEIGHBORHOOD of the right city.
+        // New criterion:
+        //   • Country matches → verified (the distance check already proved
+        //     the location is sensible)
+        //   • Country doesn't match → ambiguous (real concern — wrong country)
         const countryMatches = matchesCountry(feat.country, tripCountry);
         const cityMatches = !!feat.city && (
                 locationMatchesCity(feat.city, targetCity)
@@ -165,12 +175,12 @@ export const verifyPlace = async (
         let confidence = 0.5;
         if (countryMatches && cityMatches) {
                 status = 'verified';
-                confidence = 0.85;
+                confidence = 0.95;     // strongest signal — exact city + country
         } else if (countryMatches) {
-                status = 'ambiguous';
-                confidence = 0.6;
+                status = 'verified';   // was ambiguous; relaxed 2026-05-25
+                confidence = 0.75;     // slightly lower confidence than exact match
         } else {
-                status = 'ambiguous';
+                status = 'ambiguous';  // country diverges — real red flag
                 confidence = 0.4;
         }
 
