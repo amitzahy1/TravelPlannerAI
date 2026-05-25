@@ -657,6 +657,48 @@ Rules:
     }, [allRestaurants, allAttractions, trip]);
     const junkTotal = junkItems.restaurants.length + junkItems.attractions.length;
 
+    // Items still flagged ambiguous after reverify. NOT junk — they have
+    // valid coords inside the trip country, just resolved to a city >25 km
+    // from every trip city centroid. Could be legit day-trip destinations
+    // (Riviera coast for an Albania trip) OR genuinely off-target items.
+    // Surfaced as an audit list so the user can review + delete selectively
+    // instead of guessing which 25 to keep.
+    const ambiguousItems = useMemo(() => {
+        const isAmbig = (p: any) => p.verificationStatus === 'ambiguous';
+        return {
+            restaurants: allRestaurants.filter(isAmbig),
+            attractions: allAttractions.filter(isAmbig),
+        };
+    }, [allRestaurants, allAttractions]);
+    const ambiguousTotal = ambiguousItems.restaurants.length + ambiguousItems.attractions.length;
+
+    const dropAllAmbiguous = () => {
+        if (!trip || ambiguousTotal === 0) return;
+        if (typeof window !== 'undefined'
+            && !window.confirm(`למחוק ${ambiguousTotal} מקומות לא מאומתים? פעולה זו תמחק גם יעדים שייתכן היית רוצה לשמור (כמו מקומות לטיולי יום מעבר ל-25 ק"מ).`)) {
+            return;
+        }
+        const ambigIds = new Set<string>([
+            ...ambiguousItems.restaurants.map((r: any) => r.id),
+            ...ambiguousItems.attractions.map((a: any) => a.id),
+        ]);
+        const filterCat = <T extends { restaurants?: Restaurant[]; attractions?: Attraction[] }>(c: T): T => ({
+            ...c,
+            restaurants: c.restaurants?.filter(r => !ambigIds.has(r.id)) as any,
+            attractions: c.attractions?.filter(a => !ambigIds.has(a.id)) as any,
+        });
+        const updated = {
+            ...trip,
+            aiRestaurants: (trip.aiRestaurants || []).map(filterCat).filter(c => (c.restaurants?.length || 0) > 0),
+            aiAttractions: (trip.aiAttractions || []).map(filterCat).filter(c => (c.attractions?.length || 0) > 0),
+            restaurants: (trip.restaurants || []).map(filterCat).filter(c => (c.restaurants?.length || 0) > 0),
+            attractions: (trip.attractions || []).map(filterCat).filter(c => (c.attractions?.length || 0) > 0),
+        };
+        onUpdateTrip(updated);
+        console.log(`🗑️ [dropAmbiguous] removed ${ambigIds.size} ambiguous places.`);
+        toast.success(`נמחקו ${ambigIds.size} מקומות לא מאומתים`);
+    };
+
     const dropNotFound = () => {
         if (!trip) return;
         const isJunk = (p: any) => junkReason(p) !== null;
@@ -980,6 +1022,68 @@ Rules:
                                         {junkItems.attractions.map((a: any) => <Row key={a.id} p={a} kind="attraction" />)}
                                     </div>
                                 )}
+                            </div>
+                        </details>
+                    );
+                })()}
+
+                {/* Ambiguous-items audit list. These are NOT junk — they
+                    have valid coords in the trip country, but resolved to
+                    a city >25 km from any trip city. Could be valid day
+                    trips, could be bad AI guesses; only the user knows.
+                    Per-item delete + bulk delete (with confirm) so the
+                    user can clear what they don't want without losing
+                    legitimate day-trip destinations they DO want. */}
+                {ambiguousTotal > 0 && (() => {
+                    const AmbigRow = ({ p, kind }: { p: any; kind: 'restaurant' | 'attraction' }) => (
+                        <div className="text-[11px] text-slate-700 py-0.5 flex items-center gap-2 group">
+                            <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold whitespace-nowrap">
+                                {p.verifiedCity || 'ללא מיקום'}
+                            </span>
+                            <span className="flex-1 min-w-0 truncate">
+                                {p.name}
+                                {p.location && <span className="text-slate-400"> — {p.location}</span>}
+                            </span>
+                            <button
+                                onClick={() => dropOne(p.id, kind)}
+                                title="מחק רק את הפריט הזה"
+                                className="opacity-40 hover:opacity-100 text-rose-600 hover:bg-rose-100 rounded px-1.5 py-0.5 text-[10px] font-bold transition-all"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    );
+                    return (
+                        <details className="mt-3 bg-amber-50/50 border border-amber-200 rounded-lg">
+                            <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-amber-700">
+                                סקירה ומחיקה של {ambiguousTotal} מקומות לא מאומתים (מחוץ ל-25 ק"מ מערי הטיול)
+                            </summary>
+                            <div className="px-3 pb-3 max-h-80 overflow-y-auto">
+                                <div className="text-[10px] text-slate-600 leading-relaxed mb-2 bg-amber-50 px-2 py-1.5 rounded">
+                                    אלה מקומות שנמצאו במדינת הטיול אבל יותר מ-25 ק"מ מהערים שלך. ייתכן שאלה יעדים ליום טיול שכן רוצים לשמור (לדוגמה ערי הריביירה האלבנית עבור טיול ל-Vlora), או פריטים שגויים שכדאי למחוק.
+                                </div>
+                                {ambiguousItems.restaurants.length > 0 && (
+                                    <div>
+                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-2 mb-1">
+                                            מסעדות ({ambiguousItems.restaurants.length})
+                                        </div>
+                                        {ambiguousItems.restaurants.map((r: any) => <AmbigRow key={r.id} p={r} kind="restaurant" />)}
+                                    </div>
+                                )}
+                                {ambiguousItems.attractions.length > 0 && (
+                                    <div>
+                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mt-2 mb-1">
+                                            אטרקציות ({ambiguousItems.attractions.length})
+                                        </div>
+                                        {ambiguousItems.attractions.map((a: any) => <AmbigRow key={a.id} p={a} kind="attraction" />)}
+                                    </div>
+                                )}
+                                <button
+                                    onClick={dropAllAmbiguous}
+                                    className="mt-3 w-full px-3 py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-xs font-bold border border-rose-200"
+                                >
+                                    מחק את כל {ambiguousTotal} הלא מאומתים (עם אישור)
+                                </button>
                             </div>
                         </details>
                     );
