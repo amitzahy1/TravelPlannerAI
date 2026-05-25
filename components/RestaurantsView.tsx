@@ -1693,13 +1693,12 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         "Japanese": "יפני",
         // Meat + fish — added 2026-05-25 at user request, distinct from
         // the existing seafood category.
-        "Steak & Meat": "בשרים ועל האש",
-        "Steak, BBQ & Grilled Meats": "בשרים ועל האש",
+        "BBQ & Grill": "בשרים ועל האש",
         "BBQ": "בשרים ועל האש",
-        "Grill": "בשרים ועל האש",
-        "Fish": "דגים ופירות ים",
-        "Fish & Seafood": "דגים ופירות ים",
+        "Steak": "בשרים ועל האש",
+        "Steakhouse": "בשרים ועל האש",
         "Seafood": "דגים ופירות ים",
+        "Fish": "דגים ופירות ים",
         // Attractions
         "Icons & Landmarks": "אתרי חובה",
         "Nature & Views": "טבע ונופים",
