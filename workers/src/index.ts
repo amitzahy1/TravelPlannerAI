@@ -1759,7 +1759,10 @@ interface ShareInvite {
 }
 
 async function fetchShareInvite(shareId: string, env: Env): Promise<ShareInvite | null> {
-        if (!shareId || !env.FIREBASE_PROJECT_ID || !env.FIREBASE_SERVICE_ACCOUNT) return null;
+        if (!shareId || !env.FIREBASE_PROJECT_ID || !env.FIREBASE_SERVICE_ACCOUNT) {
+                console.warn(`[share] missing config: shareId=${!!shareId} projectId=${!!env.FIREBASE_PROJECT_ID} serviceAccount=${!!env.FIREBASE_SERVICE_ACCOUNT}`);
+                return null;
+        }
         const logs: string[] = [];
         const token = await getFirebaseAccessToken(env, logs);
         if (!token) {
@@ -1767,13 +1770,16 @@ async function fetchShareInvite(shareId: string, env: Env): Promise<ShareInvite 
                 return null;
         }
         const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/trip_invites/${encodeURIComponent(shareId)}`;
+        console.log(`[share] fetching ${url}`);
         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
         if (!res.ok) {
-                console.warn(`[share] trip_invites/${shareId} → ${res.status} ${res.statusText}`);
+                const body = await res.text().catch(() => '<unreadable>');
+                console.warn(`[share] trip_invites/${shareId} → ${res.status} ${res.statusText} body=${body.slice(0, 500)}`);
                 return null;
         }
         const data: any = await res.json();
         const f = data?.fields || {};
+        console.log(`[share] trip_invites/${shareId} fields: ${Object.keys(f).join(',')}`);
         return {
                 tripName: f.tripName?.stringValue,
                 destination: f.destination?.stringValue,
@@ -1796,13 +1802,22 @@ function renderSharePreviewHtml(shareId: string, role: string, invite: ShareInvi
         const cover = invite?.coverImage?.trim();
         const host = invite?.hostName?.trim();
 
-        // Title: "Albania Trip · Vlora + Tirana" — fall back gracefully
-        // when the share doc is missing fields (or doesn't exist).
-        const title = tripName
-                ? (destination && !tripName.toLowerCase().includes(destination.toLowerCase())
-                        ? `${tripName} · ${destination}`
-                        : tripName)
-                : "WeTravel — שיתוף טיול";
+        // Title: prefer the more-informative of tripName/destination when
+        // one contains the other (avoids "Albania · Albania - Tirana -
+        // Vlora" repetition). Concatenates with · only when they're
+        // truly distinct strings.
+        const containsCI = (haystack: string, needle: string) =>
+                haystack.toLowerCase().includes(needle.toLowerCase());
+        let title: string;
+        if (tripName && destination) {
+                if (containsCI(tripName, destination) || containsCI(destination, tripName)) {
+                        title = tripName.length >= destination.length ? tripName : destination;
+                } else {
+                        title = `${tripName} · ${destination}`;
+                }
+        } else {
+                title = tripName || destination || "WeTravel — שיתוף טיול";
+        }
 
         // Description: "27–31 במאי 2026 · שיתף איתך אמית" — combines dates +
         // host name when both exist. Falls back to dates-only / host-only /
