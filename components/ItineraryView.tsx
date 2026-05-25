@@ -12,7 +12,7 @@ import { Calendar as CalendarIntroIcon } from 'lucide-react';
 import { exportTripPDF } from '../utils/generateTripHTML';
 import { downloadTripIcal } from '../utils/generateTripIcal';
 import { FileText as FileTextIcon, CalendarDays as CalendarDaysIcon } from 'lucide-react';
-import { resolveLocationName, extractRobustCity, cleanCityName, displayCityName } from '../utils/geoData'; // Imported from new DB
+import { resolveLocationName, extractRobustCity, cleanCityName, displayCityName, cityKey } from '../utils/geoData'; // Imported from new DB
 import { getCityTheme, buildCityColorMap, lookupCityTheme, DEFAULT_CITY_THEME, CITY_THEMES, type CityTheme } from '../utils/cityColors'; // Color Engine
 import {
     MapPin, Calendar, Navigation, Info, ExternalLink,
@@ -826,11 +826,16 @@ export const ItineraryView: React.FC<{
     // "Tirana" and "טירנה" become two separate keys with two separate
     // colours, OR both get hashed to the same theme. Both fail the user.
     // User reported 2026-05-25: "Tirana and Vlora both show in purple."
+    // Canonical key — uses cityKey from geoData which bounces every input
+    // through the Hebrew alias table so 'Vlora', 'Vlore', and 'וולורה' all
+    // collapse to the SAME key. Earlier displayCityName-based canon
+    // produced 'vlora' for English input but 'vlore' for Hebrew, breaking
+    // the map lookup (Vlora days missed the orange entry, fell to
+    // default). User confirmed via console 2026-05-25.
     const canonCity = (raw: string): string => {
-        const cleaned = cleanCityName(raw || '');
-        if (!cleaned) return '';
-        const en = displayCityName(cleaned, 'en');
-        return (en || cleaned).trim().toLowerCase();
+        if (!raw) return '';
+        const k = cityKey(raw);
+        return (k || cleanCityName(raw) || '').trim().toLowerCase();
     };
 
     // Per-trip city → theme assignment. Bypasses buildCityColorMap's
