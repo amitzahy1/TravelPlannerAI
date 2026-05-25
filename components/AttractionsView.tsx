@@ -74,6 +74,54 @@ const attractionMatchesCity = (attraction: Pick<Attraction, 'location' | 'region
         || locationMatchesCity(attraction.description || '', city);
 };
 
+// Haversine — same inline helper used by RestaurantsView. ~110m precision.
+const haversineKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }): number => {
+    const R = 6371;
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLng = (b.lng - a.lng) * Math.PI / 180;
+    const lat1 = a.lat * Math.PI / 180;
+    const lat2 = b.lat * Math.PI / 180;
+    const h = Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+};
+
+// City anchors from trip hotels — see RestaurantsView for the why.
+const buildCityAnchors = (
+    trip: { hotels?: { lat?: number; lng?: number; city?: string; name?: string; address?: string }[] },
+): Array<{ city: string; lat: number; lng: number }> => {
+    const out: Array<{ city: string; lat: number; lng: number }> = [];
+    (trip.hotels || []).forEach(h => {
+        if (typeof h.lat !== 'number' || typeof h.lng !== 'number') return;
+        const extracted = extractRobustCity(h.address || '', h.name || '', trip as any);
+        const safe = extracted && !/(province|county|country|region)/i.test(extracted) ? extracted : '';
+        const cityRaw = safe || h.city || '';
+        if (!cityRaw) return;
+        const cityEn = (displayCityName(cityRaw, 'en') || cityRaw).trim();
+        if (!cityEn) return;
+        out.push({ city: cityEn, lat: h.lat, lng: h.lng });
+    });
+    return out;
+};
+
+// Strict primary-city match — see RestaurantsView for rationale. Fixes
+// the bug where attractions appeared under multiple city chips because
+// their description mentioned more than one city.
+const getPrimaryCityForAttraction = (
+    a: Pick<Attraction, 'lat' | 'lng' | 'location' | 'region' | 'name' | 'nameEnglish' | 'description'>,
+    anchors: Array<{ city: string; lat: number; lng: number }>,
+): string | null => {
+    if (typeof a.lat === 'number' && typeof a.lng === 'number' && anchors.length > 0) {
+        let bestCity = '';
+        let bestKm = Infinity;
+        for (const anch of anchors) {
+            const km = haversineKm({ lat: a.lat, lng: a.lng }, { lat: anch.lat, lng: anch.lng });
+            if (km < bestKm) { bestKm = km; bestCity = anch.city; }
+        }
+        return bestCity || null;
+    }
+    return null;
+};
+
 // Map a thrown AI/network error to a Hebrew toast message so the user can
 // self-diagnose quota vs billing vs connectivity issues without opening
 // devtools. Falls back to the caller-supplied label when no pattern matches.
@@ -1509,8 +1557,17 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
         // may have cached from a previous bugged session.
         if (tripCities.length > 0) list = list.filter(inTripScope);
 
+        // Coord-first city filter — see RestaurantsView for the same fix.
+        // Eliminates duplicate listings across Tirana+Vlora chips when an
+        // item's description happened to mention both cities.
         if (selectedCity !== 'all') {
-            list = list.filter(a => attractionMatchesCity(a, selectedCity));
+            const anchors = buildCityAnchors(trip);
+            const selectedCityEn = (displayCityName(selectedCity, 'en') || selectedCity).trim().toLowerCase();
+            list = list.filter(a => {
+                const primary = getPrimaryCityForAttraction(a, anchors);
+                if (primary) return primary.toLowerCase() === selectedCityEn;
+                return attractionMatchesCity(a, selectedCity);
+            });
         }
         if (selectedRater !== 'all') {
             list = list.filter(a => normalizeSource(a.recommendationSource || '') === selectedRater);

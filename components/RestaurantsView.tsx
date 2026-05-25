@@ -192,6 +192,63 @@ const restaurantMatchesCity = (restaurant: Pick<Restaurant, 'location' | 'region
         || locationMatchesCity(restaurant.description || '', city);
 };
 
+// Haversine — small inline copy so the per-render filter doesn't pull
+// from utils. ~110m precision; fine for "which city is closer".
+const haversineKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }): number => {
+    const R = 6371;
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLng = (b.lng - a.lng) * Math.PI / 180;
+    const lat1 = a.lat * Math.PI / 180;
+    const lat2 = b.lat * Math.PI / 180;
+    const h = Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+};
+
+// City anchors built from trip.hotels — each hotel resolves to its city via
+// extractRobustCity / h.city. The result is a list of (cityName, lat, lng)
+// tuples used to attribute a restaurant to its closest city. Centroid
+// fallback (when no hotel has coords for a city) would require async
+// geocoding; the hotel-anchor approach covers the common case where the
+// user has at least one hotel per visited city.
+const buildCityAnchors = (
+    trip: { hotels?: { lat?: number; lng?: number; city?: string; name?: string; address?: string }[] },
+): Array<{ city: string; lat: number; lng: number }> => {
+    const out: Array<{ city: string; lat: number; lng: number }> = [];
+    (trip.hotels || []).forEach(h => {
+        if (typeof h.lat !== 'number' || typeof h.lng !== 'number') return;
+        const extracted = extractRobustCity(h.address || '', h.name || '', trip as any);
+        const safe = extracted && !/(province|county|country|region)/i.test(extracted) ? extracted : '';
+        const cityRaw = safe || h.city || '';
+        if (!cityRaw) return;
+        const cityEn = (displayCityName(cityRaw, 'en') || cityRaw).trim();
+        if (!cityEn) return;
+        out.push({ city: cityEn, lat: h.lat, lng: h.lng });
+    });
+    return out;
+};
+
+// Given a restaurant + city anchors, pick the SINGLE city this item
+// belongs to. Strict mode — when coords exist, geography decides; the
+// item can no longer appear under two chips because its description
+// happens to mention both cities. When coords don't exist, fall back to
+// the per-chip string match (legacy behavior preserved). User reported
+// 2026-05-25: restaurants appeared under both Tirana AND Vlora.
+const getPrimaryCityForRestaurant = (
+    r: Pick<Restaurant, 'lat' | 'lng' | 'location' | 'region' | 'name' | 'nameEnglish' | 'description'>,
+    anchors: Array<{ city: string; lat: number; lng: number }>,
+): string | null => {
+    if (typeof r.lat === 'number' && typeof r.lng === 'number' && anchors.length > 0) {
+        let bestCity = '';
+        let bestKm = Infinity;
+        for (const a of anchors) {
+            const km = haversineKm({ lat: r.lat, lng: r.lng }, { lat: a.lat, lng: a.lng });
+            if (km < bestKm) { bestKm = km; bestCity = a.city; }
+        }
+        return bestCity || null;
+    }
+    return null;
+};
+
 const RestaurantCard: React.FC<{
     rec: ExtendedRestaurant,
     tripDestination: string,
@@ -1634,6 +1691,15 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         "Thai": "תאילנדי",
         "Japanese - NO RAMEN": "יפני",
         "Japanese": "יפני",
+        // Meat + fish — added 2026-05-25 at user request, distinct from
+        // the existing seafood category.
+        "Steak & Meat": "בשרים ועל האש",
+        "Steak, BBQ & Grilled Meats": "בשרים ועל האש",
+        "BBQ": "בשרים ועל האש",
+        "Grill": "בשרים ועל האש",
+        "Fish": "דגים ופירות ים",
+        "Fish & Seafood": "דגים ופירות ים",
+        "Seafood": "דגים ופירות ים",
         // Attractions
         "Icons & Landmarks": "אתרי חובה",
         "Nature & Views": "טבע ונופים",
@@ -1812,9 +1878,25 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         if (tripCities.length > 0) list = list.filter(inTripScope);
         const afterScope = list.length;
 
-        // City Filter — language-agnostic via locationMatchesCity
+        // City Filter — STRICT, geography-first. When an item has lat/lng,
+        // its primary city is the closest hotel-anchor city; the string
+        // matcher only kicks in as a fallback for items without coords.
+        // Earlier OR-everything matcher made Tirana restaurants also
+        // appear under Vlora because their description mentioned both
+        // cities (and vice-versa). User reported "duplicates between
+        // Vlora and Tirana — every restaurant shows in both."
         if (selectedCity !== 'all') {
-            list = list.filter(r => restaurantMatchesCity(r, selectedCity));
+            const anchors = buildCityAnchors(trip);
+            const selectedCityEn = (displayCityName(selectedCity, 'en') || selectedCity).trim().toLowerCase();
+            list = list.filter(r => {
+                const primary = getPrimaryCityForRestaurant(r, anchors);
+                if (primary) {
+                    // Coord-based primary city wins — no string fallback.
+                    return primary.toLowerCase() === selectedCityEn;
+                }
+                // No coords on the item — fall back to string match.
+                return restaurantMatchesCity(r, selectedCity);
+            });
         }
         const afterCity = list.length;
 
@@ -1828,7 +1910,7 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
 
         // Global dedupe by place name — collapses 4×Sorn into 1
         return dedupeByName(list);
-    }, [aiCategories, selectedCategory, selectedRater, selectedCity, allAiRestaurants, tripCities, inTripScope, passesItemFilters]);
+    }, [aiCategories, selectedCategory, selectedRater, selectedCity, allAiRestaurants, tripCities, inTripScope, passesItemFilters, trip]);
 
     // Stale data: there are cached results but ALL of them are out of trip scope
     const hasStaleData = useMemo(() => {
@@ -1842,10 +1924,16 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         const flatList: Restaurant[] = [];
         trip.restaurants.forEach(cat => cat.restaurants.forEach(r => flatList.push(r)));
 
-        // Apply Filters
+        // Apply Filters — same coord-first city logic as filteredRestaurants
         let filtered = flatList;
         if (selectedCity !== 'all') {
-            filtered = filtered.filter(r => restaurantMatchesCity(r, selectedCity));
+            const anchors = buildCityAnchors(trip);
+            const selectedCityEn = (displayCityName(selectedCity, 'en') || selectedCity).trim().toLowerCase();
+            filtered = filtered.filter(r => {
+                const primary = getPrimaryCityForRestaurant(r, anchors);
+                if (primary) return primary.toLowerCase() === selectedCityEn;
+                return restaurantMatchesCity(r, selectedCity);
+            });
         }
         filtered = filtered.filter(passesItemFilters);
 

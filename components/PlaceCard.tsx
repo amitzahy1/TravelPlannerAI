@@ -135,7 +135,10 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                  like "FINE DINING 💎" / "MICHELIN GUIDE". */}
                         <div className="absolute top-2 inset-x-2 flex items-start justify-between gap-1.5 z-30 pointer-events-none">
                                 <div className="flex items-center gap-1 min-w-0 flex-1">
-                                        <span dir="ltr" className="px-2 py-0.5 rounded-md backdrop-blur-md bg-black/30 border border-white/15 text-[9px] font-black text-white uppercase tracking-wide truncate">
+                                        <span
+                                                dir="ltr"
+                                                className="px-2.5 py-1 rounded-lg bg-amber-400 text-slate-900 text-[11px] font-black uppercase tracking-wide truncate shadow-lg shadow-black/30 ring-1 ring-amber-500/30"
+                                        >
                                                 {visualLabel}
                                         </span>
                                         {googleNotFound && (
