@@ -155,17 +155,24 @@ export const verifyPlace = async (
         }
 
         // 2. Score against trip context. RELAXED — earlier version required
-        // EXACT city-name match for "verified", which flagged ~70% of items
-        // as ambiguous because Photon returns Albanian suburbs (Dajt,
-        // Qendër Vlorë, Tiranë) instead of the trip's nominal city
-        // (Tirana, Vlora). Those items ARE real and findable. They passed
-        // the 25 km centroid distance check above (lines 138-155), so we
-        // know they're in the right NEIGHBORHOOD of the right city.
-        // New criterion:
-        //   • Country matches → verified (the distance check already proved
-        //     the location is sensible)
-        //   • Country doesn't match → ambiguous (real concern — wrong country)
-        const countryMatches = matchesCountry(feat.country, tripCountry);
+        // both EXACT country-name match (matchesCountry) and EXACT city-name
+        // match for "verified", which flagged ~70% of items as ambiguous
+        // because (a) Photon doesn't always populate feat.country in its
+        // response, leaving countryMatches=false even for valid places, and
+        // (b) Photon returns suburb names instead of the trip's nominal city.
+        //
+        // New, much more lenient criterion: if we got HERE, the place
+        // passed:
+        //   • the in-country bbox check at lines 113-133 (coords are
+        //     inside the trip country)
+        //   • the 25 km centroid distance check at lines 138-155 (coords
+        //     are within sensible distance of the target city)
+        // Both passing means we're confident the place is "real and findable
+        // in the right area". That's what "verified" means to a user.
+        // Bbox proximity is the new source of truth for country match.
+        const countryByName  = matchesCountry(feat.country, tripCountry);
+        const countryByBbox  = !!tripBbox; // already proved by lines 113-133
+        const countryMatches = countryByName || countryByBbox;
         const cityMatches = !!feat.city && (
                 locationMatchesCity(feat.city, targetCity)
                 || locationMatchesCity(targetCity, feat.city)
@@ -180,7 +187,7 @@ export const verifyPlace = async (
                 status = 'verified';   // was ambiguous; relaxed 2026-05-25
                 confidence = 0.75;     // slightly lower confidence than exact match
         } else {
-                status = 'ambiguous';  // country diverges — real red flag
+                status = 'ambiguous';  // truly outside trip country — rare now
                 confidence = 0.4;
         }
 
