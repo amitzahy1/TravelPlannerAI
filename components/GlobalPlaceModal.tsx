@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X, Trophy, AlertTriangle, ExternalLink, Globe, RefreshCw } from 'lucide-react';
+import { Share2, Star, MapPin, Plus, Navigation, CheckCircle2, X, Trophy, AlertTriangle, ExternalLink, Globe, RefreshCw, Trash2 } from 'lucide-react';
 import { getFoodImage, getAttractionImage } from '../services/imageMapper';
 import { resolveRealPlaceImage } from '../services/placeImageService';
 import { safeMapsUrl } from '../utils/mapsUrl';
@@ -19,6 +19,12 @@ interface GlobalPlaceModalProps {
         /** Apply a Google Places enrichment patch back to the parent's store.
          *  When provided, the modal renders a 🔄 refresh button in the action row. */
         onRefreshGoogle?: (patch: Record<string, any>) => void;
+        /** Remove this place from the trip (whichever list it lives in).
+         *  When provided, the modal renders a trash button. Without this,
+         *  the user can't delete a specific item without going to the
+         *  data-health bulk tools — that's a UX gap when they spot a single
+         *  bad item while browsing food/attractions. */
+        onDelete?: () => void;
 }
 
 import { createPortal } from 'react-dom';
@@ -91,7 +97,7 @@ const getSmartSubtitle = (item: any) => {
         return null;
 };
 
-export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, onClose, onAddToPlan, isAdded, onRefreshGoogle }) => {
+export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, onClose, onAddToPlan, isAdded, onRefreshGoogle, onDelete }) => {
         if (!item) return null;
 
         // Prefer the English name for display + for any lookup. AI returns `name`
@@ -303,6 +309,65 @@ export const GlobalPlaceModal: React.FC<GlobalPlaceModalProps> = ({ item, type, 
                                                         ניווט
                                                 </a>
                                         </div>
+
+                                        {/* Per-item delete — only renders when the parent passes
+                                            onDelete. Lets the user nuke a single bad place
+                                            without going through the DataHealth bulk tool when
+                                            they spot it while browsing. */}
+                                        {onDelete && (
+                                                <button
+                                                        onClick={() => {
+                                                                if (window.confirm(`למחוק את "${displayName}"?`)) onDelete();
+                                                        }}
+                                                        className="mt-3 w-full py-2.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 font-bold hover:bg-rose-100 transition-all flex items-center justify-center gap-2 text-xs"
+                                                >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                        מחק את {type === 'attraction' ? 'האטרקציה' : 'המסעדה'} מהטיול
+                                                </button>
+                                        )}
+
+                                        {/* Mini map — shows the place's pin so the user
+                                            understands where it sits before deciding to add
+                                            or navigate. Uses an OSM static-image embed with
+                                            CartoCDN tiles via Leaflet's snapshot via a
+                                            simple iframe (no extra deps, no JS map init
+                                            inside the modal). Renders only when we have
+                                            real lat/lng to anchor on. */}
+                                        {typeof item.lat === 'number' && typeof item.lng === 'number' && (
+                                                <a
+                                                        href={googleMapsUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="mt-3 block w-full h-32 rounded-2xl overflow-hidden border border-slate-200 relative group"
+                                                        title="פתח במפות"
+                                                >
+                                                        <img
+                                                                src={`https://staticmap.openstreetmap.de/staticmap.php?center=${item.lat},${item.lng}&zoom=15&size=600x200&maptype=mapnik&markers=${item.lat},${item.lng},lightblue1`}
+                                                                alt="מפה"
+                                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                                                loading="lazy"
+                                                                onError={(e) => {
+                                                                        // staticmap.openstreetmap.de occasionally rate-limits.
+                                                                        // Fallback to a generic tile-image grab via osm.org.
+                                                                        const target = e.target as HTMLImageElement;
+                                                                        if (!target.dataset.fallback) {
+                                                                                target.dataset.fallback = 'true';
+                                                                                const z = 15;
+                                                                                const x = Math.floor((item.lng + 180) / 360 * Math.pow(2, z));
+                                                                                const latRad = item.lat * Math.PI / 180;
+                                                                                const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, z));
+                                                                                target.src = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+                                                                        }
+                                                                }}
+                                                        />
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                <MapPin className="w-7 h-7 text-rose-500 drop-shadow-lg" fill="currentColor" />
+                                                        </div>
+                                                        <div className="absolute bottom-1 left-1 right-1 text-center text-[10px] font-bold text-white bg-black/40 rounded py-0.5 backdrop-blur-sm">
+                                                                לחץ לפתיחה במפות
+                                                        </div>
+                                                </a>
+                                        )}
                                 </div>
                         </div>
                 </div>,

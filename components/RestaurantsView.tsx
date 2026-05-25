@@ -2697,6 +2697,30 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                         // Reflect immediately in the open modal too.
                         setSelectedPlace(prev => prev ? { ...prev, ...patch } : prev);
                     }}
+                    onDelete={() => {
+                        // Removes this one restaurant from whichever list it
+                        // lives in (saved list OR ai categories). Closes the
+                        // modal after the delete so the user immediately sees
+                        // the trimmed list.
+                        const idMatch = (r: { id: string }) => r.id === selectedPlace.id;
+                        const inSaved = trip.restaurants.some(c => c.restaurants.some(idMatch));
+                        if (inSaved) {
+                            const nextSaved = trip.restaurants.map(cat => ({
+                                ...cat,
+                                restaurants: cat.restaurants.filter(r => !idMatch(r)),
+                            })).filter(c => (c.restaurants?.length || 0) > 0);
+                            onUpdateTrip({ ...trip, restaurants: nextSaved });
+                        } else {
+                            const next = aiCategories.map(c => ({
+                                ...c,
+                                restaurants: c.restaurants.filter(r => !idMatch(r)),
+                            })).filter(c => (c.restaurants?.length || 0) > 0);
+                            setAiCategories(next);
+                            persistAiRestaurants(next);
+                        }
+                        setSelectedPlace(null);
+                        toast.success('המסעדה הוסרה מהטיול');
+                    }}
                 />
             )}
 

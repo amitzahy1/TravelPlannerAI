@@ -2308,6 +2308,29 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
                         }
                         setSelectedPlace(prev => prev ? { ...prev, ...patch } : prev);
                     }}
+                    onDelete={() => {
+                        // See RestaurantsView for the same pattern — removes
+                        // the open attraction from whichever list it lives in
+                        // and closes the modal.
+                        const idMatch = (a: { id: string }) => a.id === selectedPlace.id;
+                        const inSaved = trip.attractions.some(c => c.attractions.some(idMatch));
+                        if (inSaved) {
+                            const nextSaved = trip.attractions.map(cat => ({
+                                ...cat,
+                                attractions: cat.attractions.filter(a => !idMatch(a)),
+                            })).filter(c => (c.attractions?.length || 0) > 0);
+                            onUpdateTrip({ ...trip, attractions: nextSaved });
+                        } else {
+                            const next = aiCategories.map(c => ({
+                                ...c,
+                                attractions: c.attractions.filter(a => !idMatch(a)),
+                            })).filter(c => (c.attractions?.length || 0) > 0);
+                            setAiCategories(next);
+                            persistAiAttractions(next);
+                        }
+                        setSelectedPlace(null);
+                        toast.success('האטרקציה הוסרה מהטיול');
+                    }}
                 />
             )}
 
