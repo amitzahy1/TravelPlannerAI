@@ -1819,15 +1819,12 @@ function renderSharePreviewHtml(shareId: string, role: string, invite: ShareInvi
                 title = tripName || destination || "WeTravel — שיתוף טיול";
         }
 
-        // Description: "27–31 במאי 2026 · שיתף איתך אמית" — combines dates +
-        // host name when both exist. Falls back to dates-only / host-only /
-        // generic copy.
-        const descParts: string[] = [];
-        if (dates) descParts.push(dates);
-        if (host) descParts.push(`שיתף איתך ${host}`);
-        const description = descParts.length > 0
-                ? descParts.join(" · ")
-                : "פתח את הקישור כדי לצפות בפרטי הטיול";
+        // Description: just the dates — user asked 2026-05-25 NOT to
+        // surface the host email ("שיתף איתך amitzahy1@gmail.com") in
+        // the WhatsApp preview; it's noise, not signal. `host` is kept
+        // in the interface for potential future use elsewhere.
+        void host;
+        const description = dates || "פתח את הקישור כדי לצפות בפרטי הטיול";
 
         // Default OG image when the trip has no cover — keeps the preview
         // from looking empty. Uses the favicon emoji on a colored card
