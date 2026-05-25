@@ -880,13 +880,31 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         const map = mapInstanceRef.current;
         if (!map) return;
 
-        // 1. Prefer the user's actual hotel bounds in this city.
-        const targetKey = cityKey(controlledActiveCity);
-        const cityHotels = mapItems.filter(i =>
-            i.type === 'hotel'
-            && isValidCoordinate(i.lat, i.lng)
-            && cityKey(i.city || '') === targetKey,
-        );
+        // 1. Prefer the user's actual hotel bounds in this city. Match a
+        // hotel to the active city when EITHER:
+        //   (a) string-based: hotel.city / address / name resolves to the
+        //       active city via locationMatchesCity (diacritic + Hebrew
+        //       aware), OR
+        //   (b) coord-based: hotel's lat/lng is within ~30 km of the city's
+        //       cached centroid — covers the case where AI verify populated
+        //       only lat/lng and left h.city empty (Regina Hotel reported
+        //       2026-05-25). Without this, "Vlore" chip flew to centroid
+        //       even when a Vlore hotel existed in trip.hotels with the
+        //       right coords.
+        const cityCentroidKey = `city:${controlledActiveCity}`;
+        const cachedCentroid = geocodedCacheRef.current[cityCentroidKey];
+        const NEAR_KM = 30;
+        const cityHotels = mapItems.filter(i => {
+            if (i.type !== 'hotel' || !isValidCoordinate(i.lat, i.lng)) return false;
+            if (locationMatchesCity(i.city || '', controlledActiveCity)
+                || locationMatchesCity(i.address || '', controlledActiveCity)
+                || locationMatchesCity(i.name || '', controlledActiveCity)) return true;
+            if (cachedCentroid) {
+                const km = getDistanceKm(i.lat!, i.lng!, cachedCentroid.lat, cachedCentroid.lng);
+                if (km <= NEAR_KM) return true;
+            }
+            return false;
+        });
         if (cityHotels.length > 0) {
             const b = L.latLngBounds(cityHotels.map(h => [h.lat as number, h.lng as number] as [number, number]));
             if (b.isValid()) {
@@ -894,7 +912,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
                 userInteractedRef.current = true; // suppress applyBounds racing
                 map.flyToBounds(b, { padding: [60, 60], maxZoom: 14, duration: 1.0 });
                 // eslint-disable-next-line no-console
-                console.info(`[CityFly] ${controlledActiveCity} → ${cityHotels.length} hotel(s) bounds`);
+                console.info(`[CityFly] ${controlledActiveCity} → ${cityHotels.length} hotel(s) bounds (coord-or-string match)`);
                 return;
             }
         }
