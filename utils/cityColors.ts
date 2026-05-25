@@ -7,6 +7,11 @@ export interface CityTheme {
         textLight: string; // לימים בשבוע
         badge: string;     // לרקע של התאריך
         icon: string;
+        /** Inline-style hex equivalents — used by callers that want to
+         *  bypass Tailwind purge/safelist races. Apply via
+         *  style={{ backgroundColor: theme.hexBg, borderColor: theme.hexBorder }}. */
+        hexBg: string;
+        hexBorder: string;
 }
 
 // ==========================================================================
@@ -17,33 +22,33 @@ export interface CityTheme {
 // ==========================================================================
 export const CITY_THEMES: CityTheme[] = [
         // 0. Orange — warm beach
-        { bg: 'bg-orange-500', border: 'border-orange-600', text: 'text-white', textLight: 'text-orange-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-orange-500', border: 'border-orange-600', text: 'text-white', textLight: 'text-orange-100', badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#f97316', hexBorder: '#ea580c' },
         // 1. Blue — urban
-        { bg: 'bg-blue-600',   border: 'border-blue-700',   text: 'text-white', textLight: 'text-blue-100',   badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-blue-600',   border: 'border-blue-700',   text: 'text-white', textLight: 'text-blue-100',   badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#2563eb', hexBorder: '#1d4ed8' },
         // 2. Rose — romantic
-        { bg: 'bg-rose-500',   border: 'border-rose-600',   text: 'text-white', textLight: 'text-rose-100',   badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-rose-500',   border: 'border-rose-600',   text: 'text-white', textLight: 'text-rose-100',   badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#f43f5e', hexBorder: '#e11d48' },
         // 3. Emerald — nature / lush
-        { bg: 'bg-emerald-600',border: 'border-emerald-700',text: 'text-white', textLight: 'text-emerald-100',badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-emerald-600',border: 'border-emerald-700',text: 'text-white', textLight: 'text-emerald-100',badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#059669', hexBorder: '#047857' },
         // 4. Violet — nightlife
-        { bg: 'bg-violet-600', border: 'border-violet-700', text: 'text-white', textLight: 'text-violet-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-violet-600', border: 'border-violet-700', text: 'text-white', textLight: 'text-violet-100', badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#7c3aed', hexBorder: '#6d28d9' },
         // 5. Amber — historic / gold
-        { bg: 'bg-amber-600',  border: 'border-amber-700',  text: 'text-white', textLight: 'text-amber-100',  badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-amber-600',  border: 'border-amber-700',  text: 'text-white', textLight: 'text-amber-100',  badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#d97706', hexBorder: '#b45309' },
         // 6. Cyan — aqua
-        { bg: 'bg-cyan-600',   border: 'border-cyan-700',   text: 'text-white', textLight: 'text-cyan-100',   badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-cyan-600',   border: 'border-cyan-700',   text: 'text-white', textLight: 'text-cyan-100',   badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#0891b2', hexBorder: '#0e7490' },
         // 7. Fuchsia — modern
-        { bg: 'bg-fuchsia-600',border: 'border-fuchsia-700',text: 'text-white', textLight: 'text-fuchsia-100',badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-fuchsia-600',border: 'border-fuchsia-700',text: 'text-white', textLight: 'text-fuchsia-100',badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#c026d3', hexBorder: '#a21caf' },
         // 8. Lime — jungle
-        { bg: 'bg-lime-600',   border: 'border-lime-700',   text: 'text-white', textLight: 'text-lime-100',   badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-lime-600',   border: 'border-lime-700',   text: 'text-white', textLight: 'text-lime-100',   badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#65a30d', hexBorder: '#4d7c0f' },
         // 9. Indigo — royal
-        { bg: 'bg-indigo-600', border: 'border-indigo-700', text: 'text-white', textLight: 'text-indigo-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-indigo-600', border: 'border-indigo-700', text: 'text-white', textLight: 'text-indigo-100', badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#4f46e5', hexBorder: '#4338ca' },
         // 10. Red — bold
-        { bg: 'bg-red-500',    border: 'border-red-600',    text: 'text-white', textLight: 'text-red-100',    badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-red-500',    border: 'border-red-600',    text: 'text-white', textLight: 'text-red-100',    badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#ef4444', hexBorder: '#dc2626' },
         // 11. Sky — coastal light blue
-        { bg: 'bg-sky-500',    border: 'border-sky-600',    text: 'text-white', textLight: 'text-sky-100',    badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-sky-500',    border: 'border-sky-600',    text: 'text-white', textLight: 'text-sky-100',    badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#0ea5e9', hexBorder: '#0284c7' },
         // 12. Teal — ocean green-blue
-        { bg: 'bg-teal-600',   border: 'border-teal-700',   text: 'text-white', textLight: 'text-teal-100',   badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-teal-600',   border: 'border-teal-700',   text: 'text-white', textLight: 'text-teal-100',   badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#0d9488', hexBorder: '#0f766e' },
         // 13. Pink — candy
-        { bg: 'bg-pink-500',   border: 'border-pink-600',   text: 'text-white', textLight: 'text-pink-100',   badge: 'bg-white/20 text-white', icon: 'text-white' },
+        { bg: 'bg-pink-500',   border: 'border-pink-600',   text: 'text-white', textLight: 'text-pink-100',   badge: 'bg-white/20 text-white', icon: 'text-white', hexBg: '#ec4899', hexBorder: '#db2777' },
 ];
 
 // Default for flights, unknown, or neutral — slate/navy so it stands apart from any city
@@ -54,6 +59,8 @@ export const DEFAULT_CITY_THEME: CityTheme = {
         textLight: 'text-slate-300',
         badge: 'bg-white/20 text-white',
         icon: 'text-slate-300',
+        hexBg: '#334155',
+        hexBorder: '#1e293b',
 };
 
 // --------------------------------------------------------------------------

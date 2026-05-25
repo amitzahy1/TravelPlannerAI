@@ -1370,6 +1370,11 @@ export const ItineraryView: React.FC<{
                                     // get distinct colours (see buildCityColorMap above).
                                     const theme = themeFor(day.locationContext);
                                     const headerColorClass = theme.bg;
+                                    // Inline-style backup — guarantees the color renders
+                                    // even if Tailwind's JIT drops the dynamic class name.
+                                    // User reported the class was applied but no CSS rule
+                                    // existed in the bundle, leaving the div transparent.
+                                    const headerInlineStyle = { backgroundColor: theme.hexBg };
                                     // Hebrew display name — guarantees the same city renders
                                     // identically across cards regardless of how the source
                                     // string was stored (Hebrew / English / mixed).
@@ -1409,7 +1414,11 @@ export const ItineraryView: React.FC<{
                                                 onClick={() => setSelectedDayIso(day.dateIso)}
                                                 className="relative group cursor-pointer bg-white border border-slate-200 rounded-xl shadow-card hover:shadow-card-hover hover:border-blue-300 active:scale-[0.99] transition-all flex items-center gap-3 pr-2.5 pl-3 py-2.5 overflow-hidden scroll-mt-24"
                                             >
-                                                <span aria-hidden className={`absolute top-0 bottom-0 right-0 w-1 ${accentStrip}`} />
+                                                <span
+                                                    aria-hidden
+                                                    className={`absolute top-0 bottom-0 right-0 w-1 ${accentStrip}`}
+                                                    style={accentStrip === headerColorClass ? headerInlineStyle : undefined}
+                                                />
 
                                                 {/* Date badge */}
                                                 <div className="shrink-0 min-w-[46px] text-center">
@@ -1478,7 +1487,10 @@ export const ItineraryView: React.FC<{
                                             className="bg-white border border-slate-200 rounded-xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden group flex flex-col relative"
                                         >
                                             {/* Header — slim band: day-of-week + date + location */}
-                                            <div className={`${headerColorClass} relative flex items-center justify-between gap-2 px-3 py-2`}>
+                                            <div
+                                                className={`${headerColorClass} relative flex items-center justify-between gap-2 px-3 py-2`}
+                                                style={headerInlineStyle}
+                                            >
                                                 <div className="text-white flex items-baseline gap-1.5 min-w-0">
                                                     {(() => {
                                                         const parts = (day.displayDate || '').split(' ');
@@ -1560,7 +1572,10 @@ export const ItineraryView: React.FC<{
                                     ? (displayCityName(cleanCityName(activeDay.locationContext), 'he') || activeDay.locationContext)
                                     : '';
                                 return (
-                                    <div className={`${modalTheme.bg} border-b border-white/10 p-5 flex items-center justify-between flex-shrink-0`}>
+                                    <div
+                                        className={`${modalTheme.bg} border-b border-white/10 p-5 flex items-center justify-between flex-shrink-0`}
+                                        style={{ backgroundColor: modalTheme.hexBg }}
+                                    >
                                         <div className="flex items-center gap-3">
                                             <div className="bg-white/20 backdrop-blur-sm text-white min-w-[56px] h-12 px-2 rounded-xl flex flex-col items-center justify-center font-bold text-sm border border-white/20 shadow-inner">
                                                 {activeDay.displayDate}
