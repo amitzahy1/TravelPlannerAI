@@ -61,3 +61,24 @@ export const buildBrowserJoinTripUrl = (shareId: string) => (
                 shareId,
         )
 );
+
+// Worker URL used for shareable invite links. The Worker fetches the
+// trip_invites doc, returns HTML with Open Graph tags so WhatsApp etc.
+// can build a rich preview card, then redirects humans into the SPA's
+// hash route. We use the Worker URL (not the GitHub Pages URL) because
+// the SPA uses hash routing — scrapers never see the `#/join/…` part,
+// so OG tags can't be derived from the GH Pages page.
+//
+// Pattern: https://travelplannerai-api.amitzahy1.workers.dev/share/{shareId}?role={role}
+// Falls back to the legacy hash URL if VITE_PUBLIC_SHARE_BASE_URL is
+// explicitly cleared (useful for local dev when the Worker route isn't
+// deployed yet).
+const DEFAULT_SHARE_BASE_URL = 'https://travelplannerai-api.amitzahy1.workers.dev';
+
+export const buildShareableInviteUrl = (shareId: string, role: 'viewer' | 'editor'): string => {
+        const configured = (import.meta as any).env?.VITE_PUBLIC_SHARE_BASE_URL;
+        const base = typeof configured === 'string' && configured.trim()
+                ? configured.trim().replace(/\/$/, '')
+                : DEFAULT_SHARE_BASE_URL;
+        return `${base}/share/${encodeURIComponent(shareId)}?role=${encodeURIComponent(role)}`;
+};

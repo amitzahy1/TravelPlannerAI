@@ -4,7 +4,7 @@ import { Trip } from '../types';
 import { createSharedTrip, ensureSharedTripInvite } from '../services/firestoreService';
 import { X, Link, Copy, Check, Users, Shield, Globe, Plus, Pencil, Eye } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
-import { buildBrowserJoinTripUrl } from '../utils/shareUrl';
+import { buildShareableInviteUrl } from '../utils/shareUrl';
 
 interface ShareModalProps {
         trip: Trip;
@@ -23,13 +23,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose, onUpdateT
         const user = auth.currentUser;
         const isShared = trip.isShared && trip.sharing?.shareId;
 
-        const baseUrl = isShared
-                ? buildBrowserJoinTripUrl(trip.sharing?.shareId || '')
-                : '';
-        // Append the role query param. Editor link is the legacy default
-        // (matches previously-shared links); viewer is the new read-only mode.
-        const editorUrl = baseUrl ? `${baseUrl}?role=editor` : '';
-        const viewerUrl = baseUrl ? `${baseUrl}?role=viewer` : '';
+        // Share URLs now point at the Cloudflare Worker's /share route,
+        // which returns Open Graph–tagged HTML so WhatsApp etc. can render
+        // a rich preview (trip name + cover image) before bouncing the
+        // human into the SPA. The hash-route GitHub Pages URL had no way
+        // to expose trip-specific OG metadata.
+        const shareId = trip.sharing?.shareId || '';
+        const editorUrl = isShared && shareId ? buildShareableInviteUrl(shareId, 'editor') : '';
+        const viewerUrl = isShared && shareId ? buildShareableInviteUrl(shareId, 'viewer') : '';
 
         // [SELF-HEALING] Fix broken links for existing shared trips
         React.useEffect(() => {

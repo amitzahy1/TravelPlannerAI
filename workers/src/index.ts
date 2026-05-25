@@ -452,6 +452,21 @@ export default {
                 const url = new URL(request.url);
 
                 try {
+                        // Public share-preview route. Returns OG-tagged HTML so
+                        // WhatsApp / Facebook / Twitter etc. can render a rich
+                        // preview card (trip name, destination, cover image)
+                        // when a viewer/editor share link is pasted into a
+                        // chat. Real humans get a tiny redirect script that
+                        // bounces them into the SPA at the canonical hash
+                        // route. No auth — trip_invites is public read.
+                        if (url.pathname.startsWith("/share/") && request.method === "GET") {
+                                const shareId = decodeURIComponent(
+                                        url.pathname.slice("/share/".length).split("/")[0] || ""
+                                );
+                                const role = (url.searchParams.get("role") || "viewer").toLowerCase();
+                                return await handleSharePreview(shareId, role, env);
+                        }
+
                         // Secure API Endpoint for Frontend (supports multimodal content)
                         if (url.pathname === "/api/generate" && request.method === "POST") {
                                 // Auth: verify Firebase ID token + check email allow-list before doing any work.
@@ -1712,6 +1727,162 @@ function mergeTripData(original: any, newData: any): any {
 
         merged.updatedAt = new Date().toISOString();
         return merged;
+}
+
+// --- SHARE-LINK OG PREVIEW ---
+// Renders a tiny HTML page for WhatsApp / Facebook / Twitter scrapers
+// so they can build a rich preview card with the trip's name,
+// destination, dates, and cover image. Humans get bounced into the
+// SPA via a meta-refresh + JS redirect. Public read — uses the
+// service account because Firestore REST always requires auth, even
+// for documents whose rules grant public read.
+
+const APP_HOST = "https://amitzahy1.github.io";
+const APP_BASE_PATH = "/TravelPlannerAI/";
+
+const htmlEscape = (raw: string | undefined | null): string => {
+        if (raw === null || raw === undefined) return "";
+        return String(raw)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+};
+
+interface ShareInvite {
+        tripName?: string;
+        destination?: string;
+        dates?: string;
+        coverImage?: string;
+        hostName?: string;
+}
+
+async function fetchShareInvite(shareId: string, env: Env): Promise<ShareInvite | null> {
+        if (!shareId || !env.FIREBASE_PROJECT_ID || !env.FIREBASE_SERVICE_ACCOUNT) return null;
+        const logs: string[] = [];
+        const token = await getFirebaseAccessToken(env, logs);
+        if (!token) {
+                console.warn(`[share] could not get Firebase access token: ${logs.join(' | ')}`);
+                return null;
+        }
+        const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/trip_invites/${encodeURIComponent(shareId)}`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) {
+                console.warn(`[share] trip_invites/${shareId} → ${res.status} ${res.statusText}`);
+                return null;
+        }
+        const data: any = await res.json();
+        const f = data?.fields || {};
+        return {
+                tripName: f.tripName?.stringValue,
+                destination: f.destination?.stringValue,
+                dates: f.dates?.stringValue,
+                coverImage: f.coverImage?.stringValue,
+                hostName: f.hostName?.stringValue,
+        };
+}
+
+function renderSharePreviewHtml(shareId: string, role: string, invite: ShareInvite | null): string {
+        // Canonical redirect URL — the SPA's hash route. Humans get
+        // bounced there immediately; bots stay on this page to read OG.
+        const safeShareId = encodeURIComponent(shareId);
+        const safeRole = encodeURIComponent(role || "viewer");
+        const target = `${APP_HOST}${APP_BASE_PATH}#/join/${safeShareId}?role=${safeRole}`;
+
+        const tripName = invite?.tripName?.trim();
+        const destination = invite?.destination?.trim();
+        const dates = invite?.dates?.trim();
+        const cover = invite?.coverImage?.trim();
+        const host = invite?.hostName?.trim();
+
+        // Title: "Albania Trip · Vlora + Tirana" — fall back gracefully
+        // when the share doc is missing fields (or doesn't exist).
+        const title = tripName
+                ? (destination && !tripName.toLowerCase().includes(destination.toLowerCase())
+                        ? `${tripName} · ${destination}`
+                        : tripName)
+                : "WeTravel — שיתוף טיול";
+
+        // Description: "27–31 במאי 2026 · שיתף איתך אמית" — combines dates +
+        // host name when both exist. Falls back to dates-only / host-only /
+        // generic copy.
+        const descParts: string[] = [];
+        if (dates) descParts.push(dates);
+        if (host) descParts.push(`שיתף איתך ${host}`);
+        const description = descParts.length > 0
+                ? descParts.join(" · ")
+                : "פתח את הקישור כדי לצפות בפרטי הטיול";
+
+        // Default OG image when the trip has no cover — keeps the preview
+        // from looking empty. Uses the favicon emoji on a colored card
+        // hosted statically via a data URI fallback isn't supported by
+        // most scrapers, so point at the app's hosted favicon instead.
+        const ogImage = cover || `${APP_HOST}${APP_BASE_PATH}og-default.png`;
+
+        const safeTitle = htmlEscape(title);
+        const safeDesc = htmlEscape(description);
+        const safeImage = htmlEscape(ogImage);
+        const safeTarget = htmlEscape(target);
+
+        return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>${safeTitle}</title>
+<meta name="description" content="${safeDesc}" />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="WeTravel" />
+<meta property="og:title" content="${safeTitle}" />
+<meta property="og:description" content="${safeDesc}" />
+<meta property="og:image" content="${safeImage}" />
+<meta property="og:image:alt" content="${safeTitle}" />
+<meta property="og:url" content="${safeTarget}" />
+<meta property="og:locale" content="he_IL" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${safeTitle}" />
+<meta name="twitter:description" content="${safeDesc}" />
+<meta name="twitter:image" content="${safeImage}" />
+
+<link rel="canonical" href="${safeTarget}" />
+<meta http-equiv="refresh" content="0; url=${safeTarget}" />
+<script>window.location.replace(${JSON.stringify(target)});</script>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Heebo, Rubik, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 48px 24px; text-align: center; }
+.card { max-width: 480px; margin: 0 auto; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(15,23,42,0.08); }
+h1 { margin: 0 0 8px; font-size: 20px; }
+p { margin: 4px 0; color: #475569; }
+a { color: #2563eb; text-decoration: none; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="card">
+<h1>${safeTitle}</h1>
+<p>${safeDesc}</p>
+<p style="margin-top:16px"><a href="${safeTarget}">פתח את הטיול</a></p>
+</div>
+</body>
+</html>`;
+}
+
+async function handleSharePreview(shareId: string, role: string, env: Env): Promise<Response> {
+        const headers = {
+                "Content-Type": "text/html; charset=utf-8",
+                // Cache the preview at the edge for a minute so a flurry of
+                // scraper hits from a single share doesn't slam Firestore.
+                "Cache-Control": "public, max-age=60",
+        };
+        if (!shareId) {
+                return new Response(renderSharePreviewHtml("", role, null), { status: 404, headers });
+        }
+        const invite = await fetchShareInvite(shareId, env);
+        return new Response(renderSharePreviewHtml(shareId, role, invite), {
+                status: invite ? 200 : 404,
+                headers,
+        });
 }
 
 // --- API CLIENTS (Unchanged) ---
