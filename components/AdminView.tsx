@@ -1571,7 +1571,23 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                     "verify all locations" button heals everything in
                                     one click; this is the most common reason a user
                                     visits this tab. */}
-                                <DataHealthPanel trip={activeTrip} onUpdateTrip={(t) => handleUpdateTrip(t)} />
+                                {/* Persist immediately on DataHealthPanel actions —
+                                    these are one-shot operations (verify, drop-junk,
+                                    AI-verify-hotels) that the user expects to see
+                                    saved to Firestore right away. The bare
+                                    handleUpdateTrip only updates local state via
+                                    setTrips; without onSave the changes evaporate
+                                    on tab switch. Bug surfaced 2026-05-25 when AI
+                                    verify "resolved 2/2 hotels" but the map still
+                                    rendered coords=(n/a, n/a) afterward. */}
+                                <DataHealthPanel
+                                    trip={activeTrip}
+                                    onUpdateTrip={(updatedTrip) => {
+                                        const newTrips = trips.map(t => t.id === activeTripId ? updatedTrip : t);
+                                        setTrips(newTrips);
+                                        onSave(newTrips);
+                                    }}
+                                />
 
                                 {/* RECOVERY — activity log + undo. Useful when something
                                     was accidentally edited or deleted. */}
