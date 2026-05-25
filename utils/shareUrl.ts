@@ -62,18 +62,17 @@ export const buildBrowserJoinTripUrl = (shareId: string) => (
         )
 );
 
-// Worker URL used for shareable invite links. The Worker fetches the
-// trip_invites doc, returns HTML with Open Graph tags so WhatsApp etc.
-// can build a rich preview card, then redirects humans into the SPA's
-// hash route. We use the Worker URL (not the GitHub Pages URL) because
-// the SPA uses hash routing — scrapers never see the `#/join/…` part,
-// so OG tags can't be derived from the GH Pages page.
+// Cloudflare Pages URL used for shareable invite links. The Pages
+// Function at /share/[id] fetches the trip_invites doc, returns HTML
+// with Open Graph tags so WhatsApp etc. can build a rich preview
+// card, then redirects humans into the SPA's hash route on the same
+// origin. We moved off `travelplannerai-api.amitzahy1.workers.dev`
+// (Cloudflare Worker default URLs leak the account name) to a Pages
+// project, so the host no longer exposes "amitzahy1".
 //
-// Pattern: https://travelplannerai-api.amitzahy1.workers.dev/share/{shareId}?role={role}
-// Falls back to the legacy hash URL if VITE_PUBLIC_SHARE_BASE_URL is
-// explicitly cleared (useful for local dev when the Worker route isn't
-// deployed yet).
-const DEFAULT_SHARE_BASE_URL = 'https://travelplannerai-api.amitzahy1.workers.dev';
+// Pattern: https://wetravel-bxd.pages.dev/share/{shareId}?role={role}
+// Overridable via VITE_PUBLIC_SHARE_BASE_URL for local dev / staging.
+const DEFAULT_SHARE_BASE_URL = 'https://wetravel-bxd.pages.dev';
 
 export const buildShareableInviteUrl = (shareId: string, role: 'viewer' | 'editor'): string => {
         const configured = (import.meta as any).env?.VITE_PUBLIC_SHARE_BASE_URL;

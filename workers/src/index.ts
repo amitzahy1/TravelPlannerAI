@@ -1737,8 +1737,13 @@ function mergeTripData(original: any, newData: any): any {
 // service account because Firestore REST always requires auth, even
 // for documents whose rules grant public read.
 
-const APP_HOST = "https://amitzahy1.github.io";
-const APP_BASE_PATH = "/TravelPlannerAI/";
+// SPA host. Moved 2026-05-25 from GitHub Pages
+// (https://amitzahy1.github.io/TravelPlannerAI/) to Cloudflare Pages
+// (https://wetravel-bxd.pages.dev/) so share URLs no longer expose
+// the Cloudflare account name in the visible host. Pages serves the
+// SPA at root, so APP_BASE_PATH is just "/".
+const APP_HOST = "https://wetravel-bxd.pages.dev";
+const APP_BASE_PATH = "/";
 
 const htmlEscape = (raw: string | undefined | null): string => {
         if (raw === null || raw === undefined) return "";
