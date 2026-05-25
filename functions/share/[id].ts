@@ -142,7 +142,16 @@ a { color: #2563eb; text-decoration: none; font-weight: bold; }
 </html>`;
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
+// Pages Function entry — typed inline so we don't need to install
+// @cloudflare/workers-types in the SPA project (the runtime provides
+// PagesFunction at execution time).
+interface PagesFunctionContext {
+        request: Request;
+        env: Env;
+        params: { id: string };
+}
+
+export const onRequestGet = async ({ request, env, params }: PagesFunctionContext): Promise<Response> => {
         const shareId = decodeURIComponent(String(params.id || ""));
         const url = new URL(request.url);
         const role = (url.searchParams.get("role") || "viewer").toLowerCase();

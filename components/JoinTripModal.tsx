@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Trip, TripInvite } from '../types';
 import { getSharedTripInvite, joinSharedTrip } from '../services/firestoreService';
-import { getAuth } from 'firebase/auth';
+import { useAuth } from '../contexts/AuthContext';
 import { Globe, Users, Shield, Check, X, Plane, AlertTriangle } from 'lucide-react';
 
 interface JoinTripModalProps {
@@ -17,8 +17,13 @@ export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, role = 'e
         const [tripPreview, setTripPreview] = useState<TripInvite | null>(null);
         const [joining, setJoining] = useState(false);
 
-        const auth = getAuth();
-        const user = auth.currentUser;
+        // useAuth (not getAuth().currentUser) so the modal re-renders when
+        // the user signs in WHILE the modal is open — e.g., guest viewer
+        // who hit "התחבר עם Google" from GuestTripView. Without this, the
+        // modal captured `currentUser` at first render (null) and stayed
+        // stuck on the "log in to join" copy after auth succeeded.
+        const { user } = useAuth();
+        const autoJoinedRef = useRef(false);
 
         useEffect(() => {
                 const fetchTrip = async () => {
@@ -56,6 +61,19 @@ export const JoinTripModal: React.FC<JoinTripModalProps> = ({ shareId, role = 'e
                         setJoining(false);
                 }
         };
+
+        // Auto-join once authenticated. Clicking the share link IS the
+        // user's intent to join — there's no reason to gate them behind a
+        // second "Join Trip" button. Fires only when the user shows up
+        // already authenticated OR completes a Google sign-in from the
+        // guest-view shell. Ref guards against double-firing in StrictMode.
+        useEffect(() => {
+                if (user && tripPreview && !joining && !error && !autoJoinedRef.current) {
+                        autoJoinedRef.current = true;
+                        handleJoin();
+                }
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [user, tripPreview]);
 
         if (loading) {
                 return (
