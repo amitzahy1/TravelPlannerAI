@@ -13,7 +13,7 @@ import { exportTripPDF } from '../utils/generateTripHTML';
 import { downloadTripIcal } from '../utils/generateTripIcal';
 import { FileText as FileTextIcon, CalendarDays as CalendarDaysIcon } from 'lucide-react';
 import { resolveLocationName, extractRobustCity, cleanCityName, displayCityName } from '../utils/geoData'; // Imported from new DB
-import { getCityTheme, buildCityColorMap, lookupCityTheme } from '../utils/cityColors'; // Color Engine
+import { getCityTheme, buildCityColorMap, lookupCityTheme, DEFAULT_CITY_THEME } from '../utils/cityColors'; // Color Engine
 import {
     MapPin, Calendar, Navigation, Info, ExternalLink,
     Share2, Download, CloudRain, Sun, Moon,
@@ -836,11 +836,37 @@ export const ItineraryView: React.FC<{
     // Trip-aware colour map — guarantees distinct colours for every unique
     // city across the whole itinerary, keyed by canonical English form so
     // Hebrew/English variants of the same city share one entry.
+    //
+    // Critical: we look up via direct map access (themeFor below), NOT via
+    // lookupCityTheme — that helper falls back to getCityTheme on miss,
+    // which uses a hash-mod-palette that frequently collides (Tirana and
+    // Vlora landing on the same theme is the bug the user keeps hitting).
+    // Direct lookup → if the city isn't in the map, return DEFAULT_CITY_THEME
+    // explicitly. No silent hash collisions.
     const cityColorMap = useMemo(() => {
-        const cities = timeline.map(d => canonCity(d.locationContext || '')).filter(Boolean);
-        return buildCityColorMap(cities);
+        const seen = new Set<string>();
+        const orderedCities: string[] = [];
+        for (const d of timeline) {
+            const raw = (d.locationContext || '').toLowerCase();
+            if (!raw) continue;
+            // Skip flight-only phrases — they keep DEFAULT_CITY_THEME.
+            const isFlight = /טיסה|flight|נחית|return\s+flight|חזרה/.test(raw);
+            if (isFlight) continue;
+            const key = canonCity(d.locationContext || '');
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            orderedCities.push(key);
+        }
+        return buildCityColorMap(orderedCities);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [timeline]);
+
+    const themeFor = (raw: string) => {
+        const isFlight = /טיסה|flight|נחית|return\s+flight|חזרה/i.test(raw || '');
+        if (isFlight) return DEFAULT_CITY_THEME;
+        const key = canonCity(raw || '');
+        return cityColorMap[key] || DEFAULT_CITY_THEME;
+    };
 
     // City × nights for the hero — only cities the user actually has a
     // hotel in, sorted by nights descending. Format: "Bangkok (3) · Pattaya (5)".
@@ -1329,7 +1355,7 @@ export const ItineraryView: React.FC<{
 
                                     // Use dynamic theme engine — trip-aware so distinct cities always
                                     // get distinct colours (see buildCityColorMap above).
-                                    const theme = lookupCityTheme(cityColorMap, canonCity(day.locationContext));
+                                    const theme = themeFor(day.locationContext);
                                     const headerColorClass = theme.bg;
                                     // Hebrew display name — guarantees the same city renders
                                     // identically across cards regardless of how the source
@@ -1516,7 +1542,7 @@ export const ItineraryView: React.FC<{
                         <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] animate-scale-in" onClick={e => e.stopPropagation()}>
                             {/* Modal Header */}
                             {(() => {
-                                const modalTheme = lookupCityTheme(cityColorMap, canonCity(activeDay.locationContext));
+                                const modalTheme = themeFor(activeDay.locationContext);
                                 const modalCityHe = activeDay.locationContext
                                     ? (displayCityName(cleanCityName(activeDay.locationContext), 'he') || activeDay.locationContext)
                                     : '';

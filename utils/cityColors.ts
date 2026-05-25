@@ -47,7 +47,7 @@ const THEMES: CityTheme[] = [
 ];
 
 // Default for flights, unknown, or neutral — slate/navy so it stands apart from any city
-const DEFAULT_THEME: CityTheme = {
+export const DEFAULT_CITY_THEME: CityTheme = {
         bg: 'bg-slate-700',
         border: 'border-slate-800',
         text: 'text-white',
@@ -193,9 +193,9 @@ const preferredThemeIndex = (cityName: string): number | null => {
 // table first and a stable hash second.
 // ==========================================================================
 export const getCityTheme = (cityName: string): CityTheme => {
-        if (!cityName) return DEFAULT_THEME;
+        if (!cityName) return DEFAULT_CITY_THEME;
         const lowerName = normalizeCityName(cityName);
-        if (FLIGHT_KEYWORDS.some(kw => lowerName.includes(kw))) return DEFAULT_THEME;
+        if (FLIGHT_KEYWORDS.some(kw => lowerName.includes(kw))) return DEFAULT_CITY_THEME;
 
         const preferred = preferredThemeIndex(cityName);
         if (preferred !== null) return THEMES[preferred];
@@ -282,7 +282,7 @@ export const lookupCityTheme = (
         map: Record<string, CityTheme>,
         cityName: string
 ): CityTheme => {
-        if (!cityName) return DEFAULT_THEME;
+        if (!cityName) return DEFAULT_CITY_THEME;
         const lower = normalizeCityName(cityName);
 
         // First: try the name as-is
@@ -307,7 +307,7 @@ export const lookupCityTheme = (
                         return THEMES[Math.abs(hash) % THEMES.length];
                 }
                 // Truly pure "flight" / "טיסה" with no city after it — use default
-                return DEFAULT_THEME;
+                return DEFAULT_CITY_THEME;
         }
 
         // Not in map + not a flight phrase — hash the name into the palette

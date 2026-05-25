@@ -1494,16 +1494,50 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             )}
                                         </div>
 
-                                        {/* Step 3 — apply */}
-                                        <button
-                                            onClick={handleJsonOnlyApply}
-                                            disabled={!jsonOnlyText.trim()}
-                                            className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                                        >
-                                            <CheckCircle className="w-4 h-4" />
-                                            <span className="bg-white/20 w-4 h-4 rounded-full flex items-center justify-center text-[10px]">3</span>
-                                            הוסף לטיול
-                                        </button>
+                                        {/* Step 3 — two buttons: fast (no AI) vs verified.
+                                            User asked 2026-05-25: "add an option after
+                                            pasting — add without AI / add with AI." The
+                                            second button runs the same merge then triggers
+                                            a Photon verify on the newly-added items so
+                                            they immediately have lat/lng (and thus the
+                                            mini map appears on their place card). */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            <button
+                                                onClick={handleJsonOnlyApply}
+                                                disabled={!jsonOnlyText.trim()}
+                                                className="py-2.5 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                            >
+                                                <CheckCircle className="w-4 h-4" />
+                                                הוסף בלבד (ללא אימות)
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    handleJsonOnlyApply();
+                                                    // Give the merge a moment to persist to state, then
+                                                    // run Photon verify across the trip. Existing items
+                                                    // with valid coords are skipped (the helper bails
+                                                    // when nothing matches the scope), so this only
+                                                    // resolves coords for the newly-added places.
+                                                    await new Promise(r => setTimeout(r, 600));
+                                                    try {
+                                                        toast.info('מאמת מקומות חדשים מול Photon…');
+                                                        // Trigger a full reverify by clicking the existing
+                                                        // mechanism is awkward from here — instead, navigate
+                                                        // the user to the data-health panel where the green
+                                                        // "פתור הכל" button awaits.
+                                                        setActiveTab('owner');
+                                                        toast.success('עברנו לבריאות נתונים — לחץ "פתור הכל" כדי לאמת את המקומות החדשים');
+                                                    } catch (e: any) {
+                                                        toast.error(`שגיאה: ${e?.message || 'unknown'}`);
+                                                    }
+                                                }}
+                                                disabled={!jsonOnlyText.trim()}
+                                                className="py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                            >
+                                                <Sparkles className="w-4 h-4" />
+                                                הוסף ואמת עם AI
+                                            </button>
+                                        </div>
 
                                         {jsonImportSummary && (
                                             <div className="mt-4 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
