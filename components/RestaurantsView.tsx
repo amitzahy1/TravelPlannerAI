@@ -1955,12 +1955,19 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
         // picks relate to where they're staying. UnifiedMapView geocodes
         // addresses lazily, so hotels without lat/lng still drop a pin.
         (trip.hotels || []).forEach(h => {
-            const hCity = h.city || h.address || '';
-            if (selectedCity !== 'all' && !locationMatchesCity(hCity, selectedCity)) return;
+            // ALWAYS include hotels regardless of selectedCity filter.
+            // The hotel pin is critical context ("which restaurants are
+            // near MY hotel?") and there are only 1-3 hotels per trip,
+            // so showing all of them adds no visual clutter. Previously
+            // we filtered by string match on h.city || h.address, which
+            // dropped the hotel when those fields were empty after an
+            // AI verify (only lat/lng got populated, not the strings).
+            // UnifiedMapView's own visibleItems filter still tightens the
+            // VIEW to the active city for restaurants, but hotels are
+            // anchors — they always render.
             if (!h.address && (typeof h.lat !== 'number' || typeof h.lng !== 'number')) return;
-            // Include `city` (English) so UnifiedMapView's city-flyTo effect
-            // can match hotels for the active city via cityKey().
-            const hCityEn = displayCityName(h.city || hCity, 'en') || h.city || '';
+            const hCityEn = displayCityName(h.city || h.address || '', 'en') || h.city || '';
+            console.info(`[Restaurants] hotel item: ${h.name} | city="${h.city || ''}" | coords=(${h.lat ?? 'n/a'}, ${h.lng ?? 'n/a'})`);
             items.push({
                 id: `hotel-${h.id}`, type: 'hotel', name: h.name,
                 address: h.address, lat: h.lat, lng: h.lng,

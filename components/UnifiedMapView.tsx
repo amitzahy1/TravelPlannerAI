@@ -2164,23 +2164,22 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         const visibleItems = activeCity === 'ALL'
             ? validItems
             : (() => {
-                // Use locationMatchesCity — same matcher as the chip COUNT
-                // and as RestaurantsView / AttractionsView list filters. It
-                // checks name + nameEnglish + address + city + description
-                // with diacritic stripping (Vlorë ↔ vlora) and Hebrew alias
-                // resolution (טירנה ↔ tirana). The previous keyword-only
-                // matcher silently filtered out every Tirana item because
-                // their item.city was tagged "Vlora" by the AI, yielding
-                // chip=51 / filter=0 — clicking Tirana looked broken.
+                // Restaurants/attractions get filtered by the active city via
+                // locationMatchesCity (same matcher as the chip count — checks
+                // name + nameEnglish + address + city + description with
+                // diacritic stripping + Hebrew aliases). HOTELS are an
+                // exception: always include them regardless of which city
+                // chip is active. There are 1-3 hotels per trip and the user
+                // needs to see ALL of them to judge which AI picks are near
+                // their stay — even when "Vlora" is selected they may want
+                // to glance at the Tirana hotel's location. At zoom-level
+                // the Tirana hotel is off-screen anyway, so visually this
+                // is a no-op for the user but fixes the bug where Regina
+                // (Vlora hotel) disappeared because AI verify populated
+                // only its lat/lng, leaving city/address strings empty so
+                // none of the locationMatchesCity checks could fire.
                 return validItems.filter(i => {
-                    if (i.type === 'hotel') {
-                        // Hotels match the active city when their address/name
-                        // resolves to it. Falls through to locationMatchesCity
-                        // for Hebrew/diacritic-safe checks.
-                        return locationMatchesCity(i.address || '', activeCity)
-                            || locationMatchesCity(i.city || '', activeCity)
-                            || locationMatchesCity(i.name || '', activeCity);
-                    }
+                    if (i.type === 'hotel') return true;
                     return locationMatchesCity(i.city || '', activeCity)
                         || locationMatchesCity(i.address || '', activeCity)
                         || locationMatchesCity(i.name || '', activeCity)

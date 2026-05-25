@@ -1663,13 +1663,16 @@ Every attraction MUST have business_status = "OPERATIONAL". "location" MUST be i
         });
 
         (trip.hotels || []).forEach(h => {
-            const hCity = h.city || h.address || '';
-            if (selectedCity !== 'all' && !locationMatchesCity(hCity, selectedCity)) return;
+            // ALWAYS include hotels — see RestaurantsView for the rationale.
+            // The hotel is the trip anchor; users browse attractions to find
+            // ones near their hotel. Dropping it when city/address strings
+            // are empty (which happens after AI verify populates only the
+            // lat/lng fields) made the pin disappear right when the user
+            // needed it most.
             if (!h.address && (typeof h.lat !== 'number' || typeof h.lng !== 'number')) return;
-            // Include `city` (English) so UnifiedMapView's city-flyTo effect
-            // can match hotels for the active city via cityKey().
             const hCityRaw = h.city || (h.address || '');
             const hCityEn = displayCityName(hCityRaw, 'en') || h.city || '';
+            console.info(`[Attractions] hotel item: ${h.name} | city="${h.city || ''}" | coords=(${h.lat ?? 'n/a'}, ${h.lng ?? 'n/a'})`);
             items.push({
                 id: `hotel-${h.id}`, type: 'hotel', name: h.name,
                 address: h.address, lat: h.lat, lng: h.lng,
