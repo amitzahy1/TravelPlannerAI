@@ -2434,30 +2434,6 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
 
             {viewMode === 'map' ? (
                 <div className="space-y-3">
-                    {/* Source filter — narrows the pins shown on the map.
-                        User asked 2026-05-25 to be able to choose between
-                        "only my saved list" vs "all recommendations". */}
-                    <div className="flex items-center gap-1.5 justify-center">
-                        <button
-                            onClick={() => setMapSourceFilter('all')}
-                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${mapSourceFilter === 'all' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-                        >
-                            כל ההמלצות
-                        </button>
-                        <button
-                            onClick={() => setMapSourceFilter('mine')}
-                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${mapSourceFilter === 'mine' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-                        >
-                            הרשימה שלי בלבד
-                        </button>
-                        <button
-                            onClick={() => setMapSourceFilter('ai')}
-                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition ${mapSourceFilter === 'ai' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-                        >
-                            המלצות AI בלבד
-                        </button>
-                    </div>
-
                     {/* Filter card — map-only. Collapsed by default on mobile,
                         expanded on desktop. Affects only the markers on the map. */}
                     {(filterOptions.cuisines.length > 0 || filterOptions.prices.length > 0) && (
@@ -2528,24 +2504,52 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                             </>
                         );
                     })()}
-                    <UnifiedMapView
-                        items={getMapItems()}
-                        trip={trip}
-                        activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
-                        onCityChange={(city) => setSelectedCity(city ?? 'all')}
-                        title="מפת מסעדות"
-                        savedNames={savedRestaurantNames}
-                        onAddToList={(item) => {
-                            const r = (item as any).raw as Restaurant | undefined;
-                            if (!r) return;
-                            handleToggleRec(r, (item as any).categoryTitle || 'AI');
-                        }}
-                        onRemoveFromList={userCanEdit ? (item) => {
-                            const r = (item as any).raw as Restaurant | undefined;
-                            if (!r) return;
-                            performDeleteRestaurant(r.id);
-                        } : undefined}
-                    />
+                    {/* Map wrapper — relative so the source filter pills can
+                        overlay the top-left corner of the map without
+                        eating its own row above the map. */}
+                    <div className="relative">
+                        <UnifiedMapView
+                            items={getMapItems()}
+                            trip={trip}
+                            activeCity={selectedCity !== 'all' ? (displayCityName(selectedCity, 'en') || selectedCity) : null}
+                            onCityChange={(city) => setSelectedCity(city ?? 'all')}
+                            title="מפת מסעדות"
+                            savedNames={savedRestaurantNames}
+                            onAddToList={(item) => {
+                                const r = (item as any).raw as Restaurant | undefined;
+                                if (!r) return;
+                                handleToggleRec(r, (item as any).categoryTitle || 'AI');
+                            }}
+                            onRemoveFromList={userCanEdit ? (item) => {
+                                const r = (item as any).raw as Restaurant | undefined;
+                                if (!r) return;
+                                performDeleteRestaurant(r.id);
+                            } : undefined}
+                        />
+                        {/* Source filter overlay — top-left corner of the map.
+                            Compact vertical stack so it doesn't fight the
+                            top-center city chips owned by UnifiedMapView. */}
+                        <div className="absolute top-3 left-3 z-[1100] flex flex-col gap-1 bg-white/97 backdrop-blur-md p-1 rounded-xl shadow-lg border border-white/70 pointer-events-auto">
+                            <button
+                                onClick={() => setMapSourceFilter('all')}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition ${mapSourceFilter === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                            >
+                                כל ההמלצות
+                            </button>
+                            <button
+                                onClick={() => setMapSourceFilter('mine')}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition ${mapSourceFilter === 'mine' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                            >
+                                הרשימה שלי
+                            </button>
+                            <button
+                                onClick={() => setMapSourceFilter('ai')}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition ${mapSourceFilter === 'ai' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                            >
+                                AI בלבד
+                            </button>
+                        </div>
+                    </div>
                 </div>
             ) : (
                 <>

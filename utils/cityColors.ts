@@ -15,7 +15,7 @@ export interface CityTheme {
 // Removed the old duplicates (three shades of orange, two purples, etc.) that
 // made Pattaya / Bangkok / Abu Dhabi look identical in real trips.
 // ==========================================================================
-const THEMES: CityTheme[] = [
+export const CITY_THEMES: CityTheme[] = [
         // 0. Orange — warm beach
         { bg: 'bg-orange-500', border: 'border-orange-600', text: 'text-white', textLight: 'text-orange-100', badge: 'bg-white/20 text-white', icon: 'text-white' },
         // 1. Blue — urban
@@ -198,14 +198,14 @@ export const getCityTheme = (cityName: string): CityTheme => {
         if (FLIGHT_KEYWORDS.some(kw => lowerName.includes(kw))) return DEFAULT_CITY_THEME;
 
         const preferred = preferredThemeIndex(cityName);
-        if (preferred !== null) return THEMES[preferred];
+        if (preferred !== null) return CITY_THEMES[preferred];
 
         // Stable hash fallback
         let hash = 0;
         for (let i = 0; i < cityName.length; i++) {
                 hash = cityName.charCodeAt(i) + ((hash << 5) - hash);
         }
-        return THEMES[Math.abs(hash) % THEMES.length];
+        return CITY_THEMES[Math.abs(hash) % CITY_THEMES.length];
 };
 
 // ==========================================================================
@@ -233,7 +233,7 @@ export const buildCityColorMap = (cities: string[]): Record<string, CityTheme> =
         for (const city of uniqueCities) {
                 const preferred = preferredThemeIndex(city);
                 if (preferred !== null && !usedIndexes.has(preferred)) {
-                        map[city.toLowerCase()] = THEMES[preferred];
+                        map[city.toLowerCase()] = CITY_THEMES[preferred];
                         usedIndexes.add(preferred);
                 } else {
                         remaining.push(city);
@@ -244,18 +244,18 @@ export const buildCityColorMap = (cities: string[]): Record<string, CityTheme> =
         // skipping already-used slots. Ensures distinct colours.
         let paletteCursor = 0;
         for (const city of remaining) {
-                while (usedIndexes.has(paletteCursor) && usedIndexes.size < THEMES.length) {
-                        paletteCursor = (paletteCursor + 1) % THEMES.length;
+                while (usedIndexes.has(paletteCursor) && usedIndexes.size < CITY_THEMES.length) {
+                        paletteCursor = (paletteCursor + 1) % CITY_THEMES.length;
                 }
-                if (usedIndexes.size >= THEMES.length) {
+                if (usedIndexes.size >= CITY_THEMES.length) {
                         // More cities than palette slots — wrap around, reusing. Still deterministic.
                         let hash = 0;
                         for (let i = 0; i < city.length; i++) hash = city.charCodeAt(i) + ((hash << 5) - hash);
-                        map[city.toLowerCase()] = THEMES[Math.abs(hash) % THEMES.length];
+                        map[city.toLowerCase()] = CITY_THEMES[Math.abs(hash) % CITY_THEMES.length];
                 } else {
-                        map[city.toLowerCase()] = THEMES[paletteCursor];
+                        map[city.toLowerCase()] = CITY_THEMES[paletteCursor];
                         usedIndexes.add(paletteCursor);
-                        paletteCursor = (paletteCursor + 1) % THEMES.length;
+                        paletteCursor = (paletteCursor + 1) % CITY_THEMES.length;
                 }
         }
 
@@ -288,7 +288,7 @@ export const lookupCityTheme = (
         // First: try the name as-is
         if (map[lower]) return map[lower];
         const preferred = preferredThemeIndex(cityName);
-        if (preferred !== null) return THEMES[preferred];
+        if (preferred !== null) return CITY_THEMES[preferred];
 
         // If it's a flight-like phrase, try stripping the prefix and looking
         // up the underlying city.
@@ -298,13 +298,13 @@ export const lookupCityTheme = (
                         const strippedLower = normalizeCityName(stripped);
                         if (map[strippedLower]) return map[strippedLower];
                         const strippedPreferred = preferredThemeIndex(stripped);
-                        if (strippedPreferred !== null) return THEMES[strippedPreferred];
+                        if (strippedPreferred !== null) return CITY_THEMES[strippedPreferred];
                         // Hash fallback on the stripped name
                         let hash = 0;
                         for (let i = 0; i < stripped.length; i++) {
                                 hash = stripped.charCodeAt(i) + ((hash << 5) - hash);
                         }
-                        return THEMES[Math.abs(hash) % THEMES.length];
+                        return CITY_THEMES[Math.abs(hash) % CITY_THEMES.length];
                 }
                 // Truly pure "flight" / "טיסה" with no city after it — use default
                 return DEFAULT_CITY_THEME;
