@@ -135,9 +135,16 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
                                  like "FINE DINING 💎" / "MICHELIN GUIDE". */}
                         <div className="absolute top-2 inset-x-2 flex items-start justify-between gap-1.5 z-30 pointer-events-none">
                                 <div className="flex items-center gap-1 min-w-0 flex-1">
+                                        {/* Luxury nameplate — dark base with a thin gold
+                                            hairline border + champagne-cream serif text.
+                                            Reads like a fine-dining menu plate. Stays
+                                            high-contrast against any food photo behind
+                                            it; the gold ring catches the eye without
+                                            shouting like the original yellow block. */}
                                         <span
                                                 dir="ltr"
-                                                className="px-2.5 py-1 rounded-md bg-white/95 backdrop-blur-md text-slate-900 text-[10px] font-bold uppercase tracking-[0.1em] truncate shadow-[0_4px_12px_-2px_rgba(0,0,0,0.35)] ring-1 ring-black/5"
+                                                style={{ fontFamily: '"Playfair Display", Georgia, "Times New Roman", serif' }}
+                                                className="px-3 py-1.5 rounded bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-md text-amber-100 text-[10px] font-bold tracking-[0.22em] uppercase truncate shadow-[0_6px_16px_-3px_rgba(0,0,0,0.55)] ring-[0.5px] ring-amber-300/30"
                                         >
                                                 {visualLabel}
                                         </span>
