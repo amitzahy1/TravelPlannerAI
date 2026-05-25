@@ -196,10 +196,14 @@ export const DataHealthPanel: React.FC<DataHealthPanelProps> = ({ trip, onUpdate
                     || hotels.find(x => x.id === id);
                 if (target) applyVerificationResult(target as any, result);
                 done++;
-                if ((result as any)?.status === 'verified') verifiedCount++;
-                else if ((result as any)?.status === 'not_found') notFoundCount++;
+                // Field is `verificationStatus`, NOT `status` — the previous
+                // logging code read the wrong key and showed every item as "?"
+                // with totals "0 verified / 0 not_found / 267 other" even when
+                // Photon resolved every single one.
+                const status: string = (result as any)?.verificationStatus || 'unknown';
+                if (status === 'verified') verifiedCount++;
+                else if (status === 'not_found') notFoundCount++;
                 const name = (target as any)?.name || id;
-                const status = (result as any)?.status || '?';
                 const verifiedCity = (result as any)?.verifiedCity || '';
                 console.log(
                     `🔎 [reverify ${done}/${verifiable.length}] ${status.padEnd(10)} ${name}` +
@@ -431,22 +435,26 @@ Rules:
     // with no real location" — none of the older signals caught these
     // because Photon happily verified each generic name to whatever
     // first hit it returned, even when far from the destination.
-    // Reason taxonomy. An item is junk when ANY of the conditions below
-    // holds. Photon "verified" doesn't actually validate the BUSINESS NAME
-    // — only that the address resolves somewhere — so we also flag items
-    // whose googleMapsUrl is missing or non-precise (no place_id/cid/ftid).
-    // Without a precise URL we have no real place identifier; clicking it
-    // hits the client-side /maps/search/ fallback which often shows
-    // "no results" for the made-up name. That's the "Bastille" case the
-    // user reported: address geocodes, name doesn't exist.
+    // Reason taxonomy. An item is junk when one of these REAL failure
+    // signals holds. Earlier version also flagged "no precise URL" but
+    // that was over-aggressive — AI-generated items rarely come with
+    // place_id/cid URLs because the model doesn't have Google Places
+    // API access, so the flag caught 250+ legit Photon-verified items
+    // and presented them all as "junk to delete." User correctly
+    // pointed out "this sounds like a serious mistake" — agreed.
+    //
+    // Current criteria (strict — only flag what's actually broken):
+    //   1. Photon explicitly said not_found
+    //   2. Google Places explicitly flagged it
+    //   3. Has coords but they're outside the trip country (wrong place)
+    //   4. NO coords AND no URL — completely unaddressable
     const junkReason = (p: any): string | null => {
         if (p.verificationStatus === 'not_found') return 'לא נמצא';
         if (p.googleNotFound === true) return 'Google לא מצא';
         if (typeof p.lat === 'number' && typeof p.lng === 'number' && trip && !coordInTripCountries(p.lat, p.lng, trip)) return 'מחוץ למדינה';
         const hasCoords = typeof p.lat === 'number' && typeof p.lng === 'number';
-        const url = typeof p.googleMapsUrl === 'string' ? p.googleMapsUrl.trim() : '';
-        if (!url) return hasCoords ? 'ללא קישור Maps' : 'ללא קישור וללא קואורדינטות';
-        if (!isPreciseGoogleUrl(url)) return 'קישור הוא חיפוש (לא מקום אמיתי)';
+        const url = typeof p.googleMapsUrl === 'string' && p.googleMapsUrl.trim().length > 0;
+        if (!hasCoords && !url) return 'ללא קישור וללא קואורדינטות';
         return null;
     };
     const junkItems = useMemo(() => {
