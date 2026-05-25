@@ -31,7 +31,7 @@ import {
         getTripCountryBbox,
         resolvePlaceCity,
 } from './tripScope';
-import { locationMatchesCity } from './geoData';
+import { locationMatchesCity, getTripCities } from './geoData';
 
 export type VerificationStatus = 'verified' | 'ambiguous' | 'not_found' | 'manual';
 export type VerificationSource = 'photon' | 'google_maps_url' | 'manual';
@@ -133,24 +133,40 @@ export const verifyPlace = async (
         }
 
         // Distance-from-centroid safety net. Catches places that pass the
-        // country bbox but resolve far from the trip's actual target city
-        // (the "Pattaya → Chiang Mai" 400 km case).
-        if (targetCity) {
-                const centroid = await getCityCentroid(targetCity, tripCountry || undefined);
-                if (centroid) {
-                        const distanceKm = haversineMetres({ lat: feat.lat, lng: feat.lng }, centroid) / 1000;
-                        if (distanceKm > MAX_CENTROID_DISTANCE_KM) {
-                                return {
-                                        lat: feat.lat, lng: feat.lng,
-                                        osmId: feat.osmId,
-                                        verifiedCountry: feat.country,
-                                        verifiedCity: feat.city,
-                                        verificationStatus: 'ambiguous',
-                                        verificationSource: 'photon',
-                                        confidence: 0.35,
-                                        reason: `המקום נמצא ${Math.round(distanceKm)} ק"מ מ-${targetCity} — ייתכן שאינו באזור הטיול.`,
-                                };
-                        }
+        // country bbox but resolve far from any trip city (the "Pattaya →
+        // Chiang Mai 400 km" case).
+        //
+        // CRITICAL: must measure distance to the NEAREST trip city, not
+        // just the AI's claimed region. Earlier version used a single
+        // `targetCity` from `resolvePlaceCity`, which returned the place's
+        // claimed region (often "Vlora" since the AI grouped everything
+        // under the primary city). When Photon resolved a Tirana
+        // restaurant correctly, the distance from Tirana to Vlora is ~140
+        // km → wrongly flagged ambiguous even though Tirana IS a trip
+        // city. Fix: take min distance over all trip city centroids.
+        const tripCities = getTripCities(trip, { excludeFlightOnly: true, lang: 'en' });
+        const cityCentroids = await Promise.all(
+                tripCities.map(c => getCityCentroid(c, tripCountry || undefined).then(centroid => ({ city: c, centroid }))),
+        );
+        const distances = cityCentroids
+                .filter(x => x.centroid)
+                .map(x => ({
+                        city: x.city,
+                        km: haversineMetres({ lat: feat!.lat, lng: feat!.lng }, x.centroid!) / 1000,
+                }));
+        if (distances.length > 0) {
+                const nearest = distances.reduce((a, b) => (a.km < b.km ? a : b));
+                if (nearest.km > MAX_CENTROID_DISTANCE_KM) {
+                        return {
+                                lat: feat.lat, lng: feat.lng,
+                                osmId: feat.osmId,
+                                verifiedCountry: feat.country,
+                                verifiedCity: feat.city,
+                                verificationStatus: 'ambiguous',
+                                verificationSource: 'photon',
+                                confidence: 0.35,
+                                reason: `המקום נמצא ${Math.round(nearest.km)} ק"מ מ-${nearest.city} (העיר הקרובה ביותר בטיול) — ייתכן שאינו באזור הטיול.`,
+                        };
                 }
         }
 
@@ -173,10 +189,18 @@ export const verifyPlace = async (
         const countryByName  = matchesCountry(feat.country, tripCountry);
         const countryByBbox  = !!tripBbox; // already proved by lines 113-133
         const countryMatches = countryByName || countryByBbox;
-        const cityMatches = !!feat.city && (
+        // cityMatches: Photon's city matches ANY trip city — not just the
+        // AI-claimed region. Prevents Tirana restaurants tagged
+        // region="Vlora" from being penalized to 0.75 confidence when they
+        // legitimately belong to the Tirana leg of the trip.
+        const cityMatchesAnyTripCity = !!feat.city && tripCities.some(tc =>
+                locationMatchesCity(feat!.city!, tc) || locationMatchesCity(tc, feat!.city!),
+        );
+        const cityMatchesClaimed = !!feat.city && !!targetCity && (
                 locationMatchesCity(feat.city, targetCity)
                 || locationMatchesCity(targetCity, feat.city)
         );
+        const cityMatches = cityMatchesAnyTripCity || cityMatchesClaimed;
 
         let status: VerificationStatus = 'ambiguous';
         let confidence = 0.5;
