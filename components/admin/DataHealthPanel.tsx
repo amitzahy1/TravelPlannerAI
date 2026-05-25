@@ -11,7 +11,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Trip, Restaurant, Attraction } from '../../types';
-import { ActivitySquare, MapPin, AlertTriangle, CheckCircle2, RefreshCw, Trash2, Download, Loader2, Hotel as HotelIcon } from 'lucide-react';
+import { ActivitySquare, MapPin, AlertTriangle, CheckCircle2, Trash2, Download, Loader2 } from 'lucide-react';
 import { getTripCities, displayCityName } from '../../utils/geoData';
 import { isPlaceInTripScope, inferTripCountry, placeDedupeKey, coordInTripCountries } from '../../utils/tripScope';
 import { isPreciseGoogleUrl } from '../../utils/mapsUrl';
@@ -817,66 +817,21 @@ Rules:
             </div>
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h3 className="text-lg font-black text-slate-800 mb-3">פעולות תיקון</h3>
+                <h3 className="text-lg font-black text-slate-800 mb-3">ניקוי וגיבוי</h3>
 
-                {/* Inline explanation — what each action actually does. The user
-                    can't always tell from the button label whether the click
-                    will cost money / call AI / mutate the trip. */}
-                <details className="mb-4 bg-slate-50 rounded-lg border border-slate-200">
-                    <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-slate-700">
-                        ⓘ מה כל פעולה עושה?
-                    </summary>
-                    <div className="px-3 pb-3 text-2xs text-slate-600 leading-relaxed space-y-2">
-                        <div>
-                            <strong>אמת מחדש את כל המקומות</strong> — עובר על כל מלון / מסעדה / אטרקציה
-                            (גם מהרשימה הידנית וגם מהמלצות ה-AI), שולח כל אחד ל-Photon (גאוקודר חינמי של
-                            OpenStreetMap) עם רמז על מדינת הטיול, ומעדכן <code>lat</code>, <code>lng</code>,
-                            <code>verifiedCity</code>, <code>verifiedCountry</code>. אם פוטון לא מצא את המקום
-                            הוא מסומן כ-<code>not_found</code>. <strong>עלות AI: 0 ש״ח.</strong>
-                            זמן: ~0.5-1 שניה לפריט, רץ 4 במקביל.
-                        </div>
-                        <div>
-                            <strong>הסר פריטים מחוץ לטיול</strong> — מסנן ומוחק כל פריט שה-Photon החזיר
-                            עבורו מיקום מחוץ למדינות הטיול. עוצר את "אטרקציה בתאילנד" מלהופיע במפה של
-                            טיול לאיטליה. <strong>בלתי-הפיך</strong> — שמור גיבוי לפני לחיצה.
-                        </div>
-                        <div>
-                            <strong>ייצוא דוח</strong> — מורידה JSON עם סיכום מצב הטיול (כמות פריטים,
-                            מצב אימות, מקומות מעורפלים) לבדיקה ידנית. רק קריאה, לא משנה כלום.
-                        </div>
-                    </div>
-                </details>
-
+                {/* Slim action row — only the buttons that aren't already
+                    exposed via the stat cards above:
+                      • "פתור הכל"          → top of stats card
+                      • אמת מחדש (Photon)   → top of stats card (פתור הכל)
+                      • אמת מלונות (AI)     → top of stats card (פתור הכל)
+                      • לא מאומתים          → stat card click
+                      • ללא קואורדינטות     → stat card click
+                      • גיאוקודינג נכשל     → stat card click
+                      • מחוץ לטיול          → stat card click
+                      • כפילויות            → stat card click
+                    What remains here: the bulk delete-junk action (unique)
+                    and the JSON export (debug). */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <button
-                        onClick={() => reverifyAll()}
-                        disabled={reverifying}
-                        title="עובר על כל מלון/מסעדה/אטרקציה ושולח ל-Photon (גאוקודר חינמי) לאיתור lat/lng. עלות AI: 0 ש״ח. זמן: ~0.5-1ש לפריט. הקונסולה תראה התקדמות שורה-שורה."
-                        className="flex items-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-sm border border-blue-100 disabled:opacity-70"
-                    >
-                        {reverifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                        {reverifying && reverifyProgress.total > 0
-                            ? `מאמת… ${reverifyProgress.done}/${reverifyProgress.total} (${reverifyProgress.verified} נמצאו)`
-                            : 'אמת מחדש את כל המקומות'}
-                    </button>
-                    <button
-                        onClick={verifyHotelsWithAi}
-                        disabled={aiHotelVerifying || !trip?.hotels?.length}
-                        title="שולח כל מלון ל-AI לאיתור הקואורדינטות וקישור Google Maps המדויק. עוקף את המגבלות של Photon שמאתר רק כתובות (לא את שם העסק). משתמש ב-SMART chain — אם Gemini חסום בגלל קוטה, נופל אוטומטית ל-Groq/OpenRouter."
-                        className="flex items-center gap-2 px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-sm border border-emerald-100 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                        {aiHotelVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <HotelIcon className="w-4 h-4" />}
-                        {aiHotelVerifying && aiHotelProgress.total > 0
-                            ? `מאמת מלונות עם AI… ${aiHotelProgress.done}/${aiHotelProgress.total} (${aiHotelProgress.resolved} נמצאו)`
-                            : `אמת מלונות עם AI (${trip?.hotels?.length || 0})`}
-                    </button>
-                    <button
-                        onClick={dropOutOfScope}
-                        className="flex items-center gap-2 px-4 py-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-sm border border-rose-100"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                        הסר פריטים מחוץ לטיול
-                    </button>
                     <button
                         onClick={dropNotFound}
                         disabled={junkTotal === 0}

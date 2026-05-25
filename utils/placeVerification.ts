@@ -292,12 +292,23 @@ export const applyVerificationResult = (
                 item.verificationConfidence = result.confidence;
                 if (result.reason) item.verificationReason = result.reason;
                 item.geocodeFailed = true;
-                // Clear any stale lat/lng so the map filter (which excludes
-                // items without valid coords) drops the item rather than
-                // stacking it at (0,0) with other failures.
-                delete item.lat;
-                delete item.lng;
-                return false;
+                // KEEP existing lat/lng. Photon failing to re-find a place
+                // does NOT mean the previously stored coords are wrong —
+                // they likely came from the original AI research and are
+                // still the best signal we have. Deleting them silently
+                // regressed the trip's data quality on every reverify run
+                // (user reported "after fix-all I have more unverified
+                // than before"). Now: flag the failure, preserve the
+                // coords, let the user delete the item explicitly if they
+                // want via the junk-cleanup button.
+                // Only clear the literal (0, 0) sentinel that placeholder
+                // code historically wrote in this branch — never clear
+                // real coords.
+                if (item.lat === 0 && item.lng === 0) {
+                        delete item.lat;
+                        delete item.lng;
+                }
+                return typeof item.lat === 'number' && typeof item.lng === 'number';
         }
         item.lat = result.lat;
         item.lng = result.lng;
