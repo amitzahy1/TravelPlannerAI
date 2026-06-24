@@ -932,6 +932,7 @@ export const RestaurantsView: React.FC<{ trip: Trip, onUpdateTrip: (t: Trip) => 
         setResearchProgress({ current: 0, total: hotels.length });
         const preferTier = resolvePreferTier();
         let accumulated: RestaurantCategory[] = [...aiCategories];
+        let hotelsWithResults = 0;
 
         try {
             for (let i = 0; i < hotels.length; i++) {
@@ -973,6 +974,7 @@ HARD RULES:
                         }));
 
                     if (cleaned.length > 0) {
+                        hotelsWithResults++;
                         const newCat: RestaurantCategory = {
                             id: catId,
                             title: catTitle,
@@ -1006,9 +1008,21 @@ HARD RULES:
 
             setAiCategories(accumulated);
             persistAiRestaurants(accumulated);
+            // Reset the city filter so near-hotel results across ALL hotels are
+            // visible. Without this, a filter left on one city (e.g. Bangkok)
+            // silently hides the other hotels' results — the user reported
+            // "only found Bangkok" when results for other cities existed but
+            // were filtered out of view. (researchAllCities already does this.)
+            setSelectedCity('all');
             await stampPremiumIfUsed(preferTier, accumulated.length > aiCategories.length);
             geocodeAndPersistRestaurants(accumulated);
-            toast.success('סיימנו לחפש מסעדות באזור המלון');
+            if (hotelsWithResults === 0) {
+                toast.warning('לא נמצאו מסעדות בקרבת המלונות. ודא שלמלונות יש כתובת מלאה.');
+            } else if (hotelsWithResults < hotels.length) {
+                toast.success(`נמצאו מסעדות ליד ${hotelsWithResults} מתוך ${hotels.length} מלונות. למלונות שנותרו ייתכן וחסרה כתובת מדויקת.`);
+            } else {
+                toast.success(`סיימנו לחפש מסעדות ליד ${hotels.length} המלונות`);
+            }
         } catch (e) {
             console.error('Critical error in researchNearHotel:', e);
             setRecError('שגיאה בחיפוש בקרבת המלון.');
@@ -1191,8 +1205,19 @@ HARD RULES:
             // the output instruction so the UI still gets Hebrew labels.
             const catTitleEn = categoryTitleToEnglish(catTitle);
             const currentDate = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+            // Tell the model which places the user ALREADY has so a re-run ADDS
+            // genuinely new restaurants instead of returning the same famous
+            // picks (which then get deduped away → "no new results"). This is
+            // what makes the refresh button behave as "add more", not "replace".
+            const alreadyListed = cat.restaurants
+                .map(r => ((r as any).nameEnglish || r.name || '').toString().trim())
+                .filter(Boolean)
+                .slice(0, 40);
+            const exclusionClause = alreadyListed.length > 0
+                ? `\n\nThe user ALREADY has these ${alreadyListed.length} places — do NOT return any of them. Find DIFFERENT, additional restaurants the user does not have yet:\n${alreadyListed.map(n => `- ${n}`).join('\n')}`
+                : '';
             const prompt = `You are a food expert. As of ${currentDate}, find the BEST restaurants in "${cityEn}" for the category: ${catTitleEn}${catTitleEn !== catTitle ? ` (Hebrew label: "${catTitle}")` : ''}.
-Return AT LEAST 10 currently operating restaurants (aim 12). Apply the same strict operational check as always — omit any closed place.
+Return AT LEAST 10 currently operating restaurants (aim 12). Apply the same strict operational check as always — omit any closed place.${exclusionClause}
 Respond in the same JSON format:
 { "restaurants": [ { "name", "nameEnglish", "description", "location", "cuisine", "googleRating", "recommendationSource", "isHotelRestaurant", "googleMapsUrl", "business_status", "verification_needed" } ] }
 Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be in English. "description" MUST be in Hebrew (1–2 short sentences, traveler-facing).`;
@@ -1243,7 +1268,9 @@ Every restaurant MUST have business_status = "OPERATIONAL". "location" MUST be i
                         },
                     };
                 });
-                toast.success(`${catTitle} עודכן בהצלחה`);
+                toast.success(additions.length > 0
+                    ? `נוספו ${additions.length} מסעדות חדשות ל${catTitle}`
+                    : `${catTitle}: לא נמצאו מסעדות חדשות מעבר למה שכבר יש`);
                 geocodeAndPersistRestaurants(updated);
             } else {
                 toast.warning(`לא נמצאו תוצאות חדשות עבור ${catTitle}`);

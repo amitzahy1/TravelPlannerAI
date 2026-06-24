@@ -507,6 +507,23 @@ const writeSearchCache = (key: string, entry: { text: string; model: string }): 
   } catch { /* quota / disabled */ }
 };
 
+// =====================================================================
+// 🩹 Session-scoped chain self-healing for SEARCH (grounded) calls.
+//
+// Symptom seen in production: the dynamic RESEARCH chain leads with
+// `gemini-2.5-flash`, which structurally exceeds the Worker's 25s race on
+// grounded restaurant/attraction prompts → 504 GeminiTimeout on EVERY call,
+// followed by `gemini-2.5-flash-lite` returning Google 503s. The chain only
+// succeeds on the 3rd model. Because 504/503 are "transient", nothing learns,
+// so a multi-city refresh re-pays ~60s/city on the dead-first models.
+//
+// Fix: when a model fails on a SEARCH call with a structural/capacity error
+// (Worker timeout or 503 high-demand), push it to the END of the SEARCH chain
+// for the rest of this session. Non-destructive (the model stays as a last
+// resort) and resets on reload. After the first slow call, subsequent SEARCH
+// calls lead with whatever actually works.
+const searchChainDemotions = new Set<string>();
+
 /**
  * The core proxy caller. Tries each model in the chain, with backoff on 429.
  * CRITICAL FIX: Uses spread operator to avoid mutating the shared model arrays.
@@ -557,6 +574,18 @@ export const generateWithFallback = async (
 
   // Deduplicate (in case same model appears in both tiers)
   chain = [...new Set(chain)];
+
+  // Self-healing for SEARCH: models that timed out / 503'd earlier this session
+  // get pushed to the end so we lead with what actually works (see
+  // searchChainDemotions above). Push-to-end is non-destructive and order-stable.
+  if (intent === 'SEARCH' && searchChainDemotions.size > 0) {
+    const healthy = chain.filter(m => !searchChainDemotions.has(m));
+    const demoted = chain.filter(m => searchChainDemotions.has(m));
+    if (healthy.length > 0) {
+      chain = [...healthy, ...demoted];
+      console.log(`🩹 [AI] SEARCH chain self-healed — demoted to end: ${demoted.join(', ')}`);
+    }
+  }
 
   // Apply the cached probe result (services/aiHealth.ts). When the admin has
   // run a recent probe via ModelHealthPanel, models known to be DEAD for the
@@ -676,6 +705,25 @@ export const generateWithFallback = async (
             console.error(`🔑 [AI] ${classification.kind} — ${classification.action}`);
           }
           throw new Error(`Worker Error: ${response.status}${errDetail ? ` — ${errDetail}` : ''}${diagSuffix}`);
+        }
+
+        // Structural / capacity failures on a SEARCH call: demote this model to
+        // the end of the chain for the rest of the session so the NEXT call
+        // (next city / next refresh) leads with something that works, instead
+        // of re-paying the dead-first-model tax every time.
+        const isWorkerTimeout = response.status === 504 || /GeminiTimeout|deadline exceeded/i.test(errDetail);
+        const isHighDemand = response.status === 503 || /\b503\b|Service Unavailable|high demand/i.test(errDetail);
+        if (intent === 'SEARCH' && (isWorkerTimeout || isHighDemand)) {
+          searchChainDemotions.add(modelId);
+        }
+
+        // A Worker-race timeout (504 / GeminiTimeout) means the grounded call
+        // exceeded the Worker's 25s budget. Retrying the SAME model with the
+        // SAME prompt will just time out again (~25s wasted) — skip the retry
+        // and fall straight to the next model in the chain.
+        if (isWorkerTimeout) {
+          console.warn(`⏭️ [AI] ${modelId} hit the 25s Worker timeout${diagSuffix} — skipping same-model retry, moving to next model.`);
+          throw new Error(`WorkerTimeout: ${response.status}${errDetail ? ` — ${errDetail}` : ''}${diagSuffix}`);
         }
 
         const retryAfterHeader = Number(response.headers.get('retry-after'));
