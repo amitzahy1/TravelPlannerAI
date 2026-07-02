@@ -1,4 +1,5 @@
 import { StagedTripData, StagedCategories } from "../types";
+import { buildUnifiedTransports } from "../utils/buildUnifiedTransports";
 import { TRIP_OUTPUT_SCHEMA } from "./aiSchema";
 import { auth } from "./firebaseConfig";
 import { parseJsonLenient, sanitizeJsonControlChars } from "./jsonSanitizer";
@@ -2041,9 +2042,85 @@ export const parseTripWizardInputs = async (text: string, files: File[] = []): P
   return JSON.parse(response.text);
 };
 
+// Serialize the trip the user is looking at into a compact plain-text brief.
+// The chat's job is answering questions about data that already lives in the
+// app (transfer times in hotel notes, flight segments, itinerary), so the
+// model needs the actual records — not just the destination name.
+const buildTripChatBrief = (trip: any): string => {
+  if (!trip) return 'No trip data available.';
+  const lines: string[] = [];
+  lines.push(`Trip: ${trip.name || trip.destination || ''} | Destination: ${trip.destination || ''} | Dates: ${trip.dates || ''}`);
+  if (trip.travelers) {
+    const t = trip.travelers;
+    lines.push(`Travelers: ${t.adults || 0} adults, ${t.children || 0} children, ${t.babies || 0} babies`);
+  }
+
+  const hotels = Array.isArray(trip.hotels) ? trip.hotels : [];
+  if (hotels.length) {
+    lines.push('\nHOTELS:');
+    for (const h of hotels) {
+      lines.push(`- ${h.name}${h.city ? ` (${h.city})` : ''}: ${h.checkInDate} → ${h.checkOutDate} (${h.nights} nights)${h.confirmationCode ? `, confirmation ${h.confirmationCode}` : ''}${h.rooms?.length ? `, ${h.rooms.length} rooms` : ''}`);
+      if (h.notes) lines.push(`  Notes: ${h.notes}`);
+    }
+  }
+
+  try {
+    const transports = buildUnifiedTransports(trip);
+    if (transports.length) {
+      lines.push('\nTRANSPORTS (flights, transfers, ferries — chronological):');
+      for (const tr of transports) {
+        lines.push(`- [${tr.mode}] ${tr.date}${tr.departureTime ? ` ${tr.departureTime}` : ''}: ${tr.from} → ${tr.to}${tr.provider ? ` (${tr.provider}${tr.flightNumber ? ` ${tr.flightNumber}` : ''})` : ''}${tr.pickupPoint ? `, pickup: ${tr.pickupPoint}` : ''}${tr.notes ? ` — ${tr.notes}` : ''}`);
+      }
+    }
+  } catch { /* legacy trips with odd shapes — hotels/itinerary still included */ }
+
+  const itinerary = Array.isArray(trip.itinerary) ? trip.itinerary : [];
+  if (itinerary.length) {
+    lines.push('\nITINERARY:');
+    for (const day of itinerary) {
+      const acts = Array.isArray(day.activities) ? day.activities.join('; ') : '';
+      lines.push(`- Day ${day.day} (${day.date}) ${day.title || ''}${acts ? `: ${acts}` : ''}${day.notes ? ` [${day.notes}]` : ''}`);
+    }
+  }
+
+  const reservations = Array.isArray(trip.reservations) ? trip.reservations : [];
+  if (reservations.length) {
+    lines.push('\nRESTAURANT RESERVATIONS:');
+    for (const r of reservations) {
+      lines.push(`- ${r.restaurantName}: ${r.date} ${r.time}, ${r.people} people (${r.status})`);
+    }
+  }
+
+  // Cap the brief so huge trips don't blow past FAST-tier context limits.
+  return lines.join('\n').slice(0, 12000);
+};
+
 export const chatWithTripContext = async (message: string, tripContext: any, history: any[] = []): Promise<string> => {
-  const systemContext = `Trip Context: ${tripContext.destination}, ${JSON.stringify(tripContext.metadata)}`;
-  const contents = [...history, { role: 'user', parts: [{ text: `[System: ${systemContext}] ${message}` }] }];
+  const systemContext = buildTripChatBrief(tripContext);
+
+  // History arrives as UI Message objects ({id, role, content, timestamp}).
+  // Providers reject unknown fields (Gemini: 400 Unknown name "id"; Groq: 400
+  // property 'id' is unsupported), so map to clean Gemini contents: only
+  // role + parts, with 'assistant' renamed to 'model'.
+  const cleanHistory = (history || [])
+    .map((m: any) => {
+      const text = typeof m?.content === 'string' ? m.content : m?.parts?.[0]?.text;
+      if (!text || !text.trim()) return null;
+      return { role: m.role === 'assistant' || m.role === 'model' ? 'model' : 'user', parts: [{ text }] };
+    })
+    .filter(Boolean) as { role: string; parts: { text: string }[] }[];
+  // Gemini requires the first turn to be 'user' — drop the greeting bubble.
+  while (cleanHistory.length && cleanHistory[0].role === 'model') cleanHistory.shift();
+
+  const prompt = `You are a travel assistant for a specific planned trip. Answer ONLY from the trip data below. Answer in the user's language (Hebrew if they write Hebrew). If the answer is not in the data, say you don't have that information — do not guess.
+
+=== TRIP DATA ===
+${systemContext}
+=== END TRIP DATA ===
+
+User question: ${message}`;
+
+  const contents = [...cleanHistory, { role: 'user', parts: [{ text: prompt }] }];
   const response = await generateWithFallback(null, contents, {}, 'FAST');
   return response.text;
 };

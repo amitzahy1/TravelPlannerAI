@@ -120,15 +120,50 @@ const partToText = (part: any): string => {
         return "";
 };
 
+// Normalize whatever the client sent into strict Gemini `contents` — only
+// {role, parts} with known part keys survive. Clients have sent UI message
+// objects ({id, content, timestamp}) here, which Gemini 400s on.
+const sanitizeGeminiContents = (requestContent: any): any[] => {
+        if (typeof requestContent === "string") return [{ role: "user", parts: [{ text: requestContent }] }];
+        if (!Array.isArray(requestContent)) return [{ role: "user", parts: [{ text: String(requestContent || "") }] }];
+
+        const contents = requestContent.map((entry: any) => {
+                const role = (entry?.role === "model" || entry?.role === "assistant") ? "model" : "user";
+                let parts: any[] = [];
+                if (Array.isArray(entry?.parts)) {
+                        parts = entry.parts.map((p: any) => {
+                                if (typeof p === "string") return { text: p };
+                                if (p?.inlineData) return { inlineData: p.inlineData };
+                                if (p?.fileData) return { fileData: p.fileData };
+                                if (typeof p?.text === "string") return { text: p.text };
+                                return null;
+                        }).filter(Boolean);
+                } else if (typeof entry?.content === "string" && entry.content.trim()) {
+                        parts = [{ text: entry.content }];
+                } else {
+                        const text = partToText(entry);
+                        if (text) parts = [{ text }];
+                }
+                return { role, parts };
+        }).filter((c: any) => c.parts.length);
+
+        // Gemini requires the conversation to open with a user turn.
+        while (contents.length && contents[0].role === "model") contents.shift();
+        return contents;
+};
+
 const contentsToOpenRouterMessages = (requestContent: any): any[] => {
         if (typeof requestContent === "string") return [{ role: "user", content: requestContent }];
         if (!Array.isArray(requestContent)) return [{ role: "user", content: String(requestContent || "") }];
 
         return requestContent.map((entry: any) => {
-                if (entry?.content) return entry;
-                const content = Array.isArray(entry?.parts)
-                        ? entry.parts.map(partToText).filter(Boolean).join("\n")
-                        : partToText(entry);
+                // Strip to role+content only — clients sometimes send UI message
+                // objects with extra fields (id, timestamp) that providers 400 on.
+                const content = typeof entry?.content === "string"
+                        ? entry.content
+                        : Array.isArray(entry?.parts)
+                                ? entry.parts.map(partToText).filter(Boolean).join("\n")
+                                : partToText(entry);
                 return {
                         role: entry?.role === "model" ? "assistant" : (entry?.role || "user"),
                         content,
@@ -621,7 +656,7 @@ export default {
                                 let result: any;
                                 try {
                                         result = await Promise.race([
-                                                model.generateContent({ contents: requestContent }),
+                                                model.generateContent({ contents: sanitizeGeminiContents(requestContent) }),
                                                 new Promise<never>((_, reject) =>
                                                         setTimeout(() => reject(new Error('GeminiTimeout: 25s')), 25_000)
                                                 ),
