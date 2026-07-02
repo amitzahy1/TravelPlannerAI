@@ -711,7 +711,24 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         setIsFreeTextProcessing(true);
         setFreeTextResult(null);
         try {
-            const result = await parseFreeTextTrip(freeText);
+            // Anchor the AI to the active trip's context — otherwise text like
+            // "august 7" with no year gets a guessed year (seen: 2024 for an
+            // Aug-2025 trip). Trip.dates is free text, so derive the ISO range
+            // from existing hotels/flights instead.
+            const isoDates = activeTrip ? [
+                ...(activeTrip.hotels || []).flatMap(h => [h.checkInDate, h.checkOutDate]),
+                ...(activeTrip.flights?.segments || []).map(s => s.date),
+            ].filter((d): d is string => /^\d{4}-\d{2}-\d{2}/.test(d || '')) : [];
+            const travelerTotal = activeTrip?.travelers
+                ? (activeTrip.travelers.adults || 0) + (activeTrip.travelers.children || 0) + (activeTrip.travelers.babies || 0)
+                : undefined;
+            const result = await parseFreeTextTrip(freeText, activeTrip ? {
+                destination: activeTrip.destinationEnglish || activeTrip.destination,
+                startDate: isoDates.length ? isoDates.reduce((a, b) => (a < b ? a : b)) : undefined,
+                endDate: isoDates.length ? isoDates.reduce((a, b) => (a > b ? a : b)) : undefined,
+                travelers: travelerTotal || undefined,
+                groupType: activeTrip.groupType,
+            } : undefined);
             setFreeTextResult(result);
         } catch (e) {
             console.error('Free text import error:', e);
