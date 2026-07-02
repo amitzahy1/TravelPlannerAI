@@ -926,6 +926,13 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         toast.error(msg);
     };
 
+    // Remove a single item from the AI findings preview before applying —
+    // e.g. the AI extracted flights that are already in the trip and the
+    // user only wants the transfers imported.
+    const removeFreeTextItem = (key: 'hotels' | 'flights' | 'transports', index: number) => {
+        setFreeTextResult(prev => prev ? { ...prev, [key]: prev[key].filter((_, i) => i !== index) } : prev);
+    };
+
     const handleFreeTextApply = () => {
         if (!freeTextResult || !activeTrip) return;
 
@@ -1397,9 +1404,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                         <div className="space-y-1.5">
                                                             <div className="text-[11px] font-bold text-slate-600">מלונות ({freeTextResult.hotels.length})</div>
                                                             {freeTextResult.hotels.map((h, i) => (
-                                                                <div key={i} className="bg-white rounded-md p-1.5 border border-emerald-100 text-[11px]">
-                                                                    <div className="font-bold">{h.name}</div>
-                                                                    <div className="text-slate-500">{h.checkInDate} → {h.checkOutDate}</div>
+                                                                <div key={i} className="bg-white rounded-md p-1.5 border border-emerald-100 text-[11px] flex items-center justify-between gap-2">
+                                                                    <div className="min-w-0">
+                                                                        <div className="font-bold">{h.name}</div>
+                                                                        <div className="text-slate-500">{h.checkInDate} → {h.checkOutDate}</div>
+                                                                    </div>
+                                                                    <button onClick={() => removeFreeTextItem('hotels', i)} className="w-9 h-9 -my-1 flex items-center justify-center text-slate-300 hover:text-rose-500 shrink-0" title="הסר מהייבוא" aria-label="הסר מהייבוא">
+                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                    </button>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -1408,9 +1420,14 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                         <div className="space-y-1.5">
                                                             <div className="text-[11px] font-bold text-slate-600">טיסות ({freeTextResult.flights.length})</div>
                                                             {freeTextResult.flights.map((f, i) => (
-                                                                <div key={i} className="bg-white rounded-md p-1.5 border border-emerald-100 text-[11px]">
-                                                                    <div className="font-bold">✈️ {f.fromCity || f.fromCode} → {f.toCity || f.toCode} {f.flightNumber && f.flightNumber !== 'TBD' ? `· ${f.flightNumber}` : ''}</div>
-                                                                    <div className="text-slate-500">{f.date}{f.departureTime && f.departureTime !== '00:00' ? ` · ${f.departureTime}` : ''}</div>
+                                                                <div key={i} className="bg-white rounded-md p-1.5 border border-emerald-100 text-[11px] flex items-center justify-between gap-2">
+                                                                    <div className="min-w-0">
+                                                                        <div className="font-bold">✈️ {f.fromCity || f.fromCode} → {f.toCity || f.toCode} {f.flightNumber && f.flightNumber !== 'TBD' ? `· ${f.flightNumber}` : ''}</div>
+                                                                        <div className="text-slate-500">{f.date}{f.departureTime && f.departureTime !== '00:00' ? ` · ${f.departureTime}` : ''}</div>
+                                                                    </div>
+                                                                    <button onClick={() => removeFreeTextItem('flights', i)} className="w-9 h-9 -my-1 flex items-center justify-center text-slate-300 hover:text-rose-500 shrink-0" title="הסר מהייבוא" aria-label="הסר מהייבוא">
+                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                    </button>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -1421,16 +1438,27 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                             {freeTextResult.transports.map((t, i) => {
                                                                 const style = styleForMode(t.mode);
                                                                 return (
-                                                                    <div key={i} className="bg-white rounded-md p-1.5 border border-emerald-100 text-[11px]">
-                                                                        <div className="font-bold">{style.emoji} {style.label}: {t.from} → {t.to}</div>
-                                                                        <div className="text-slate-500">{t.date}{t.departureTime && t.departureTime !== '00:00' ? ` · איסוף ${t.departureTime}` : ''}{t.notes ? ` · ${t.notes}` : ''}</div>
+                                                                    <div key={i} className="bg-white rounded-md p-1.5 border border-emerald-100 text-[11px] flex items-center justify-between gap-2">
+                                                                        <div className="min-w-0">
+                                                                            <div className="font-bold">{style.emoji} {style.label}: {t.from} → {t.to}</div>
+                                                                            <div className="text-slate-500">{t.date}{t.departureTime && t.departureTime !== '00:00' ? ` · איסוף ${t.departureTime}` : ''}{t.notes ? ` · ${t.notes}` : ''}</div>
+                                                                        </div>
+                                                                        <button onClick={() => removeFreeTextItem('transports', i)} className="w-9 h-9 -my-1 flex items-center justify-center text-slate-300 hover:text-rose-500 shrink-0" title="הסר מהייבוא" aria-label="הסר מהייבוא">
+                                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                                        </button>
                                                                     </div>
                                                                 );
                                                             })}
                                                         </div>
                                                     )}
                                                     <div className="flex gap-2">
-                                                        <button onClick={handleFreeTextApply} className="flex-1 py-1.5 bg-emerald-600 text-white rounded-md font-bold text-xs">הוסף לטיול</button>
+                                                        <button
+                                                            onClick={handleFreeTextApply}
+                                                            disabled={freeTextResult.hotels.length === 0 && freeTextResult.flights.length === 0 && freeTextResult.transports.length === 0}
+                                                            className="flex-1 py-1.5 bg-emerald-600 text-white rounded-md font-bold text-xs disabled:opacity-50"
+                                                        >
+                                                            הוסף לטיול
+                                                        </button>
                                                         <button onClick={() => setFreeTextResult(null)} className="px-3 py-1.5 bg-white text-slate-500 rounded-md font-bold border text-xs">ביטול</button>
                                                     </div>
                                                 </div>
