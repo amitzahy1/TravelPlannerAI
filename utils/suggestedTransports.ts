@@ -1,5 +1,6 @@
 import { Trip, Transport, TransportMode, FlightSegment, HotelBooking } from '../types';
 import { buildUnifiedTransports } from './buildUnifiedTransports';
+import { cityKey as geoCityKey } from './geoData';
 
 /**
  * Heuristic-based detector of "transports the user probably needs but
@@ -51,10 +52,18 @@ const sameDay = (a?: string, b?: string): boolean => {
         return !!ia && !!ib && ia === ib;
 };
 
-// Normalise "Koh Chang" ↔ "Ko Chang" — hotels store the city one way,
-// AI-imported transfers the other, and substring matching misses across
-// the spelling variants.
-const cityKey = (s?: string): string => (s || '').trim().toLowerCase().replace(/[֐-׿]/g, '').replace(/\bkoh\b/g, 'ko');
+// Canonicalise a side (city or full place name) for matching:
+// 1. geoData's cityKey translates Hebrew ↔ English ("בנגקוק" → "bangkok")
+//    and collapses alias variants. Flight segments store Hebrew city names,
+//    so the old local normaliser — which STRIPPED Hebrew chars — turned
+//    them into empty strings that could never match a booked transfer.
+// 2. "koh" → "ko" normalisation so "Koh Chang" embedded in a hotel/transfer
+//    name substring-matches the "Ko Chang" city form.
+const cityKey = (s?: string): string => {
+        if (!s || !s.trim()) return '';
+        const canonical = geoCityKey(s) || s.trim().toLowerCase();
+        return canonical.toLowerCase().replace(/\bkoh\b/g, 'ko');
+};
 
 const cleanCity = (raw?: string): string => {
         if (!raw) return '';
