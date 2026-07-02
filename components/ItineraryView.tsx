@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { getPlaceImage } from '../services/imageMapper';
 import { safeMapsUrl } from '../utils/mapsUrl';
+import { styleForMode } from '../utils/transportColors';
 // CALENDAR INTEGRATION REMOVED - No longer calling Google Calendar API
 // import { fetchCalendarEvents, mapEventsToTimeline, GoogleCalendarEvent } from '../services/calendarService';
 // CALENDAR REMOVED: import { requestAccessToken } from '../services/googleAuthService';
@@ -372,6 +373,28 @@ export const ItineraryView: React.FC<{
                     bgClass: 'bg-blue-50 border-blue-100'
                 });
                 // Title will be generated dynamically by generateDayTitle
+            });
+
+            // --- Ingest ground/water transports (transfers, trains, ferries…) ---
+            // Same wrong-year filter rationale as flights above.
+            (trip.transports || []).filter(t => {
+                if (!itinTripYear || !t.date) return true;
+                const y = t.date.match(/^(\d{4})/)?.[1];
+                return !y || parseInt(y) === itinTripYear;
+            }).forEach(t => {
+                if (!t.date) return;
+                const style = styleForMode(t.mode);
+                addToDay(t.date, {
+                    id: `transport-${t.id}`,
+                    type: 'travel',
+                    time: t.departureTime || '',
+                    title: `${style.emoji} ${style.label}: ${t.from || '?'} → ${t.to || '?'}`,
+                    subtitle: [t.departureTime ? `איסוף ${t.departureTime}` : '', t.provider || ''].filter(Boolean).join(' · '),
+                    location: t.notes || '',
+                    icon: Car,
+                    colorClass: 'text-orange-600',
+                    bgClass: 'bg-orange-50 border-orange-100'
+                });
             });
 
             trip.hotels?.forEach(hotel => {

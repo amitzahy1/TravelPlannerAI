@@ -51,13 +51,18 @@ const sameDay = (a?: string, b?: string): boolean => {
         return !!ia && !!ib && ia === ib;
 };
 
-const cityKey = (s?: string): string => (s || '').trim().toLowerCase().replace(/[֐-׿]/g, '');
+// Normalise "Koh Chang" ↔ "Ko Chang" — hotels store the city one way,
+// AI-imported transfers the other, and substring matching misses across
+// the spelling variants.
+const cityKey = (s?: string): string => (s || '').trim().toLowerCase().replace(/[֐-׿]/g, '').replace(/\bkoh\b/g, 'ko');
 
 const cleanCity = (raw?: string): string => {
         if (!raw) return '';
         // Drop ", country" suffix etc.
         return raw.split(',')[0].trim();
 };
+
+const sideMatch = (a: string, b: string): boolean => a === b || a.includes(b) || b.includes(a);
 
 const transportCovers = (t: Transport, fromCity: string, toCity: string, onDate?: string): boolean => {
         const tFrom = cityKey(t.from);
@@ -68,11 +73,22 @@ const transportCovers = (t: Transport, fromCity: string, toCity: string, onDate?
         // match everything ("bangkok".includes("")=true) and falsely
         // suppress suggestions.
         if (!tFrom || !tTo || !wantFrom || !wantTo) return false;
-        const fromMatch = tFrom === wantFrom || tFrom.includes(wantFrom) || wantFrom.includes(tFrom);
-        const toMatch = tTo === wantTo || tTo.includes(wantTo) || wantTo.includes(tTo);
-        if (!fromMatch || !toMatch) return false;
         if (onDate && t.date && isoDate(t.date) !== isoDate(onDate)) return false;
-        return true;
+        const fromMatch = sideMatch(tFrom, wantFrom);
+        const toMatch = sideMatch(tTo, wantTo);
+        if (fromMatch && toMatch) return true;
+        // One-side fallback: a booked ground/water transport on the EXACT
+        // same date that touches either endpoint counts as covering the
+        // move. Needed because saved transfers use full place names —
+        // "Suvarnabhumi Airport (BKK)" never contains the city name
+        // "Bangkok" the detector wants, so requiring both sides made every
+        // real airport transfer invisible and its gap card never cleared.
+        // Flights are excluded — a flight on that date is usually WHY the
+        // ground-transfer gap exists.
+        if (onDate && t.date && t.mode !== 'flight' && isoDate(t.date) === isoDate(onDate)) {
+                return fromMatch || toMatch;
+        }
+        return false;
 };
 
 const newSuggestedId = (kind: string, idx: number) => `suggested-${kind}-${idx}`;
@@ -132,7 +148,10 @@ export const detectSuggestedTransports = (trip: Trip): SuggestedTransport[] => {
                 if (cityKey(fromCity) === cityKey(toCity)) continue; // same city — no transport needed
                 const moveDate = isoDate(b.checkInDate || a.checkOutDate);
                 if (!moveDate) continue;
-                const covered = existing.some(t => transportCovers(t, fromCity, toCity));
+                // Two checks: strict route match on any date, plus the date-bound
+                // one-side fallback (covers multi-leg moves like van→flight→van
+                // where no single transport spans the whole city-to-city route).
+                const covered = existing.some(t => transportCovers(t, fromCity, toCity) || transportCovers(t, fromCity, toCity, moveDate));
                 if (covered) continue;
                 out.push({
                         id: newSuggestedId('inter-hotel', i),

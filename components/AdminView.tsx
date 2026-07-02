@@ -1060,7 +1060,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                 <div className="flex-1 overflow-y-auto p-5 space-y-2.5">
                     {trips.map(t => (
                         <div key={t.id} className="relative group">
-                            <button onClick={() => setActiveTripId(t.id)} className={`w-full text-right p-4 pr-4 pl-12 rounded-xl transition-all font-bold flex items-center justify-between text-sm border-2 ${activeTripId === t.id ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-slate-900 border-blue-300 shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200 hover:border-slate-300'}`}>
+                            <button onClick={() => { setActiveTripId(t.id); onSwitchTrip(t.id); }} className={`w-full text-right p-4 pr-4 pl-12 rounded-xl transition-all font-bold flex items-center justify-between text-sm border-2 ${activeTripId === t.id ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-slate-900 border-blue-300 shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200 hover:border-slate-300'}`}>
                                 <span className="min-w-0 flex flex-col gap-1.5">
                                     <span className="truncate font-bold">{t.name}</span>
                                     <span className={`truncate text-xs font-medium ${activeTripId === t.id ? 'text-slate-600' : 'text-slate-500'}`}>{t.destination || t.dates || '—'}</span>

@@ -103,10 +103,20 @@ export const getMissingDataPoints = (trip: Trip, layerFlags?: MissingDataLayerFl
                 );
                 if (!hotelInCity) return; // no hotel = handled by gap #1
 
+                const hotelKey = cityKey(hotelInCity.name || '');
                 const hasOnwardTransport = transports.some(t => {
                         if (!t.date || t.date !== s.date) return false;
-                        const fromKey = cityKey(t.from || '');
-                        return fromKey === arrivalKey;
+                        // Loose containment match on either endpoint. Saved transfers
+                        // carry full place names ("Suvarnabhumi Airport (BKK)" →
+                        // "Holiday Inn Pattaya"); exact from===arrivalCity never hit,
+                        // so booked transfers never cleared this gap.
+                        const touches = (raw?: string) => {
+                                const k = cityKey(raw || '');
+                                if (!k) return false;
+                                if (k.includes(arrivalKey) || arrivalKey.includes(k)) return true;
+                                return !!hotelKey && (k.includes(hotelKey) || hotelKey.includes(k));
+                        };
+                        return touches(t.from) || touches(t.to);
                 });
                 if (hasOnwardTransport) return;
 
