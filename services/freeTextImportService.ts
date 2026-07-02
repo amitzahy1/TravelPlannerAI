@@ -121,7 +121,12 @@ Return ONLY valid JSON in this exact structure:
 Rules:
 - For months in Hebrew: ינואר=01, פברואר=02, מרץ=03, אפריל=04, מאי=05, יוני=06, יולי=07, אוגוסט=08, ספטמבר=09, אוקטובר=10, נובמבר=11, דצמבר=12
 - If year is not mentioned, use the current year or next year based on context (and prefer the expected dates from the hints block above if present)
-- Extract ALL hotels mentioned, including ones where "hotel will be chosen later"
+
+HOTELS — WHAT COUNTS AS A HOTEL (follow these exactly):
+- Create a hotels[] entry ONLY when the text describes an actual STAY at that hotel: check-in/check-out dates, number of nights, room details, or an accommodation booking confirmation.
+- A hotel name that appears ONLY as a transfer/shuttle/van/taxi pickup or dropoff point (e.g. "from the airport to Holiday Inn Pattaya", "pickup from KC Grand Resort at 08:30") is NOT a hotel booking. Use it only as the transfer's "from"/"to" (and "pickupPoint"), and do NOT invent check-in/check-out dates from transfer dates.
+- A text that is purely a list of transfers/rides between hotels and airports must return hotels: [] — every line belongs in transports[] (and flights[] if flight numbers are mentioned).
+- When the text does describe a stay, extract ALL such hotels, including ones where "hotel will be chosen later".
 
 ROOMS — CRITICAL (follow these exactly):
 - Create ONE entry in the rooms[] array per physical room. If a hotel says "5 rooms" or "3 premium + 2 suites", produce 5 room entries total (3 with roomType="Premium", 2 with roomType="Suite").
@@ -148,10 +153,14 @@ TRANSPORTS — CRITICAL (follow these exactly):
   · "FlixBus N123 to Prague" → mode: 'bus', provider: 'FlixBus', vehicle: 'N123'
   · "Sixt rental Madrid airport, return 18/06" → mode: 'car_rental', provider: 'Sixt'
   · "Private van pickup from BKK 14:00" → mode: 'transfer'
+  · "august 12 - holiday inn pattaya to koh chang, pick up time 09:30, 5500/van includ ferry (x3=16500)" → mode: 'transfer', from: 'Holiday Inn Pattaya', to: 'Koh Chang', date: '...-08-12', departureTime: '09:30', notes: '5500/van incl. ferry (x3=16500)' — and NO hotels[] entry for the endpoints
+- A price like "2200/van (x3=6600)" or luggage/toll remarks belong in the transfer's "notes".
 - If a date is given as a range, create one transport per direction (outbound + return).
 
 OTHER:
 - Flights: a "landing" (נחיתה) = arrival flight, "departure" (המראה) = departure flight
+- If the SAME flight (same flight number + date) is described twice — e.g. once from the departure side and once from the landing side — return ONE flights[] entry combining both times, not two.
+- A flight mentioned only as context for a transfer ("landing at 11:50, van pickup after") still goes in flights[] once, but the van itself goes in transports[].
 - If booking / reservation / confirmation number is given, put it in the appropriate "confirmationCode" or "bookingRef" field
 - Always return valid JSON, never return markdown or extra text
 

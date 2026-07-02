@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { generateWithFallback } from '../services/aiService';
 import { parseJsonLenient } from '../services/jsonSanitizer';
 import { parseFreeTextTrip } from '../services/freeTextImportService';
+import { styleForMode } from '../utils/transportColors';
 import { toast } from '../stores/useToastStore';
 import { getTripCities } from '../utils/geoData'; // Imported from new DB
 import { MagicDropZone } from './MagicDropZone';
@@ -945,7 +946,10 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         const existingSegments = activeTrip.flights?.segments || [];
         const mergedFlights: FlightSegment[] = [...existingSegments];
         for (const incoming of freeTextResult.flights) {
-            const dup = existingSegments.find(s => s.flightNumber === incoming.flightNumber && s.date === incoming.date);
+            // Check against mergedFlights (not existingSegments) so a flight the
+            // AI returned twice — e.g. described once as departure and once as
+            // landing — is only added once.
+            const dup = mergedFlights.find(s => s.flightNumber === incoming.flightNumber && s.date === incoming.date);
             if (!dup) mergedFlights.push(incoming);
         }
 
@@ -1381,6 +1385,31 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                                     <div className="text-slate-500">{h.checkInDate} → {h.checkOutDate}</div>
                                                                 </div>
                                                             ))}
+                                                        </div>
+                                                    )}
+                                                    {freeTextResult.flights.length > 0 && (
+                                                        <div className="space-y-1.5">
+                                                            <div className="text-[11px] font-bold text-slate-600">טיסות ({freeTextResult.flights.length})</div>
+                                                            {freeTextResult.flights.map((f, i) => (
+                                                                <div key={i} className="bg-white rounded-md p-1.5 border border-emerald-100 text-[11px]">
+                                                                    <div className="font-bold">✈️ {f.fromCity || f.fromCode} → {f.toCity || f.toCode} {f.flightNumber && f.flightNumber !== 'TBD' ? `· ${f.flightNumber}` : ''}</div>
+                                                                    <div className="text-slate-500">{f.date}{f.departureTime && f.departureTime !== '00:00' ? ` · ${f.departureTime}` : ''}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {freeTextResult.transports.length > 0 && (
+                                                        <div className="space-y-1.5">
+                                                            <div className="text-[11px] font-bold text-slate-600">העברות והסעות ({freeTextResult.transports.length})</div>
+                                                            {freeTextResult.transports.map((t, i) => {
+                                                                const style = styleForMode(t.mode);
+                                                                return (
+                                                                    <div key={i} className="bg-white rounded-md p-1.5 border border-emerald-100 text-[11px]">
+                                                                        <div className="font-bold">{style.emoji} {style.label}: {t.from} → {t.to}</div>
+                                                                        <div className="text-slate-500">{t.date}{t.departureTime && t.departureTime !== '00:00' ? ` · איסוף ${t.departureTime}` : ''}{t.notes ? ` · ${t.notes}` : ''}</div>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     )}
                                                     <div className="flex gap-2">
