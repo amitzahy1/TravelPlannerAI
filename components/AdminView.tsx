@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Trip, HotelBooking, FlightSegment, HotelRoom, Transport } from '../types';
-import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble, ShieldCheck, RefreshCw, Copy, ExternalLink } from 'lucide-react';
+import { Save, X, Plus, Trash2, Layout, Sparkles, Globe, UploadCloud, Download, Share2, Calendar, Plane, Hotel, MapPin, ArrowRight, ArrowLeft, Loader2, CalendarCheck, FileText, Image as ImageIcon, Menu, Users, LogOut, ChevronDown, Terminal, CheckCircle, BedDouble, ShieldCheck, RefreshCw, Copy, ExternalLink, Bus } from 'lucide-react';
 import { buildExternalAiPrompt, parseExternalAiResponse, mergeExternalAiIntoTrip, existingPlaceNames, type Kind as ExternalAiKind } from '../services/externalAiImport';
 import { mergeDeepResearchData, type DeepResearchPayload } from '../services/deepResearchMerge';
 import { isTripOwner } from '../utils/tripPermissions';
@@ -150,7 +150,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     const { user } = useAuth();
     const [premiumFood, setPremiumFood] = useState<number | null>(null);
     const [premiumAttractions, setPremiumAttractions] = useState<number | null>(null);
-    const [logisticsTab, setLogisticsTab] = useState<'flights' | 'hotels'>('flights');
+    const [logisticsTab, setLogisticsTab] = useState<'flights' | 'hotels' | 'transports'>('flights');
     const [freeText, setFreeText] = useState('');
     const [isFreeTextProcessing, setIsFreeTextProcessing] = useState(false);
     const [freeTextResult, setFreeTextResult] = useState<{ hotels: HotelBooking[], flights: FlightSegment[], transports: Transport[], summary: string } | null>(null);
@@ -740,7 +740,16 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
 
     const applyMergedData = (resolvedHotels: HotelBooking[], resolvedFlights: FlightSegment[], resolvedTransports?: Transport[]) => {
         if (!activeTrip) return;
-        const newDates = recalculateTripDates(resolvedHotels, resolvedFlights, activeTrip.dates);
+        // Only recalculate trip.dates when hotels/flights actually changed.
+        // trip.dates is part of the duplicate-trip content key
+        // (name|destination|dates in storageService.dedupeTrips) — rewriting
+        // its format on a transports-only import made the trip stop matching
+        // its stored twin and resurface as a "new" third trip (seen 2026-07-02).
+        const hotelsChanged = resolvedHotels.length !== (activeTrip.hotels || []).length;
+        const flightsChanged = resolvedFlights.length !== (activeTrip.flights?.segments || []).length;
+        const newDates = (hotelsChanged || flightsChanged)
+            ? recalculateTripDates(resolvedHotels, resolvedFlights, activeTrip.dates)
+            : null;
         // Merge incoming transports with existing trip.transports (dedupe by mode+date+from→to).
         const existingTransports = activeTrip.transports || [];
         const norm = (s?: string) => (s || '').trim().toLowerCase();
@@ -761,6 +770,11 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
             transports: mergedTransports,
             ...(newDates ? { dates: newDates } : {}),
         };
+        console.info(`📥 [freeText-apply] trip=${activeTrip.id} (isShared=${!!activeTrip.isShared}) ` +
+            `hotels ${activeTrip.hotels?.length || 0}→${resolvedHotels.length}, ` +
+            `flights ${activeTrip.flights?.segments?.length || 0}→${resolvedFlights.length}, ` +
+            `transports ${existingTransports.length}→${mergedTransports.length}` +
+            (newDates ? `, dates rewritten to "${newDates}"` : ''));
         handleUpdateTrip(mergedTrip);
         const newTrips = trips.map(t => t.id === activeTripId ? mergedTrip : t);
         onSave(newTrips);
@@ -769,6 +783,7 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
         setHotelConflicts([]);
         setConflictResolutions({});
         setPendingApplyData(null);
+        toast.success(`נשמר לטיול: ${mergedTransports.length - existingTransports.length} העברות חדשות`);
     };
 
     // ────────────────────────────────────────────────────────────────────
@@ -931,6 +946,28 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
     // user only wants the transfers imported.
     const removeFreeTextItem = (key: 'hotels' | 'flights' | 'transports', index: number) => {
         setFreeTextResult(prev => prev ? { ...prev, [key]: prev[key].filter((_, i) => i !== index) } : prev);
+    };
+
+    // --- Transports (הסעות) tab handlers — same local-state pattern as
+    // flights/hotels: handleUpdateTrip updates state, the global save
+    // button (or the import apply path) persists.
+    const handleAddTransport = () => {
+        if (!activeTrip) return;
+        const t: Transport = {
+            id: `tr-${Date.now().toString(36)}`,
+            mode: 'transfer',
+            from: '', to: '', date: '', departureTime: '', arrivalTime: '',
+            sourceArrayKey: 'transports',
+        };
+        handleUpdateTrip({ transports: [...(activeTrip.transports || []), t] });
+    };
+    const handleUpdateTransport = (id: string, field: keyof Transport, value: string) => {
+        if (!activeTrip) return;
+        handleUpdateTrip({ transports: (activeTrip.transports || []).map(t => t.id === id ? { ...t, [field]: value } : t) });
+    };
+    const handleDeleteTransport = (id: string) => {
+        if (!activeTrip) return;
+        handleUpdateTrip({ transports: (activeTrip.transports || []).filter(t => t.id !== id) });
     };
 
     const handleFreeTextApply = () => {
@@ -1243,6 +1280,18 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                             <Hotel className="w-4 h-4" /> מלונות
                                         </span>
                                     </button>
+                                    <button
+                                        onClick={() => setLogisticsTab('transports')}
+                                        className={`px-6 py-3.5 font-bold text-sm transition-colors border-b-2 ${
+                                            logisticsTab === 'transports'
+                                                ? 'text-orange-600 border-orange-600'
+                                                : 'text-slate-500 border-transparent hover:text-slate-700'
+                                        }`}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <Bus className="w-4 h-4" /> הסעות
+                                        </span>
+                                    </button>
                                 </div>
 
                                 {logisticsTab === 'flights' && (
@@ -1272,6 +1321,63 @@ export const AdminView: React.FC<TripSettingsModalProps> = ({ data, currentTripI
                                                         <div className="text-xs text-slate-500 mt-1">{seg.departureTime} - {seg.arrivalTime}</div>
                                                     </div>
                                                 ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {logisticsTab === 'transports' && (
+                                    <div className="bg-white p-7 rounded-xl shadow-sm border border-slate-200 animate-fade-in">
+                                        <div className="flex justify-between items-center mb-7">
+                                            <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                                                <span className="bg-orange-100 p-2.5 rounded-lg text-orange-600"><Bus className="w-5 h-5" /></span> הסעות והעברות
+                                            </h3>
+                                            <button onClick={handleAddTransport} className="text-xs font-bold bg-orange-50 text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-100 border border-orange-200 flex items-center gap-1.5">
+                                                <Plus className="w-4 h-4" /> הוסף
+                                            </button>
+                                        </div>
+                                        {(activeTrip?.transports || []).length === 0 ? (
+                                            <div className="text-center py-12">
+                                                <Bus className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                                                <div className="text-slate-400 text-sm">אין הסעות ברשימה — אפשר להוסיף ידנית או לייבא מטקסט חופשי בטאב AI</div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {[...(activeTrip?.transports || [])].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map(t => {
+                                                    const style = styleForMode(t.mode);
+                                                    return (
+                                                        <div key={t.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 relative">
+                                                            <button onClick={() => handleDeleteTransport(t.id)} className="absolute top-2 left-2 w-9 h-9 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors" title="מחק הסעה" aria-label="מחק הסעה">
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <span className="text-lg">{style.emoji}</span>
+                                                                <select
+                                                                    value={t.mode}
+                                                                    onChange={(e) => handleUpdateTransport(t.id, 'mode', e.target.value)}
+                                                                    className="bg-white px-2 py-1 rounded border border-slate-100 text-xs font-bold"
+                                                                >
+                                                                    <option value="transfer">הסעה</option>
+                                                                    <option value="train">רכבת</option>
+                                                                    <option value="bus">אוטובוס</option>
+                                                                    <option value="ferry">מעבורת</option>
+                                                                    <option value="cruise">שיט</option>
+                                                                    <option value="car_rental">השכרת רכב</option>
+                                                                    <option value="drive">נסיעה</option>
+                                                                </select>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                                                                <input className="bg-white px-2 py-1 rounded border border-slate-100 font-bold" value={t.from || ''} onChange={(e) => handleUpdateTransport(t.id, 'from', e.target.value)} placeholder="מוצא (מלון / שדה תעופה)" />
+                                                                <input className="bg-white px-2 py-1 rounded border border-slate-100 font-bold" value={t.to || ''} onChange={(e) => handleUpdateTransport(t.id, 'to', e.target.value)} placeholder="יעד" />
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                                                                <input type="date" className="bg-white px-2 py-1 rounded border border-slate-100 font-bold" value={(t.date || '').slice(0, 10)} onChange={(e) => handleUpdateTransport(t.id, 'date', e.target.value)} />
+                                                                <input type="time" className="bg-white px-2 py-1 rounded border border-slate-100 font-bold" value={t.departureTime || ''} onChange={(e) => handleUpdateTransport(t.id, 'departureTime', e.target.value)} placeholder="שעת איסוף" />
+                                                            </div>
+                                                            <input className="w-full bg-white px-2 py-1 rounded border border-slate-100 text-xs" value={t.notes || ''} onChange={(e) => handleUpdateTransport(t.id, 'notes', e.target.value)} placeholder="הערות — מחיר, כמות רכבים, כולל מעבורת..." />
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>

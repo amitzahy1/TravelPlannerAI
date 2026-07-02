@@ -336,8 +336,11 @@ export const saveTrips = async (trips: Trip[], userId?: string): Promise<void> =
     await Promise.all(uniqueTrips.map(trip => saveSingleTrip(trip, userId)));
   } catch (error) {
     console.error('Error saving trips to Firestore:', error);
-    // Fallback to local storage on error
+    // Backup to local storage, but STILL throw — otherwise callers report
+    // success, React Query reloads from Firestore (which never got the
+    // write), and the user's edit silently vanishes from the UI.
     saveTripsToLocal(uniqueTrips);
+    throw error;
   }
 };
 

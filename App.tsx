@@ -506,6 +506,7 @@ const AppContent: React.FC = () => {
                 queryClient.invalidateQueries({ queryKey: ['trips'] });
               } catch (error) {
                 console.error("Failed to save trips:", error);
+                toast.error("השמירה לענן נכשלה — השינויים לא נשמרו. נסה שוב.");
               }
             }}
             onSwitchTrip={(id) => {
